@@ -1,0 +1,479 @@
+---
+title: OpenAI 适配器
+description: 使用 OpenAI 适配器连接 GPT-4、GPT-3.5 等模型
+---
+
+OpenAI 适配器提供了与 OpenAI API 的完整集成，支持所有主要功能，包括聊天补全、流式传输、函数调用和视觉能力。
+
+## 安装
+
+```bash tab="pnpm"
+pnpm add @llm-bridge/core @llm-bridge/adapter-openai
+```
+
+```bash tab="npm"
+npm install @llm-bridge/core @llm-bridge/adapter-openai
+```
+
+```bash tab="yarn"
+yarn add @llm-bridge/core @llm-bridge/adapter-openai
+```
+
+## 基本使用
+
+### 简单聊天
+
+```typescript
+import { createBridge } from '@llm-bridge/core'
+import { openaiAdapter } from '@llm-bridge/adapter-openai'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: openaiAdapter,
+  config: {
+    apiKey: process.env.OPENAI_API_KEY
+  }
+})
+
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [
+    { role: 'system', content: '你是一个有帮助的助手。' },
+    { role: 'user', content: '什么是 LLM Bridge？' }
+  ]
+})
+
+console.log(response.choices[0].message.content)
+```
+
+### 流式响应
+
+```typescript
+const stream = bridge.chatStream({
+  model: 'gpt-4',
+  messages: [
+    { role: 'user', content: '讲一个关于 AI 的故事' }
+  ],
+  stream: true
+})
+
+for await (const chunk of stream) {
+  if (chunk.choices[0]?.delta?.content) {
+    process.stdout.write(chunk.choices[0].delta.content)
+  }
+}
+```
+
+## 支持的功能
+
+<Tabs items={['函数调用', '视觉', 'JSON 模式', '高级参数']}>
+  <Tab value="函数调用">
+    ### 函数调用
+
+    OpenAI 适配器完全支持函数调用（工具使用）：
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'gpt-4',
+      messages: [
+        { role: 'user', content: '北京现在几点？' }
+      ],
+      tools: [{
+        type: 'function',
+        function: {
+          name: 'get_current_time',
+          description: '获取指定城市的当前时间',
+          parameters: {
+            type: 'object',
+            properties: {
+              city: {
+                type: 'string',
+                description: '城市名称'
+              }
+            },
+            required: ['city']
+          }
+        }
+      }],
+      tool_choice: 'auto'
+    })
+
+    // 检查是否有函数调用
+    const toolCalls = response.choices[0].message.tool_calls
+    if (toolCalls) {
+      for (const toolCall of toolCalls) {
+        console.log('函数名:', toolCall.function.name)
+        console.log('参数:', toolCall.function.arguments)
+      }
+    }
+    ```
+
+    **工具选择选项：**
+    - `auto` - 让模型决定是否调用函数
+    - `none` - 强制模型不调用函数
+    - `required` - 强制模型调用函数
+    - `{ type: 'function', function: { name: 'function_name' } }` - 强制调用特定函数
+  </Tab>
+
+  <Tab value="视觉">
+    ### 视觉（GPT-4V）
+
+    使用 GPT-4 Vision 分析图像：
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'gpt-4-vision-preview',
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: '这张图片里有什么？'
+          },
+          {
+            type: 'image_url',
+            image_url: {
+              url: 'https://example.com/image.jpg',
+              detail: 'high' // 'low', 'high', 'auto'
+            }
+          }
+        ]
+      }],
+      max_tokens: 300
+    })
+
+    console.log(response.choices[0].message.content)
+    ```
+
+    **图像格式支持：**
+    - URL（https://）
+    - Base64 编码（data:image/jpeg;base64,...）
+
+    **详细级别：**
+    - `low` - 低分辨率，更快更便宜
+    - `high` - 高分辨率，更详细但更贵
+    - `auto` - 自动选择（默认）
+  </Tab>
+
+  <Tab value="JSON 模式">
+    ### JSON 模式
+
+    强制模型返回有效的 JSON：
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'gpt-4-turbo-preview',
+      messages: [
+        {
+          role: 'system',
+          content: '你是一个帮助提取结构化数据的助手。始终以 JSON 格式响应。'
+        },
+        {
+          role: 'user',
+          content: '从这段文本中提取人名和地点：张三昨天去了北京。'
+        }
+      ],
+      response_format: { type: 'json_object' }
+    })
+
+    const data = JSON.parse(response.choices[0].message.content)
+    console.log(data)
+    // { "person": "张三", "location": "北京", "time": "昨天" }
+    ```
+
+    <Callout type="warn">
+    使用 JSON 模式时，必须在系统消息或用户消息中明确指示模型生成 JSON。
+    </Callout>
+  </Tab>
+
+  <Tab value="高级参数">
+    ### 高级参数
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'gpt-4',
+      messages: [
+        { role: 'user', content: '写一首关于 AI 的诗' }
+      ],
+
+      // 温度控制（0-2）
+      temperature: 0.7,
+
+      // Top-p 采样
+      top_p: 0.9,
+
+      // 最大令牌数
+      max_tokens: 500,
+
+      // 频率惩罚（-2.0 到 2.0）
+      frequency_penalty: 0.5,
+
+      // 存在惩罚（-2.0 到 2.0）
+      presence_penalty: 0.5,
+
+      // 停止序列
+      stop: ['\n\n', '---'],
+
+      // 用户标识（用于滥用监控）
+      user: 'user-123',
+
+      // 随机种子（用于可重现性）
+      seed: 42,
+
+      // Logprobs
+      logprobs: true,
+      top_logprobs: 3
+    })
+    ```
+  </Tab>
+</Tabs>
+
+## 支持的模型
+
+### GPT-4 系列
+
+| 模型 | 上下文长度 | 描述 |
+|------|-----------|------|
+| `gpt-4` | 8K | 最强大的模型 |
+| `gpt-4-32k` | 32K | 更长的上下文 |
+| `gpt-4-turbo-preview` | 128K | 最新的 GPT-4 Turbo |
+| `gpt-4-vision-preview` | 128K | 支持视觉的 GPT-4 |
+| `gpt-4-1106-preview` | 128K | 2023年11月版本 |
+
+### GPT-3.5 系列
+
+| 模型 | 上下文长度 | 描述 |
+|------|-----------|------|
+| `gpt-3.5-turbo` | 16K | 快速且经济 |
+| `gpt-3.5-turbo-16k` | 16K | 更长的上下文 |
+| `gpt-3.5-turbo-1106` | 16K | 2023年11月版本 |
+
+<Callout type="info">
+模型列表可能会更新。查看 [OpenAI 文档](https://platform.openai.com/docs/models) 获取最新信息。
+</Callout>
+
+## 配置选项
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: openaiAdapter,
+  config: {
+    // 必需：API 密钥
+    apiKey: process.env.OPENAI_API_KEY,
+
+    // 可选：自定义 API 端点
+    baseURL: 'https://api.openai.com',
+
+    // 可选：组织 ID
+    organization: 'org-xxx',
+
+    // 可选：请求超时（毫秒）
+    timeout: 60000,
+
+    // 可选：自定义请求头
+    headers: {
+      'Custom-Header': 'value'
+    }
+  }
+})
+```
+
+## 错误处理
+
+```typescript
+try {
+  const response = await bridge.chat({
+    model: 'gpt-4',
+    messages: [{ role: 'user', content: '你好' }]
+  })
+} catch (error) {
+  if (error.response) {
+    // OpenAI API 错误
+    console.error('状态码:', error.response.status)
+    console.error('错误类型:', error.response.data.error.type)
+    console.error('错误消息:', error.response.data.error.message)
+
+    // 常见错误类型
+    switch (error.response.data.error.type) {
+      case 'invalid_request_error':
+        console.log('请求参数无效')
+        break
+      case 'authentication_error':
+        console.log('API 密钥无效')
+        break
+      case 'rate_limit_error':
+        console.log('超出速率限制')
+        break
+      case 'insufficient_quota':
+        console.log('配额不足')
+        break
+    }
+  }
+}
+```
+
+## 最佳实践
+
+### 1. 使用环境变量
+
+```bash
+# .env
+OPENAI_API_KEY=sk-...
+OPENAI_ORG_ID=org-...
+```
+
+```typescript
+import 'dotenv/config'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: openaiAdapter,
+  config: {
+    apiKey: process.env.OPENAI_API_KEY,
+    organization: process.env.OPENAI_ORG_ID
+  }
+})
+```
+
+### 2. 控制成本
+
+```typescript
+// 使用更便宜的模型
+const response = await bridge.chat({
+  model: 'gpt-3.5-turbo', // 而不是 gpt-4
+  messages: [...],
+  max_tokens: 100 // 限制输出长度
+})
+```
+
+### 3. 优化提示词
+
+```typescript
+// ❌ 不好：模糊的提示
+const bad = await bridge.chat({
+  model: 'gpt-4',
+  messages: [
+    { role: 'user', content: '告诉我关于 AI 的事情' }
+  ]
+})
+
+// ✅ 好：具体的提示
+const good = await bridge.chat({
+  model: 'gpt-4',
+  messages: [
+    {
+      role: 'system',
+      content: '你是一个 AI 专家。用简洁的语言解释复杂概念。'
+    },
+    {
+      role: 'user',
+      content: '用3句话解释什么是大语言模型。'
+    }
+  ],
+  max_tokens: 150
+})
+```
+
+### 4. 处理速率限制
+
+```typescript
+async function chatWithRetry(request, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await bridge.chat(request)
+    } catch (error) {
+      if (error.response?.data?.error?.type === 'rate_limit_error') {
+        const waitTime = Math.pow(2, i) * 1000 // 指数退避
+        console.log(`速率限制，等待 ${waitTime}ms...`)
+        await new Promise(resolve => setTimeout(resolve, waitTime))
+        continue
+      }
+      throw error
+    }
+  }
+  throw new Error('达到最大重试次数')
+}
+```
+
+## 与其他适配器配合使用
+
+### OpenAI → Anthropic
+
+```typescript
+import { openaiAdapter } from '@llm-bridge/adapter-openai'
+import { anthropicAdapter } from '@llm-bridge/adapter-anthropic'
+
+// 接受 OpenAI 格式，调用 Claude
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: process.env.ANTHROPIC_API_KEY
+  }
+})
+
+// 使用 OpenAI 格式发送请求
+const response = await bridge.chat({
+  model: 'gpt-4', // 会被映射到 Claude
+  messages: [{ role: 'user', content: '你好' }]
+})
+```
+
+### OpenAI → DeepSeek
+
+```typescript
+import { openaiAdapter } from '@llm-bridge/adapter-openai'
+import { deepseekAdapter } from '@llm-bridge/adapter-deepseek'
+
+// 接受 OpenAI 格式，调用 DeepSeek
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: deepseekAdapter,
+  config: {
+    apiKey: process.env.DEEPSEEK_API_KEY
+  }
+})
+```
+
+## 功能支持
+
+| 功能 | 支持 | 说明 |
+|------|------|------|
+| 聊天补全 | ✅ | 完全支持 |
+| 流式传输 | ✅ | 完全支持 |
+| 函数调用 | ✅ | 完全支持 |
+| 视觉 | ✅ | GPT-4V 模型 |
+| JSON 模式 | ✅ | GPT-4 Turbo 及以上 |
+| 系统提示 | ✅ | 完全支持 |
+| 工具选择 | ✅ | 完全支持 |
+| Logprobs | ✅ | 完全支持 |
+| 种子 | ✅ | 用于可重现性 |
+
+## 限制
+
+- **速率限制**：根据您的账户层级有不同的限制
+- **上下文长度**：不同模型有不同的最大令牌数
+- **成本**：GPT-4 比 GPT-3.5 贵得多
+- **可用性**：某些模型可能需要加入等待列表
+
+## 相关资源
+
+- [OpenAI API 文档](https://platform.openai.com/docs/api-reference)
+- [OpenAI 模型列表](https://platform.openai.com/docs/models)
+- [OpenAI 定价](https://openai.com/pricing)
+- [OpenAI 使用政策](https://openai.com/policies/usage-policies)
+
+## 下一步
+
+<Cards>
+  <Card title="Anthropic 适配器" href="/docs/zh/adapters/anthropic">
+    了解如何使用 Claude 模型
+  </Card>
+  <Card title="适配器 API" href="/docs/zh/api/adapters">
+    查看完整的适配器 API 参考
+  </Card>
+  <Card title="示例" href="/docs/zh/examples">
+    查看更多使用示例
+  </Card>
+</Cards>

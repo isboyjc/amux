@@ -1,0 +1,20 @@
+{
+  "title": "文档",
+  "pages": [
+    "index",
+    "installation",
+    "quick-start",
+    "core-concepts",
+    "---API 参考---",
+    "api/bridge",
+    "api/adapters",
+    "api/ir",
+    "---适配器---",
+    "adapters/openai",
+    "adapters/anthropic",
+    "adapters/deepseek",
+    "adapters/kimi",
+    "adapters/qwen",
+    "adapters/gemini"
+  ]
+}

@@ -1,0 +1,229 @@
+---
+title: DeepSeek 适配器
+description: 使用 DeepSeek 适配器连接 DeepSeek Chat 和 DeepSeek Coder 模型
+---
+
+DeepSeek 适配器提供了与 DeepSeek API 的集成。DeepSeek API 完全兼容 OpenAI 格式，提供高性价比的 AI 服务。
+
+## 安装
+
+```bash tab="pnpm"
+pnpm add @llm-bridge/core @llm-bridge/adapter-deepseek
+```
+
+```bash tab="npm"
+npm install @llm-bridge/core @llm-bridge/adapter-deepseek
+```
+
+## 基本使用
+
+```typescript
+import { createBridge } from '@llm-bridge/core'
+import { deepseekAdapter } from '@llm-bridge/adapter-deepseek'
+
+const bridge = createBridge({
+  inbound: deepseekAdapter,
+  outbound: deepseekAdapter,
+  config: {
+    apiKey: process.env.DEEPSEEK_API_KEY
+  }
+})
+
+const response = await bridge.chat({
+  model: 'deepseek-chat',
+  messages: [
+    { role: 'system', content: '你是一个有帮助的助手。' },
+    { role: 'user', content: '什么是 LLM Bridge？' }
+  ]
+})
+
+console.log(response.choices[0].message.content)
+```
+
+## 支持的模型
+
+| 模型 | 描述 | 特点 |
+|------|------|------|
+| `deepseek-chat` | 通用对话模型 | 高性价比，适合日常对话 |
+| `deepseek-coder` | 代码专用模型 | 专注于代码生成和理解 |
+
+## 主要功能
+
+<Tabs items={['代码生成', '函数调用', '流式传输']}>
+  <Tab value="代码生成">
+    ### 代码生成
+
+    DeepSeek Coder 专门优化了代码能力：
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'deepseek-coder',
+      messages: [
+        {
+          role: 'user',
+          content: '用 TypeScript 写一个快速排序函数'
+        }
+      ],
+      temperature: 0.3 // 降低温度以获得更确定的代码
+    })
+
+    console.log(response.choices[0].message.content)
+    ```
+  </Tab>
+
+  <Tab value="函数调用">
+    ### 函数调用
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'deepseek-chat',
+      messages: [
+        { role: 'user', content: '北京现在几点？' }
+      ],
+      tools: [{
+        type: 'function',
+        function: {
+          name: 'get_current_time',
+          description: '获取指定城市的当前时间',
+          parameters: {
+            type: 'object',
+            properties: {
+              city: { type: 'string' }
+            },
+            required: ['city']
+          }
+        }
+      }]
+    })
+    ```
+  </Tab>
+
+  <Tab value="流式传输">
+    ### 流式传输
+
+    ```typescript
+    const stream = bridge.chatStream({
+      model: 'deepseek-chat',
+      messages: [
+        { role: 'user', content: '讲一个故事' }
+      ],
+      stream: true
+    })
+
+    for await (const chunk of stream) {
+      if (chunk.choices[0]?.delta?.content) {
+        process.stdout.write(chunk.choices[0].delta.content)
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## 配置选项
+
+```typescript
+const bridge = createBridge({
+  inbound: deepseekAdapter,
+  outbound: deepseekAdapter,
+  config: {
+    apiKey: process.env.DEEPSEEK_API_KEY,
+    baseURL: 'https://api.deepseek.com', // 默认值
+    timeout: 60000
+  }
+})
+```
+
+## 与 OpenAI 互转
+
+DeepSeek 完全兼容 OpenAI 格式：
+
+```typescript
+import { openaiAdapter } from '@llm-bridge/adapter-openai'
+import { deepseekAdapter } from '@llm-bridge/adapter-deepseek'
+
+// OpenAI 格式 → DeepSeek API
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: deepseekAdapter,
+  config: {
+    apiKey: process.env.DEEPSEEK_API_KEY
+  }
+})
+
+// 使用 OpenAI 格式发送请求
+const response = await bridge.chat({
+  model: 'gpt-4', // 会被映射到 deepseek-chat
+  messages: [{ role: 'user', content: '你好' }]
+})
+```
+
+## 功能支持
+
+| 功能 | 支持 | 说明 |
+|------|------|------|
+| 聊天补全 | ✅ | 完全支持 |
+| 流式传输 | ✅ | 完全支持 |
+| 函数调用 | ✅ | 完全支持 |
+| 视觉 | ❌ | 不支持 |
+| 系统提示 | ✅ | 完全支持 |
+
+## 优势
+
+- **高性价比**：价格远低于 GPT-4，性能接近
+- **代码能力强**：DeepSeek Coder 在代码任务上表现优异
+- **OpenAI 兼容**：可以无缝替换 OpenAI API
+- **中文友好**：对中文支持良好
+
+## 最佳实践
+
+### 1. 选择合适的模型
+
+```typescript
+// 日常对话使用 deepseek-chat
+const chatResponse = await bridge.chat({
+  model: 'deepseek-chat',
+  messages: [{ role: 'user', content: '介绍一下你自己' }]
+})
+
+// 代码任务使用 deepseek-coder
+const codeResponse = await bridge.chat({
+  model: 'deepseek-coder',
+  messages: [{ role: 'user', content: '写一个二分查找算法' }]
+})
+```
+
+### 2. 优化代码生成
+
+```typescript
+const response = await bridge.chat({
+  model: 'deepseek-coder',
+  messages: [
+    {
+      role: 'system',
+      content: '你是一个专业的程序员。生成简洁、高效、有注释的代码。'
+    },
+    {
+      role: 'user',
+      content: '用 Python 实现一个 LRU 缓存'
+    }
+  ],
+  temperature: 0.2, // 低温度获得更确定的代码
+  max_tokens: 1000
+})
+```
+
+## 相关资源
+
+- [DeepSeek API 文档](https://api-docs.deepseek.com/)
+- [DeepSeek 定价](https://api-docs.deepseek.com/pricing)
+
+## 下一步
+
+<Cards>
+  <Card title="Kimi 适配器" href="/docs/zh/adapters/kimi">
+    了解如何使用 Kimi 模型
+  </Card>
+  <Card title="OpenAI 适配器" href="/docs/zh/adapters/openai">
+    了解 OpenAI 兼容格式
+  </Card>
+</Cards>

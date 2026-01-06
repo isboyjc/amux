@@ -1,0 +1,306 @@
+---
+title: Anthropic 适配器
+description: 使用 Anthropic 适配器连接 Claude 3.5 Sonnet、Claude 3 Opus 等模型
+---
+
+Anthropic 适配器提供了与 Anthropic Claude API 的完整集成，支持 Messages API、工具使用、视觉能力和流式传输。
+
+## 安装
+
+```bash tab="pnpm"
+pnpm add @llm-bridge/core @llm-bridge/adapter-anthropic
+```
+
+```bash tab="npm"
+npm install @llm-bridge/core @llm-bridge/adapter-anthropic
+```
+
+## 基本使用
+
+```typescript
+import { createBridge } from '@llm-bridge/core'
+import { anthropicAdapter } from '@llm-bridge/adapter-anthropic'
+
+const bridge = createBridge({
+  inbound: anthropicAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: process.env.ANTHROPIC_API_KEY
+  }
+})
+
+const response = await bridge.chat({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  messages: [
+    { role: 'user', content: '什么是 LLM Bridge？' }
+  ]
+})
+
+console.log(response.content[0].text)
+```
+
+<Callout type="warn">
+Anthropic API 要求必须指定 `max_tokens` 参数。
+</Callout>
+
+## 支持的功能
+
+<Tabs items={['工具使用', '视觉', '系统提示', '流式传输']}>
+  <Tab value="工具使用">
+    ### 工具使用
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 1024,
+      messages: [
+        { role: 'user', content: '北京现在几点？' }
+      ],
+      tools: [{
+        name: 'get_current_time',
+        description: '获取指定城市的当前时间',
+        input_schema: {
+          type: 'object',
+          properties: {
+            city: {
+              type: 'string',
+              description: '城市名称'
+            }
+          },
+          required: ['city']
+        }
+      }]
+    })
+
+    // 检查工具调用
+    if (response.stop_reason === 'tool_use') {
+      const toolUse = response.content.find(c => c.type === 'tool_use')
+      console.log('工具名:', toolUse.name)
+      console.log('参数:', toolUse.input)
+    }
+    ```
+  </Tab>
+
+  <Tab value="视觉">
+    ### 视觉能力
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 1024,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: '这张图片里有什么？'
+          },
+          {
+            type: 'image',
+            source: {
+              type: 'url',
+              url: 'https://example.com/image.jpg'
+            }
+          }
+        ]
+      }]
+    })
+    ```
+
+    **支持的图像格式：**
+    - URL（https://）
+    - Base64 编码（需要指定 media_type）
+  </Tab>
+
+  <Tab value="系统提示">
+    ### 系统提示
+
+    Claude 使用单独的 `system` 参数：
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 1024,
+      system: '你是一个有帮助的 AI 助手，专门解答技术问题。',
+      messages: [
+        { role: 'user', content: '什么是 TypeScript？' }
+      ]
+    })
+    ```
+  </Tab>
+
+  <Tab value="流式传输">
+    ### 流式传输
+
+    ```typescript
+    const stream = bridge.chatStream({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 1024,
+      messages: [
+        { role: 'user', content: '讲一个故事' }
+      ],
+      stream: true
+    })
+
+    for await (const event of stream) {
+      if (event.type === 'content_block_delta') {
+        if (event.delta.type === 'text_delta') {
+          process.stdout.write(event.delta.text)
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## 支持的模型
+
+| 模型 | 上下文长度 | 描述 |
+|------|-----------|------|
+| `claude-3-5-sonnet-20241022` | 200K | 最新最强大的模型 |
+| `claude-3-opus-20240229` | 200K | 最智能的模型 |
+| `claude-3-sonnet-20240229` | 200K | 平衡性能和速度 |
+| `claude-3-haiku-20240307` | 200K | 最快最经济 |
+
+## 配置选项
+
+```typescript
+const bridge = createBridge({
+  inbound: anthropicAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    baseURL: 'https://api.anthropic.com', // 可选
+    timeout: 60000, // 可选
+    headers: {
+      'anthropic-version': '2023-06-01' // API 版本
+    }
+  }
+})
+```
+
+## 与 OpenAI 格式互转
+
+### OpenAI → Anthropic
+
+```typescript
+import { openaiAdapter } from '@llm-bridge/adapter-openai'
+import { anthropicAdapter } from '@llm-bridge/adapter-anthropic'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: process.env.ANTHROPIC_API_KEY
+  }
+})
+
+// 使用 OpenAI 格式发送请求
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '你好' }]
+})
+// 返回 OpenAI 格式的响应
+```
+
+### Anthropic → OpenAI
+
+```typescript
+const bridge = createBridge({
+  inbound: anthropicAdapter,
+  outbound: openaiAdapter,
+  config: {
+    apiKey: process.env.OPENAI_API_KEY
+  }
+})
+
+// 使用 Anthropic 格式发送请求
+const response = await bridge.chat({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: '你好' }]
+})
+// 返回 Anthropic 格式的响应
+```
+
+## 功能支持
+
+| 功能 | 支持 | 说明 |
+|------|------|------|
+| Messages API | ✅ | 完全支持 |
+| 流式传输 | ✅ | 完全支持 |
+| 工具使用 | ✅ | 完全支持 |
+| 视觉 | ✅ | Claude 3 系列 |
+| 系统提示 | ✅ | 单独的 system 参数 |
+| 长上下文 | ✅ | 200K tokens |
+
+## 最佳实践
+
+### 1. 始终设置 max_tokens
+
+```typescript
+// ✅ 正确
+const response = await bridge.chat({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024, // 必需
+  messages: [...]
+})
+
+// ❌ 错误 - 会报错
+const response = await bridge.chat({
+  model: 'claude-3-5-sonnet-20241022',
+  messages: [...] // 缺少 max_tokens
+})
+```
+
+### 2. 使用系统提示优化响应
+
+```typescript
+const response = await bridge.chat({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  system: '你是一个专业的技术文档编写者。使用清晰、简洁的语言。',
+  messages: [
+    { role: 'user', content: '解释什么是 REST API' }
+  ]
+})
+```
+
+### 3. 处理长对话
+
+```typescript
+// Claude 支持 200K tokens 的上下文
+const response = await bridge.chat({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 2048,
+  messages: [
+    { role: 'user', content: '第一个问题' },
+    { role: 'assistant', content: '第一个回答' },
+    { role: 'user', content: '第二个问题' },
+    { role: 'assistant', content: '第二个回答' },
+    // ... 可以有很多轮对话
+    { role: 'user', content: '最新的问题' }
+  ]
+})
+```
+
+## 相关资源
+
+- [Anthropic API 文档](https://docs.anthropic.com/claude/reference)
+- [Claude 模型列表](https://docs.anthropic.com/claude/docs/models-overview)
+- [Anthropic 定价](https://www.anthropic.com/pricing)
+
+## 下一步
+
+<Cards>
+  <Card title="OpenAI 适配器" href="/docs/zh/adapters/openai">
+    了解如何使用 GPT 模型
+  </Card>
+  <Card title="DeepSeek 适配器" href="/docs/zh/adapters/deepseek">
+    了解如何使用 DeepSeek 模型
+  </Card>
+  <Card title="适配器 API" href="/docs/zh/api/adapters">
+    查看完整的适配器 API 参考
+  </Card>
+</Cards>

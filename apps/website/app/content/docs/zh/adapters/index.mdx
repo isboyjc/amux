@@ -1,0 +1,184 @@
+---
+title: 适配器概览
+description: LLM Bridge 支持的所有官方适配器
+---
+
+LLM Bridge 提供了 6 个官方适配器，支持主流的 LLM 提供商。每个适配器都经过精心设计，确保与提供商 API 的完美兼容。
+
+## 官方适配器
+
+<Cards>
+  <Card title="OpenAI" href="/docs/zh/adapters/openai">
+    支持 GPT-4、GPT-3.5 等模型，完整的函数调用和视觉能力
+  </Card>
+  <Card title="Anthropic" href="/docs/zh/adapters/anthropic">
+    支持 Claude 3.5 Sonnet、Claude 3 Opus 等模型
+  </Card>
+  <Card title="DeepSeek" href="/docs/zh/adapters/deepseek">
+    支持 DeepSeek Chat 和 DeepSeek Coder 模型
+  </Card>
+  <Card title="Kimi" href="/docs/zh/adapters/kimi">
+    支持月之暗面的 Moonshot 系列模型
+  </Card>
+  <Card title="Qwen" href="/docs/zh/adapters/qwen">
+    支持阿里云通义千问系列模型
+  </Card>
+  <Card title="Gemini" href="/docs/zh/adapters/gemini">
+    支持 Google Gemini Pro 和 Gemini Pro Vision
+  </Card>
+</Cards>
+
+## 功能对比
+
+| 适配器 | 流式传输 | 工具调用 | 视觉 | 多模态 | 系统提示 | 工具选择 |
+|--------|---------|---------|------|--------|---------|---------|
+| OpenAI | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Anthropic | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| DeepSeek | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Kimi | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Qwen | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Gemini | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ |
+
+<Callout type="info">
+⚠️ 表示该功能部分支持或有限制
+</Callout>
+
+## 快速开始
+
+### 安装
+
+```bash tab="pnpm"
+# 安装核心包和所需的适配器
+pnpm add @llm-bridge/core @llm-bridge/adapter-openai
+```
+
+```bash tab="npm"
+npm install @llm-bridge/core @llm-bridge/adapter-openai
+```
+
+```bash tab="yarn"
+yarn add @llm-bridge/core @llm-bridge/adapter-openai
+```
+
+### 使用
+
+```typescript
+import { createBridge } from '@llm-bridge/core'
+import { openaiAdapter } from '@llm-bridge/adapter-openai'
+import { anthropicAdapter } from '@llm-bridge/adapter-anthropic'
+
+// 创建桥接
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: process.env.ANTHROPIC_API_KEY
+  }
+})
+
+// 发送请求
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '你好！' }]
+})
+```
+
+## 选择适配器
+
+### 按功能选择
+
+**需要视觉能力？**
+- OpenAI (GPT-4V)
+- Anthropic (Claude 3)
+- Qwen (通义千问 VL)
+- Gemini (Gemini Pro Vision)
+
+**需要强大的代码能力？**
+- DeepSeek (DeepSeek Coder)
+- OpenAI (GPT-4)
+- Anthropic (Claude 3.5 Sonnet)
+
+**需要长上下文？**
+- Kimi (Moonshot - 200K tokens)
+- Anthropic (Claude - 200K tokens)
+- Gemini (Gemini Pro - 1M tokens)
+
+### 按价格选择
+
+**最经济：**
+- DeepSeek - 性价比极高
+- Qwen - 阿里云优惠价格
+
+**中等价格：**
+- OpenAI GPT-3.5
+- Kimi
+
+**高端模型：**
+- OpenAI GPT-4
+- Anthropic Claude 3.5 Sonnet
+- Gemini Pro
+
+## OpenAI 兼容性
+
+以下适配器基于 OpenAI 格式，可以无缝替换：
+
+- **DeepSeek** - 完全兼容 OpenAI API
+- **Kimi** - 完全兼容 OpenAI API
+- **Qwen** - 部分兼容（有细微差异）
+- **Gemini** - 部分兼容（需要格式转换）
+
+<Callout type="warn">
+虽然这些适配器声称兼容 OpenAI，但在某些细节上可能有差异（如系统消息处理、流式格式等）。建议查看各适配器的详细文档。
+</Callout>
+
+## 创建自定义适配器
+
+如果您需要支持其他 LLM 提供商，可以创建自定义适配器：
+
+```typescript
+import type { LLMAdapter } from '@llm-bridge/core'
+
+export const myAdapter: LLMAdapter = {
+  name: 'my-provider',
+  version: '1.0.0',
+  capabilities: {
+    streaming: true,
+    tools: true,
+    vision: false,
+    multimodal: false,
+    systemPrompt: true,
+    toolChoice: true
+  },
+  inbound: {
+    parseRequest: (request) => { /* ... */ },
+    parseResponse: (response) => { /* ... */ }
+  },
+  outbound: {
+    buildRequest: (ir) => { /* ... */ },
+    buildResponse: (ir) => { /* ... */ }
+  },
+  getInfo() {
+    return {
+      name: this.name,
+      version: this.version,
+      capabilities: this.capabilities
+    }
+  }
+}
+```
+
+查看 [适配器 API 文档](/docs/zh/api/adapters) 了解更多详情。
+
+## 下一步
+
+<Cards>
+  <Card title="OpenAI 适配器" href="/docs/zh/adapters/openai">
+    了解如何使用 OpenAI 适配器
+  </Card>
+  <Card title="Anthropic 适配器" href="/docs/zh/adapters/anthropic">
+    了解如何使用 Anthropic 适配器
+  </Card>
+  <Card title="适配器 API" href="/docs/zh/api/adapters">
+    查看完整的适配器 API 参考
+  </Card>
+</Cards>

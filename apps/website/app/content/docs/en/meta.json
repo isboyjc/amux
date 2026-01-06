@@ -1,0 +1,20 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "index",
+    "installation",
+    "quick-start",
+    "core-concepts",
+    "---API Reference---",
+    "api/bridge",
+    "api/adapters",
+    "api/ir",
+    "---Adapters---",
+    "adapters/openai",
+    "adapters/anthropic",
+    "adapters/deepseek",
+    "adapters/kimi",
+    "adapters/qwen",
+    "adapters/gemini"
+  ]
+}

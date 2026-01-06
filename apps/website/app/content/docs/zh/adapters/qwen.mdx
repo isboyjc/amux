@@ -1,0 +1,273 @@
+---
+title: Qwen 适配器
+description: 使用 Qwen 适配器连接阿里云通义千问系列模型
+---
+
+Qwen 适配器提供了与阿里云通义千问 API 的集成，支持文本生成、视觉理解和函数调用等功能。
+
+## 安装
+
+```bash tab="pnpm"
+pnpm add @llm-bridge/core @llm-bridge/adapter-qwen
+```
+
+```bash tab="npm"
+npm install @llm-bridge/core @llm-bridge/adapter-qwen
+```
+
+## 基本使用
+
+```typescript
+import { createBridge } from '@llm-bridge/core'
+import { qwenAdapter } from '@llm-bridge/adapter-qwen'
+
+const bridge = createBridge({
+  inbound: qwenAdapter,
+  outbound: qwenAdapter,
+  config: {
+    apiKey: process.env.QWEN_API_KEY
+  }
+})
+
+const response = await bridge.chat({
+  model: 'qwen-turbo',
+  messages: [
+    { role: 'system', content: '你是一个有帮助的助手。' },
+    { role: 'user', content: '什么是 LLM Bridge？' }
+  ]
+})
+
+console.log(response.choices[0].message.content)
+```
+
+## 支持的模型
+
+| 模型 | 描述 | 特点 |
+|------|------|------|
+| `qwen-turbo` | 快速模型 | 响应快，成本低 |
+| `qwen-plus` | 增强模型 | 性能更强 |
+| `qwen-max` | 旗舰模型 | 最强性能 |
+| `qwen-vl-plus` | 视觉模型 | 支持图像理解 |
+| `qwen-vl-max` | 视觉旗舰 | 最强视觉能力 |
+
+## 主要功能
+
+<Tabs items={['文本生成', '视觉理解', '函数调用', '流式传输']}>
+  <Tab value="文本生成">
+    ### 文本生成
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'qwen-max',
+      messages: [
+        {
+          role: 'system',
+          content: '你是一个专业的技术文档编写者。'
+        },
+        {
+          role: 'user',
+          content: '写一篇关于 TypeScript 泛型的教程'
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 2000
+    })
+    ```
+  </Tab>
+
+  <Tab value="视觉理解">
+    ### 视觉理解
+
+    使用 Qwen-VL 模型分析图像：
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'qwen-vl-plus',
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: '这张图片里有什么？'
+          },
+          {
+            type: 'image',
+            image: 'https://example.com/image.jpg'
+          }
+        ]
+      }]
+    })
+    ```
+
+    <Callout type="info">
+    Qwen-VL 支持多种图像格式，包括 URL 和 Base64 编码。
+    </Callout>
+  </Tab>
+
+  <Tab value="函数调用">
+    ### 函数调用
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'qwen-plus',
+      messages: [
+        { role: 'user', content: '北京现在几点？' }
+      ],
+      tools: [{
+        type: 'function',
+        function: {
+          name: 'get_current_time',
+          description: '获取指定城市的当前时间',
+          parameters: {
+            type: 'object',
+            properties: {
+              city: { type: 'string' }
+            },
+            required: ['city']
+          }
+        }
+      }]
+    })
+    ```
+  </Tab>
+
+  <Tab value="流式传输">
+    ### 流式传输
+
+    ```typescript
+    const stream = bridge.chatStream({
+      model: 'qwen-turbo',
+      messages: [
+        { role: 'user', content: '讲一个故事' }
+      ],
+      stream: true
+    })
+
+    for await (const chunk of stream) {
+      if (chunk.choices[0]?.delta?.content) {
+        process.stdout.write(chunk.choices[0].delta.content)
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## 配置选项
+
+```typescript
+const bridge = createBridge({
+  inbound: qwenAdapter,
+  outbound: qwenAdapter,
+  config: {
+    apiKey: process.env.QWEN_API_KEY,
+    baseURL: 'https://dashscope.aliyuncs.com/api', // 默认值
+    timeout: 60000
+  }
+})
+```
+
+## 功能支持
+
+| 功能 | 支持 | 说明 |
+|------|------|------|
+| 聊天补全 | ✅ | 完全支持 |
+| 流式传输 | ✅ | 完全支持 |
+| 函数调用 | ✅ | 完全支持 |
+| 视觉 | ✅ | Qwen-VL 系列 |
+| 多模态 | ✅ | 支持文本+图像 |
+| 系统提示 | ✅ | 完全支持 |
+
+## 最佳实践
+
+### 1. 选择合适的模型
+
+```typescript
+// 快速响应场景使用 turbo
+const quickResponse = await bridge.chat({
+  model: 'qwen-turbo',
+  messages: [{ role: 'user', content: '简单问题' }]
+})
+
+// 复杂任务使用 max
+const complexTask = await bridge.chat({
+  model: 'qwen-max',
+  messages: [{ role: 'user', content: '复杂的分析任务' }]
+})
+
+// 图像理解使用 vl 系列
+const imageAnalysis = await bridge.chat({
+  model: 'qwen-vl-plus',
+  messages: [{ role: 'user', content: [...] }]
+})
+```
+
+### 2. 优化中文处理
+
+```typescript
+// Qwen 对中文支持非常好
+const response = await bridge.chat({
+  model: 'qwen-max',
+  messages: [
+    {
+      role: 'system',
+      content: '你是一个精通中文的助手，使用地道的中文表达。'
+    },
+    {
+      role: 'user',
+      content: '用中文解释量子计算的原理'
+    }
+  ]
+})
+```
+
+### 3. 处理多模态输入
+
+```typescript
+const response = await bridge.chat({
+  model: 'qwen-vl-max',
+  messages: [{
+    role: 'user',
+    content: [
+      { type: 'text', text: '分析这张图表并总结要点' },
+      { type: 'image', image: 'https://example.com/chart.png' }
+    ]
+  }]
+})
+```
+
+## 与 OpenAI 互转
+
+```typescript
+import { openaiAdapter } from '@llm-bridge/adapter-openai'
+import { qwenAdapter } from '@llm-bridge/adapter-qwen'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: qwenAdapter,
+  config: {
+    apiKey: process.env.QWEN_API_KEY
+  }
+})
+
+// 使用 OpenAI 格式发送请求
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '你好' }]
+})
+```
+
+## 相关资源
+
+- [通义千问 API 文档](https://help.aliyun.com/zh/dashscope/)
+- [通义千问定价](https://help.aliyun.com/zh/dashscope/developer-reference/tongyi-qianwen-metering-and-billing)
+
+## 下一步
+
+<Cards>
+  <Card title="Gemini 适配器" href="/docs/zh/adapters/gemini">
+    了解如何使用 Google Gemini 模型
+  </Card>
+  <Card title="OpenAI 适配器" href="/docs/zh/adapters/openai">
+    了解 OpenAI 兼容格式
+  </Card>
+</Cards>

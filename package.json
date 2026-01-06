@@ -1,0 +1,67 @@
+{
+  "name": "llm-bridge",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Bidirectional LLM API adapter - A unified infrastructure for converting between different LLM provider APIs",
+  "keywords": [
+    "llm",
+    "api",
+    "adapter",
+    "openai",
+    "anthropic",
+    "claude",
+    "deepseek",
+    "ai",
+    "bridge",
+    "converter"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/isboyjc/llm-bridge.git"
+  },
+  "license": "MIT",
+  "author": "isboyjc",
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "build": "nx run-many -t build",
+    "test": "nx run-many -t test",
+    "test:coverage": "nx run-many -t test:coverage",
+    "lint": "nx run-many -t lint",
+    "typecheck": "nx run-many -t typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,md,json}\"",
+    "clean": "nx run-many -t clean && rm -rf node_modules",
+    "changeset": "changeset",
+    "changeset:version": "changeset version",
+    "changeset:publish": "changeset publish",
+    "dev:website": "cd apps/website && pnpm dev",
+    "build:website": "cd apps/website && pnpm build",
+    "dev:example": "cd examples/basic && pnpm start",
+    "dev:example:streaming": "cd examples/streaming && pnpm start",
+    "start:website": "cd apps/website && pnpm start"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.1",
+    "@types/node": "^20.11.5",
+    "@typescript-eslint/eslint-plugin": "^6.19.1",
+    "@typescript-eslint/parser": "^6.19.1",
+    "@vitest/coverage-v8": "^4.0.16",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "nx": "^18.0.4",
+    "prettier": "^3.2.4",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3",
+    "vitest": "^4.0.16"
+  },
+  "packageManager": "pnpm@8.15.1",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}

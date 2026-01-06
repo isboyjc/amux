@@ -1,0 +1,42 @@
+{
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "targetDefaults": {
+    "build": {
+      "dependsOn": ["^build"],
+      "cache": true,
+      "inputs": ["production", "^production"],
+      "outputs": ["{projectRoot}/dist"]
+    },
+    "test": {
+      "cache": true,
+      "inputs": ["default", "^production", "{workspaceRoot}/vitest.config.ts"],
+      "outputs": ["{projectRoot}/coverage"]
+    },
+    "test:coverage": {
+      "cache": true,
+      "inputs": ["default", "^production", "{workspaceRoot}/vitest.config.ts"],
+      "outputs": ["{projectRoot}/coverage"]
+    },
+    "lint": {
+      "cache": true,
+      "inputs": ["default", "{workspaceRoot}/.eslintrc.js"]
+    },
+    "typecheck": {
+      "cache": true,
+      "inputs": ["default", "^production", "{projectRoot}/tsconfig.json"]
+    }
+  },
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "production": [
+      "default",
+      "!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)?(.snap)",
+      "!{projectRoot}/tsconfig.spec.json",
+      "!{projectRoot}/.eslintrc.json",
+      "!{projectRoot}/tests/**/*"
+    ],
+    "sharedGlobals": ["{workspaceRoot}/tsconfig.base.json"]
+  },
+  "plugins": [],
+  "defaultProject": "core"
+}

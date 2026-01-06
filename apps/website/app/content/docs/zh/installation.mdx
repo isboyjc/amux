@@ -1,0 +1,263 @@
+---
+title: 安装
+description: 安装 LLM Bridge 并开始使用
+---
+
+## 前置要求
+
+- Node.js 18 或更高版本
+- pnpm、npm、yarn 或 bun
+
+<Callout type="warn">
+确保您已安装 Node.js 18+。您可以使用 `node --version` 检查版本。
+</Callout>
+
+## 安装核心包
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab value="pnpm">
+    ```bash
+    pnpm add @llm-bridge/core
+    ```
+  </Tab>
+
+  <Tab value="npm">
+    ```bash
+    npm install @llm-bridge/core
+    ```
+  </Tab>
+
+  <Tab value="yarn">
+    ```bash
+    yarn add @llm-bridge/core
+    ```
+  </Tab>
+
+  <Tab value="bun">
+    ```bash
+    bun add @llm-bridge/core
+    ```
+  </Tab>
+</Tabs>
+
+## 安装适配器
+
+根据您的使用场景安装所需的适配器。
+
+<Tabs items={['OpenAI', 'Anthropic', 'DeepSeek', '其他', '全部']}>
+  <Tab value="OpenAI">
+    ### OpenAI 适配器
+
+    ```bash tab="pnpm"
+    pnpm add @llm-bridge/adapter-openai
+    ```
+
+    ```bash tab="npm"
+    npm install @llm-bridge/adapter-openai
+    ```
+
+    ```bash tab="yarn"
+    yarn add @llm-bridge/adapter-openai
+    ```
+
+    ```bash tab="bun"
+    bun add @llm-bridge/adapter-openai
+    ```
+
+    **支持：**
+    - 聊天补全
+    - 流式传输
+    - 函数调用
+    - 视觉（GPT-4V）
+    - JSON 模式
+  </Tab>
+
+  <Tab value="Anthropic">
+    ### Anthropic 适配器
+
+    ```bash tab="pnpm"
+    pnpm add @llm-bridge/adapter-anthropic
+    ```
+
+    ```bash tab="npm"
+    npm install @llm-bridge/adapter-anthropic
+    ```
+
+    ```bash tab="yarn"
+    yarn add @llm-bridge/adapter-anthropic
+    ```
+
+    ```bash tab="bun"
+    bun add @llm-bridge/adapter-anthropic
+    ```
+
+    **支持：**
+    - Messages API
+    - 流式传输
+    - 工具使用
+    - 视觉
+    - 系统提示
+  </Tab>
+
+  <Tab value="DeepSeek">
+    ### DeepSeek 适配器
+
+    ```bash tab="pnpm"
+    pnpm add @llm-bridge/adapter-deepseek
+    ```
+
+    ```bash tab="npm"
+    npm install @llm-bridge/adapter-deepseek
+    ```
+
+    ```bash tab="yarn"
+    yarn add @llm-bridge/adapter-deepseek
+    ```
+
+    ```bash tab="bun"
+    bun add @llm-bridge/adapter-deepseek
+    ```
+
+    **支持：**
+    - 聊天补全
+    - 流式传输
+    - 函数调用
+  </Tab>
+
+  <Tab value="其他">
+    ### 其他适配器
+
+    **Kimi（月之暗面）：**
+    ```bash tab="pnpm"
+    pnpm add @llm-bridge/adapter-kimi
+    ```
+
+    **Qwen（阿里云）：**
+    ```bash tab="pnpm"
+    pnpm add @llm-bridge/adapter-qwen
+    ```
+
+    **Gemini（Google AI）：**
+    ```bash tab="pnpm"
+    pnpm add @llm-bridge/adapter-gemini
+    ```
+  </Tab>
+
+  <Tab value="全部">
+    ### 安装所有适配器
+
+    ```bash tab="pnpm"
+    pnpm add @llm-bridge/core \
+      @llm-bridge/adapter-openai \
+      @llm-bridge/adapter-anthropic \
+      @llm-bridge/adapter-deepseek \
+      @llm-bridge/adapter-kimi \
+      @llm-bridge/adapter-qwen \
+      @llm-bridge/adapter-gemini
+    ```
+
+    ```bash tab="npm"
+    npm install @llm-bridge/core \
+      @llm-bridge/adapter-openai \
+      @llm-bridge/adapter-anthropic \
+      @llm-bridge/adapter-deepseek \
+      @llm-bridge/adapter-kimi \
+      @llm-bridge/adapter-qwen \
+      @llm-bridge/adapter-gemini
+    ```
+
+    ```bash tab="yarn"
+    yarn add @llm-bridge/core \
+      @llm-bridge/adapter-openai \
+      @llm-bridge/adapter-anthropic \
+      @llm-bridge/adapter-deepseek \
+      @llm-bridge/adapter-kimi \
+      @llm-bridge/adapter-qwen \
+      @llm-bridge/adapter-gemini
+    ```
+
+    ```bash tab="bun"
+    bun add @llm-bridge/core \
+      @llm-bridge/adapter-openai \
+      @llm-bridge/adapter-anthropic \
+      @llm-bridge/adapter-deepseek \
+      @llm-bridge/adapter-kimi \
+      @llm-bridge/adapter-qwen \
+      @llm-bridge/adapter-gemini
+    ```
+
+    <Callout type="info">
+    只安装您需要的适配器。核心包支持 tree-shaking，因此未使用的适配器不会包含在您的打包文件中。
+    </Callout>
+  </Tab>
+</Tabs>
+
+## 验证安装
+
+创建一个简单的测试文件来验证安装：
+
+```typescript
+import { createBridge } from '@llm-bridge/core'
+import { openaiAdapter } from '@llm-bridge/adapter-openai'
+
+console.log('✓ LLM Bridge 安装成功！')
+console.log('✓ OpenAI 适配器：', openaiAdapter.name, 'v' + openaiAdapter.version)
+console.log('✓ 能力：', openaiAdapter.capabilities)
+```
+
+运行它：
+
+```bash tab="tsx"
+tsx test.ts
+```
+
+```bash tab="node"
+node --loader tsx test.ts
+```
+
+```bash tab="bun"
+bun test.ts
+```
+
+您应该看到类似以下的输出：
+
+```
+✓ LLM Bridge 安装成功！
+✓ OpenAI 适配器： openai v1.0.0
+✓ 能力： { streaming: true, tools: true, ... }
+```
+
+## TypeScript 配置
+
+<Callout type="info">
+LLM Bridge 使用 TypeScript 编写，包含完整的类型定义。不需要额外的 `@types` 包。
+</Callout>
+
+确保您的 `tsconfig.json` 包含：
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  }
+}
+```
+
+## 下一步
+
+<Cards>
+  <Card title="快速开始" href="/docs/zh/quick-start">
+    5 分钟构建您的第一个桥接
+  </Card>
+  <Card title="核心概念" href="/docs/zh/core-concepts">
+    理解架构
+  </Card>
+  <Card title="API 参考" href="/docs/zh/api/bridge">
+    探索完整 API
+  </Card>
+</Cards>

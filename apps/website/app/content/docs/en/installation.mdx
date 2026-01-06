@@ -1,0 +1,263 @@
+---
+title: Installation
+description: Install LLM Bridge and get started
+---
+
+## Prerequisites
+
+- Node.js 18 or higher
+- pnpm, npm, yarn, or bun
+
+<Callout type="warn">
+Make sure you have Node.js 18+ installed. You can check your version with `node --version`.
+</Callout>
+
+## Install Core Package
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab value="pnpm">
+    ```bash
+    pnpm add @llm-bridge/core
+    ```
+  </Tab>
+
+  <Tab value="npm">
+    ```bash
+    npm install @llm-bridge/core
+    ```
+  </Tab>
+
+  <Tab value="yarn">
+    ```bash
+    yarn add @llm-bridge/core
+    ```
+  </Tab>
+
+  <Tab value="bun">
+    ```bash
+    bun add @llm-bridge/core
+    ```
+  </Tab>
+</Tabs>
+
+## Install Adapters
+
+Install the adapters you need for your use case.
+
+<Tabs items={['OpenAI', 'Anthropic', 'DeepSeek', 'Others', 'All']}>
+  <Tab value="OpenAI">
+    ### OpenAI Adapter
+
+    ```bash tab="pnpm"
+    pnpm add @llm-bridge/adapter-openai
+    ```
+
+    ```bash tab="npm"
+    npm install @llm-bridge/adapter-openai
+    ```
+
+    ```bash tab="yarn"
+    yarn add @llm-bridge/adapter-openai
+    ```
+
+    ```bash tab="bun"
+    bun add @llm-bridge/adapter-openai
+    ```
+
+    **Supports:**
+    - Chat completions
+    - Streaming
+    - Function calling
+    - Vision (GPT-4V)
+    - JSON mode
+  </Tab>
+
+  <Tab value="Anthropic">
+    ### Anthropic Adapter
+
+    ```bash tab="pnpm"
+    pnpm add @llm-bridge/adapter-anthropic
+    ```
+
+    ```bash tab="npm"
+    npm install @llm-bridge/adapter-anthropic
+    ```
+
+    ```bash tab="yarn"
+    yarn add @llm-bridge/adapter-anthropic
+    ```
+
+    ```bash tab="bun"
+    bun add @llm-bridge/adapter-anthropic
+    ```
+
+    **Supports:**
+    - Messages API
+    - Streaming
+    - Tool use
+    - Vision
+    - System prompts
+  </Tab>
+
+  <Tab value="DeepSeek">
+    ### DeepSeek Adapter
+
+    ```bash tab="pnpm"
+    pnpm add @llm-bridge/adapter-deepseek
+    ```
+
+    ```bash tab="npm"
+    npm install @llm-bridge/adapter-deepseek
+    ```
+
+    ```bash tab="yarn"
+    yarn add @llm-bridge/adapter-deepseek
+    ```
+
+    ```bash tab="bun"
+    bun add @llm-bridge/adapter-deepseek
+    ```
+
+    **Supports:**
+    - Chat completions
+    - Streaming
+    - Function calling
+  </Tab>
+
+  <Tab value="Others">
+    ### Other Adapters
+
+    **Kimi (Moonshot AI):**
+    ```bash tab="pnpm"
+    pnpm add @llm-bridge/adapter-kimi
+    ```
+
+    **Qwen (Alibaba Cloud):**
+    ```bash tab="pnpm"
+    pnpm add @llm-bridge/adapter-qwen
+    ```
+
+    **Gemini (Google AI):**
+    ```bash tab="pnpm"
+    pnpm add @llm-bridge/adapter-gemini
+    ```
+  </Tab>
+
+  <Tab value="All">
+    ### Install All Adapters
+
+    ```bash tab="pnpm"
+    pnpm add @llm-bridge/core \
+      @llm-bridge/adapter-openai \
+      @llm-bridge/adapter-anthropic \
+      @llm-bridge/adapter-deepseek \
+      @llm-bridge/adapter-kimi \
+      @llm-bridge/adapter-qwen \
+      @llm-bridge/adapter-gemini
+    ```
+
+    ```bash tab="npm"
+    npm install @llm-bridge/core \
+      @llm-bridge/adapter-openai \
+      @llm-bridge/adapter-anthropic \
+      @llm-bridge/adapter-deepseek \
+      @llm-bridge/adapter-kimi \
+      @llm-bridge/adapter-qwen \
+      @llm-bridge/adapter-gemini
+    ```
+
+    ```bash tab="yarn"
+    yarn add @llm-bridge/core \
+      @llm-bridge/adapter-openai \
+      @llm-bridge/adapter-anthropic \
+      @llm-bridge/adapter-deepseek \
+      @llm-bridge/adapter-kimi \
+      @llm-bridge/adapter-qwen \
+      @llm-bridge/adapter-gemini
+    ```
+
+    ```bash tab="bun"
+    bun add @llm-bridge/core \
+      @llm-bridge/adapter-openai \
+      @llm-bridge/adapter-anthropic \
+      @llm-bridge/adapter-deepseek \
+      @llm-bridge/adapter-kimi \
+      @llm-bridge/adapter-qwen \
+      @llm-bridge/adapter-gemini
+    ```
+
+    <Callout type="info">
+    Only install the adapters you need. The core package is tree-shakable, so unused adapters won't be included in your bundle.
+    </Callout>
+  </Tab>
+</Tabs>
+
+## Verify Installation
+
+Create a simple test file to verify the installation:
+
+```typescript
+import { createBridge } from '@llm-bridge/core'
+import { openaiAdapter } from '@llm-bridge/adapter-openai'
+
+console.log('✓ LLM Bridge installed successfully!')
+console.log('✓ OpenAI adapter:', openaiAdapter.name, 'v' + openaiAdapter.version)
+console.log('✓ Capabilities:', openaiAdapter.capabilities)
+```
+
+Run it:
+
+```bash tab="tsx"
+tsx test.ts
+```
+
+```bash tab="node"
+node --loader tsx test.ts
+```
+
+```bash tab="bun"
+bun test.ts
+```
+
+You should see output like:
+
+```
+✓ LLM Bridge installed successfully!
+✓ OpenAI adapter: openai v1.0.0
+✓ Capabilities: { streaming: true, tools: true, ... }
+```
+
+## TypeScript Configuration
+
+<Callout type="info">
+LLM Bridge is written in TypeScript and includes full type definitions. No additional `@types` packages are needed.
+</Callout>
+
+Make sure your `tsconfig.json` includes:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  }
+}
+```
+
+## Next Steps
+
+<Cards>
+  <Card title="Quick Start" href="/docs/quick-start">
+    Build your first bridge in 5 minutes
+  </Card>
+  <Card title="Core Concepts" href="/docs/core-concepts">
+    Understand the architecture
+  </Card>
+  <Card title="API Reference" href="/docs/api/bridge">
+    Explore the complete API
+  </Card>
+</Cards>

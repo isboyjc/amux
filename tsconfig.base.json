@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022"],
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "checkJs": false,
+    "jsx": "react-jsx",
+
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+
+    "baseUrl": ".",
+    "paths": {
+      "@llm-bridge/core": ["./packages/core/src/index.ts"],
+      "@llm-bridge/utils": ["./packages/utils/src/index.ts"],
+      "@llm-bridge/adapter-openai": ["./packages/adapter-openai/src/index.ts"],
+      "@llm-bridge/adapter-anthropic": ["./packages/adapter-anthropic/src/index.ts"],
+      "@llm-bridge/adapter-deepseek": ["./packages/adapter-deepseek/src/index.ts"],
+      "@llm-bridge/adapter-kimi": ["./packages/adapter-kimi/src/index.ts"],
+      "@llm-bridge/adapter-qwen": ["./packages/adapter-qwen/src/index.ts"],
+      "@llm-bridge/adapter-gemini": ["./packages/adapter-gemini/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "dist", "build", ".turbo"]
+}

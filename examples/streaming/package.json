@@ -1,0 +1,21 @@
+{
+  "name": "example-streaming",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx index.ts",
+    "dev": "tsx watch index.ts",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf node_modules"
+  },
+  "dependencies": {
+    "@llm-bridge/core": "workspace:*",
+    "@llm-bridge/adapter-openai": "workspace:*",
+    "@llm-bridge/adapter-anthropic": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

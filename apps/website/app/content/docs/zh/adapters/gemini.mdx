@@ -1,0 +1,335 @@
+---
+title: Gemini 适配器
+description: 使用 Gemini 适配器连接 Google Gemini Pro 和 Gemini Pro Vision 模型
+---
+
+Gemini 适配器提供了与 Google Gemini API 的集成，支持文本生成、视觉理解和超长上下文（1M tokens）。
+
+## 安装
+
+```bash tab="pnpm"
+pnpm add @llm-bridge/core @llm-bridge/adapter-gemini
+```
+
+```bash tab="npm"
+npm install @llm-bridge/core @llm-bridge/adapter-gemini
+```
+
+## 基本使用
+
+```typescript
+import { createBridge } from '@llm-bridge/core'
+import { geminiAdapter } from '@llm-bridge/adapter-gemini'
+
+const bridge = createBridge({
+  inbound: geminiAdapter,
+  outbound: geminiAdapter,
+  config: {
+    apiKey: process.env.GEMINI_API_KEY
+  }
+})
+
+const response = await bridge.chat({
+  model: 'gemini-pro',
+  contents: [{
+    role: 'user',
+    parts: [{ text: '什么是 LLM Bridge？' }]
+  }]
+})
+
+console.log(response.candidates[0].content.parts[0].text)
+```
+
+<Callout type="warn">
+Gemini API 使用不同的请求格式（`contents` 而不是 `messages`）。LLM Bridge 会自动处理格式转换。
+</Callout>
+
+## 支持的模型
+
+| 模型 | 上下文长度 | 描述 |
+|------|-----------|------|
+| `gemini-pro` | 1M | 文本生成模型 |
+| `gemini-pro-vision` | 1M | 支持视觉的模型 |
+| `gemini-1.5-pro` | 2M | 最新版本，更长上下文 |
+| `gemini-1.5-flash` | 1M | 快速响应版本 |
+
+<Callout type="info">
+Gemini 的最大特点是超长上下文（最长 2M tokens），远超其他模型。
+</Callout>
+
+## 主要功能
+
+<Tabs items={['文本生成', '视觉理解', '超长上下文', '流式传输']}>
+  <Tab value="文本生成">
+    ### 文本生成
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'gemini-pro',
+      contents: [{
+        role: 'user',
+        parts: [{ text: '写一首关于 AI 的诗' }]
+      }],
+      generationConfig: {
+        temperature: 0.9,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 1024
+      }
+    })
+    ```
+  </Tab>
+
+  <Tab value="视觉理解">
+    ### 视觉理解
+
+    使用 Gemini Pro Vision 分析图像：
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'gemini-pro-vision',
+      contents: [{
+        role: 'user',
+        parts: [
+          { text: '这张图片里有什么？' },
+          {
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: base64ImageData
+            }
+          }
+        ]
+      }]
+    })
+    ```
+
+    **支持的图像格式：**
+    - Base64 编码（推荐）
+    - 需要指定 mimeType（image/jpeg, image/png 等）
+  </Tab>
+
+  <Tab value="超长上下文">
+    ### 超长上下文
+
+    Gemini 支持最长 2M tokens 的上下文：
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'gemini-1.5-pro',
+      contents: [{
+        role: 'user',
+        parts: [{
+          text: `分析这个超长文档：\n\n${veryLongDocument}`
+        }]
+      }]
+    })
+    ```
+
+    **使用场景：**
+    - 整本书的分析
+    - 大型代码库理解
+    - 长视频转录分析
+    - 多文档对比
+  </Tab>
+
+  <Tab value="流式传输">
+    ### 流式传输
+
+    ```typescript
+    const stream = bridge.chatStream({
+      model: 'gemini-pro',
+      contents: [{
+        role: 'user',
+        parts: [{ text: '讲一个故事' }]
+      }],
+      stream: true
+    })
+
+    for await (const chunk of stream) {
+      const text = chunk.candidates[0]?.content?.parts[0]?.text
+      if (text) {
+        process.stdout.write(text)
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## 配置选项
+
+```typescript
+const bridge = createBridge({
+  inbound: geminiAdapter,
+  outbound: geminiAdapter,
+  config: {
+    apiKey: process.env.GEMINI_API_KEY,
+    baseURL: 'https://generativelanguage.googleapis.com', // 默认值
+    timeout: 60000
+  }
+})
+```
+
+## 功能支持
+
+| 功能 | 支持 | 说明 |
+|------|------|------|
+| 文本生成 | ✅ | 完全支持 |
+| 流式传输 | ✅ | 完全支持 |
+| 视觉 | ✅ | Gemini Pro Vision |
+| 超长上下文 | ✅ | 最长 2M tokens |
+| 函数调用 | ⚠️ | 部分支持 |
+| 系统提示 | ✅ | 完全支持 |
+
+<Callout type="warn">
+Gemini 的函数调用格式与 OpenAI 不同，可能需要额外的格式转换。
+</Callout>
+
+## 最佳实践
+
+### 1. 选择合适的模型
+
+```typescript
+// 文本任务使用 gemini-pro
+const textResponse = await bridge.chat({
+  model: 'gemini-pro',
+  contents: [{ role: 'user', parts: [{ text: '...' }] }]
+})
+
+// 图像任务使用 gemini-pro-vision
+const visionResponse = await bridge.chat({
+  model: 'gemini-pro-vision',
+  contents: [{ role: 'user', parts: [...] }]
+})
+
+// 需要更长上下文使用 1.5 版本
+const longContextResponse = await bridge.chat({
+  model: 'gemini-1.5-pro',
+  contents: [{ role: 'user', parts: [{ text: longText }] }]
+})
+```
+
+### 2. 优化生成参数
+
+```typescript
+const response = await bridge.chat({
+  model: 'gemini-pro',
+  contents: [{
+    role: 'user',
+    parts: [{ text: '写一篇技术文章' }]
+  }],
+  generationConfig: {
+    temperature: 0.7, // 控制随机性
+    topK: 40, // Top-K 采样
+    topP: 0.95, // Top-P 采样
+    maxOutputTokens: 2048, // 最大输出长度
+    stopSequences: ['\n\n'] // 停止序列
+  }
+})
+```
+
+### 3. 处理多模态输入
+
+```typescript
+// 读取图像文件
+import fs from 'fs'
+
+const imageData = fs.readFileSync('image.jpg')
+const base64Image = imageData.toString('base64')
+
+const response = await bridge.chat({
+  model: 'gemini-pro-vision',
+  contents: [{
+    role: 'user',
+    parts: [
+      { text: '分析这张图片' },
+      {
+        inlineData: {
+          mimeType: 'image/jpeg',
+          data: base64Image
+        }
+      }
+    ]
+  }]
+})
+```
+
+### 4. 利用超长上下文
+
+```typescript
+// Gemini 可以处理整本书
+const bookAnalysis = await bridge.chat({
+  model: 'gemini-1.5-pro',
+  contents: [{
+    role: 'user',
+    parts: [{
+      text: `请总结这本书的主要内容和核心观点：\n\n${entireBook}`
+    }]
+  }],
+  generationConfig: {
+    maxOutputTokens: 4096 // 生成详细的总结
+  }
+})
+```
+
+## 与 OpenAI 互转
+
+```typescript
+import { openaiAdapter } from '@llm-bridge/adapter-openai'
+import { geminiAdapter } from '@llm-bridge/adapter-gemini'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: geminiAdapter,
+  config: {
+    apiKey: process.env.GEMINI_API_KEY
+  }
+})
+
+// 使用 OpenAI 格式发送请求
+// LLM Bridge 会自动转换为 Gemini 格式
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '你好' }]
+})
+```
+
+## 安全设置
+
+Gemini 支持内容安全过滤：
+
+```typescript
+const response = await bridge.chat({
+  model: 'gemini-pro',
+  contents: [{
+    role: 'user',
+    parts: [{ text: '...' }]
+  }],
+  safetySettings: [
+    {
+      category: 'HARM_CATEGORY_HARASSMENT',
+      threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+    },
+    {
+      category: 'HARM_CATEGORY_HATE_SPEECH',
+      threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+    }
+  ]
+})
+```
+
+## 相关资源
+
+- [Gemini API 文档](https://ai.google.dev/docs)
+- [Gemini 模型列表](https://ai.google.dev/models/gemini)
+- [Gemini 定价](https://ai.google.dev/pricing)
+
+## 下一步
+
+<Cards>
+  <Card title="OpenAI 适配器" href="/docs/zh/adapters/openai">
+    了解如何使用 GPT 模型
+  </Card>
+  <Card title="适配器概览" href="/docs/zh/adapters">
+    查看所有可用的适配器
+  </Card>
+</Cards>
