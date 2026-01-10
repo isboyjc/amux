@@ -1,0 +1,6 @@
+export { Dashboard } from './Dashboard'
+export { Providers } from './Providers'
+export { Proxies } from './Proxies'
+export { Service } from './Service'
+export { Logs } from './Logs'
+export { Settings } from './Settings'

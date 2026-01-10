@@ -41,9 +41,17 @@
     "changeset:publish": "changeset publish",
     "dev:website": "cd apps/website && pnpm dev",
     "build:website": "cd apps/website && pnpm build",
+    "start:website": "cd apps/website && pnpm start",
+    "dev:proxy": "cd apps/proxy && pnpm dev",
+    "start:proxy": "cd apps/proxy && pnpm start",
     "dev:example": "cd examples/basic && pnpm start",
     "dev:example:streaming": "cd examples/streaming && pnpm start",
-    "start:website": "cd apps/website && pnpm start"
+    "dev:desktop": "cd apps/desktop && pnpm dev",
+    "build:desktop": "cd apps/desktop && pnpm build",
+    "package:desktop": "cd apps/desktop && pnpm package",
+    "package:desktop:mac": "cd apps/desktop && pnpm package:mac",
+    "package:desktop:win": "cd apps/desktop && pnpm package:win",
+    "package:desktop:linux": "cd apps/desktop && pnpm package:linux"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.1",

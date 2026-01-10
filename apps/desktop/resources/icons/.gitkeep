@@ -1,0 +1,8 @@
+# Tray and app icons directory
+# Required files:
+# - tray.png (16x16 or 22x22 for system tray)
+# - tray-running.png (service running state)
+# - tray-error.png (error state)
+# - icon.png (app icon, 512x512 recommended)
+# - icon.icns (macOS app icon)
+# - icon.ico (Windows app icon)
