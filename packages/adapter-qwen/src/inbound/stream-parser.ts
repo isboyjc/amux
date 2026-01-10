@@ -1,4 +1,4 @@
-import type { LLMStreamEvent, FinishReason } from '@llm-bridge/core'
+import type { LLMStreamEvent, FinishReason } from '@amux/llm-bridge'
 
 import type { QwenStreamChunk } from '../types'
 
@@ -42,11 +42,13 @@ export function parseStream(
   }
 
   const choice = data.choices[0]
+  if (!choice) return null
+
   const delta = choice.delta
   const events: LLMStreamEvent[] = []
 
-  // Start event (first chunk with role)
-  if (delta.role && !delta.content && !delta.tool_calls && !delta.reasoning_content) {
+  // Start event (first chunk with role or empty delta at index 0)
+  if (choice.index === 0 && !delta.content && !delta.tool_calls && !delta.reasoning_content && !choice.finish_reason) {
     return {
       type: 'start',
       id: data.id,
@@ -88,19 +90,21 @@ export function parseStream(
   // Tool call delta
   if (delta.tool_calls && delta.tool_calls.length > 0) {
     const toolCall = delta.tool_calls[0]
-    events.push({
-      type: 'tool_call',
-      id: data.id,
-      model: data.model,
-      toolCall: {
+    if (toolCall) {
+      events.push({
         type: 'tool_call',
-        id: toolCall.id,
-        name: toolCall.function?.name,
-        arguments: toolCall.function?.arguments,
-        index: toolCall.index,
-      },
-      raw: chunk,
-    })
+        id: data.id,
+        model: data.model,
+        toolCall: {
+          type: 'tool_call',
+          id: toolCall.id,
+          name: toolCall.function?.name,
+          arguments: toolCall.function?.arguments,
+          index: toolCall.index,
+        },
+        raw: chunk,
+      })
+    }
   }
 
   // End event
@@ -125,5 +129,6 @@ export function parseStream(
     return null
   }
 
-  return events.length === 1 ? events[0] : events
+  const firstEvent = events[0]
+  return events.length === 1 && firstEvent ? firstEvent : events
 }

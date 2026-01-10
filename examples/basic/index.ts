@@ -1,6 +1,6 @@
-import { createBridge } from '@llm-bridge/core'
-import { openaiAdapter } from '@llm-bridge/adapter-openai'
-import { anthropicAdapter } from '@llm-bridge/adapter-anthropic'
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
 
 /**
  * Example 1: OpenAI format → Anthropic API
@@ -36,7 +36,7 @@ async function example1() {
     messages: [
       {
         role: 'user',
-        content: 'Say "Hello from LLM Bridge!" in a friendly way.',
+        content: 'Say "Hello from Amux!" in a friendly way.',
       },
     ],
     temperature: 0.7,
@@ -89,7 +89,7 @@ async function example2() {
     messages: [
       {
         role: 'user',
-        content: 'Say "Hello from LLM Bridge!" in a friendly way.',
+        content: 'Say "Hello from Amux!" in a friendly way.',
       },
     ],
     max_tokens: 100,
@@ -231,7 +231,7 @@ async function example5() {
 
 // Run examples
 async function main() {
-  console.log('🚀 LLM Bridge - Basic Example\n')
+  console.log('🚀 Amux - Basic Example\n')
   console.log('This example demonstrates bidirectional API conversion')
   console.log('between OpenAI and Anthropic formats.\n')
 

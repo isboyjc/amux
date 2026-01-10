@@ -410,7 +410,7 @@ describe('DeepSeek Adapter', () => {
       expect(info.capabilities.vision).toBe(false)
       expect(info.capabilities.reasoning).toBe(true)
       expect(info.endpoint?.baseUrl).toBe('https://api.deepseek.com')
-      expect(info.endpoint?.chatPath).toBe('/chat/completions')
+      expect(info.endpoint?.chatPath).toBe('/v1/chat/completions')
     })
   })
 })

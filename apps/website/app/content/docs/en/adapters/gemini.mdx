@@ -1,0 +1,335 @@
+---
+title: Gemini Adapter
+description: Use the Gemini adapter to connect to Google Gemini Pro and Gemini Pro Vision models
+---
+
+The Gemini adapter provides integration with the Google Gemini API, supporting text generation, vision understanding, and ultra-long context (1M tokens).
+
+## Installation
+
+```bash tab="pnpm"
+pnpm add @amux/llm-bridge @amux/adapter-google
+```
+
+```bash tab="npm"
+npm install @amux/llm-bridge @amux/adapter-google
+```
+
+## Basic Usage
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { googleAdapter } from '@amux/adapter-google'
+
+const bridge = createBridge({
+  inbound: googleAdapter,
+  outbound: googleAdapter,
+  config: {
+    apiKey: process.env.GEMINI_API_KEY
+  }
+})
+
+const response = await bridge.chat({
+  model: 'gemini-pro',
+  contents: [{
+    role: 'user',
+    parts: [{ text: 'What is Amux?' }]
+  }]
+})
+
+console.log(response.candidates[0].content.parts[0].text)
+```
+
+<Callout type="warn">
+Gemini API uses a different request format (`contents` instead of `messages`). Amux handles format conversion automatically.
+</Callout>
+
+## Supported Models
+
+| Model | Context Length | Description |
+|-------|----------------|-------------|
+| `gemini-pro` | 1M | Text generation model |
+| `gemini-pro-vision` | 1M | Vision-enabled model |
+| `gemini-1.5-pro` | 2M | Latest version, longer context |
+| `gemini-1.5-flash` | 1M | Fast response version |
+
+<Callout type="info">
+Gemini's key feature is ultra-long context (up to 2M tokens), far exceeding other models.
+</Callout>
+
+## Key Features
+
+<Tabs items={['Text Generation', 'Vision', 'Ultra-Long Context', 'Streaming']}>
+  <Tab value="Text Generation">
+    ### Text Generation
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'gemini-pro',
+      contents: [{
+        role: 'user',
+        parts: [{ text: 'Write a poem about AI' }]
+      }],
+      generationConfig: {
+        temperature: 0.9,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 1024
+      }
+    })
+    ```
+  </Tab>
+
+  <Tab value="Vision">
+    ### Vision Understanding
+
+    Analyze images with Gemini Pro Vision:
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'gemini-pro-vision',
+      contents: [{
+        role: 'user',
+        parts: [
+          { text: 'What is in this image?' },
+          {
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: base64ImageData
+            }
+          }
+        ]
+      }]
+    })
+    ```
+
+    **Supported Image Formats:**
+    - Base64 encoded (recommended)
+    - Requires mimeType (image/jpeg, image/png, etc.)
+  </Tab>
+
+  <Tab value="Ultra-Long Context">
+    ### Ultra-Long Context
+
+    Gemini supports up to 2M tokens context:
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'gemini-1.5-pro',
+      contents: [{
+        role: 'user',
+        parts: [{
+          text: `Analyze this very long document:\n\n${veryLongDocument}`
+        }]
+      }]
+    })
+    ```
+
+    **Use Cases:**
+    - Entire book analysis
+    - Large codebase understanding
+    - Long video transcript analysis
+    - Multi-document comparison
+  </Tab>
+
+  <Tab value="Streaming">
+    ### Streaming
+
+    ```typescript
+    const stream = bridge.chatStream({
+      model: 'gemini-pro',
+      contents: [{
+        role: 'user',
+        parts: [{ text: 'Tell me a story' }]
+      }],
+      stream: true
+    })
+
+    for await (const chunk of stream) {
+      const text = chunk.candidates[0]?.content?.parts[0]?.text
+      if (text) {
+        process.stdout.write(text)
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Configuration Options
+
+```typescript
+const bridge = createBridge({
+  inbound: googleAdapter,
+  outbound: googleAdapter,
+  config: {
+    apiKey: process.env.GEMINI_API_KEY,
+    baseURL: 'https://generativelanguage.googleapis.com', // Default
+    timeout: 60000
+  }
+})
+```
+
+## Feature Support
+
+| Feature | Supported | Notes |
+|---------|-----------|-------|
+| Text Generation | ✅ | Fully supported |
+| Streaming | ✅ | Fully supported |
+| Vision | ✅ | Gemini Pro Vision |
+| Ultra-Long Context | ✅ | Up to 2M tokens |
+| Function Calling | ⚠️ | Partial support |
+| System Prompt | ✅ | Fully supported |
+
+<Callout type="warn">
+Gemini's function calling format differs from OpenAI and may require additional format conversion.
+</Callout>
+
+## Best Practices
+
+### 1. Choose the Right Model
+
+```typescript
+// Text tasks use gemini-pro
+const textResponse = await bridge.chat({
+  model: 'gemini-pro',
+  contents: [{ role: 'user', parts: [{ text: '...' }] }]
+})
+
+// Image tasks use gemini-pro-vision
+const visionResponse = await bridge.chat({
+  model: 'gemini-pro-vision',
+  contents: [{ role: 'user', parts: [...] }]
+})
+
+// Need longer context use 1.5 version
+const longContextResponse = await bridge.chat({
+  model: 'gemini-1.5-pro',
+  contents: [{ role: 'user', parts: [{ text: longText }] }]
+})
+```
+
+### 2. Optimize Generation Parameters
+
+```typescript
+const response = await bridge.chat({
+  model: 'gemini-pro',
+  contents: [{
+    role: 'user',
+    parts: [{ text: 'Write a technical article' }]
+  }],
+  generationConfig: {
+    temperature: 0.7, // Control randomness
+    topK: 40, // Top-K sampling
+    topP: 0.95, // Top-P sampling
+    maxOutputTokens: 2048, // Maximum output length
+    stopSequences: ['\n\n'] // Stop sequences
+  }
+})
+```
+
+### 3. Handle Multimodal Input
+
+```typescript
+// Read image file
+import fs from 'fs'
+
+const imageData = fs.readFileSync('image.jpg')
+const base64Image = imageData.toString('base64')
+
+const response = await bridge.chat({
+  model: 'gemini-pro-vision',
+  contents: [{
+    role: 'user',
+    parts: [
+      { text: 'Analyze this image' },
+      {
+        inlineData: {
+          mimeType: 'image/jpeg',
+          data: base64Image
+        }
+      }
+    ]
+  }]
+})
+```
+
+### 4. Leverage Ultra-Long Context
+
+```typescript
+// Gemini can process entire books
+const bookAnalysis = await bridge.chat({
+  model: 'gemini-1.5-pro',
+  contents: [{
+    role: 'user',
+    parts: [{
+      text: `Please summarize the main content and key points of this book:\n\n${entireBook}`
+    }]
+  }],
+  generationConfig: {
+    maxOutputTokens: 4096 // Generate detailed summary
+  }
+})
+```
+
+## Converting with OpenAI
+
+```typescript
+import { openaiAdapter } from '@amux/adapter-openai'
+import { googleAdapter } from '@amux/adapter-google'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: googleAdapter,
+  config: {
+    apiKey: process.env.GEMINI_API_KEY
+  }
+})
+
+// Send request in OpenAI format
+// Amux automatically converts to Gemini format
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hello' }]
+})
+```
+
+## Safety Settings
+
+Gemini supports content safety filtering:
+
+```typescript
+const response = await bridge.chat({
+  model: 'gemini-pro',
+  contents: [{
+    role: 'user',
+    parts: [{ text: '...' }]
+  }],
+  safetySettings: [
+    {
+      category: 'HARM_CATEGORY_HARASSMENT',
+      threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+    },
+    {
+      category: 'HARM_CATEGORY_HATE_SPEECH',
+      threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+    }
+  ]
+})
+```
+
+## Related Resources
+
+- [Gemini API Documentation](https://ai.google.dev/docs)
+- [Gemini Models](https://ai.google.dev/models/gemini)
+- [Gemini Pricing](https://ai.google.dev/pricing)
+
+## Next Steps
+
+<Cards>
+  <Card title="OpenAI Adapter" href="/docs/en/adapters/openai">
+    Learn how to use GPT models
+  </Card>
+  <Card title="Adapters Overview" href="/docs/en/adapters">
+    View all available adapters
+  </Card>
+</Cards>

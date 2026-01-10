@@ -1,6 +1,6 @@
-import { createBridge } from '@llm-bridge/core'
-import { anthropicAdapter } from '@llm-bridge/adapter-anthropic'
-import { openaiAdapter } from '@llm-bridge/adapter-openai'
+import { createBridge } from '@amux/llm-bridge'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { openaiAdapter } from '@amux/adapter-openai'
 
 /**
  * Example: Streaming with OpenAI → Anthropic
@@ -51,7 +51,7 @@ async function streamingExample() {
 async function streamEventTypesExample() {
   console.log('\n=== Stream Event Types ===\n')
 
-  console.log('LLM Bridge supports the following stream event types:')
+  console.log('Amux supports the following stream event types:')
   console.log('1. start - Stream started')
   console.log('2. content - Content delta (text chunks)')
   console.log('3. reasoning - Reasoning/thinking content delta (DeepSeek, Qwen, Anthropic)')
@@ -169,7 +169,7 @@ async function adapterCapabilitiesExample() {
  * Main function
  */
 async function main() {
-  console.log('🚀 LLM Bridge - Streaming Example\n')
+  console.log('🚀 Amux - Streaming Example\n')
   console.log('This example demonstrates streaming capabilities.\n')
 
   await streamingExample()

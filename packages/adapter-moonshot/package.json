@@ -1,0 +1,47 @@
+{
+  "name": "@amux/adapter-moonshot",
+  "version": "0.0.0",
+  "description": "Moonshot AI adapter for Amux",
+  "keywords": ["amux", "llm", "moonshot", "kimi", "adapter"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/isboyjc/amux.git",
+    "directory": "packages/adapter-moonshot"
+  },
+  "license": "MIT",
+  "author": "isboyjc",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@amux/llm-bridge": "workspace:*",
+    "@amux/adapter-openai": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

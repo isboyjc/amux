@@ -1,0 +1,306 @@
+---
+title: Anthropic Adapter
+description: Use the Anthropic adapter to connect to Claude 3.5 Sonnet, Claude 3 Opus and more
+---
+
+The Anthropic adapter provides complete integration with the Anthropic Claude API, supporting the Messages API, tool use, vision capabilities, and streaming.
+
+## Installation
+
+```bash tab="pnpm"
+pnpm add @amux/llm-bridge @amux/adapter-anthropic
+```
+
+```bash tab="npm"
+npm install @amux/llm-bridge @amux/adapter-anthropic
+```
+
+## Basic Usage
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+
+const bridge = createBridge({
+  inbound: anthropicAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: process.env.ANTHROPIC_API_KEY
+  }
+})
+
+const response = await bridge.chat({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  messages: [
+    { role: 'user', content: 'What is Amux?' }
+  ]
+})
+
+console.log(response.content[0].text)
+```
+
+<Callout type="warn">
+The Anthropic API requires the `max_tokens` parameter to be specified.
+</Callout>
+
+## Supported Features
+
+<Tabs items={['Tool Use', 'Vision', 'System Prompt', 'Streaming']}>
+  <Tab value="Tool Use">
+    ### Tool Use
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 1024,
+      messages: [
+        { role: 'user', content: 'What time is it in Beijing?' }
+      ],
+      tools: [{
+        name: 'get_current_time',
+        description: 'Get the current time for a specified city',
+        input_schema: {
+          type: 'object',
+          properties: {
+            city: {
+              type: 'string',
+              description: 'City name'
+            }
+          },
+          required: ['city']
+        }
+      }]
+    })
+
+    // Check for tool calls
+    if (response.stop_reason === 'tool_use') {
+      const toolUse = response.content.find(c => c.type === 'tool_use')
+      console.log('Tool:', toolUse.name)
+      console.log('Input:', toolUse.input)
+    }
+    ```
+  </Tab>
+
+  <Tab value="Vision">
+    ### Vision Capabilities
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 1024,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: 'What is in this image?'
+          },
+          {
+            type: 'image',
+            source: {
+              type: 'url',
+              url: 'https://example.com/image.jpg'
+            }
+          }
+        ]
+      }]
+    })
+    ```
+
+    **Supported Image Formats:**
+    - URL (https://)
+    - Base64 encoded (requires media_type)
+  </Tab>
+
+  <Tab value="System Prompt">
+    ### System Prompt
+
+    Claude uses a separate `system` parameter:
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 1024,
+      system: 'You are a helpful AI assistant specializing in technical questions.',
+      messages: [
+        { role: 'user', content: 'What is TypeScript?' }
+      ]
+    })
+    ```
+  </Tab>
+
+  <Tab value="Streaming">
+    ### Streaming
+
+    ```typescript
+    const stream = bridge.chatStream({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 1024,
+      messages: [
+        { role: 'user', content: 'Tell me a story' }
+      ],
+      stream: true
+    })
+
+    for await (const event of stream) {
+      if (event.type === 'content_block_delta') {
+        if (event.delta.type === 'text_delta') {
+          process.stdout.write(event.delta.text)
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Supported Models
+
+| Model | Context Length | Description |
+|-------|----------------|-------------|
+| `claude-3-5-sonnet-20241022` | 200K | Latest and most capable |
+| `claude-3-opus-20240229` | 200K | Most intelligent model |
+| `claude-3-sonnet-20240229` | 200K | Balanced performance and speed |
+| `claude-3-haiku-20240307` | 200K | Fastest and most economical |
+
+## Configuration Options
+
+```typescript
+const bridge = createBridge({
+  inbound: anthropicAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    baseURL: 'https://api.anthropic.com', // Optional
+    timeout: 60000, // Optional
+    headers: {
+      'anthropic-version': '2023-06-01' // API version
+    }
+  }
+})
+```
+
+## Converting with OpenAI Format
+
+### OpenAI → Anthropic
+
+```typescript
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: process.env.ANTHROPIC_API_KEY
+  }
+})
+
+// Send request in OpenAI format
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hello' }]
+})
+// Returns OpenAI format response
+```
+
+### Anthropic → OpenAI
+
+```typescript
+const bridge = createBridge({
+  inbound: anthropicAdapter,
+  outbound: openaiAdapter,
+  config: {
+    apiKey: process.env.OPENAI_API_KEY
+  }
+})
+
+// Send request in Anthropic format
+const response = await bridge.chat({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: 'Hello' }]
+})
+// Returns Anthropic format response
+```
+
+## Feature Support
+
+| Feature | Supported | Notes |
+|---------|-----------|-------|
+| Messages API | ✅ | Fully supported |
+| Streaming | ✅ | Fully supported |
+| Tool Use | ✅ | Fully supported |
+| Vision | ✅ | Claude 3 series |
+| System Prompt | ✅ | Separate system parameter |
+| Long Context | ✅ | 200K tokens |
+
+## Best Practices
+
+### 1. Always Set max_tokens
+
+```typescript
+// ✅ Correct
+const response = await bridge.chat({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024, // Required
+  messages: [...]
+})
+
+// ❌ Wrong - will error
+const response = await bridge.chat({
+  model: 'claude-3-5-sonnet-20241022',
+  messages: [...] // Missing max_tokens
+})
+```
+
+### 2. Use System Prompts to Optimize Responses
+
+```typescript
+const response = await bridge.chat({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  system: 'You are a professional technical documentation writer. Use clear, concise language.',
+  messages: [
+    { role: 'user', content: 'Explain what a REST API is' }
+  ]
+})
+```
+
+### 3. Handle Long Conversations
+
+```typescript
+// Claude supports 200K tokens context
+const response = await bridge.chat({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 2048,
+  messages: [
+    { role: 'user', content: 'First question' },
+    { role: 'assistant', content: 'First answer' },
+    { role: 'user', content: 'Second question' },
+    { role: 'assistant', content: 'Second answer' },
+    // ... can have many turns
+    { role: 'user', content: 'Latest question' }
+  ]
+})
+```
+
+## Related Resources
+
+- [Anthropic API Documentation](https://docs.anthropic.com/claude/reference)
+- [Claude Models](https://docs.anthropic.com/claude/docs/models-overview)
+- [Anthropic Pricing](https://www.anthropic.com/pricing)
+
+## Next Steps
+
+<Cards>
+  <Card title="OpenAI Adapter" href="/docs/en/adapters/openai">
+    Learn how to use GPT models
+  </Card>
+  <Card title="DeepSeek Adapter" href="/docs/en/adapters/deepseek">
+    Learn how to use DeepSeek models
+  </Card>
+  <Card title="Adapter API" href="/docs/en/api/adapters">
+    View the complete Adapter API reference
+  </Card>
+</Cards>

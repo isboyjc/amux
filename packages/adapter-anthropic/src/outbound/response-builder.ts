@@ -1,4 +1,4 @@
-import type { LLMResponseIR, Message, ContentPart } from '@llm-bridge/core'
+import type { LLMResponseIR, Message, ContentPart } from '@amux/llm-bridge'
 
 import type { AnthropicResponse, AnthropicContent } from '../types'
 
@@ -30,11 +30,37 @@ export function buildResponse(ir: LLMResponseIR): AnthropicResponse {
 }
 
 function buildContent(message: Message): AnthropicContent[] {
+  const content: AnthropicContent[] = []
+
+  // Build content from message content
   if (typeof message.content === 'string') {
-    return [{ type: 'text', text: message.content }]
+    if (message.content) {
+      content.push({ type: 'text', text: message.content })
+    }
+  } else if (Array.isArray(message.content)) {
+    for (const part of message.content) {
+      content.push(buildContentPart(part))
+    }
   }
 
-  return message.content.map((part) => buildContentPart(part))
+  // Convert toolCalls to tool_use content
+  if (message.toolCalls && message.toolCalls.length > 0) {
+    for (const toolCall of message.toolCalls) {
+      content.push({
+        type: 'tool_use',
+        id: toolCall.id,
+        name: toolCall.function.name,
+        input: JSON.parse(toolCall.function.arguments),
+      })
+    }
+  }
+
+  // If no content, add empty text
+  if (content.length === 0) {
+    content.push({ type: 'text', text: '' })
+  }
+
+  return content
 }
 
 function buildContentPart(part: ContentPart): AnthropicContent {
@@ -43,13 +69,6 @@ function buildContentPart(part: ContentPart): AnthropicContent {
       return {
         type: 'text',
         text: part.text,
-      }
-    case 'tool_use':
-      return {
-        type: 'tool_use',
-        id: part.id,
-        name: part.name,
-        input: part.input,
       }
     default:
       return {

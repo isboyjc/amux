@@ -6,7 +6,7 @@ export function baseOptions(locale: string): BaseLayoutProps {
     i18n,
     // different props based on `locale`
     nav: {
-      title: 'LLM Bridge',
+      title: 'Amux',
     },
   };
 }

@@ -1,6 +1,6 @@
-# Contributing to LLM Bridge
+# Contributing to Amux
 
-Thank you for your interest in contributing to LLM Bridge! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to Amux! This document provides guidelines and instructions for contributing.
 
 ## Development Setup
 
@@ -13,8 +13,8 @@ Thank you for your interest in contributing to LLM Bridge! This document provide
 ### Clone and Install
 
 ```bash
-git clone https://github.com/isboyjc/llm-bridge.git
-cd llm-bridge
+git clone https://github.com/isboyjc/amux.git
+cd amux
 pnpm install
 ```
 
@@ -31,7 +31,7 @@ pnpm build
 pnpm test
 
 # Run tests for specific package
-cd packages/core && pnpm test
+cd packages/llm-bridge && pnpm test
 
 # Run tests with coverage
 pnpm test:coverage
@@ -47,18 +47,20 @@ pnpm start
 ## Project Structure
 
 ```
-llm-bridge/
+amux/
 ├── packages/
-│   ├── core/              # Core IR + Bridge
-│   ├── utils/             # Shared utilities
+│   ├── llm-bridge/        # Core IR + Bridge (@amux/llm-bridge)
+│   ├── utils/             # Shared utilities (@amux/utils)
 │   ├── adapter-openai/    # OpenAI adapter
 │   ├── adapter-anthropic/ # Anthropic adapter
 │   ├── adapter-deepseek/  # DeepSeek adapter
-│   ├── adapter-kimi/      # Kimi adapter
+│   ├── adapter-moonshot/  # Moonshot adapter
+│   ├── adapter-zhipu/     # Zhipu adapter
 │   ├── adapter-qwen/      # Qwen adapter
-│   └── adapter-gemini/    # Gemini adapter
+│   └── adapter-google/    # Gemini adapter
 ├── apps/
-│   └── docs/              # Documentation site
+│   ├── website/           # Documentation site
+│   └── proxy/             # Proxy server
 ├── examples/              # Usage examples
 └── docs/                  # Additional documentation
 ```
@@ -67,7 +69,7 @@ llm-bridge/
 
 ### Reporting Bugs
 
-1. Check if the bug has already been reported in [Issues](https://github.com/isboyjc/llm-bridge/issues)
+1. Check if the bug has already been reported in [Issues](https://github.com/isboyjc/amux/issues)
 2. If not, create a new issue with:
    - Clear title and description
    - Steps to reproduce
@@ -76,7 +78,7 @@ llm-bridge/
 
 ### Suggesting Features
 
-1. Check [Issues](https://github.com/isboyjc/llm-bridge/issues) for existing feature requests
+1. Check [Issues](https://github.com/isboyjc/amux/issues) for existing feature requests
 2. Create a new issue with:
    - Clear description of the feature
    - Use cases and benefits
@@ -176,15 +178,15 @@ pnpm changeset:publish
 
 ## Community
 
-- [GitHub Issues](https://github.com/isboyjc/llm-bridge/issues) - Bug reports and feature requests
-- [GitHub Discussions](https://github.com/isboyjc/llm-bridge/discussions) - Questions and discussions
+- [GitHub Issues](https://github.com/isboyjc/amux/issues) - Bug reports and feature requests
+- [GitHub Discussions](https://github.com/isboyjc/amux/discussions) - Questions and discussions
 
 ## License
 
-By contributing to LLM Bridge, you agree that your contributions will be licensed under the MIT License.
+By contributing to Amux, you agree that your contributions will be licensed under the MIT License.
 
 ## Questions?
 
-Feel free to ask questions in [GitHub Discussions](https://github.com/isboyjc/llm-bridge/discussions) or open an issue.
+Feel free to ask questions in [GitHub Discussions](https://github.com/isboyjc/amux/discussions) or open an issue.
 
 Thank you for contributing! 🎉

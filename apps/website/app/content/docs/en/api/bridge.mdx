@@ -43,6 +43,11 @@ function createBridge(options: BridgeOptions): Bridge
       inbound: LLMAdapter   // Inbound adapter (parses incoming format)
       outbound: LLMAdapter  // Outbound adapter (builds outgoing format)
       config: BridgeConfig  // Configuration
+
+      // Model mapping options (optional)
+      targetModel?: string  // Fixed target model
+      modelMapper?: (inboundModel: string) => string  // Model mapping function
+      modelMapping?: { [inboundModel: string]: string }  // Model mapping table
     }
     ```
 
@@ -51,6 +56,9 @@ function createBridge(options: BridgeOptions): Bridge
     | `inbound` | `LLMAdapter` | Adapter that parses incoming requests |
     | `outbound` | `LLMAdapter` | Adapter that calls the target provider |
     | `config` | `BridgeConfig` | Bridge configuration |
+    | `targetModel` | `string?` | Fixed target model to use (highest priority) |
+    | `modelMapper` | `function?` | Model mapping function (second priority) |
+    | `modelMapping` | `object?` | Model mapping table (third priority) |
   </Tab>
 
   <Tab value="BridgeConfig">
@@ -76,12 +84,12 @@ function createBridge(options: BridgeOptions): Bridge
 
 ### Example
 
-<Tabs items={['Basic', 'With Config', 'Multiple Providers']}>
+<Tabs items={['Basic', 'With Config', 'Model Mapping', 'Multiple Providers']}>
   <Tab value="Basic">
     ```typescript
-    import { createBridge } from '@llm-bridge/core'
-    import { openaiAdapter } from '@llm-bridge/adapter-openai'
-    import { anthropicAdapter } from '@llm-bridge/adapter-anthropic'
+    import { createBridge } from '@amux/llm-bridge'
+    import { openaiAdapter } from '@amux/adapter-openai'
+    import { anthropicAdapter } from '@amux/adapter-anthropic'
 
     const bridge = createBridge({
       inbound: openaiAdapter,
@@ -110,6 +118,63 @@ function createBridge(options: BridgeOptions): Bridge
       }
     })
     ```
+  </Tab>
+
+  <Tab value="Model Mapping">
+    ### Model Mapping Configuration
+
+    When inbound and outbound use different providers, configure model mapping:
+
+    ```typescript
+    // Method 1: Using mapping table (recommended)
+    const bridge1 = createBridge({
+      inbound: anthropicAdapter,
+      outbound: openaiAdapter,
+      config: { apiKey: process.env.OPENAI_API_KEY },
+
+      // Configure model mapping table
+      modelMapping: {
+        'claude-3-5-sonnet-20241022': 'gpt-4',
+        'claude-3-opus-20240229': 'gpt-4',
+        'claude-3-haiku-20240307': 'gpt-3.5-turbo'
+      }
+    })
+
+    // Method 2: Using mapping function (more flexible)
+    const bridge2 = createBridge({
+      inbound: anthropicAdapter,
+      outbound: openaiAdapter,
+      config: { apiKey: process.env.OPENAI_API_KEY },
+
+      // Use function for dynamic mapping
+      modelMapper: (model) => {
+        if (model.startsWith('claude-3-5')) return 'gpt-4'
+        if (model.startsWith('claude-3-opus')) return 'gpt-4'
+        if (model.startsWith('claude-3-haiku')) return 'gpt-3.5-turbo'
+        return 'gpt-4' // default
+      }
+    })
+
+    // Method 3: Fixed target model (simplest)
+    const bridge3 = createBridge({
+      inbound: anthropicAdapter,
+      outbound: openaiAdapter,
+      config: { apiKey: process.env.OPENAI_API_KEY },
+
+      // Ignore inbound model, always use gpt-4
+      targetModel: 'gpt-4'
+    })
+    ```
+
+    <Callout type="warn">
+    **Important**: Without model mapping, inbound model names are passed directly to the outbound API, which may cause errors. For example, passing `'claude-3-5-sonnet'` to OpenAI API will fail.
+    </Callout>
+
+    **Mapping Priority**:
+    1. `targetModel` - Highest priority, ignores inbound model
+    2. `modelMapper` - Use function for dynamic mapping
+    3. `modelMapping` - Look up mapping table
+    4. Original model - If none configured, use original (may fail)
   </Tab>
 
   <Tab value="Multiple Providers">
@@ -222,27 +287,90 @@ The request must be in the **inbound adapter's format**. The response will also 
   </Tab>
 </Tabs>
 
-### chatStream
+### chatRaw
 
-Sends a streaming chat completion request.
+Sends a chat completion request and returns the raw IR response. Use this when you need to access the intermediate representation directly.
 
 ```typescript
-async *chatStream(request: unknown): AsyncIterable<unknown>
+async chatRaw(request: unknown): Promise<LLMResponseIR>
 ```
 
 #### Example
 
 ```typescript
+// Get raw IR response for custom processing
+const ir = await bridge.chatRaw({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hello!' }]
+})
+
+// Access IR fields directly
+console.log('Model:', ir.model)
+console.log('Choices:', ir.choices.length)
+console.log('Usage:', ir.usage?.totalTokens)
+
+// Build custom response format
+const customResponse = {
+  text: ir.choices[0]?.message.content,
+  tokens: ir.usage?.totalTokens,
+}
+```
+
+### chatStream
+
+Sends a streaming chat completion request. Returns SSE events in the inbound adapter's format.
+
+```typescript
+async *chatStream(request: unknown): AsyncIterable<SSEEvent>
+```
+
+The `SSEEvent` interface:
+
+```typescript
+interface SSEEvent {
+  event: string  // Event type (e.g., 'message_start', 'content_block_delta', 'data')
+  data: unknown  // Event data payload
+}
+```
+
+#### Example
+
+```typescript
+// Simple streaming - events are already in inbound format
 const stream = bridge.chatStream({
   model: 'gpt-4',
   messages: [{ role: 'user', content: 'Tell me a story' }],
   stream: true
 })
 
-for await (const chunk of stream) {
-  const content = chunk.choices[0]?.delta?.content
-  if (content) {
-    process.stdout.write(content)
+// Write SSE events directly to HTTP response
+res.setHeader('Content-Type', 'text/event-stream')
+for await (const sse of stream) {
+  res.write(`event: ${sse.event}\ndata: ${JSON.stringify(sse.data)}\n\n`)
+}
+res.end()
+```
+
+### chatStreamRaw
+
+Sends a streaming chat request and returns raw IR stream events. Use this when you need custom stream processing.
+
+```typescript
+async *chatStreamRaw(request: unknown): AsyncIterable<LLMStreamEvent>
+```
+
+#### Example
+
+```typescript
+// Raw IR events for custom processing
+for await (const event of bridge.chatStreamRaw(request)) {
+  if (event.type === 'content' && event.content?.delta) {
+    // Custom handling of content deltas
+    console.log('Content:', event.content.delta)
+  }
+  if (event.type === 'tool_call' && event.toolCall) {
+    // Custom handling of tool calls
+    console.log('Tool call:', event.toolCall.name)
   }
 }
 ```
@@ -306,6 +434,318 @@ console.log(`Outbound: ${adapters.outbound.name} v${adapters.outbound.version}`)
 // Output:
 // Inbound: openai v1.0.0
 // Outbound: anthropic v1.0.0
+```
+
+## Model Mapping
+
+When inbound and outbound adapters use different providers, model names need to be mapped. Amux provides three mapping methods.
+
+### Why Model Mapping?
+
+Different providers use different model names:
+- OpenAI: `gpt-4`, `gpt-3.5-turbo`
+- Anthropic: `claude-3-5-sonnet-20241022`, `claude-3-haiku-20240307`
+- DeepSeek: `deepseek-chat`, `deepseek-coder`
+
+Without mapping, model names are passed directly, causing API errors:
+
+```typescript
+// ❌ Wrong - No mapping configured
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: 'ANTHROPIC_KEY' }
+})
+
+await bridge.chat({
+  model: 'gpt-4',  // Anthropic API doesn't recognize this
+  messages: [...]
+})
+// Result: API Error - Invalid model 'gpt-4'
+```
+
+### Mapping Methods
+
+<Tabs items={['Mapping Table', 'Mapping Function', 'Fixed Model']}>
+  <Tab value="Mapping Table">
+    ### Using Mapping Table (Recommended)
+
+    Best for fixed mapping relationships:
+
+    ```typescript
+    const bridge = createBridge({
+      inbound: anthropicAdapter,
+      outbound: openaiAdapter,
+      config: { apiKey: process.env.OPENAI_API_KEY },
+
+      modelMapping: {
+        'claude-3-5-sonnet-20241022': 'gpt-4',
+        'claude-3-opus-20240229': 'gpt-4',
+        'claude-3-haiku-20240307': 'gpt-3.5-turbo'
+      }
+    })
+
+    // User request
+    await bridge.chat({
+      model: 'claude-3-5-sonnet-20241022',  // Auto-mapped to 'gpt-4'
+      messages: [...]
+    })
+    ```
+
+    **Advantages**:
+    - Simple and clear
+    - Easy to maintain
+    - Type-safe
+
+    **Use Cases**:
+    - Fixed mapping relationships
+    - Small number of models
+  </Tab>
+
+  <Tab value="Mapping Function">
+    ### Using Mapping Function (Flexible)
+
+    Best for dynamic mapping logic:
+
+    ```typescript
+    const bridge = createBridge({
+      inbound: anthropicAdapter,
+      outbound: openaiAdapter,
+      config: { apiKey: process.env.OPENAI_API_KEY },
+
+      modelMapper: (inboundModel) => {
+        // Map by model name prefix
+        if (inboundModel.startsWith('claude-3-5')) {
+          return 'gpt-4'
+        }
+        if (inboundModel.startsWith('claude-3-opus')) {
+          return 'gpt-4'
+        }
+        if (inboundModel.startsWith('claude-3-haiku')) {
+          return 'gpt-3.5-turbo'
+        }
+
+        // Map by model features
+        if (inboundModel.includes('vision')) {
+          return 'gpt-4-vision-preview'
+        }
+
+        // Default mapping
+        return 'gpt-4'
+      }
+    })
+    ```
+
+    **Advantages**:
+    - Flexible mapping logic
+    - Pattern matching support
+    - Complex logic possible
+
+    **Use Cases**:
+    - Dynamic mapping needed
+    - Model names follow patterns
+    - Special handling required
+  </Tab>
+
+  <Tab value="Fixed Model">
+    ### Using Fixed Model (Simplest)
+
+    Ignore inbound model, always use fixed model:
+
+    ```typescript
+    const bridge = createBridge({
+      inbound: anthropicAdapter,
+      outbound: openaiAdapter,
+      config: { apiKey: process.env.OPENAI_API_KEY },
+
+      // Always use gpt-4 regardless of user input
+      targetModel: 'gpt-4'
+    })
+
+    // User request
+    await bridge.chat({
+      model: 'claude-3-5-sonnet-20241022',  // Will be ignored
+      messages: [...]
+    })
+    // Actually calls: gpt-4
+    ```
+
+    **Advantages**:
+    - Simplest approach
+    - Cost control
+    - Predictable behavior
+
+    **Use Cases**:
+    - Only want to use one model
+    - Cost control
+    - Simplified configuration
+  </Tab>
+</Tabs>
+
+### Mapping Priority
+
+When multiple mapping options are configured, they are used in this priority order:
+
+```
+targetModel > modelMapper > modelMapping > original model
+```
+
+```typescript
+const bridge = createBridge({
+  inbound: anthropicAdapter,
+  outbound: openaiAdapter,
+  config: { apiKey: process.env.OPENAI_API_KEY },
+
+  targetModel: 'gpt-4',  // Priority 1 (highest)
+  modelMapper: (model) => 'gpt-3.5-turbo',  // Priority 2
+  modelMapping: {  // Priority 3
+    'claude-3-5-sonnet-20241022': 'gpt-4-turbo'
+  }
+})
+
+// Result: Always uses 'gpt-4' (targetModel has highest priority)
+```
+
+### Real-World Use Cases
+
+<Tabs items={['Proxy Service', 'Cost Optimization', 'Multi-Tenant']}>
+  <Tab value="Proxy Service">
+    ### Scenario 1: Building LLM Proxy Service
+
+    Your app accepts Anthropic format but calls OpenAI:
+
+    ```typescript
+    class LLMProxyService {
+      private bridge = createBridge({
+        inbound: anthropicAdapter,
+        outbound: openaiAdapter,
+        config: { apiKey: process.env.OPENAI_API_KEY },
+
+        // Configure model mapping
+        modelMapping: {
+          'claude-3-5-sonnet-20241022': 'gpt-4',
+          'claude-3-opus-20240229': 'gpt-4',
+          'claude-3-haiku-20240307': 'gpt-3.5-turbo'
+        }
+      })
+
+      async chat(request) {
+        return this.bridge.chat(request)
+      }
+    }
+
+    // User calls
+    const service = new LLMProxyService()
+    await service.chat({
+      model: 'claude-3-5-sonnet-20241022',  // Auto-mapped to gpt-4
+      messages: [{ role: 'user', content: 'Hello' }]
+    })
+    ```
+  </Tab>
+
+  <Tab value="Cost Optimization">
+    ### Scenario 2: Cost Optimization
+
+    Use different models based on user tier:
+
+    ```typescript
+    function createBridgeForUser(userTier: 'free' | 'pro' | 'enterprise') {
+      return createBridge({
+        inbound: openaiAdapter,
+        outbound: openaiAdapter,
+        config: { apiKey: process.env.OPENAI_API_KEY },
+
+        modelMapper: (model) => {
+          // Free users: Always use cheaper model
+          if (userTier === 'free') {
+            return 'gpt-3.5-turbo'
+          }
+
+          // Pro users: Downgrade GPT-4 to GPT-3.5
+          if (userTier === 'pro' && model === 'gpt-4') {
+            return 'gpt-3.5-turbo'
+          }
+
+          // Enterprise users: Use original model
+          return model
+        }
+      })
+    }
+    ```
+  </Tab>
+
+  <Tab value="Multi-Tenant">
+    ### Scenario 3: Multi-Tenant System
+
+    Different tenants use different providers:
+
+    ```typescript
+    function createBridgeForTenant(tenantConfig) {
+      const { provider, apiKey, modelMapping } = tenantConfig
+
+      // Select adapter based on tenant config
+      const outboundAdapter = {
+        openai: openaiAdapter,
+        anthropic: anthropicAdapter,
+        deepseek: deepseekAdapter
+      }[provider]
+
+      return createBridge({
+        inbound: openaiAdapter,  // Unified OpenAI format
+        outbound: outboundAdapter,
+        config: { apiKey },
+
+        // Use tenant's custom model mapping
+        modelMapping: modelMapping || {
+          'gpt-4': getDefaultModel(provider)
+        }
+      })
+    }
+
+    // Tenant A uses OpenAI
+    const bridgeA = createBridgeForTenant({
+      provider: 'openai',
+      apiKey: 'sk-...',
+      modelMapping: { 'gpt-4': 'gpt-4' }
+    })
+
+    // Tenant B uses Anthropic
+    const bridgeB = createBridgeForTenant({
+      provider: 'anthropic',
+      apiKey: 'sk-ant-...',
+      modelMapping: { 'gpt-4': 'claude-3-5-sonnet-20241022' }
+    })
+    ```
+  </Tab>
+</Tabs>
+
+### Best Practices
+
+1. **Always configure mapping**: When inbound and outbound use different providers, always configure model mapping
+2. **Use mapping table**: For fixed relationships, prefer `modelMapping`
+3. **Document mappings**: Comment your mapping logic in code
+4. **Test mappings**: Ensure all mapped models are valid
+5. **Monitor costs**: Be aware of cost differences between models
+
+```typescript
+// ✅ Good practice
+const bridge = createBridge({
+  inbound: anthropicAdapter,
+  outbound: openaiAdapter,
+  config: { apiKey: process.env.OPENAI_API_KEY },
+
+  // Clear mapping configuration
+  modelMapping: {
+    // Claude Sonnet → GPT-4 (high performance)
+    'claude-3-5-sonnet-20241022': 'gpt-4',
+
+    // Claude Opus → GPT-4 (highest performance)
+    'claude-3-opus-20240229': 'gpt-4',
+
+    // Claude Haiku → GPT-3.5 (economical)
+    'claude-3-haiku-20240307': 'gpt-3.5-turbo'
+  }
+})
 ```
 
 ## Error Handling
@@ -416,9 +856,9 @@ graph TD
 Here's a complete example showing error handling, compatibility checking, and streaming:
 
 ```typescript
-import { createBridge } from '@llm-bridge/core'
-import { openaiAdapter } from '@llm-bridge/adapter-openai'
-import { anthropicAdapter } from '@llm-bridge/adapter-anthropic'
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
 
 // Create bridge
 const bridge = createBridge({

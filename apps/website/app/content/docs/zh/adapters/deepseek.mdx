@@ -8,18 +8,18 @@ DeepSeek 适配器提供了与 DeepSeek API 的集成。DeepSeek API 完全兼�
 ## 安装
 
 ```bash tab="pnpm"
-pnpm add @llm-bridge/core @llm-bridge/adapter-deepseek
+pnpm add @amux/llm-bridge @amux/adapter-deepseek
 ```
 
 ```bash tab="npm"
-npm install @llm-bridge/core @llm-bridge/adapter-deepseek
+npm install @amux/llm-bridge @amux/adapter-deepseek
 ```
 
 ## 基本使用
 
 ```typescript
-import { createBridge } from '@llm-bridge/core'
-import { deepseekAdapter } from '@llm-bridge/adapter-deepseek'
+import { createBridge } from '@amux/llm-bridge'
+import { deepseekAdapter } from '@amux/adapter-deepseek'
 
 const bridge = createBridge({
   inbound: deepseekAdapter,
@@ -33,7 +33,7 @@ const response = await bridge.chat({
   model: 'deepseek-chat',
   messages: [
     { role: 'system', content: '你是一个有帮助的助手。' },
-    { role: 'user', content: '什么是 LLM Bridge？' }
+    { role: 'user', content: '什么是 Amux？' }
   ]
 })
 
@@ -138,8 +138,8 @@ const bridge = createBridge({
 DeepSeek 完全兼容 OpenAI 格式：
 
 ```typescript
-import { openaiAdapter } from '@llm-bridge/adapter-openai'
-import { deepseekAdapter } from '@llm-bridge/adapter-deepseek'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { deepseekAdapter } from '@amux/adapter-deepseek'
 
 // OpenAI 格式 → DeepSeek API
 const bridge = createBridge({

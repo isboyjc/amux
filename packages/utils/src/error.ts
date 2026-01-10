@@ -1,5 +1,5 @@
 /**
- * Standard error class for LLM Bridge
+ * Standard error class for Amux
  */
 export class LLMBridgeError extends Error {
   constructor(

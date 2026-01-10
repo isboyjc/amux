@@ -1,15 +1,15 @@
 ---
 title: 核心概念
-description: 理解 LLM Bridge 的架构
+description: 理解 Amux 的架构
 ---
 
 <Callout type="info">
-LLM Bridge 建立在三个核心概念之上：**适配器（Adapters）**、**IR（中间表示）** 和 **桥接（Bridge）**。理解这些概念是有效使用 LLM Bridge 的关键。
+Amux 建立在三个核心概念之上：**适配器（Adapters）**、**IR（中间表示）** 和 **桥接（Bridge）**。理解这些概念是有效使用 Amux 的关键。
 </Callout>
 
 ## 架构概览
 
-LLM Bridge 建立在三个核心概念之上：
+Amux 建立在三个核心概念之上：
 
 1. **适配器（Adapters）** - 在提供商格式和 IR 之间转换
 2. **IR（中间表示）** - 所有 LLM 功能的统一格式
@@ -33,7 +33,7 @@ graph TD
 
 ## 适配器
 
-适配器是 LLM Bridge 的核心。每个适配器实现两个方向：
+适配器是 Amux 的核心。每个适配器实现两个方向：
 
 <Tabs items={['入站', '出站', '能力', '示例']}>
   <Tab value="入站">
@@ -141,7 +141,7 @@ graph TD
     ### 完整适配器示例
 
     ```typescript
-    import type { LLMAdapter } from '@llm-bridge/core'
+    import type { LLMAdapter } from '@amux/llm-bridge'
 
     export const myAdapter: LLMAdapter = {
       name: 'my-provider',
@@ -314,7 +314,7 @@ interface LLMRequestIR {
       Message,
       Tool,
       GenerationConfig
-    } from '@llm-bridge/core'
+    } from '@amux/llm-bridge'
 
     // 所有类型都完全定义
     const message: Message = {
@@ -460,7 +460,7 @@ sequenceDiagram
 桥接提供统一的错误处理：
 
 ```typescript
-import { LLMBridgeError } from '@llm-bridge/core'
+import { LLMBridgeError } from '@amux/llm-bridge'
 
 try {
   const response = await bridge.chat(request)

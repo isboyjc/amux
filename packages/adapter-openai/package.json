@@ -1,11 +1,11 @@
 {
-  "name": "@llm-bridge/adapter-openai",
+  "name": "@amux/adapter-openai",
   "version": "0.0.0",
-  "description": "OpenAI adapter for LLM Bridge",
-  "keywords": ["llm", "openai", "adapter"],
+  "description": "OpenAI adapter for Amux",
+  "keywords": ["amux", "llm", "openai", "adapter"],
   "repository": {
     "type": "git",
-    "url": "https://github.com/isboyjc/llm-bridge.git",
+    "url": "https://github.com/isboyjc/amux.git",
     "directory": "packages/adapter-openai"
   },
   "license": "MIT",
@@ -32,7 +32,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@llm-bridge/core": "workspace:*"
+    "@amux/llm-bridge": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.11.5",

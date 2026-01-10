@@ -3,7 +3,7 @@ title: Adapters API
 description: Complete API reference for LLM adapters
 ---
 
-The adapter is the core component that handles the bi-directional conversion between provider-specific formats and intermediate representations (IRs), enabling the LLM Bridge to collaborate with any provider by realizing two directions: **Inbound** (Provider → IR) and **Outbound** (IR → Provider).
+The adapter is the core component that handles the bi-directional conversion between provider-specific formats and intermediate representations (IRs), enabling Amux to collaborate with any provider by realizing two directions: **Inbound** (Provider → IR) and **Outbound** (IR → Provider).
 
 ## Adapter Architecture
 
@@ -402,7 +402,7 @@ console.log(`Capabilities:`, info.capabilities)
 To create a custom adapter, implement the `LLMAdapter` interface.
 
 <Callout type="info">
-Follow this pattern to ensure your adapter works seamlessly with LLM Bridge.
+Follow this pattern to ensure your adapter works seamlessly with Amux.
 </Callout>
 
 ### Step-by-Step Guide
@@ -410,7 +410,7 @@ Follow this pattern to ensure your adapter works seamlessly with LLM Bridge.
 <Tabs items={['1. Define Structure', '2. Implement Inbound', '3. Implement Outbound', '4. Add Metadata']}>
   <Tab value="1. Define Structure">
     ```typescript
-    import type { LLMAdapter } from '@llm-bridge/core'
+    import type { LLMAdapter } from '@amux/llm-bridge'
 
     export const myAdapter: LLMAdapter = {
       name: 'my-provider',
@@ -547,7 +547,7 @@ Follow this pattern to ensure your adapter works seamlessly with LLM Bridge.
 ### Complete Example
 
 ```typescript
-import type { LLMAdapter, LLMRequestIR, LLMResponseIR } from '@llm-bridge/core'
+import type { LLMAdapter, LLMRequestIR, LLMResponseIR } from '@amux/llm-bridge'
 
 export const myAdapter: LLMAdapter = {
   name: 'my-provider',

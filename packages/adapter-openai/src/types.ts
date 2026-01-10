@@ -1,4 +1,4 @@
-import type { ToolCall, JSONSchema } from '@llm-bridge/core'
+import type { ToolCall, JSONSchema } from '@amux/llm-bridge'
 
 /**
  * OpenAI message content part types
@@ -58,7 +58,7 @@ export interface OpenAIStreamOptions {
 }
 
 /**
- * OpenAI request format
+ * OpenAI Chat Completions API request format
  */
 export interface OpenAIRequest {
   model: string
@@ -95,7 +95,7 @@ export interface OpenAIUsage {
 }
 
 /**
- * OpenAI response format
+ * OpenAI Chat Completions API response format
  */
 export interface OpenAIResponse {
   id: string
@@ -173,5 +173,214 @@ export interface OpenAIError {
     type: string
     param?: string
     code?: string
+  }
+}
+
+// ============================================
+// OpenAI Responses API Types (New API)
+// ============================================
+
+/**
+ * Responses API input content item
+ * Supports both explicit type format and shorthand format
+ */
+export type ResponsesInputItem =
+  | {
+      type: 'message'
+      role: 'user' | 'assistant' | 'system' | 'developer'
+      content: string | ResponsesContentPart[]
+    }
+  | {
+      type: 'item_reference'
+      id: string
+    }
+  | {
+      // Shorthand format without explicit type
+      role: 'user' | 'assistant' | 'system' | 'developer'
+      content: string | ResponsesContentPart[]
+      type?: undefined
+    }
+
+/**
+ * Responses API content part
+ */
+export type ResponsesContentPart =
+  | { type: 'input_text'; text: string }
+  | { type: 'input_image'; image_url: string; detail?: 'auto' | 'low' | 'high' }
+  | { type: 'input_file'; file_id: string }
+
+/**
+ * Responses API tool definition
+ */
+export type ResponsesTool =
+  | {
+      type: 'function'
+      name: string
+      description?: string
+      parameters?: JSONSchema
+      strict?: boolean
+    }
+  | {
+      type: 'web_search_preview'
+      search_context_size?: 'low' | 'medium' | 'high'
+    }
+  | {
+      type: 'file_search'
+      vector_store_ids: string[]
+      max_num_results?: number
+    }
+  | {
+      type: 'code_interpreter'
+    }
+
+/**
+ * Responses API text format configuration
+ */
+export interface ResponsesTextFormat {
+  format?: {
+    type: 'text' | 'json_object' | 'json_schema'
+    json_schema?: {
+      name: string
+      description?: string
+      schema: Record<string, unknown>
+      strict?: boolean
+    }
+  }
+}
+
+/**
+ * Responses API request format
+ */
+export interface ResponsesRequest {
+  model: string
+  input: string | ResponsesInputItem[]
+  instructions?: string
+  tools?: ResponsesTool[]
+  tool_choice?: 'auto' | 'none' | 'required' | { type: 'function'; name: string }
+  parallel_tool_calls?: boolean
+  stream?: boolean
+  temperature?: number
+  top_p?: number
+  max_output_tokens?: number
+  truncation?: 'auto' | 'disabled'
+  metadata?: Record<string, string>
+  store?: boolean
+  reasoning?: {
+    effort?: 'low' | 'medium' | 'high'
+    summary?: 'auto' | 'concise' | 'detailed'
+  }
+  text?: ResponsesTextFormat
+  previous_response_id?: string
+  user?: string
+}
+
+/**
+ * Responses API output item
+ */
+export type ResponsesOutputItem =
+  | {
+      type: 'message'
+      id: string
+      role: 'assistant'
+      content: ResponsesOutputContent[]
+      status: 'completed' | 'incomplete'
+    }
+  | {
+      type: 'function_call'
+      id: string
+      call_id: string
+      name: string
+      arguments: string
+      status: 'completed' | 'incomplete'
+    }
+  | {
+      type: 'function_call_output'
+      id: string
+      call_id: string
+      output: string
+    }
+  | {
+      type: 'web_search_call'
+      id: string
+      status: 'completed' | 'searching' | 'incomplete'
+    }
+  | {
+      type: 'reasoning'
+      id: string
+      content: Array<{ type: 'reasoning_text'; text: string }>
+    }
+
+/**
+ * Responses API output content
+ */
+export type ResponsesOutputContent =
+  | { type: 'output_text'; text: string; annotations?: unknown[]; logprobs?: unknown[] }
+  | { type: 'refusal'; refusal: string }
+
+/**
+ * Responses API response format
+ */
+export interface ResponsesResponse {
+  id: string
+  object: 'response'
+  created_at: number
+  model: string
+  status: 'completed' | 'failed' | 'incomplete' | 'in_progress'
+  output: ResponsesOutputItem[]
+  output_text?: string // Convenience field for simple text responses
+  usage?: {
+    input_tokens: number
+    input_tokens_details?: {
+      cached_tokens?: number
+    }
+    output_tokens: number
+    output_tokens_details?: {
+      reasoning_tokens?: number
+    }
+    total_tokens: number
+  }
+  error?: {
+    type?: string
+    code: string
+    message: string
+    param?: string
+  }
+  incomplete_details?: {
+    reason: string
+  }
+}
+
+/**
+ * Responses API stream event
+ */
+export interface ResponsesStreamEvent {
+  type:
+    | 'response.created'
+    | 'response.in_progress'
+    | 'response.completed'
+    | 'response.failed'
+    | 'response.incomplete'
+    | 'response.output_item.added'
+    | 'response.output_item.done'
+    | 'response.content_part.added'
+    | 'response.content_part.done'
+    | 'response.output_text.delta'
+    | 'response.output_text.done'
+    | 'response.function_call_arguments.delta'
+    | 'response.function_call_arguments.done'
+    | 'response.reasoning_summary_text.delta'
+    | 'response.reasoning_summary_text.done'
+    | 'error'
+  response?: ResponsesResponse
+  output_index?: number
+  content_index?: number
+  item?: ResponsesOutputItem
+  part?: ResponsesOutputContent
+  delta?: string
+  text?: string
+  error?: {
+    type: string
+    code: string
+    message: string
   }
 }

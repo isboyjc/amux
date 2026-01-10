@@ -1,4 +1,4 @@
-import type { LLMErrorIR, ErrorType } from '@llm-bridge/core'
+import type { LLMErrorIR, ErrorType } from '@amux/llm-bridge'
 
 /**
  * Parse OpenAI error to IR

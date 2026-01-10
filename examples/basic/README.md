@@ -1,6 +1,6 @@
 # Basic Example
 
-This example demonstrates the basic usage of LLM Bridge with OpenAI and Anthropic adapters.
+This example demonstrates the basic usage of Amux with OpenAI and Anthropic adapters.
 
 ## Setup
 

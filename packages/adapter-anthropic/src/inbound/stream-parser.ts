@@ -1,4 +1,4 @@
-import type { LLMStreamEvent } from '@llm-bridge/core'
+import type { LLMStreamEvent } from '@amux/llm-bridge'
 
 import type { AnthropicStreamEvent } from '../types'
 
@@ -46,7 +46,7 @@ export function parseStream(
       return null
 
     case 'content_block_delta':
-      if (event.delta?.type === 'text_delta') {
+      if (event.delta?.type === 'text_delta' && event.delta.text !== undefined) {
         return {
           type: 'content',
           content: {
@@ -57,7 +57,7 @@ export function parseStream(
           raw: chunk,
         }
       }
-      if (event.delta?.type === 'input_json_delta') {
+      if (event.delta?.type === 'input_json_delta' && event.delta.partial_json !== undefined) {
         return {
           type: 'tool_call',
           toolCall: {

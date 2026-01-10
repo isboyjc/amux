@@ -13,7 +13,8 @@
     "adapters/openai",
     "adapters/anthropic",
     "adapters/deepseek",
-    "adapters/kimi",
+    "adapters/moonshot",
+    "adapters/zhipu",
     "adapters/qwen",
     "adapters/gemini"
   ]

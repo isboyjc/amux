@@ -1,4 +1,4 @@
-import type { LLMStreamEvent, FinishReason } from '@llm-bridge/core'
+import type { LLMStreamEvent, FinishReason } from '@amux/llm-bridge'
 
 import type { OpenAIStreamChunk } from '../types'
 
@@ -48,6 +48,9 @@ export function parseStream(
   }
 
   const choice = data.choices[0]
+  if (!choice) {
+    return null
+  }
   const delta = choice.delta
 
   // Start event (first chunk with role)
@@ -78,18 +81,20 @@ export function parseStream(
   // Tool call delta
   if (delta.tool_calls && delta.tool_calls.length > 0) {
     const toolCall = delta.tool_calls[0]
-    return {
-      type: 'tool_call',
-      id: data.id,
-      model: data.model,
-      toolCall: {
+    if (toolCall) {
+      return {
         type: 'tool_call',
-        id: toolCall.id,
-        name: toolCall.function?.name,
-        arguments: toolCall.function?.arguments,
-        index: toolCall.index,
-      },
-      raw: chunk,
+        id: data.id,
+        model: data.model,
+        toolCall: {
+          type: 'tool_call',
+          id: toolCall.id,
+          name: toolCall.function?.name,
+          arguments: toolCall.function?.arguments,
+          index: toolCall.index,
+        },
+        raw: chunk,
+      }
     }
   }
 

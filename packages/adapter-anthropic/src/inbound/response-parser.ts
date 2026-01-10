@@ -1,4 +1,4 @@
-import type { LLMResponseIR, Choice, Message, ContentPart } from '@llm-bridge/core'
+import type { LLMResponseIR, Choice, Message, ContentPart, ToolCall } from '@amux/llm-bridge'
 
 import type { AnthropicResponse, AnthropicContent } from '../types'
 
@@ -8,14 +8,38 @@ import type { AnthropicResponse, AnthropicContent } from '../types'
 export function parseResponse(response: unknown): LLMResponseIR {
   const res = response as AnthropicResponse
 
-  // Parse content
-  const contentParts: ContentPart[] = res.content.map((part) => parseContentPart(part))
+  // Parse content - separate text/image from tool_use
+  const contentParts: ContentPart[] = []
+  const toolCalls: ToolCall[] = []
+
+  for (const part of res.content) {
+    if (part.type === 'tool_use') {
+      // Convert tool_use to OpenAI-style toolCalls
+      toolCalls.push({
+        id: part.id,
+        type: 'function',
+        function: {
+          name: part.name,
+          arguments: JSON.stringify(part.input),
+        },
+      })
+    } else {
+      contentParts.push(parseContentPart(part))
+    }
+  }
 
   const message: Message = {
     role: 'assistant',
     content: contentParts.length === 1 && contentParts[0]?.type === 'text'
-      ? (contentParts[0] as { text: string }).text
-      : contentParts,
+      ? contentParts[0].text
+      : contentParts.length > 0
+      ? contentParts
+      : '',
+  }
+
+  // Add toolCalls if present
+  if (toolCalls.length > 0) {
+    message.toolCalls = toolCalls
   }
 
   const choice: Choice = {
@@ -43,13 +67,6 @@ function parseContentPart(part: AnthropicContent): ContentPart {
       return {
         type: 'text',
         text: part.text,
-      }
-    case 'tool_use':
-      return {
-        type: 'tool_use',
-        id: part.id,
-        name: part.name,
-        input: part.input,
       }
     default:
       return {

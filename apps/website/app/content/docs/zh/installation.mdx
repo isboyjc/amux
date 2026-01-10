@@ -1,6 +1,6 @@
 ---
 title: 安装
-description: 安装 LLM Bridge 并开始使用
+description: 安装 Amux 并开始使用
 ---
 
 ## 前置要求
@@ -17,25 +17,25 @@ description: 安装 LLM Bridge 并开始使用
 <Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
   <Tab value="pnpm">
     ```bash
-    pnpm add @llm-bridge/core
+    pnpm add @amux/llm-bridge
     ```
   </Tab>
 
   <Tab value="npm">
     ```bash
-    npm install @llm-bridge/core
+    npm install @amux/llm-bridge
     ```
   </Tab>
 
   <Tab value="yarn">
     ```bash
-    yarn add @llm-bridge/core
+    yarn add @amux/llm-bridge
     ```
   </Tab>
 
   <Tab value="bun">
     ```bash
-    bun add @llm-bridge/core
+    bun add @amux/llm-bridge
     ```
   </Tab>
 </Tabs>
@@ -49,19 +49,19 @@ description: 安装 LLM Bridge 并开始使用
     ### OpenAI 适配器
 
     ```bash tab="pnpm"
-    pnpm add @llm-bridge/adapter-openai
+    pnpm add @amux/adapter-openai
     ```
 
     ```bash tab="npm"
-    npm install @llm-bridge/adapter-openai
+    npm install @amux/adapter-openai
     ```
 
     ```bash tab="yarn"
-    yarn add @llm-bridge/adapter-openai
+    yarn add @amux/adapter-openai
     ```
 
     ```bash tab="bun"
-    bun add @llm-bridge/adapter-openai
+    bun add @amux/adapter-openai
     ```
 
     **支持：**
@@ -76,19 +76,19 @@ description: 安装 LLM Bridge 并开始使用
     ### Anthropic 适配器
 
     ```bash tab="pnpm"
-    pnpm add @llm-bridge/adapter-anthropic
+    pnpm add @amux/adapter-anthropic
     ```
 
     ```bash tab="npm"
-    npm install @llm-bridge/adapter-anthropic
+    npm install @amux/adapter-anthropic
     ```
 
     ```bash tab="yarn"
-    yarn add @llm-bridge/adapter-anthropic
+    yarn add @amux/adapter-anthropic
     ```
 
     ```bash tab="bun"
-    bun add @llm-bridge/adapter-anthropic
+    bun add @amux/adapter-anthropic
     ```
 
     **支持：**
@@ -103,19 +103,19 @@ description: 安装 LLM Bridge 并开始使用
     ### DeepSeek 适配器
 
     ```bash tab="pnpm"
-    pnpm add @llm-bridge/adapter-deepseek
+    pnpm add @amux/adapter-deepseek
     ```
 
     ```bash tab="npm"
-    npm install @llm-bridge/adapter-deepseek
+    npm install @amux/adapter-deepseek
     ```
 
     ```bash tab="yarn"
-    yarn add @llm-bridge/adapter-deepseek
+    yarn add @amux/adapter-deepseek
     ```
 
     ```bash tab="bun"
-    bun add @llm-bridge/adapter-deepseek
+    bun add @amux/adapter-deepseek
     ```
 
     **支持：**
@@ -127,19 +127,24 @@ description: 安装 LLM Bridge 并开始使用
   <Tab value="其他">
     ### 其他适配器
 
-    **Kimi（月之暗面）：**
+    **Moonshot（月之暗面）：**
     ```bash tab="pnpm"
-    pnpm add @llm-bridge/adapter-kimi
+    pnpm add @amux/adapter-moonshot
+    ```
+
+    **Zhipu（智谱 AI）：**
+    ```bash tab="pnpm"
+    pnpm add @amux/adapter-zhipu
     ```
 
     **Qwen（阿里云）：**
     ```bash tab="pnpm"
-    pnpm add @llm-bridge/adapter-qwen
+    pnpm add @amux/adapter-qwen
     ```
 
     **Gemini（Google AI）：**
     ```bash tab="pnpm"
-    pnpm add @llm-bridge/adapter-gemini
+    pnpm add @amux/adapter-google
     ```
   </Tab>
 
@@ -147,43 +152,47 @@ description: 安装 LLM Bridge 并开始使用
     ### 安装所有适配器
 
     ```bash tab="pnpm"
-    pnpm add @llm-bridge/core \
-      @llm-bridge/adapter-openai \
-      @llm-bridge/adapter-anthropic \
-      @llm-bridge/adapter-deepseek \
-      @llm-bridge/adapter-kimi \
-      @llm-bridge/adapter-qwen \
-      @llm-bridge/adapter-gemini
+    pnpm add @amux/llm-bridge \
+      @amux/adapter-openai \
+      @amux/adapter-anthropic \
+      @amux/adapter-deepseek \
+      @amux/adapter-moonshot \
+      @amux/adapter-zhipu \
+      @amux/adapter-qwen \
+      @amux/adapter-google
     ```
 
     ```bash tab="npm"
-    npm install @llm-bridge/core \
-      @llm-bridge/adapter-openai \
-      @llm-bridge/adapter-anthropic \
-      @llm-bridge/adapter-deepseek \
-      @llm-bridge/adapter-kimi \
-      @llm-bridge/adapter-qwen \
-      @llm-bridge/adapter-gemini
+    npm install @amux/llm-bridge \
+      @amux/adapter-openai \
+      @amux/adapter-anthropic \
+      @amux/adapter-deepseek \
+      @amux/adapter-moonshot \
+      @amux/adapter-zhipu \
+      @amux/adapter-qwen \
+      @amux/adapter-google
     ```
 
     ```bash tab="yarn"
-    yarn add @llm-bridge/core \
-      @llm-bridge/adapter-openai \
-      @llm-bridge/adapter-anthropic \
-      @llm-bridge/adapter-deepseek \
-      @llm-bridge/adapter-kimi \
-      @llm-bridge/adapter-qwen \
-      @llm-bridge/adapter-gemini
+    yarn add @amux/llm-bridge \
+      @amux/adapter-openai \
+      @amux/adapter-anthropic \
+      @amux/adapter-deepseek \
+      @amux/adapter-moonshot \
+      @amux/adapter-zhipu \
+      @amux/adapter-qwen \
+      @amux/adapter-google
     ```
 
     ```bash tab="bun"
-    bun add @llm-bridge/core \
-      @llm-bridge/adapter-openai \
-      @llm-bridge/adapter-anthropic \
-      @llm-bridge/adapter-deepseek \
-      @llm-bridge/adapter-kimi \
-      @llm-bridge/adapter-qwen \
-      @llm-bridge/adapter-gemini
+    bun add @amux/llm-bridge \
+      @amux/adapter-openai \
+      @amux/adapter-anthropic \
+      @amux/adapter-deepseek \
+      @amux/adapter-moonshot \
+      @amux/adapter-zhipu \
+      @amux/adapter-qwen \
+      @amux/adapter-google
     ```
 
     <Callout type="info">
@@ -197,10 +206,10 @@ description: 安装 LLM Bridge 并开始使用
 创建一个简单的测试文件来验证安装：
 
 ```typescript
-import { createBridge } from '@llm-bridge/core'
-import { openaiAdapter } from '@llm-bridge/adapter-openai'
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
 
-console.log('✓ LLM Bridge 安装成功！')
+console.log('✓ Amux 安装成功！')
 console.log('✓ OpenAI 适配器：', openaiAdapter.name, 'v' + openaiAdapter.version)
 console.log('✓ 能力：', openaiAdapter.capabilities)
 ```
@@ -222,7 +231,7 @@ bun test.ts
 您应该看到类似以下的输出：
 
 ```
-✓ LLM Bridge 安装成功！
+✓ Amux 安装成功！
 ✓ OpenAI 适配器： openai v1.0.0
 ✓ 能力： { streaming: true, tools: true, ... }
 ```
@@ -230,7 +239,7 @@ bun test.ts
 ## TypeScript 配置
 
 <Callout type="info">
-LLM Bridge 使用 TypeScript 编写，包含完整的类型定义。不需要额外的 `@types` 包。
+Amux 使用 TypeScript 编写，包含完整的类型定义。不需要额外的 `@types` 包。
 </Callout>
 
 确保您的 `tsconfig.json` 包含：

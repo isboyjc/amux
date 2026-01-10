@@ -1,28 +1,28 @@
 ---
 title: Quick Start
-description: Build your first LLM Bridge in 5 minutes
+description: Build your first Amux bridge in 5 minutes
 ---
 
 <Callout type="info">
-This guide will walk you through creating your first LLM Bridge. You'll learn how to convert between OpenAI and Anthropic formats in just a few minutes.
+This guide will walk you through creating your first Amux bridge. You'll learn how to convert between OpenAI and Anthropic formats in just a few minutes.
 </Callout>
 
 ## Step 1: Install Packages
 
 ```bash tab="pnpm"
-pnpm add @llm-bridge/core @llm-bridge/adapter-openai @llm-bridge/adapter-anthropic
+pnpm add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
 ```
 
 ```bash tab="npm"
-npm install @llm-bridge/core @llm-bridge/adapter-openai @llm-bridge/adapter-anthropic
+npm install @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
 ```
 
 ```bash tab="yarn"
-yarn add @llm-bridge/core @llm-bridge/adapter-openai @llm-bridge/adapter-anthropic
+yarn add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
 ```
 
 ```bash tab="bun"
-bun add @llm-bridge/core @llm-bridge/adapter-openai @llm-bridge/adapter-anthropic
+bun add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
 ```
 
 ## Step 2: Set Up Environment Variables
@@ -47,9 +47,9 @@ Create a file `bridge.ts`:
     ### OpenAI Format In → Anthropic API Out
 
     ```typescript
-    import { createBridge } from '@llm-bridge/core'
-    import { openaiAdapter } from '@llm-bridge/adapter-openai'
-    import { anthropicAdapter } from '@llm-bridge/adapter-anthropic'
+    import { createBridge } from '@amux/llm-bridge'
+    import { openaiAdapter } from '@amux/adapter-openai'
+    import { anthropicAdapter } from '@amux/adapter-anthropic'
 
     // Create a bridge: OpenAI format in → Anthropic API out
     const bridge = createBridge({
@@ -83,9 +83,9 @@ Create a file `bridge.ts`:
     ### Anthropic Format In → OpenAI API Out
 
     ```typescript
-    import { createBridge } from '@llm-bridge/core'
-    import { openaiAdapter } from '@llm-bridge/adapter-openai'
-    import { anthropicAdapter } from '@llm-bridge/adapter-anthropic'
+    import { createBridge } from '@amux/llm-bridge'
+    import { openaiAdapter } from '@amux/adapter-openai'
+    import { anthropicAdapter } from '@amux/adapter-anthropic'
 
     // Anthropic format in → OpenAI API out
     const bridge = createBridge({
@@ -118,9 +118,9 @@ Create a file `bridge.ts`:
     ### Streaming Responses
 
     ```typescript
-    import { createBridge } from '@llm-bridge/core'
-    import { openaiAdapter } from '@llm-bridge/adapter-openai'
-    import { anthropicAdapter } from '@llm-bridge/adapter-anthropic'
+    import { createBridge } from '@amux/llm-bridge'
+    import { openaiAdapter } from '@amux/adapter-openai'
+    import { anthropicAdapter } from '@amux/adapter-anthropic'
 
     const bridge = createBridge({
       inbound: openaiAdapter,
@@ -279,7 +279,7 @@ The **Intermediate Representation (IR)** is the key to bidirectional conversion.
     ### Error Handling
 
     ```typescript
-    import { LLMBridgeError } from '@llm-bridge/core'
+    import { LLMBridgeError } from '@amux/llm-bridge'
 
     try {
       const response = await bridge.chat({
@@ -315,7 +315,7 @@ The **Intermediate Representation (IR)** is the key to bidirectional conversion.
 
 <Cards>
   <Card title="Core Concepts" href="/docs/core-concepts">
-    Understand how LLM Bridge works
+    Understand how Amux works
   </Card>
   <Card title="API Reference" href="/docs/api/bridge">
     Explore the complete API

@@ -1,4 +1,4 @@
-import type { LLMResponseIR, Choice, FinishReason, Role } from '@llm-bridge/core'
+import type { LLMResponseIR, Choice, FinishReason, Role } from '@amux/llm-bridge'
 
 import type { OpenAIResponse } from '../types'
 

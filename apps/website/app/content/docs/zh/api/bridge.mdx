@@ -87,9 +87,9 @@ function createBridge(options: BridgeOptions): Bridge
 <Tabs items={['基础用法', '完整配置', '模型映射', '多提供商']}>
   <Tab value="基础用法">
     ```typescript
-    import { createBridge } from '@llm-bridge/core'
-    import { openaiAdapter } from '@llm-bridge/adapter-openai'
-    import { anthropicAdapter } from '@llm-bridge/adapter-anthropic'
+    import { createBridge } from '@amux/llm-bridge'
+    import { openaiAdapter } from '@amux/adapter-openai'
+    import { anthropicAdapter } from '@amux/adapter-anthropic'
 
     const bridge = createBridge({
       inbound: openaiAdapter,
@@ -287,27 +287,90 @@ async chat(request: unknown): Promise<unknown>
   </Tab>
 </Tabs>
 
-### chatStream
+### chatRaw
 
-发送流式聊天完成请求。
+发送聊天完成请求并返回原始 IR 响应。当你需要直接访问中间表示时使用此方法。
 
 ```typescript
-async *chatStream(request: unknown): AsyncIterable<unknown>
+async chatRaw(request: unknown): Promise<LLMResponseIR>
 ```
 
 #### 示例
 
 ```typescript
+// 获取原始 IR 响应用于自定义处理
+const ir = await bridge.chatRaw({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '你好！' }]
+})
+
+// 直接访问 IR 字段
+console.log('模型:', ir.model)
+console.log('选项数:', ir.choices.length)
+console.log('Token 用量:', ir.usage?.totalTokens)
+
+// 构建自定义响应格式
+const customResponse = {
+  text: ir.choices[0]?.message.content,
+  tokens: ir.usage?.totalTokens,
+}
+```
+
+### chatStream
+
+发送流式聊天完成请求。返回入站适配器格式的 SSE 事件。
+
+```typescript
+async *chatStream(request: unknown): AsyncIterable<SSEEvent>
+```
+
+`SSEEvent` 接口：
+
+```typescript
+interface SSEEvent {
+  event: string  // 事件类型（如 'message_start', 'content_block_delta', 'data'）
+  data: unknown  // 事件数据
+}
+```
+
+#### 示例
+
+```typescript
+// 简单的流式处理 - 事件已经是入站格式
 const stream = bridge.chatStream({
   model: 'gpt-4',
   messages: [{ role: 'user', content: '讲个故事' }],
   stream: true
 })
 
-for await (const chunk of stream) {
-  const content = chunk.choices[0]?.delta?.content
-  if (content) {
-    process.stdout.write(content)
+// 直接将 SSE 事件写入 HTTP 响应
+res.setHeader('Content-Type', 'text/event-stream')
+for await (const sse of stream) {
+  res.write(`event: ${sse.event}\ndata: ${JSON.stringify(sse.data)}\n\n`)
+}
+res.end()
+```
+
+### chatStreamRaw
+
+发送流式聊天请求并返回原始 IR 流事件。当你需要自定义流处理时使用此方法。
+
+```typescript
+async *chatStreamRaw(request: unknown): AsyncIterable<LLMStreamEvent>
+```
+
+#### 示例
+
+```typescript
+// 原始 IR 事件用于自定义处理
+for await (const event of bridge.chatStreamRaw(request)) {
+  if (event.type === 'content' && event.content?.delta) {
+    // 自定义内容增量处理
+    console.log('内容:', event.content.delta)
+  }
+  if (event.type === 'tool_call' && event.toolCall) {
+    // 自定义工具调用处理
+    console.log('工具调用:', event.toolCall.name)
   }
 }
 ```
@@ -375,7 +438,7 @@ console.log(`出站：${adapters.outbound.name} v${adapters.outbound.version}`)
 
 ## 模型映射
 
-当入站和出站适配器使用不同提供商时，模型名称需要映射。LLM Bridge 提供三种映射方式。
+当入站和出站适配器使用不同提供商时，模型名称需要映射。Amux 提供三种映射方式。
 
 ### 为什么需要模型映射？
 
@@ -793,9 +856,9 @@ graph TD
 这是一个展示错误处理、兼容性检查和流式传输的完整示例：
 
 ```typescript
-import { createBridge } from '@llm-bridge/core'
-import { openaiAdapter } from '@llm-bridge/adapter-openai'
-import { anthropicAdapter } from '@llm-bridge/adapter-anthropic'
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
 
 // 创建 bridge
 const bridge = createBridge({

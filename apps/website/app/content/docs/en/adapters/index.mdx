@@ -1,0 +1,189 @@
+---
+title: Adapters Overview
+description: All official adapters supported by Amux
+---
+
+Amux provides 7 official adapters supporting mainstream LLM providers. Each adapter is carefully designed to ensure perfect compatibility with provider APIs.
+
+## Official Adapters
+
+<Cards>
+  <Card title="OpenAI" href="/docs/en/adapters/openai">
+    Supports GPT-4, GPT-3.5 and more with full function calling and vision capabilities
+  </Card>
+  <Card title="Anthropic" href="/docs/en/adapters/anthropic">
+    Supports Claude 3.5 Sonnet, Claude 3 Opus and more
+  </Card>
+  <Card title="DeepSeek" href="/docs/en/adapters/deepseek">
+    Supports DeepSeek Chat and DeepSeek Coder models
+  </Card>
+  <Card title="Moonshot" href="/docs/en/adapters/moonshot">
+    Supports Moonshot AI's Kimi series models
+  </Card>
+  <Card title="Zhipu" href="/docs/en/adapters/zhipu">
+    Supports Zhipu AI's GLM series models
+  </Card>
+  <Card title="Qwen" href="/docs/en/adapters/qwen">
+    Supports Alibaba Cloud's Qwen series models
+  </Card>
+  <Card title="Gemini" href="/docs/en/adapters/gemini">
+    Supports Google Gemini Pro and Gemini Pro Vision
+  </Card>
+</Cards>
+
+## Feature Comparison
+
+| Adapter | Streaming | Tools | Vision | Multimodal | System Prompt | Tool Choice |
+|---------|-----------|-------|--------|------------|---------------|-------------|
+| OpenAI | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Anthropic | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| DeepSeek | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Moonshot | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Zhipu | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Qwen | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Gemini | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ |
+
+<Callout type="info">
+⚠️ indicates partial support or limitations
+</Callout>
+
+## Quick Start
+
+### Installation
+
+```bash tab="pnpm"
+# Install core package and required adapter
+pnpm add @amux/llm-bridge @amux/adapter-openai
+```
+
+```bash tab="npm"
+npm install @amux/llm-bridge @amux/adapter-openai
+```
+
+```bash tab="yarn"
+yarn add @amux/llm-bridge @amux/adapter-openai
+```
+
+### Usage
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+
+// Create bridge
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: process.env.ANTHROPIC_API_KEY
+  }
+})
+
+// Send request
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hello!' }]
+})
+```
+
+## Choosing an Adapter
+
+### By Feature
+
+**Need vision capabilities?**
+- OpenAI (GPT-4V)
+- Anthropic (Claude 3)
+- Qwen (Qwen-VL)
+- Gemini (Gemini Pro Vision)
+
+**Need strong coding capabilities?**
+- DeepSeek (DeepSeek Coder)
+- OpenAI (GPT-4)
+- Anthropic (Claude 3.5 Sonnet)
+
+**Need long context?**
+- Moonshot (Kimi - 200K tokens)
+- Anthropic (Claude - 200K tokens)
+- Gemini (Gemini Pro - 1M tokens)
+
+### By Price
+
+**Most Economical:**
+- DeepSeek - Excellent value
+- Qwen - Alibaba Cloud pricing
+
+**Mid-range:**
+- OpenAI GPT-3.5
+- Moonshot
+
+**Premium Models:**
+- OpenAI GPT-4
+- Anthropic Claude 3.5 Sonnet
+- Gemini Pro
+
+## OpenAI Compatibility
+
+The following adapters are based on OpenAI format and can be seamlessly swapped:
+
+- **DeepSeek** - Fully compatible with OpenAI API
+- **Moonshot** - Fully compatible with OpenAI API
+- **Zhipu** - Fully compatible with OpenAI API
+- **Qwen** - Partially compatible (minor differences)
+- **Gemini** - Partially compatible (requires format conversion)
+
+<Callout type="warn">
+While these adapters claim OpenAI compatibility, there may be differences in certain details (such as system message handling, streaming format, etc.). Please refer to each adapter's documentation.
+</Callout>
+
+## Creating Custom Adapters
+
+If you need to support other LLM providers, you can create a custom adapter:
+
+```typescript
+import type { LLMAdapter } from '@amux/llm-bridge'
+
+export const myAdapter: LLMAdapter = {
+  name: 'my-provider',
+  version: '1.0.0',
+  capabilities: {
+    streaming: true,
+    tools: true,
+    vision: false,
+    multimodal: false,
+    systemPrompt: true,
+    toolChoice: true
+  },
+  inbound: {
+    parseRequest: (request) => { /* ... */ },
+    parseResponse: (response) => { /* ... */ }
+  },
+  outbound: {
+    buildRequest: (ir) => { /* ... */ },
+    buildResponse: (ir) => { /* ... */ }
+  },
+  getInfo() {
+    return {
+      name: this.name,
+      version: this.version,
+      capabilities: this.capabilities
+    }
+  }
+}
+```
+
+See the [Adapter API documentation](/docs/en/api/adapters) for more details.
+
+## Next Steps
+
+<Cards>
+  <Card title="OpenAI Adapter" href="/docs/en/adapters/openai">
+    Learn how to use the OpenAI adapter
+  </Card>
+  <Card title="Anthropic Adapter" href="/docs/en/adapters/anthropic">
+    Learn how to use the Anthropic adapter
+  </Card>
+  <Card title="Adapter API" href="/docs/en/api/adapters">
+    View the complete Adapter API reference
+  </Card>
+</Cards>

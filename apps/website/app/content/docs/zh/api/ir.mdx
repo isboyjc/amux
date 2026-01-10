@@ -3,7 +3,7 @@ title: IR 格式 API
 description: IR 的完整 API 参考
 ---
 
-IR 是 LLM Bridge 的核心，它是所有适配器转换的统一格式，以提供商无关的方式捕获所有 LLM 功能，提供了所有适配器都能理解的通用语言，实现任何提供商格式之间的无缝转换。
+IR 是 Amux 的核心，它是所有适配器转换的统一格式，以提供商无关的方式捕获所有 LLM 功能，提供了所有适配器都能理解的通用语言，实现任何提供商格式之间的无缝转换。
 
 ## IR 类型层次结构
 
@@ -19,8 +19,6 @@ graph TD
 
     G --> H[TextContent]
     G --> I[ImageContent]
-    G --> J[ToolUseContent]
-    G --> K[ToolResultContent]
 
     C --> L[FunctionDefinition]
     L --> M[JSONSchema]
@@ -398,8 +396,6 @@ graph TD
 
     C --> D[TextContent]
     C --> E[ImageContent]
-    C --> F[ToolUseContent]
-    C --> G[ToolResultContent]
 
     E --> H[URL Source]
     E --> I[Base64 Source]
@@ -408,7 +404,7 @@ graph TD
     style C fill:#fff4e1
 ```
 
-<Tabs items={['Text', 'Image', 'Tool Use', 'Tool Result']}>
+<Tabs items={['Text', 'Image']}>
   <Tab value="Text">
     ### TextContent
 
@@ -464,57 +460,11 @@ graph TD
     }
     ```
   </Tab>
-
-  <Tab value="Tool Use">
-    ### ToolUseContent
-
-    Anthropic 风格的消息内容中的工具调用。
-
-    ```typescript
-    interface ToolUseContent {
-      type: 'tool_use'
-      id: string
-      name: string
-      input: unknown
-    }
-    ```
-
-    **示例：**
-    ```typescript
-    {
-      type: 'tool_use',
-      id: 'toolu_123',
-      name: 'get_weather',
-      input: { location: '北京' }
-    }
-    ```
-  </Tab>
-
-  <Tab value="Tool Result">
-    ### ToolResultContent
-
-    Anthropic 风格的消息内容中的工具结果。
-
-    ```typescript
-    interface ToolResultContent {
-      type: 'tool_result'
-      toolUseId: string
-      content: string | ContentPart[]
-      isError?: boolean
-    }
-    ```
-
-    **示例：**
-    ```typescript
-    {
-      type: 'tool_result',
-      toolUseId: 'toolu_123',
-      content: '{"temperature":22,"condition":"晴朗"}',
-      isError: false
-    }
-    ```
-  </Tab>
 </Tabs>
+
+<Callout type="info">
+**关于工具调用：** 工具调用使用 Message 对象上的 `toolCalls` 字段（OpenAI 风格）表示，而不是 ContentPart 类型。详见[工具调用流程](#工具调用流程)部分。
+</Callout>
 
 ## 生成参数
 
@@ -633,7 +583,11 @@ sequenceDiagram
     Model->>User: "北京今天晴朗，气温 22°C"
 ```
 
-### OpenAI 风格工具调用
+<Callout type="info">
+**统一的工具调用格式：** IR 使用 OpenAI 风格的工具调用作为统一格式。当从 Anthropic 格式转换时，适配器会自动将 `tool_use` 内容块转换为 `toolCalls`，将 `tool_result` 内容块转换为 tool 角色消息。
+</Callout>
+
+### IR 中的工具调用
 
 ```typescript
 // 1. 用户消息
@@ -662,48 +616,6 @@ sequenceDiagram
   content: '{"temperature":22,"condition":"晴朗"}',
   toolCallId: 'call_abc123',
   name: 'get_weather'
-}
-
-// 4. 最终助手响应
-{
-  role: 'assistant',
-  content: '北京今天晴朗，气温 22°C。'
-}
-```
-
-### Anthropic 风格工具调用
-
-```typescript
-// 1. 用户消息
-{
-  role: 'user',
-  content: '北京的天气怎么样？'
-}
-
-// 2. 带工具使用的助手
-{
-  role: 'assistant',
-  content: [
-    { type: 'text', text: '让我为您查询天气。' },
-    {
-      type: 'tool_use',
-      id: 'toolu_123',
-      name: 'get_weather',
-      input: { location: '北京' }
-    }
-  ]
-}
-
-// 3. 工具结果
-{
-  role: 'user',
-  content: [
-    {
-      type: 'tool_result',
-      toolUseId: 'toolu_123',
-      content: '{"temperature":22,"condition":"晴朗"}'
-    }
-  ]
 }
 
 // 4. 最终助手响应

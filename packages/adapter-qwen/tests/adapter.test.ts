@@ -63,9 +63,9 @@ describe('Qwen Adapter', () => {
 
       const ir = qwenAdapter.inbound.parseRequest(request)
 
-      expect(ir.messages).toHaveLength(2)
-      expect(ir.messages[0]?.role).toBe('system')
-      expect(ir.messages[0]?.content).toBe('You are a helpful assistant.')
+      expect(ir.system).toBe('You are a helpful assistant.')
+      expect(ir.messages).toHaveLength(1)
+      expect(ir.messages[0]?.role).toBe('user')
     })
 
     it('should parse request with vision content', () => {
@@ -89,7 +89,7 @@ describe('Qwen Adapter', () => {
       const content = ir.messages[0]?.content as Array<{ type: string }>
       expect(content).toHaveLength(2)
       expect(content[0]?.type).toBe('text')
-      expect(content[1]?.type).toBe('image_url')
+      expect(content[1]?.type).toBe('image')
     })
   })
 
@@ -154,19 +154,20 @@ describe('Qwen Adapter', () => {
             role: 'user' as const,
             content: [
               { type: 'text' as const, text: 'What is in this image?' },
-              { type: 'image_url' as const, image_url: { url: 'https://example.com/image.jpg' } },
+              { type: 'image' as const, source: { type: 'url' as const, url: 'https://example.com/image.jpg' } },
             ],
           },
         ],
         model: 'qwen-vl-plus',
       }
 
-      const request = qwenAdapter.outbound.buildRequest(ir)
+      const request = qwenAdapter.outbound.buildRequest(ir) as {
+        messages: Array<{ content: Array<{ type: string; text?: string; image_url?: { url: string } }> }>
+      }
 
-      // OpenAI adapter converts non-string content to JSON string
-      expect(typeof request.messages[0]?.content).toBe('string')
-      const content = JSON.parse(request.messages[0]?.content as string)
-      expect(Array.isArray(content)).toBe(true)
+      // Qwen adapter keeps multimodal content as array
+      expect(Array.isArray(request.messages[0]?.content)).toBe(true)
+      const content = request.messages[0]?.content
       expect(content).toHaveLength(2)
       expect(content[0]?.type).toBe('text')
       expect(content[1]?.type).toBe('image_url')

@@ -1,11 +1,11 @@
 {
-  "name": "@llm-bridge/adapter-deepseek",
+  "name": "@amux/adapter-deepseek",
   "version": "0.0.0",
-  "description": "DeepSeek adapter for LLM Bridge",
-  "keywords": ["llm", "deepseek", "adapter"],
+  "description": "DeepSeek adapter for Amux",
+  "keywords": ["amux", "llm", "deepseek", "adapter"],
   "repository": {
     "type": "git",
-    "url": "https://github.com/isboyjc/llm-bridge.git",
+    "url": "https://github.com/isboyjc/amux.git",
     "directory": "packages/adapter-deepseek"
   },
   "license": "MIT",
@@ -32,8 +32,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@llm-bridge/core": "workspace:*",
-    "@llm-bridge/adapter-openai": "workspace:*"
+    "@amux/llm-bridge": "workspace:*",
+    "@amux/adapter-openai": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.11.5",

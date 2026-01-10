@@ -9,5 +9,5 @@ export default defineConfig({
   clean: true,
   treeshake: true,
   minify: false,
-  external: ['@llm-bridge/core', '@llm-bridge/adapter-openai'],
+  external: ['@amux/llm-bridge', '@amux/adapter-openai'],
 })

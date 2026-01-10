@@ -1,28 +1,28 @@
 ---
 title: 简介
-description: 欢迎使用 LLM Bridge - 一个用于在不同 LLM 提供商 API 之间进行转换的统一基础设施。
+description: 欢迎使用 Amux - 一个用于在不同 LLM 提供商 API 之间进行转换的统一基础设施。
 ---
 
-## 什么是 LLM Bridge？
+## 什么是 Amux？
 
-LLM Bridge 是一个双向 API 适配器，允许您：
+Amux 是一个双向 API 适配器，允许您：
 
-- 🔄 **在任意 LLM 提供商格式之间转换** - OpenAI、Anthropic、DeepSeek、Kimi、Qwen、Gemini
+- 🔄 **在任意 LLM 提供商格式之间转换** - OpenAI、Anthropic、DeepSeek、Moonshot、Zhipu、Qwen、Gemini
 - 🎯 **类型安全的 TypeScript** - 所有适配器都有完整的类型定义
 - 🔌 **可扩展** - 轻松添加自定义适配器
 - ⚡ **零依赖** - 核心包没有运行时依赖
 - 📦 **可 Tree-shake** - 为现代打包工具优化
 
 <Callout type="info">
-LLM Bridge 实现了**真正的双向转换** - 接受任意格式的请求，调用任意提供商 API，并返回任意格式的响应。
+Amux 实现了**真正的双向转换** - 接受任意格式的请求，调用任意提供商 API，并返回任意格式的响应。
 </Callout>
 
 ## 快速示例
 
 ```typescript
-import { createBridge } from '@llm-bridge/core'
-import { openaiAdapter } from '@llm-bridge/adapter-openai'
-import { anthropicAdapter } from '@llm-bridge/adapter-anthropic'
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
 
 // 创建一个桥接：OpenAI 格式输入 → Anthropic API 输出
 const bridge = createBridge({
@@ -72,7 +72,7 @@ sequenceDiagram
   <Tab value="双向转换">
     ### 双向转换
 
-    与其他只提供统一接口的解决方案不同，LLM Bridge 允许您：
+    与其他只提供统一接口的解决方案不同，Amux 允许您：
 
     - **接受请求** - 任意提供商格式
     - **发送请求** - 任意提供商 API
@@ -104,7 +104,7 @@ sequenceDiagram
     - 桥接配置
 
     ```typescript
-    import type { LLMRequestIR, LLMResponseIR } from '@llm-bridge/core'
+    import type { LLMRequestIR, LLMResponseIR } from '@amux/llm-bridge'
 
     // 完全类型化的 IR
     const request: LLMRequestIR = {
@@ -128,7 +128,7 @@ sequenceDiagram
     - 常见模式的示例
 
     ```typescript
-    import type { LLMAdapter } from '@llm-bridge/core'
+    import type { LLMAdapter } from '@amux/llm-bridge'
 
     export const myAdapter: LLMAdapter = {
       name: 'my-provider',
@@ -163,8 +163,8 @@ sequenceDiagram
 
     ```typescript
     // 只有您使用的适配器会被打包
-    import { createBridge } from '@llm-bridge/core'
-    import { openaiAdapter } from '@llm-bridge/adapter-openai'
+    import { createBridge } from '@amux/llm-bridge'
+    import { openaiAdapter } from '@amux/adapter-openai'
     // 其他适配器不会包含在您的打包文件中
     ```
   </Tab>
@@ -184,7 +184,7 @@ sequenceDiagram
     - JSON 模式
 
     ```typescript
-    import { openaiAdapter } from '@llm-bridge/adapter-openai'
+    import { openaiAdapter } from '@amux/adapter-openai'
     ```
   </Tab>
 
@@ -199,7 +199,7 @@ sequenceDiagram
     - 系统提示
 
     ```typescript
-    import { anthropicAdapter } from '@llm-bridge/adapter-anthropic'
+    import { anthropicAdapter } from '@amux/adapter-anthropic'
     ```
   </Tab>
 
@@ -212,7 +212,7 @@ sequenceDiagram
     - 函数调用
 
     ```typescript
-    import { deepseekAdapter } from '@llm-bridge/adapter-deepseek'
+    import { deepseekAdapter } from '@amux/adapter-deepseek'
     ```
   </Tab>
 
@@ -221,14 +221,16 @@ sequenceDiagram
 
     其他可用的适配器：
 
-    - **Kimi** - 月之暗面
+    - **Moonshot** - 月之暗面
+    - **Zhipu** - 智谱 AI
     - **Qwen** - 阿里云
     - **Gemini** - Google AI
 
     ```typescript
-    import { kimiAdapter } from '@llm-bridge/adapter-kimi'
-    import { qwenAdapter } from '@llm-bridge/adapter-qwen'
-    import { geminiAdapter } from '@llm-bridge/adapter-gemini'
+    import { moonshotAdapter } from '@amux/adapter-moonshot'
+    import { zhipuAdapter } from '@amux/adapter-zhipu'
+    import { qwenAdapter } from '@amux/adapter-qwen'
+    import { geminiAdapter } from '@amux/adapter-google'
     ```
   </Tab>
 </Tabs>
@@ -236,7 +238,7 @@ sequenceDiagram
 ## 使用场景
 
 <Callout type="info">
-LLM Bridge 非常适合需要支持多个 LLM 提供商或在提供商之间迁移而无需更改应用代码的应用程序。
+Amux 非常适合需要支持多个 LLM 提供商或在提供商之间迁移而无需更改应用代码的应用程序。
 </Callout>
 
 - **多提供商支持** - 让用户选择他们喜欢的 LLM 提供商
@@ -249,7 +251,7 @@ LLM Bridge 非常适合需要支持多个 LLM 提供商或在提供商之间迁�
 
 <Cards>
   <Card title="安装" href="/docs/zh/installation">
-    开始使用 LLM Bridge
+    开始使用 Amux
   </Card>
   <Card title="快速开始" href="/docs/zh/quick-start">
     5 分钟构建您的第一个桥接

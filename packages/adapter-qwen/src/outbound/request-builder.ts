@@ -1,4 +1,4 @@
-import type { LLMRequestIR, ContentPart, ImageContent } from '@llm-bridge/core'
+import type { LLMRequestIR, ContentPart, ImageContent } from '@amux/llm-bridge'
 
 import type { QwenRequest, QwenMessage, QwenContentPart } from '../types'
 
@@ -92,8 +92,9 @@ export function buildRequest(ir: LLMRequestIR): QwenRequest {
   }
 
   // Qwen-specific: fps for video
-  if (ir.extensions?.qwen?.fps !== undefined) {
-    request.fps = ir.extensions.qwen.fps as number
+  const qwenExt = ir.extensions?.qwen as { fps?: number } | undefined
+  if (qwenExt?.fps !== undefined) {
+    request.fps = qwenExt.fps
   }
 
   // Add stream options for usage in streaming

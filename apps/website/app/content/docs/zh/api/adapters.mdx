@@ -3,7 +3,7 @@ title: 适配器 API
 description: LLM 适配器的完整 API 参考
 ---
 
-适配器是处理提供商特定格式与中间表示（IR）之间双向转换的核心组件，它使 LLM Bridge 能够通过实现两个方向来与任何提供商协作：**入站**（提供商 → IR）和**出站**（IR → 提供商）。
+适配器是处理提供商特定格式与中间表示（IR）之间双向转换的核心组件，它使 Amux 能够通过实现两个方向来与任何提供商协作：**入站**（提供商 → IR）和**出站**（IR → 提供商）。
 
 ## 适配器架构
 
@@ -402,7 +402,7 @@ console.log(`功能：`, info.capabilities)
 要创建自定义适配器，请实现 `LLMAdapter` 接口。
 
 <Callout type="info">
-遵循此模式以确保您的适配器与 LLM Bridge 无缝协作。
+遵循此模式以确保您的适配器与 Amux 无缝协作。
 </Callout>
 
 ### 分步指南
@@ -410,7 +410,7 @@ console.log(`功能：`, info.capabilities)
 <Tabs items={['1. 定义结构', '2. 实现入站', '3. 实现出站', '4. 添加元数据']}>
   <Tab value="1. 定义结构">
     ```typescript
-    import type { LLMAdapter } from '@llm-bridge/core'
+    import type { LLMAdapter } from '@amux/llm-bridge'
 
     export const myAdapter: LLMAdapter = {
       name: 'my-provider',
@@ -547,7 +547,7 @@ console.log(`功能：`, info.capabilities)
 ### 完整示例
 
 ```typescript
-import type { LLMAdapter, LLMRequestIR, LLMResponseIR } from '@llm-bridge/core'
+import type { LLMAdapter, LLMRequestIR, LLMResponseIR } from '@amux/llm-bridge'
 
 export const myAdapter: LLMAdapter = {
   name: 'my-provider',

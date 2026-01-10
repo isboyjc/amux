@@ -1,4 +1,4 @@
-# LLM Bridge
+# Amux
 
 > Bidirectional LLM API Adapter - A unified infrastructure for converting between different LLM provider APIs
 
@@ -14,7 +14,7 @@
 - **⚡ Zero Dependencies**: Core package has zero runtime dependencies
 - **🧪 Well-Tested**: High test coverage with comprehensive test suites
 - **📦 Tree-Shakable**: Optimized for modern bundlers
-- **🚀 6 Official Adapters**: OpenAI, Anthropic, DeepSeek, Kimi, Qwen, Gemini
+- **🚀 7 Official Adapters**: OpenAI, Anthropic, DeepSeek, Moonshot, Zhipu, Qwen, Gemini
 
 ## 🚀 Quick Start
 
@@ -22,15 +22,15 @@
 
 ```bash
 # Install core package and adapters you need
-pnpm add @llm-bridge/core @llm-bridge/adapter-openai @llm-bridge/adapter-anthropic
+pnpm add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
 ```
 
 ### Basic Usage
 
 ```typescript
-import { createBridge } from '@llm-bridge/core'
-import { openaiAdapter } from '@llm-bridge/adapter-openai'
-import { anthropicAdapter } from '@llm-bridge/adapter-anthropic'
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
 
 // Create a bridge: OpenAI format in → Anthropic API out
 const bridge = createBridge({
@@ -56,14 +56,15 @@ console.log(response.choices[0].message.content)
 
 | Package | Description | Version | Status |
 |---------|-------------|---------|--------|
-| [@llm-bridge/core](./packages/core) | Core IR and adapter interfaces | - | ✅ Stable |
-| [@llm-bridge/adapter-openai](./packages/adapter-openai) | OpenAI adapter | - | ✅ Stable |
-| [@llm-bridge/adapter-anthropic](./packages/adapter-anthropic) | Anthropic (Claude) adapter | - | ✅ Stable |
-| [@llm-bridge/adapter-deepseek](./packages/adapter-deepseek) | DeepSeek adapter | - | ✅ Stable |
-| [@llm-bridge/adapter-kimi](./packages/adapter-kimi) | Kimi (Moonshot) adapter | - | ✅ Stable |
-| [@llm-bridge/adapter-qwen](./packages/adapter-qwen) | Qwen adapter | - | ✅ Stable |
-| [@llm-bridge/adapter-gemini](./packages/adapter-gemini) | Google Gemini adapter | - | ✅ Stable |
-| [@llm-bridge/utils](./packages/utils) | Shared utilities | - | ✅ Stable |
+| [@amux/llm-bridge](./packages/llm-bridge) | Core IR and adapter interfaces | - | ✅ Stable |
+| [@amux/adapter-openai](./packages/adapter-openai) | OpenAI adapter | - | ✅ Stable |
+| [@amux/adapter-anthropic](./packages/adapter-anthropic) | Anthropic (Claude) adapter | - | ✅ Stable |
+| [@amux/adapter-deepseek](./packages/adapter-deepseek) | DeepSeek adapter | - | ✅ Stable |
+| [@amux/adapter-moonshot](./packages/adapter-moonshot) | Moonshot (Kimi) adapter | - | ✅ Stable |
+| [@amux/adapter-zhipu](./packages/adapter-zhipu) | Zhipu AI (GLM) adapter | - | ✅ Stable |
+| [@amux/adapter-qwen](./packages/adapter-qwen) | Qwen adapter | - | ✅ Stable |
+| [@amux/adapter-google](./packages/adapter-google) | Google Gemini adapter | - | ✅ Stable |
+| [@amux/utils](./packages/utils) | Shared utilities | - | ✅ Stable |
 
 ## 🏗️ Architecture
 
@@ -109,13 +110,13 @@ console.log(response.choices[0].message.content)
 ### All Adapters
 
 ```typescript
-import { createBridge } from '@llm-bridge/core'
-import { openaiAdapter } from '@llm-bridge/adapter-openai'
-import { anthropicAdapter } from '@llm-bridge/adapter-anthropic'
-import { deepseekAdapter } from '@llm-bridge/adapter-deepseek'
-import { kimiAdapter } from '@llm-bridge/adapter-kimi'
-import { qwenAdapter } from '@llm-bridge/adapter-qwen'
-import { geminiAdapter } from '@llm-bridge/adapter-gemini'
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { deepseekAdapter } from '@amux/adapter-deepseek'
+import { moonshotAdapter } from '@amux/adapter-moonshot'
+import { qwenAdapter } from '@amux/adapter-qwen'
+import { geminiAdapter } from '@amux/adapter-google'
 
 // OpenAI → Anthropic
 const bridge1 = createBridge({
@@ -182,7 +183,7 @@ const response = await bridge.chat({
 pnpm test
 
 # Run tests for specific package
-cd packages/core && pnpm test
+cd packages/llm-bridge && pnpm test
 
 # Run tests with coverage
 pnpm test:coverage
@@ -212,7 +213,7 @@ pnpm lint
 ✅ **MVP Complete!**
 
 - ✅ Core infrastructure
-- ✅ 6 official adapters (OpenAI, Anthropic, DeepSeek, Kimi, Qwen, Gemini)
+- ✅ 7 official adapters (OpenAI, Anthropic, DeepSeek, Moonshot, Zhipu, Qwen, Gemini)
 - ✅ Bidirectional conversion
 - ✅ Type-safe TypeScript
 - ✅ Unit tests
@@ -243,4 +244,4 @@ This project is inspired by the excellent work of:
 
 ---
 
-**Made with ❤️ by the LLM Bridge team**
+**Made with ❤️ by the Amux team**

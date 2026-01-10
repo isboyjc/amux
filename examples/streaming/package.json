@@ -1,5 +1,5 @@
 {
-  "name": "example-streaming",
+  "name": "@amux/example-streaming",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,9 +10,9 @@
     "clean": "rm -rf node_modules"
   },
   "dependencies": {
-    "@llm-bridge/core": "workspace:*",
-    "@llm-bridge/adapter-openai": "workspace:*",
-    "@llm-bridge/adapter-anthropic": "workspace:*"
+    "@amux/llm-bridge": "workspace:*",
+    "@amux/adapter-openai": "workspace:*",
+    "@amux/adapter-anthropic": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.7.0",

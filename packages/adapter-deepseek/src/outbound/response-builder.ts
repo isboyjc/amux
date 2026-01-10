@@ -1,4 +1,4 @@
-import type { LLMResponseIR, ContentPart } from '@llm-bridge/core'
+import type { LLMResponseIR, ContentPart } from '@amux/llm-bridge'
 
 import type { DeepSeekResponse } from '../types'
 
@@ -49,7 +49,7 @@ export function buildResponse(ir: LLMResponseIR): DeepSeekResponse {
           total_tokens: ir.usage.totalTokens,
           // DeepSeek-specific: cache tokens
           prompt_cache_hit_tokens: ir.usage.details?.cachedTokens,
-          prompt_cache_miss_tokens: ir.extensions?.deepseek?.promptCacheMissTokens as number | undefined,
+          prompt_cache_miss_tokens: (ir.extensions?.deepseek as { promptCacheMissTokens?: number } | undefined)?.promptCacheMissTokens,
           completion_tokens_details: ir.usage.details?.reasoningTokens
             ? {
                 reasoning_tokens: ir.usage.details.reasoningTokens,

@@ -33,10 +33,10 @@ describe('Anthropic Adapter', () => {
 
       const ir = anthropicAdapter.inbound.parseRequest(request)
 
-      expect(ir.messages).toHaveLength(2)
-      expect(ir.messages[0]?.role).toBe('system')
-      expect(ir.messages[0]?.content).toBe('You are a helpful assistant')
-      expect(ir.messages[1]?.role).toBe('user')
+      // System should be set in ir.system, not in messages
+      expect(ir.messages).toHaveLength(1)
+      expect(ir.system).toBe('You are a helpful assistant')
+      expect(ir.messages[0]?.role).toBe('user')
     })
 
     it('should parse request with tools', () => {

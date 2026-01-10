@@ -1,11 +1,11 @@
 {
-  "name": "@llm-bridge/adapter-qwen",
+  "name": "@amux/adapter-qwen",
   "version": "0.0.0",
-  "description": "Qwen adapter for LLM Bridge",
-  "keywords": ["llm", "qwen", "tongyi", "adapter"],
+  "description": "Qwen adapter for Amux",
+  "keywords": ["amux", "llm", "qwen", "tongyi", "adapter"],
   "repository": {
     "type": "git",
-    "url": "https://github.com/isboyjc/llm-bridge.git",
+    "url": "https://github.com/isboyjc/amux.git",
     "directory": "packages/adapter-qwen"
   },
   "license": "MIT",
@@ -32,8 +32,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@llm-bridge/core": "workspace:*",
-    "@llm-bridge/adapter-openai": "workspace:*"
+    "@amux/llm-bridge": "workspace:*",
+    "@amux/adapter-openai": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.11.5",

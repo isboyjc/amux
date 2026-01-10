@@ -1,11 +1,11 @@
 {
-  "name": "@llm-bridge/adapter-anthropic",
+  "name": "@amux/adapter-anthropic",
   "version": "0.0.0",
-  "description": "Anthropic adapter for LLM Bridge",
-  "keywords": ["llm", "anthropic", "claude", "adapter"],
+  "description": "Anthropic adapter for Amux",
+  "keywords": ["amux", "llm", "anthropic", "claude", "adapter"],
   "repository": {
     "type": "git",
-    "url": "https://github.com/isboyjc/llm-bridge.git",
+    "url": "https://github.com/isboyjc/amux.git",
     "directory": "packages/adapter-anthropic"
   },
   "license": "MIT",
@@ -32,7 +32,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@llm-bridge/core": "workspace:*"
+    "@amux/llm-bridge": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.11.5",

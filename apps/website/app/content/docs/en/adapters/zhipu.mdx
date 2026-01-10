@@ -1,0 +1,241 @@
+---
+title: Zhipu Adapter
+description: Use the Zhipu adapter to connect to Zhipu AI's GLM series models
+---
+
+The Zhipu adapter provides integration with the Zhipu AI API. Zhipu AI offers the GLM series of large language models, with an API that is fully compatible with the OpenAI format.
+
+## Installation
+
+```bash tab="pnpm"
+pnpm add @amux/llm-bridge @amux/adapter-zhipu
+```
+
+```bash tab="npm"
+npm install @amux/llm-bridge @amux/adapter-zhipu
+```
+
+## Basic Usage
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { zhipuAdapter } from '@amux/adapter-zhipu'
+
+const bridge = createBridge({
+  inbound: zhipuAdapter,
+  outbound: zhipuAdapter,
+  config: {
+    apiKey: process.env.ZHIPU_API_KEY
+  }
+})
+
+const response = await bridge.chat({
+  model: 'glm-4.7',
+  messages: [
+    { role: 'system', content: 'You are a helpful assistant.' },
+    { role: 'user', content: 'What is Amux?' }
+  ]
+})
+
+console.log(response.choices[0].message.content)
+```
+
+## Supported Models
+
+Zhipu AI offers various GLM models:
+
+| Model | Description |
+|-------|-------------|
+| glm-4.7 | Latest flagship model with best performance |
+| glm-4.6 | High-performance model balancing capability and cost |
+| glm-4.5 | Cost-effective model for everyday tasks |
+| glm-4v | Multimodal model supporting visual understanding |
+
+<Callout type="info">
+Zhipu AI models are continuously updated. Please refer to the official documentation for the latest model list.
+</Callout>
+
+## Key Features
+
+<Tabs items={['Basic Chat', 'Function Calling', 'Streaming']}>
+  <Tab value="Basic Chat">
+    ### Basic Chat
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'glm-4.7',
+      messages: [
+        { role: 'user', content: 'Tell me about Zhipu AI' }
+      ],
+      temperature: 0.7,
+      max_tokens: 1000
+    })
+    ```
+  </Tab>
+
+  <Tab value="Function Calling">
+    ### Function Calling
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'glm-4.7',
+      messages: [
+        { role: 'user', content: 'What time is it in Beijing?' }
+      ],
+      tools: [{
+        type: 'function',
+        function: {
+          name: 'get_current_time',
+          description: 'Get the current time for a specified city',
+          parameters: {
+            type: 'object',
+            properties: {
+              city: { type: 'string', description: 'City name' }
+            },
+            required: ['city']
+          }
+        }
+      }]
+    })
+    ```
+  </Tab>
+
+  <Tab value="Streaming">
+    ### Streaming
+
+    ```typescript
+    const stream = bridge.chatStream({
+      model: 'glm-4.7',
+      messages: [
+        { role: 'user', content: 'Tell me a story' }
+      ],
+      stream: true
+    })
+
+    for await (const chunk of stream) {
+      if (chunk.choices[0]?.delta?.content) {
+        process.stdout.write(chunk.choices[0].delta.content)
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Configuration Options
+
+```typescript
+const bridge = createBridge({
+  inbound: zhipuAdapter,
+  outbound: zhipuAdapter,
+  config: {
+    apiKey: process.env.ZHIPU_API_KEY,
+    baseURL: 'https://open.bigmodel.cn/api/paas', // Default value
+    timeout: 60000
+  }
+})
+```
+
+## Feature Support
+
+| Feature | Supported | Notes |
+|---------|-----------|-------|
+| Chat Completion | ✅ | Fully supported |
+| Streaming | ✅ | Fully supported |
+| Function Calling | ✅ | Fully supported |
+| Vision | ✅ | glm-4v supported |
+| System Prompt | ✅ | Fully supported |
+| JSON Mode | ✅ | Fully supported |
+| Web Search | ✅ | Supported |
+
+## Best Practices
+
+### 1. Choose the Right Model for Your Needs
+
+```typescript
+// Use cost-effective model for everyday tasks
+const quickResponse = await bridge.chat({
+  model: 'glm-4.5',
+  messages: [{ role: 'user', content: 'Hello' }]
+})
+
+// Use flagship model for complex tasks
+const complexTask = await bridge.chat({
+  model: 'glm-4.7',
+  messages: [
+    { role: 'user', content: 'Please analyze the performance issues in this code...' }
+  ]
+})
+```
+
+### 2. Use System Prompts to Optimize Output
+
+```typescript
+const response = await bridge.chat({
+  model: 'glm-4.7',
+  messages: [
+    {
+      role: 'system',
+      content: 'You are a professional technical documentation writer. Please answer questions in concise, professional language.'
+    },
+    {
+      role: 'user',
+      content: 'What is a RESTful API?'
+    }
+  ]
+})
+```
+
+### 3. Handle Multi-turn Conversations
+
+```typescript
+const messages = [
+  { role: 'user', content: 'First question' },
+  { role: 'assistant', content: 'First answer' },
+  { role: 'user', content: 'Follow-up question' }
+]
+
+const response = await bridge.chat({
+  model: 'glm-4.7',
+  messages
+})
+```
+
+## Converting with OpenAI
+
+Zhipu AI is fully compatible with the OpenAI format:
+
+```typescript
+import { openaiAdapter } from '@amux/adapter-openai'
+import { zhipuAdapter } from '@amux/adapter-zhipu'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: zhipuAdapter,
+  config: {
+    apiKey: process.env.ZHIPU_API_KEY
+  }
+})
+
+// Send requests using OpenAI format
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hello' }]
+})
+```
+
+## Related Resources
+
+- [Zhipu AI Official Website](https://www.zhipuai.cn/)
+- [Zhipu AI API Documentation](https://open.bigmodel.cn/dev/api)
+- [Zhipu AI Pricing](https://open.bigmodel.cn/pricing)
+
+## Next Steps
+
+<Cards>
+  <Card title="DeepSeek Adapter" href="/docs/en/adapters/deepseek">
+    Learn how to use DeepSeek models
+  </Card>
+  <Card title="Moonshot Adapter" href="/docs/en/adapters/moonshot">
+    Learn how to use Moonshot models
+  </Card>
+</Cards>

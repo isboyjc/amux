@@ -24,6 +24,7 @@ coverage/
 # IDE
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 *~
@@ -49,3 +50,9 @@ Thumbs.db
 # Changesets
 .changeset/*.md
 !.changeset/README.md
+
+# Temporary docs
+tmp-docs/
+
+# Misc
+prompt.md

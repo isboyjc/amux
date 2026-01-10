@@ -1,4 +1,4 @@
-import type { LLMRequestIR, ContentPart, ImageContent } from '@llm-bridge/core'
+import type { LLMRequestIR, ContentPart, ImageContent } from '@amux/llm-bridge'
 
 import type { OpenAIRequest, OpenAIMessage, OpenAIContentPart } from '../types'
 

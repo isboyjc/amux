@@ -5,7 +5,7 @@ import type {
   LLMStreamEvent,
   LLMErrorIR,
   AdapterInfo,
-} from '@llm-bridge/core'
+} from '@amux/llm-bridge'
 
 import { parseRequest } from './inbound/request-parser'
 import { parseResponse } from './inbound/response-parser'
@@ -13,6 +13,7 @@ import { parseStream } from './inbound/stream-parser'
 import { parseError } from './inbound/error-parser'
 import { buildRequest } from './outbound/request-builder'
 import { buildResponse } from './outbound/response-builder'
+import { createStreamBuilder } from './outbound/stream-builder'
 
 /**
  * DeepSeek adapter implementation
@@ -61,6 +62,8 @@ export const deepseekAdapter: LLMAdapter = {
     buildResponse: (ir: LLMResponseIR): unknown => {
       return buildResponse(ir)
     },
+
+    createStreamBuilder,
   },
 
   getInfo(): AdapterInfo {
@@ -70,8 +73,8 @@ export const deepseekAdapter: LLMAdapter = {
       capabilities: this.capabilities,
       endpoint: {
         baseUrl: 'https://api.deepseek.com',
-        chatPath: '/chat/completions',
-        modelsPath: '/models',
+        chatPath: '/v1/chat/completions',
+        modelsPath: '/v1/models',
       },
     }
   },

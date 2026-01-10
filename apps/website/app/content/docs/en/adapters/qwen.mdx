@@ -1,0 +1,273 @@
+---
+title: Qwen Adapter
+description: Use the Qwen adapter to connect to Alibaba Cloud's Qwen series models
+---
+
+The Qwen adapter provides integration with Alibaba Cloud's Qwen (Tongyi Qianwen) API, supporting text generation, vision understanding, and function calling.
+
+## Installation
+
+```bash tab="pnpm"
+pnpm add @amux/llm-bridge @amux/adapter-qwen
+```
+
+```bash tab="npm"
+npm install @amux/llm-bridge @amux/adapter-qwen
+```
+
+## Basic Usage
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { qwenAdapter } from '@amux/adapter-qwen'
+
+const bridge = createBridge({
+  inbound: qwenAdapter,
+  outbound: qwenAdapter,
+  config: {
+    apiKey: process.env.QWEN_API_KEY
+  }
+})
+
+const response = await bridge.chat({
+  model: 'qwen-turbo',
+  messages: [
+    { role: 'system', content: 'You are a helpful assistant.' },
+    { role: 'user', content: 'What is Amux?' }
+  ]
+})
+
+console.log(response.choices[0].message.content)
+```
+
+## Supported Models
+
+| Model | Description | Features |
+|-------|-------------|----------|
+| `qwen-turbo` | Fast model | Quick response, low cost |
+| `qwen-plus` | Enhanced model | Better performance |
+| `qwen-max` | Flagship model | Best performance |
+| `qwen-vl-plus` | Vision model | Image understanding |
+| `qwen-vl-max` | Vision flagship | Best vision capabilities |
+
+## Key Features
+
+<Tabs items={['Text Generation', 'Vision', 'Function Calling', 'Streaming']}>
+  <Tab value="Text Generation">
+    ### Text Generation
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'qwen-max',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a professional technical documentation writer.'
+        },
+        {
+          role: 'user',
+          content: 'Write a tutorial about TypeScript generics'
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 2000
+    })
+    ```
+  </Tab>
+
+  <Tab value="Vision">
+    ### Vision Understanding
+
+    Analyze images with Qwen-VL models:
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'qwen-vl-plus',
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: 'What is in this image?'
+          },
+          {
+            type: 'image',
+            image: 'https://example.com/image.jpg'
+          }
+        ]
+      }]
+    })
+    ```
+
+    <Callout type="info">
+    Qwen-VL supports multiple image formats including URL and Base64 encoding.
+    </Callout>
+  </Tab>
+
+  <Tab value="Function Calling">
+    ### Function Calling
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'qwen-plus',
+      messages: [
+        { role: 'user', content: 'What time is it in Beijing?' }
+      ],
+      tools: [{
+        type: 'function',
+        function: {
+          name: 'get_current_time',
+          description: 'Get the current time for a specified city',
+          parameters: {
+            type: 'object',
+            properties: {
+              city: { type: 'string' }
+            },
+            required: ['city']
+          }
+        }
+      }]
+    })
+    ```
+  </Tab>
+
+  <Tab value="Streaming">
+    ### Streaming
+
+    ```typescript
+    const stream = bridge.chatStream({
+      model: 'qwen-turbo',
+      messages: [
+        { role: 'user', content: 'Tell me a story' }
+      ],
+      stream: true
+    })
+
+    for await (const chunk of stream) {
+      if (chunk.choices[0]?.delta?.content) {
+        process.stdout.write(chunk.choices[0].delta.content)
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Configuration Options
+
+```typescript
+const bridge = createBridge({
+  inbound: qwenAdapter,
+  outbound: qwenAdapter,
+  config: {
+    apiKey: process.env.QWEN_API_KEY,
+    baseURL: 'https://dashscope.aliyuncs.com/api', // Default
+    timeout: 60000
+  }
+})
+```
+
+## Feature Support
+
+| Feature | Supported | Notes |
+|---------|-----------|-------|
+| Chat Completion | ✅ | Fully supported |
+| Streaming | ✅ | Fully supported |
+| Function Calling | ✅ | Fully supported |
+| Vision | ✅ | Qwen-VL series |
+| Multimodal | ✅ | Text + Image |
+| System Prompt | ✅ | Fully supported |
+
+## Best Practices
+
+### 1. Choose the Right Model
+
+```typescript
+// Quick responses use turbo
+const quickResponse = await bridge.chat({
+  model: 'qwen-turbo',
+  messages: [{ role: 'user', content: 'Simple question' }]
+})
+
+// Complex tasks use max
+const complexTask = await bridge.chat({
+  model: 'qwen-max',
+  messages: [{ role: 'user', content: 'Complex analysis task' }]
+})
+
+// Image understanding use vl series
+const imageAnalysis = await bridge.chat({
+  model: 'qwen-vl-plus',
+  messages: [{ role: 'user', content: [...] }]
+})
+```
+
+### 2. Optimize Chinese Processing
+
+```typescript
+// Qwen has excellent Chinese support
+const response = await bridge.chat({
+  model: 'qwen-max',
+  messages: [
+    {
+      role: 'system',
+      content: 'You are an assistant fluent in Chinese. Use natural Chinese expressions.'
+    },
+    {
+      role: 'user',
+      content: 'Explain the principles of quantum computing in Chinese'
+    }
+  ]
+})
+```
+
+### 3. Handle Multimodal Input
+
+```typescript
+const response = await bridge.chat({
+  model: 'qwen-vl-max',
+  messages: [{
+    role: 'user',
+    content: [
+      { type: 'text', text: 'Analyze this chart and summarize the key points' },
+      { type: 'image', image: 'https://example.com/chart.png' }
+    ]
+  }]
+})
+```
+
+## Converting with OpenAI
+
+```typescript
+import { openaiAdapter } from '@amux/adapter-openai'
+import { qwenAdapter } from '@amux/adapter-qwen'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: qwenAdapter,
+  config: {
+    apiKey: process.env.QWEN_API_KEY
+  }
+})
+
+// Send request in OpenAI format
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hello' }]
+})
+```
+
+## Related Resources
+
+- [Qwen API Documentation](https://help.aliyun.com/zh/dashscope/)
+- [Qwen Pricing](https://help.aliyun.com/zh/dashscope/developer-reference/tongyi-qianwen-metering-and-billing)
+
+## Next Steps
+
+<Cards>
+  <Card title="Gemini Adapter" href="/docs/en/adapters/gemini">
+    Learn how to use Google Gemini models
+  </Card>
+  <Card title="OpenAI Adapter" href="/docs/en/adapters/openai">
+    Learn about OpenAI compatible format
+  </Card>
+</Cards>

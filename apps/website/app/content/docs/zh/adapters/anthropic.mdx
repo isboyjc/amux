@@ -8,18 +8,18 @@ Anthropic 适配器提供了与 Anthropic Claude API 的完整集成，支持 Me
 ## 安装
 
 ```bash tab="pnpm"
-pnpm add @llm-bridge/core @llm-bridge/adapter-anthropic
+pnpm add @amux/llm-bridge @amux/adapter-anthropic
 ```
 
 ```bash tab="npm"
-npm install @llm-bridge/core @llm-bridge/adapter-anthropic
+npm install @amux/llm-bridge @amux/adapter-anthropic
 ```
 
 ## 基本使用
 
 ```typescript
-import { createBridge } from '@llm-bridge/core'
-import { anthropicAdapter } from '@llm-bridge/adapter-anthropic'
+import { createBridge } from '@amux/llm-bridge'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
 
 const bridge = createBridge({
   inbound: anthropicAdapter,
@@ -33,7 +33,7 @@ const response = await bridge.chat({
   model: 'claude-3-5-sonnet-20241022',
   max_tokens: 1024,
   messages: [
-    { role: 'user', content: '什么是 LLM Bridge？' }
+    { role: 'user', content: '什么是 Amux？' }
   ]
 })
 
@@ -185,8 +185,8 @@ const bridge = createBridge({
 ### OpenAI → Anthropic
 
 ```typescript
-import { openaiAdapter } from '@llm-bridge/adapter-openai'
-import { anthropicAdapter } from '@llm-bridge/adapter-anthropic'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
 
 const bridge = createBridge({
   inbound: openaiAdapter,

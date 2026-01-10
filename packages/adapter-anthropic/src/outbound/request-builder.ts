@@ -1,4 +1,4 @@
-import type { LLMRequestIR, Message, ContentPart } from '@llm-bridge/core'
+import type { LLMRequestIR, Message, ContentPart } from '@amux/llm-bridge'
 
 import type { AnthropicRequest, AnthropicMessage, AnthropicContent } from '../types'
 
@@ -6,13 +6,16 @@ import type { AnthropicRequest, AnthropicMessage, AnthropicContent } from '../ty
  * Build Anthropic request from IR
  */
 export function buildRequest(ir: LLMRequestIR): AnthropicRequest {
-  // Extract system message
-  let system: string | undefined
+  // Use ir.system first, then extract from messages as fallback
+  let system: string | undefined = ir.system
   const messages: Message[] = []
 
   for (const msg of ir.messages) {
     if (msg.role === 'system') {
-      system = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+      // Fallback: extract system from messages if ir.system is not set
+      if (!system) {
+        system = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+      }
     } else {
       messages.push(msg)
     }
@@ -49,19 +52,58 @@ export function buildRequest(ir: LLMRequestIR): AnthropicRequest {
 }
 
 function buildMessage(msg: Message): AnthropicMessage {
+  const content: AnthropicContent[] = []
+
+  // Build content from message content
   if (typeof msg.content === 'string') {
-    return {
-      role: msg.role === 'user' ? 'user' : 'assistant',
-      content: msg.content,
+    if (msg.content) {
+      content.push({ type: 'text', text: msg.content })
+    }
+  } else if (Array.isArray(msg.content)) {
+    for (const part of msg.content) {
+      content.push(buildContentPart(part))
     }
   }
 
-  // Build content parts
-  const content: AnthropicContent[] = msg.content.map((part) => buildContentPart(part))
+  // Handle tool role messages (tool results)
+  if (msg.role === 'tool' && msg.toolCallId) {
+    const resultContent = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+    return {
+      role: 'user',
+      content: [{
+        type: 'tool_result',
+        tool_use_id: msg.toolCallId,
+        content: resultContent,
+      }],
+    }
+  }
+
+  // Handle toolCalls (OpenAI-style) - convert to Anthropic tool_use content
+  if (msg.toolCalls && msg.toolCalls.length > 0) {
+    for (const toolCall of msg.toolCalls) {
+      content.push({
+        type: 'tool_use',
+        id: toolCall.id,
+        name: toolCall.function.name,
+        input: JSON.parse(toolCall.function.arguments),
+      })
+    }
+  }
+
+  // If no content, add empty text to avoid empty content array
+  if (content.length === 0) {
+    content.push({ type: 'text', text: '' })
+  }
+
+  // Simplify to string if only one text content
+  const firstContent = content[0]
+  const simplifiedContent = content.length === 1 && firstContent?.type === 'text'
+    ? firstContent.text
+    : content
 
   return {
     role: msg.role === 'user' ? 'user' : 'assistant',
-    content,
+    content: simplifiedContent,
   }
 }
 
@@ -86,20 +128,6 @@ function buildContentPart(part: ContentPart): AnthropicContent {
                 type: 'url',
                 url: part.source.url,
               },
-      }
-    case 'tool_use':
-      return {
-        type: 'tool_use',
-        id: part.id,
-        name: part.name,
-        input: part.input,
-      }
-    case 'tool_result':
-      return {
-        type: 'tool_result',
-        tool_use_id: part.toolUseId,
-        content: part.content,
-        is_error: part.isError,
       }
     default:
       return {

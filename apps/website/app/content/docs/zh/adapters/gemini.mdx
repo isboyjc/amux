@@ -8,18 +8,18 @@ Gemini 适配器提供了与 Google Gemini API 的集成，支持文本生成、
 ## 安装
 
 ```bash tab="pnpm"
-pnpm add @llm-bridge/core @llm-bridge/adapter-gemini
+pnpm add @amux/llm-bridge @amux/adapter-google
 ```
 
 ```bash tab="npm"
-npm install @llm-bridge/core @llm-bridge/adapter-gemini
+npm install @amux/llm-bridge @amux/adapter-google
 ```
 
 ## 基本使用
 
 ```typescript
-import { createBridge } from '@llm-bridge/core'
-import { geminiAdapter } from '@llm-bridge/adapter-gemini'
+import { createBridge } from '@amux/llm-bridge'
+import { geminiAdapter } from '@amux/adapter-google'
 
 const bridge = createBridge({
   inbound: geminiAdapter,
@@ -33,7 +33,7 @@ const response = await bridge.chat({
   model: 'gemini-pro',
   contents: [{
     role: 'user',
-    parts: [{ text: '什么是 LLM Bridge？' }]
+    parts: [{ text: '什么是 Amux？' }]
   }]
 })
 
@@ -41,7 +41,7 @@ console.log(response.candidates[0].content.parts[0].text)
 ```
 
 <Callout type="warn">
-Gemini API 使用不同的请求格式（`contents` 而不是 `messages`）。LLM Bridge 会自动处理格式转换。
+Gemini API 使用不同的请求格式（`contents` 而不是 `messages`）。Amux 会自动处理格式转换。
 </Callout>
 
 ## 支持的模型
@@ -274,8 +274,8 @@ const bookAnalysis = await bridge.chat({
 ## 与 OpenAI 互转
 
 ```typescript
-import { openaiAdapter } from '@llm-bridge/adapter-openai'
-import { geminiAdapter } from '@llm-bridge/adapter-gemini'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { geminiAdapter } from '@amux/adapter-google'
 
 const bridge = createBridge({
   inbound: openaiAdapter,
@@ -286,7 +286,7 @@ const bridge = createBridge({
 })
 
 // 使用 OpenAI 格式发送请求
-// LLM Bridge 会自动转换为 Gemini 格式
+// Amux 会自动转换为 Gemini 格式
 const response = await bridge.chat({
   model: 'gpt-4',
   messages: [{ role: 'user', content: '你好' }]

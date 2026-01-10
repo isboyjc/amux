@@ -6,7 +6,7 @@ import type {
   ContentPart,
   TextContent,
   ImageContent,
-} from '@llm-bridge/core'
+} from '@amux/llm-bridge'
 
 import type { DeepSeekRequest, DeepSeekMessage, DeepSeekTool, DeepSeekContentPart } from '../types'
 

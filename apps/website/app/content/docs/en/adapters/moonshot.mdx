@@ -1,0 +1,248 @@
+---
+title: Moonshot Adapter
+description: Use the Moonshot adapter to connect to Moonshot AI's Kimi series models
+---
+
+The Moonshot adapter provides integration with the Moonshot AI API. Moonshot is known for its ultra-long context (200K tokens) and is fully compatible with OpenAI format.
+
+## Installation
+
+```bash tab="pnpm"
+pnpm add @amux/llm-bridge @amux/adapter-moonshot
+```
+
+```bash tab="npm"
+npm install @amux/llm-bridge @amux/adapter-moonshot
+```
+
+## Basic Usage
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { moonshotAdapter } from '@amux/adapter-moonshot'
+
+const bridge = createBridge({
+  inbound: moonshotAdapter,
+  outbound: moonshotAdapter,
+  config: {
+    apiKey: process.env.MOONSHOT_API_KEY
+  }
+})
+
+const response = await bridge.chat({
+  model: 'moonshot-v1-8k',
+  messages: [
+    { role: 'system', content: 'You are Kimi, an AI assistant provided by Moonshot AI.' },
+    { role: 'user', content: 'What is Amux?' }
+  ]
+})
+
+console.log(response.choices[0].message.content)
+```
+
+## Supported Models
+
+| Model | Context Length | Description |
+|-------|----------------|-------------|
+| `moonshot-v1-8k` | 8K | Standard context model |
+| `kimi-k2-0905-preview` | - | Kimi K2 preview |
+| `kimi-k2-thinking` | - | Kimi K2 thinking model |
+
+<Callout type="info">
+Moonshot's key feature is ultra-long context support, ideal for processing long documents and conversations.
+</Callout>
+
+## Key Features
+
+<Tabs items={['Long Context', 'Function Calling', 'Streaming']}>
+  <Tab value="Long Context">
+    ### Ultra-Long Context
+
+    Moonshot supports ultra-long context:
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'moonshot-v1-8k',
+      messages: [
+        {
+          role: 'user',
+          content: `Please summarize this long document:\n\n${longDocument}`
+        }
+      ]
+    })
+    ```
+
+    **Use Cases:**
+    - Long document analysis and summarization
+    - Multi-turn long conversations
+    - Codebase analysis
+    - Academic paper reading
+  </Tab>
+
+  <Tab value="Function Calling">
+    ### Function Calling
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'moonshot-v1-8k',
+      messages: [
+        { role: 'user', content: 'What time is it in Beijing?' }
+      ],
+      tools: [{
+        type: 'function',
+        function: {
+          name: 'get_current_time',
+          description: 'Get the current time for a specified city',
+          parameters: {
+            type: 'object',
+            properties: {
+              city: { type: 'string', description: 'City name' }
+            },
+            required: ['city']
+          }
+        }
+      }]
+    })
+    ```
+  </Tab>
+
+  <Tab value="Streaming">
+    ### Streaming
+
+    ```typescript
+    const stream = bridge.chatStream({
+      model: 'moonshot-v1-8k',
+      messages: [
+        { role: 'user', content: 'Tell me a story' }
+      ],
+      stream: true
+    })
+
+    for await (const chunk of stream) {
+      if (chunk.choices[0]?.delta?.content) {
+        process.stdout.write(chunk.choices[0].delta.content)
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Configuration Options
+
+```typescript
+const bridge = createBridge({
+  inbound: moonshotAdapter,
+  outbound: moonshotAdapter,
+  config: {
+    apiKey: process.env.MOONSHOT_API_KEY,
+    baseURL: 'https://api.moonshot.cn', // Default
+    timeout: 60000
+  }
+})
+```
+
+## Feature Support
+
+| Feature | Supported | Notes |
+|---------|-----------|-------|
+| Chat Completion | ✅ | Fully supported |
+| Streaming | ✅ | Fully supported |
+| Function Calling | ✅ | Fully supported |
+| Long Context | ✅ | Ultra-long context support |
+| Vision | ❌ | Not supported |
+| System Prompt | ✅ | Fully supported |
+
+## Best Practices
+
+### 1. Choose the Right Model
+
+```typescript
+// Short conversations use 8K model (faster and cheaper)
+const shortChat = await bridge.chat({
+  model: 'moonshot-v1-8k',
+  messages: [{ role: 'user', content: 'Hello' }]
+})
+
+// Complex reasoning use thinking model
+const complexTask = await bridge.chat({
+  model: 'kimi-k2-thinking',
+  messages: [
+    { role: 'user', content: 'Please analyze this complex problem...' }
+  ]
+})
+```
+
+### 2. Optimize Long Document Processing
+
+```typescript
+const response = await bridge.chat({
+  model: 'moonshot-v1-8k',
+  messages: [
+    {
+      role: 'system',
+      content: 'You are a professional document analysis assistant. Provide concise, structured summaries.'
+    },
+    {
+      role: 'user',
+      content: `Please summarize the key points of this document:\n\n${document}`
+    }
+  ],
+  temperature: 0.3 // Lower temperature for more accurate summaries
+})
+```
+
+### 3. Handle Multi-turn Conversations
+
+```typescript
+// Moonshot supports long conversation history
+const messages = [
+  { role: 'user', content: 'First question' },
+  { role: 'assistant', content: 'First answer' },
+  // ... can have many turns
+  { role: 'user', content: 'Latest question' }
+]
+
+const response = await bridge.chat({
+  model: 'moonshot-v1-8k',
+  messages
+})
+```
+
+## Converting with OpenAI
+
+Moonshot is fully compatible with OpenAI format:
+
+```typescript
+import { openaiAdapter } from '@amux/adapter-openai'
+import { moonshotAdapter } from '@amux/adapter-moonshot'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: moonshotAdapter,
+  config: {
+    apiKey: process.env.MOONSHOT_API_KEY
+  }
+})
+
+// Send request in OpenAI format
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hello' }]
+})
+```
+
+## Related Resources
+
+- [Moonshot API Documentation](https://platform.moonshot.cn/docs)
+- [Moonshot Pricing](https://platform.moonshot.cn/pricing)
+
+## Next Steps
+
+<Cards>
+  <Card title="Qwen Adapter" href="/docs/en/adapters/qwen">
+    Learn how to use Qwen models
+  </Card>
+  <Card title="DeepSeek Adapter" href="/docs/en/adapters/deepseek">
+    Learn how to use DeepSeek models
+  </Card>
+</Cards>

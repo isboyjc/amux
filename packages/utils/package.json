@@ -1,11 +1,11 @@
 {
-  "name": "@llm-bridge/utils",
+  "name": "@amux/utils",
   "version": "0.0.0",
-  "description": "Shared utilities for LLM Bridge",
-  "keywords": ["llm", "utils"],
+  "description": "Shared utilities for Amux",
+  "keywords": ["amux", "llm", "utils"],
   "repository": {
     "type": "git",
-    "url": "https://github.com/isboyjc/llm-bridge.git",
+    "url": "https://github.com/isboyjc/amux.git",
     "directory": "packages/utils"
   },
   "license": "MIT",

@@ -1,0 +1,237 @@
+---
+title: DeepSeek Adapter
+description: Use the DeepSeek adapter to connect to DeepSeek Chat and DeepSeek Coder models
+---
+
+The DeepSeek adapter provides integration with the DeepSeek API. DeepSeek API is fully compatible with OpenAI format and offers high-value AI services.
+
+## Installation
+
+```bash tab="pnpm"
+pnpm add @amux/llm-bridge @amux/adapter-deepseek
+```
+
+```bash tab="npm"
+npm install @amux/llm-bridge @amux/adapter-deepseek
+```
+
+## Basic Usage
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { deepseekAdapter } from '@amux/adapter-deepseek'
+
+const bridge = createBridge({
+  inbound: deepseekAdapter,
+  outbound: deepseekAdapter,
+  config: {
+    apiKey: process.env.DEEPSEEK_API_KEY
+  }
+})
+
+const response = await bridge.chat({
+  model: 'deepseek-chat',
+  messages: [
+    { role: 'system', content: 'You are a helpful assistant.' },
+    { role: 'user', content: 'What is Amux?' }
+  ]
+})
+
+console.log(response.choices[0].message.content)
+```
+
+## Supported Models
+
+| Model | Description | Features |
+|-------|-------------|----------|
+| `deepseek-chat` | General chat model | High value, suitable for daily conversations |
+| `deepseek-coder` | Code-specialized model | Focused on code generation and understanding |
+| `deepseek-reasoner` | Reasoning model | Advanced reasoning capabilities |
+
+## Key Features
+
+<Tabs items={['Code Generation', 'Function Calling', 'Streaming']}>
+  <Tab value="Code Generation">
+    ### Code Generation
+
+    DeepSeek Coder is optimized for coding tasks:
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'deepseek-coder',
+      messages: [
+        {
+          role: 'user',
+          content: 'Write a quicksort function in TypeScript'
+        }
+      ],
+      temperature: 0.3 // Lower temperature for more deterministic code
+    })
+
+    console.log(response.choices[0].message.content)
+    ```
+  </Tab>
+
+  <Tab value="Function Calling">
+    ### Function Calling
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'deepseek-chat',
+      messages: [
+        { role: 'user', content: 'What time is it in Beijing?' }
+      ],
+      tools: [{
+        type: 'function',
+        function: {
+          name: 'get_current_time',
+          description: 'Get the current time for a specified city',
+          parameters: {
+            type: 'object',
+            properties: {
+              city: { type: 'string' }
+            },
+            required: ['city']
+          }
+        }
+      }]
+    })
+    ```
+  </Tab>
+
+  <Tab value="Streaming">
+    ### Streaming
+
+    ```typescript
+    const stream = bridge.chatStream({
+      model: 'deepseek-chat',
+      messages: [
+        { role: 'user', content: 'Tell me a story' }
+      ],
+      stream: true
+    })
+
+    for await (const chunk of stream) {
+      if (chunk.choices[0]?.delta?.content) {
+        process.stdout.write(chunk.choices[0].delta.content)
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Configuration Options
+
+```typescript
+const bridge = createBridge({
+  inbound: deepseekAdapter,
+  outbound: deepseekAdapter,
+  config: {
+    apiKey: process.env.DEEPSEEK_API_KEY,
+    baseURL: 'https://api.deepseek.com', // Default
+    timeout: 60000
+  }
+})
+```
+
+## Converting with OpenAI
+
+DeepSeek is fully compatible with OpenAI format:
+
+```typescript
+import { openaiAdapter } from '@amux/adapter-openai'
+import { deepseekAdapter } from '@amux/adapter-deepseek'
+
+// OpenAI format → DeepSeek API
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: deepseekAdapter,
+  config: {
+    apiKey: process.env.DEEPSEEK_API_KEY
+  }
+})
+
+// Send request in OpenAI format
+const response = await bridge.chat({
+  model: 'gpt-4', // Will be mapped to deepseek-chat
+  messages: [{ role: 'user', content: 'Hello' }]
+})
+```
+
+## Feature Support
+
+| Feature | Supported | Notes |
+|---------|-----------|-------|
+| Chat Completion | ✅ | Fully supported |
+| Streaming | ✅ | Fully supported |
+| Function Calling | ✅ | Fully supported |
+| Vision | ❌ | Not supported |
+| System Prompt | ✅ | Fully supported |
+| Reasoning | ✅ | deepseek-reasoner model |
+
+## Advantages
+
+- **High Value**: Much cheaper than GPT-4 with comparable performance
+- **Strong Coding**: DeepSeek Coder excels at coding tasks
+- **OpenAI Compatible**: Can seamlessly replace OpenAI API
+- **Chinese Friendly**: Excellent Chinese language support
+
+## Best Practices
+
+### 1. Choose the Right Model
+
+```typescript
+// Daily conversations use deepseek-chat
+const chatResponse = await bridge.chat({
+  model: 'deepseek-chat',
+  messages: [{ role: 'user', content: 'Tell me about yourself' }]
+})
+
+// Coding tasks use deepseek-coder
+const codeResponse = await bridge.chat({
+  model: 'deepseek-coder',
+  messages: [{ role: 'user', content: 'Write a binary search algorithm' }]
+})
+
+// Complex reasoning use deepseek-reasoner
+const reasoningResponse = await bridge.chat({
+  model: 'deepseek-reasoner',
+  messages: [{ role: 'user', content: 'Solve this complex problem...' }]
+})
+```
+
+### 2. Optimize Code Generation
+
+```typescript
+const response = await bridge.chat({
+  model: 'deepseek-coder',
+  messages: [
+    {
+      role: 'system',
+      content: 'You are a professional programmer. Generate clean, efficient, well-commented code.'
+    },
+    {
+      role: 'user',
+      content: 'Implement an LRU cache in Python'
+    }
+  ],
+  temperature: 0.2, // Low temperature for more deterministic code
+  max_tokens: 1000
+})
+```
+
+## Related Resources
+
+- [DeepSeek API Documentation](https://api-docs.deepseek.com/)
+- [DeepSeek Pricing](https://api-docs.deepseek.com/pricing)
+
+## Next Steps
+
+<Cards>
+  <Card title="Moonshot Adapter" href="/docs/en/adapters/moonshot">
+    Learn how to use Moonshot models
+  </Card>
+  <Card title="OpenAI Adapter" href="/docs/en/adapters/openai">
+    Learn about OpenAI compatible format
+  </Card>
+</Cards>

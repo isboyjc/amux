@@ -1,4 +1,4 @@
-import type { LLMErrorIR, ErrorType } from '@llm-bridge/core'
+import type { LLMErrorIR, ErrorType } from '@amux/llm-bridge'
 
 import type { QwenError } from '../types'
 

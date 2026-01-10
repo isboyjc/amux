@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-LLM Bridge is a bidirectional LLM API adapter that enables seamless conversion between different LLM provider APIs. It uses an Intermediate Representation (IR) pattern to convert between any provider format (OpenAI, Anthropic, DeepSeek, Kimi, Qwen, Gemini).
+Amux is a bidirectional LLM API adapter that enables seamless conversion between different LLM provider APIs. It uses an Intermediate Representation (IR) pattern to convert between any provider format (OpenAI, Anthropic, DeepSeek, Moonshot, Qwen, Gemini).
 
 **Key Architecture**: Provider Format → Inbound Adapter → IR → Outbound Adapter → Target Provider Format
 
@@ -16,10 +16,10 @@ LLM Bridge is a bidirectional LLM API adapter that enables seamless conversion b
 pnpm build
 
 # Build specific package
-cd packages/core && pnpm build
+cd packages/llm-bridge && pnpm build
 
 # Watch mode for development
-cd packages/core && pnpm dev
+cd packages/llm-bridge && pnpm dev
 ```
 
 ### Testing
@@ -28,15 +28,15 @@ cd packages/core && pnpm dev
 pnpm test
 
 # Run tests for specific package
-cd packages/core && pnpm test
-pnpm --filter @llm-bridge/core test
+cd packages/llm-bridge && pnpm test
+pnpm --filter @amux/llm-bridge test
 
 # Watch mode
-cd packages/core && pnpm test:watch
+cd packages/llm-bridge && pnpm test:watch
 
 # Coverage (target: 80%+)
 pnpm test:coverage
-cd packages/core && pnpm test:coverage
+cd packages/llm-bridge && pnpm test:coverage
 ```
 
 **Test Status:**
@@ -44,8 +44,8 @@ cd packages/core && pnpm test:coverage
 - ✅ OpenAI adapter: All tests passing
 - ✅ Anthropic adapter: All tests passing
 - ✅ DeepSeek adapter: All tests passing
+- ✅ Moonshot adapter: All tests passing
 - ⚠️ Gemini adapter: Tests failing (request parsing, stream parsing issues)
-- ⚠️ Kimi adapter: Tests failing (system message handling, stream parsing)
 - ⚠️ Qwen adapter: Tests failing (system message handling, vision content, stream parsing)
 
 ### Type Checking & Linting
@@ -87,13 +87,60 @@ pnpm start:website
 
 This is a pnpm workspace monorepo managed by Nx:
 
-- **packages/core**: Core IR definitions, adapter interfaces, bridge orchestration, HTTP client
-- **packages/utils**: Shared utilities (SSE stream parsing, error handling)
-- **packages/adapter-{provider}**: Official adapters (openai, anthropic, deepseek, kimi, qwen, gemini)
+- **packages/llm-bridge**: Core IR definitions, adapter interfaces, bridge orchestration, HTTP client (@amux/llm-bridge)
+- **packages/utils**: Shared utilities (SSE stream parsing, error handling) (@amux/utils)
+- **packages/adapter-{provider}**: Official adapters (@amux/adapter-openai, @amux/adapter-anthropic, etc.)
 - **apps/website**: Documentation site (fumadocs)
+- **apps/proxy**: Proxy server for testing
 - **examples/**: Usage examples
 
 ## Core Architecture Concepts
+
+### Architecture Layer Principles
+
+The project follows strict separation of concerns across layers:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  User Application Layer (HTTP/Protocol)                     │
+│  - HTTP response handling                                   │
+│  - Protocol-specific markers (e.g., [DONE] for SSE)         │
+│  - Connection management                                    │
+├─────────────────────────────────────────────────────────────┤
+│  Bridge Layer (Orchestration)                               │
+│  - Request/response flow orchestration                      │
+│  - Model mapping                                            │
+│  - Cross-adapter compatibility checks                       │
+│  - Generic/common logic shared across all adapters          │
+│  - Filter out protocol-level details from adapters          │
+├─────────────────────────────────────────────────────────────┤
+│  Adapter Layer (Provider ↔ IR Conversion)                   │
+│  - ONLY handles its own provider format ↔ IR conversion     │
+│  - NO cross-adapter logic or dependencies                   │
+│  - Correctly express its own protocol format                │
+│  - Provider-specific quirks handled here                    │
+├─────────────────────────────────────────────────────────────┤
+│  IR Layer (Intermediate Representation)                     │
+│  - Unified data structures                                  │
+│  - Provider-agnostic                                        │
+│  - Standard event types (start, content, reasoning, end)    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Key Rules:**
+
+1. **Adapter Isolation**: Each adapter ONLY knows about its own provider format. Never add logic in one adapter that handles another adapter's specifics.
+
+2. **IR as Contract**: IR types are the contract between adapters. Features like `reasoning` are standard IR types, not provider-specific.
+
+3. **Protocol vs IR**: Protocol-level concerns (like `[DONE]` SSE marker) are expressed by adapters but filtered by Bridge. Adapters correctly represent their protocol, Bridge filters protocol details, users handle protocol markers in HTTP layer.
+
+4. **Bridge for Common Logic**: Any logic that applies across multiple adapters belongs in Bridge, not duplicated in each adapter. This includes filtering protocol-level markers like `[DONE]`.
+
+**Example - SSE [DONE] marker handling:**
+- Adapter layer: `finalize()` returns `[DONE]` (correct protocol representation)
+- Bridge layer: Filters out `[DONE]` before yielding to user (common logic)
+- User HTTP layer: Adds `[DONE]` marker to HTTP response (protocol handling)
 
 ### Intermediate Representation (IR)
 
@@ -104,7 +151,7 @@ The IR is the central data structure that all adapters convert to/from. Key type
 - **LLMStreamEvent**: Unified streaming event format
 - **LLMErrorIR**: Unified error format
 
-Location: `packages/core/src/ir/`
+Location: `packages/llm-bridge/src/ir/`
 
 ### Adapter Interface
 
@@ -115,7 +162,7 @@ Every adapter implements the `LLMAdapter` interface with:
 - **capabilities**: Feature flags (streaming, tools, vision, etc.)
 - **getInfo()**: Adapter metadata
 
-Location: `packages/core/src/adapter/base.ts`
+Location: `packages/llm-bridge/src/adapter/base.ts`
 
 ### Bridge Pattern
 
@@ -128,7 +175,7 @@ The Bridge class orchestrates the conversion flow:
 5. Outbound adapter parses response → IR
 6. Inbound adapter builds final response from IR
 
-Location: `packages/core/src/bridge/bridge.ts`
+Location: `packages/llm-bridge/src/bridge/bridge.ts`
 
 ## Adapter Structure
 
@@ -153,13 +200,13 @@ packages/adapter-{provider}/
 └── package.json
 ```
 
-**OpenAI-compatible adapters** (DeepSeek, Kimi, Qwen, Gemini) extend the OpenAI adapter with minimal customization.
+**OpenAI-compatible adapters** (DeepSeek, Moonshot, Qwen, Gemini) extend the OpenAI adapter with minimal customization.
 
 ## Key Implementation Details
 
 ### HTTP Client
 
-Location: `packages/core/src/bridge/http-client.ts`
+Location: `packages/llm-bridge/src/bridge/http-client.ts`
 
 - Handles both regular and streaming requests
 - Supports custom headers, timeout, base URL
@@ -167,14 +214,14 @@ Location: `packages/core/src/bridge/http-client.ts`
 
 ### Adapter Registry
 
-Location: `packages/core/src/adapter/registry.ts`
+Location: `packages/llm-bridge/src/adapter/registry.ts`
 
 - Optional registry for managing multiple adapters
 - Not required for basic bridge usage
 
 ### Capabilities System
 
-Location: `packages/core/src/adapter/capabilities.ts`
+Location: `packages/llm-bridge/src/adapter/capabilities.ts`
 
 Adapters declare capabilities:
 - streaming, tools, vision, multimodal
@@ -261,7 +308,7 @@ For OpenAI-compatible providers, extend the OpenAI adapter instead of implementi
 - **Streaming**: Remember to set `ir.stream = true` in chatStream method
 - **Type Safety**: Always validate unknown types from provider APIs
 - **Capabilities**: Check adapter capabilities before using features
-- **Base URLs**: Each provider has different base URLs and endpoints (see Bridge.getDefaultBaseURL)
+- **Adapter Endpoint**: Each adapter defines its own baseURL and chatPath in `getInfo().endpoint`
 - **SSE Format**: Streaming responses use SSE format with `data: {...}` lines
 
 ## Known Issues
@@ -272,12 +319,8 @@ For OpenAI-compatible providers, extend the OpenAI adapter instead of implementi
 - **Tool Format**: Gemini uses different tool format than OpenAI
 - **Capabilities**: Test expects `toolChoice: false` but adapter declares `toolChoice: true`
 
-### Kimi Adapter
-- **System Messages**: OpenAI adapter doesn't extract system messages from messages array
-- **Stream Parsing**: Stream parser returns null (likely using OpenAI format which doesn't match test expectations)
-
 ### Qwen Adapter
-- **System Messages**: Same issue as Kimi - system messages not extracted properly
+- **System Messages**: System messages not extracted properly
 - **Vision Content**: Uses `image` type instead of `image_url` type
 - **Content Format**: Doesn't serialize multipart content to JSON string like OpenAI adapter
 - **Stream Parsing**: Stream parser returns null
@@ -296,3 +339,18 @@ For OpenAI-compatible providers, extend the OpenAI adapter instead of implementi
 - CONTRIBUTING.md: Development setup and contribution guidelines
 - PROJECT_SUMMARY.md: Detailed project status and architecture
 - Documentation site: fumadocs-based site in `apps/website/`
+
+### Documentation Update Rules
+
+**IMPORTANT**: When making changes to packages, always update the corresponding documentation:
+
+1. **Package Changes** → Update `apps/website/app/content/docs/` (both `en/` and `zh/` directories)
+2. **Adapter Rename/Add/Remove** → Update:
+   - `docs/en/index.mdx` and `docs/zh/index.mdx` (provider list)
+   - `docs/en/installation.mdx` and `docs/zh/installation.mdx` (install commands)
+   - `docs/*/adapters/index.mdx` (adapter overview)
+   - Create/rename/delete adapter-specific doc files
+3. **API Changes** → Update `docs/*/api/` files
+4. **New Features** → Add to relevant concept docs and examples
+
+Documentation is bilingual (English and Chinese). Always update both language versions.

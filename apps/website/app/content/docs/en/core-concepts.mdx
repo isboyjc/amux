@@ -1,15 +1,15 @@
 ---
 title: Core Concepts
-description: Understand the architecture of LLM Bridge
+description: Understand the architecture of Amux
 ---
 
 <Callout type="info">
-LLM Bridge is built on three core concepts: **Adapters**, **IR (Intermediate Representation)**, and **Bridge**. Understanding these concepts is key to using LLM Bridge effectively.
+Amux is built on three core concepts: **Adapters**, **IR (Intermediate Representation)**, and **Bridge**. Understanding these concepts is key to using Amux effectively.
 </Callout>
 
 ## Architecture Overview
 
-LLM Bridge is built on three core concepts:
+Amux is built on three core concepts:
 
 1. **Adapters** - Convert between provider formats and IR
 2. **IR (Intermediate Representation)** - Unified format for all LLM capabilities
@@ -33,7 +33,7 @@ graph TD
 
 ## Adapters
 
-Adapters are the core of LLM Bridge. Each adapter implements two directions:
+Adapters are the core of Amux. Each adapter implements two directions:
 
 <Tabs items={['Inbound', 'Outbound', 'Capabilities', 'Example']}>
   <Tab value="Inbound">
@@ -141,7 +141,7 @@ Adapters are the core of LLM Bridge. Each adapter implements two directions:
     ### Complete Adapter Example
 
     ```typescript
-    import type { LLMAdapter } from '@llm-bridge/core'
+    import type { LLMAdapter } from '@amux/llm-bridge'
 
     export const myAdapter: LLMAdapter = {
       name: 'my-provider',
@@ -314,7 +314,7 @@ interface LLMRequestIR {
       Message,
       Tool,
       GenerationConfig
-    } from '@llm-bridge/core'
+    } from '@amux/llm-bridge'
 
     // All types are fully defined
     const message: Message = {
@@ -460,7 +460,7 @@ sequenceDiagram
 The Bridge provides unified error handling:
 
 ```typescript
-import { LLMBridgeError } from '@llm-bridge/core'
+import { LLMBridgeError } from '@amux/llm-bridge'
 
 try {
   const response = await bridge.chat(request)

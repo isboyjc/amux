@@ -1,28 +1,28 @@
 ---
 title: Introduction
-description: Welcome to LLM Bridge - a unified infrastructure for converting between different LLM provider APIs.
+description: Welcome to Amux - a unified infrastructure for converting between different LLM provider APIs.
 ---
 
-## What is LLM Bridge?
+## What is Amux?
 
-LLM Bridge is a bidirectional API adapter that allows you to:
+Amux is a bidirectional API adapter that allows you to:
 
-- 🔄 **Convert between any LLM provider formats** - OpenAI, Anthropic, DeepSeek, Kimi, Qwen, Gemini
+- 🔄 **Convert between any LLM provider formats** - OpenAI, Anthropic, DeepSeek, Moonshot, Zhipu, Qwen, Gemini
 - 🎯 **Type-safe TypeScript** - Full type definitions for all adapters
 - 🔌 **Extensible** - Easy to add custom adapters
 - ⚡ **Zero dependencies** - Core package has no runtime dependencies
 - 📦 **Tree-shakable** - Optimized for modern bundlers
 
 <Callout type="info">
-LLM Bridge enables **true bidirectional conversion** - accept requests in any format, call any provider API, and return responses in any format.
+Amux enables **true bidirectional conversion** - accept requests in any format, call any provider API, and return responses in any format.
 </Callout>
 
 ## Quick Example
 
 ```typescript
-import { createBridge } from '@llm-bridge/core'
-import { openaiAdapter } from '@llm-bridge/adapter-openai'
-import { anthropicAdapter } from '@llm-bridge/adapter-anthropic'
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
 
 // Create a bridge: OpenAI format in → Anthropic API out
 const bridge = createBridge({
@@ -72,7 +72,7 @@ The **Intermediate Representation (IR)** is the key to bidirectional conversion:
   <Tab value="Bidirectional">
     ### Bidirectional Conversion
 
-    Unlike other solutions that only provide a unified interface, LLM Bridge allows you to:
+    Unlike other solutions that only provide a unified interface, Amux allows you to:
 
     - **Accept requests** in any provider format
     - **Send requests** to any provider API
@@ -104,7 +104,7 @@ The **Intermediate Representation (IR)** is the key to bidirectional conversion:
     - Bridge configuration
 
     ```typescript
-    import type { LLMRequestIR, LLMResponseIR } from '@llm-bridge/core'
+    import type { LLMRequestIR, LLMResponseIR } from '@amux/llm-bridge'
 
     // Fully typed IR
     const request: LLMRequestIR = {
@@ -128,7 +128,7 @@ The **Intermediate Representation (IR)** is the key to bidirectional conversion:
     - Examples for common patterns
 
     ```typescript
-    import type { LLMAdapter } from '@llm-bridge/core'
+    import type { LLMAdapter } from '@amux/llm-bridge'
 
     export const myAdapter: LLMAdapter = {
       name: 'my-provider',
@@ -163,8 +163,8 @@ The **Intermediate Representation (IR)** is the key to bidirectional conversion:
 
     ```typescript
     // Only the adapters you use are bundled
-    import { createBridge } from '@llm-bridge/core'
-    import { openaiAdapter } from '@llm-bridge/adapter-openai'
+    import { createBridge } from '@amux/llm-bridge'
+    import { openaiAdapter } from '@amux/adapter-openai'
     // Other adapters are not included in your bundle
     ```
   </Tab>
@@ -184,7 +184,7 @@ The **Intermediate Representation (IR)** is the key to bidirectional conversion:
     - JSON mode
 
     ```typescript
-    import { openaiAdapter } from '@llm-bridge/adapter-openai'
+    import { openaiAdapter } from '@amux/adapter-openai'
     ```
   </Tab>
 
@@ -199,7 +199,7 @@ The **Intermediate Representation (IR)** is the key to bidirectional conversion:
     - System prompts
 
     ```typescript
-    import { anthropicAdapter } from '@llm-bridge/adapter-anthropic'
+    import { anthropicAdapter } from '@amux/adapter-anthropic'
     ```
   </Tab>
 
@@ -212,7 +212,7 @@ The **Intermediate Representation (IR)** is the key to bidirectional conversion:
     - Function calling
 
     ```typescript
-    import { deepseekAdapter } from '@llm-bridge/adapter-deepseek'
+    import { deepseekAdapter } from '@amux/adapter-deepseek'
     ```
   </Tab>
 
@@ -221,14 +221,16 @@ The **Intermediate Representation (IR)** is the key to bidirectional conversion:
 
     Additional adapters available:
 
-    - **Kimi** - Moonshot AI
+    - **Moonshot** - Moonshot AI
+    - **Zhipu** - Zhipu AI (GLM)
     - **Qwen** - Alibaba Cloud
     - **Gemini** - Google AI
 
     ```typescript
-    import { kimiAdapter } from '@llm-bridge/adapter-kimi'
-    import { qwenAdapter } from '@llm-bridge/adapter-qwen'
-    import { geminiAdapter } from '@llm-bridge/adapter-gemini'
+    import { moonshotAdapter } from '@amux/adapter-moonshot'
+    import { zhipuAdapter } from '@amux/adapter-zhipu'
+    import { qwenAdapter } from '@amux/adapter-qwen'
+    import { geminiAdapter } from '@amux/adapter-google'
     ```
   </Tab>
 </Tabs>
@@ -236,7 +238,7 @@ The **Intermediate Representation (IR)** is the key to bidirectional conversion:
 ## Use Cases
 
 <Callout type="info">
-LLM Bridge is perfect for applications that need to support multiple LLM providers or migrate between providers without changing application code.
+Amux is perfect for applications that need to support multiple LLM providers or migrate between providers without changing application code.
 </Callout>
 
 - **Multi-provider support** - Let users choose their preferred LLM provider
@@ -249,7 +251,7 @@ LLM Bridge is perfect for applications that need to support multiple LLM provide
 
 <Cards>
   <Card title="Installation" href="/docs/installation">
-    Get started with LLM Bridge
+    Get started with Amux
   </Card>
   <Card title="Quick Start" href="/docs/quick-start">
     Build your first bridge in 5 minutes

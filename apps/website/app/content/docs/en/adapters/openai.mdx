@@ -1,0 +1,699 @@
+---
+title: OpenAI Adapter
+description: Use the OpenAI adapter to connect to GPT-5, GPT-4, o3, o4-mini and more
+---
+
+The OpenAI adapter package provides two adapters for different OpenAI API endpoints:
+
+- **`openaiAdapter`** - Uses the Chat Completions API (`/v1/chat/completions`) - the traditional, stable API
+- **`openaiResponsesAdapter`** - Uses the Responses API (`/v1/responses`) - the newer API with additional features
+
+## Installation
+
+```bash tab="pnpm"
+pnpm add @amux/llm-bridge @amux/adapter-openai
+```
+
+```bash tab="npm"
+npm install @amux/llm-bridge @amux/adapter-openai
+```
+
+```bash tab="yarn"
+yarn add @amux/llm-bridge @amux/adapter-openai
+```
+
+## Choosing an Adapter
+
+| Feature | openaiAdapter | openaiResponsesAdapter |
+|---------|---------------|------------------------|
+| Endpoint | `/v1/chat/completions` | `/v1/responses` |
+| Stability | Stable, widely used | Newer API |
+| Reasoning | ❌ | ✅ (o3, o4-mini) |
+| Web Search | ❌ | ✅ (built-in tool) |
+| File Search | ❌ | ✅ (built-in tool) |
+| Code Interpreter | ❌ | ✅ (built-in tool) |
+| Stateful Context | ❌ | ✅ (previous_response_id) |
+| JSON Mode | ✅ | ✅ |
+| Compatibility | Maximum compatibility | Latest features |
+
+<Callout type="info">
+**Recommendation**: Use `openaiAdapter` for production applications requiring stability. Use `openaiResponsesAdapter` when you need the latest features like built-in web search, reasoning models (o3, o4-mini), or stateful multi-turn conversations.
+</Callout>
+
+## Basic Usage
+
+### Using Chat Completions API (openaiAdapter)
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: openaiAdapter,
+  config: {
+    apiKey: process.env.OPENAI_API_KEY
+  }
+})
+
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [
+    { role: 'system', content: 'You are a helpful assistant.' },
+    { role: 'user', content: 'What is Amux?' }
+  ]
+})
+
+console.log(response.choices[0].message.content)
+```
+
+### Using Responses API (openaiResponsesAdapter)
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { openaiResponsesAdapter } from '@amux/adapter-openai'
+
+const bridge = createBridge({
+  inbound: openaiResponsesAdapter,
+  outbound: openaiResponsesAdapter,
+  config: {
+    apiKey: process.env.OPENAI_API_KEY
+  }
+})
+
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [
+    { role: 'user', content: 'What is Amux?' }
+  ]
+})
+
+console.log(response.choices[0].message.content)
+```
+
+### Streaming Response
+
+```typescript
+const stream = bridge.chatStream({
+  model: 'gpt-4',
+  messages: [
+    { role: 'user', content: 'Tell me a story about AI' }
+  ],
+  stream: true
+})
+
+for await (const chunk of stream) {
+  if (chunk.choices[0]?.delta?.content) {
+    process.stdout.write(chunk.choices[0].delta.content)
+  }
+}
+```
+
+## Supported Features
+
+<Tabs items={['Function Calling', 'Vision', 'JSON Mode', 'Responses API Features', 'Advanced Parameters']}>
+  <Tab value="Function Calling">
+    ### Function Calling
+
+    Both adapters fully support function calling (tool use):
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'gpt-4',
+      messages: [
+        { role: 'user', content: 'What time is it in Beijing?' }
+      ],
+      tools: [{
+        type: 'function',
+        function: {
+          name: 'get_current_time',
+          description: 'Get the current time for a specified city',
+          parameters: {
+            type: 'object',
+            properties: {
+              city: {
+                type: 'string',
+                description: 'City name'
+              }
+            },
+            required: ['city']
+          }
+        }
+      }],
+      tool_choice: 'auto'
+    })
+
+    // Check for function calls
+    const toolCalls = response.choices[0].message.tool_calls
+    if (toolCalls) {
+      for (const toolCall of toolCalls) {
+        console.log('Function:', toolCall.function.name)
+        console.log('Arguments:', toolCall.function.arguments)
+      }
+    }
+    ```
+
+    **Tool Choice Options:**
+    - `auto` - Let the model decide whether to call functions
+    - `none` - Force the model not to call functions
+    - `required` - Force the model to call a function
+    - `{ type: 'function', function: { name: 'function_name' } }` - Force a specific function
+  </Tab>
+
+  <Tab value="Vision">
+    ### Vision (GPT-4V)
+
+    Analyze images with GPT-4o (multimodal):
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'gpt-4o',
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: 'What is in this image?'
+          },
+          {
+            type: 'image_url',
+            image_url: {
+              url: 'https://example.com/image.jpg',
+              detail: 'high' // 'low', 'high', 'auto'
+            }
+          }
+        ]
+      }],
+      max_tokens: 300
+    })
+
+    console.log(response.choices[0].message.content)
+    ```
+
+    **Supported Image Formats:**
+    - URL (https://)
+    - Base64 encoded (data:image/jpeg;base64,...)
+
+    **Detail Levels:**
+    - `low` - Lower resolution, faster and cheaper
+    - `high` - Higher resolution, more detailed but more expensive
+    - `auto` - Automatic selection (default)
+  </Tab>
+
+  <Tab value="JSON Mode">
+    ### JSON Mode
+
+    Force the model to return valid JSON:
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a helpful assistant that extracts structured data. Always respond in JSON format.'
+        },
+        {
+          role: 'user',
+          content: 'Extract names and locations from this text: John went to Paris yesterday.'
+        }
+      ],
+      response_format: { type: 'json_object' }
+    })
+
+    const data = JSON.parse(response.choices[0].message.content)
+    console.log(data)
+    // { "person": "John", "location": "Paris", "time": "yesterday" }
+    ```
+
+    <Callout type="warn">
+    When using JSON mode, you must explicitly instruct the model to generate JSON in the system or user message.
+    </Callout>
+  </Tab>
+
+  <Tab value="Responses API Features">
+    ### Responses API Exclusive Features
+
+    The `openaiResponsesAdapter` provides access to features only available in the Responses API:
+
+    #### Reasoning Models (o3, o4-mini)
+
+    ```typescript
+    import { createBridge } from '@amux/llm-bridge'
+    import { openaiResponsesAdapter } from '@amux/adapter-openai'
+
+    const bridge = createBridge({
+      inbound: openaiResponsesAdapter,
+      outbound: openaiResponsesAdapter,
+      config: { apiKey: process.env.OPENAI_API_KEY }
+    })
+
+    const response = await bridge.chat({
+      model: 'o3',
+      messages: [
+        { role: 'user', content: 'Solve this complex math problem...' }
+      ],
+      extensions: {
+        responses: {
+          reasoning: {
+            effort: 'high' // 'low', 'medium', 'high'
+          }
+        }
+      }
+    })
+    ```
+
+    #### Stateful Multi-turn Conversations
+
+    ```typescript
+    // First request
+    const response1 = await bridge.chat({
+      model: 'gpt-4.1',
+      messages: [{ role: 'user', content: 'My name is Alice' }]
+    })
+
+    // Get the response ID for context
+    const responseId = response1.raw.id
+
+    // Follow-up with context preserved
+    const response2 = await bridge.chat({
+      model: 'gpt-4.1',
+      messages: [{ role: 'user', content: "What's my name?" }],
+      extensions: {
+        responses: {
+          previousResponseId: responseId
+        }
+      }
+    })
+    // Response: "Your name is Alice"
+    ```
+
+    #### Built-in Web Search
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'gpt-4.1',
+      messages: [
+        { role: 'user', content: 'What are the latest news about AI?' }
+      ],
+      extensions: {
+        responses: {
+          builtInTools: [
+            { type: 'web_search_preview', search_context_size: 'medium' }
+          ]
+        }
+      }
+    })
+    ```
+
+    #### Code Interpreter
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'gpt-4.1',
+      messages: [
+        { role: 'user', content: 'Calculate the factorial of 100' }
+      ],
+      extensions: {
+        responses: {
+          builtInTools: [{ type: 'code_interpreter' }]
+        }
+      }
+    })
+    ```
+
+    #### File Search
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'gpt-4.1',
+      messages: [
+        { role: 'user', content: 'Find information about...' }
+      ],
+      extensions: {
+        responses: {
+          builtInTools: [{
+            type: 'file_search',
+            vector_store_ids: ['vs_xxx'],
+            max_num_results: 10
+          }]
+        }
+      }
+    })
+    ```
+
+    #### Store Control
+
+    ```typescript
+    // Disable state storage for privacy
+    const response = await bridge.chat({
+      model: 'gpt-4.1',
+      messages: [{ role: 'user', content: 'Sensitive query...' }],
+      extensions: {
+        responses: {
+          store: false // Don't store this conversation
+        }
+      }
+    })
+    ```
+  </Tab>
+
+  <Tab value="Advanced Parameters">
+    ### Advanced Parameters
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'gpt-4',
+      messages: [
+        { role: 'user', content: 'Write a poem about AI' }
+      ],
+
+      // Temperature control (0-2)
+      temperature: 0.7,
+
+      // Top-p sampling
+      top_p: 0.9,
+
+      // Maximum tokens
+      max_tokens: 500,
+
+      // Frequency penalty (-2.0 to 2.0)
+      frequency_penalty: 0.5,
+
+      // Presence penalty (-2.0 to 2.0)
+      presence_penalty: 0.5,
+
+      // Stop sequences
+      stop: ['\n\n', '---'],
+
+      // User identifier (for abuse monitoring)
+      user: 'user-123',
+
+      // Random seed (for reproducibility)
+      seed: 42,
+
+      // Logprobs
+      logprobs: true,
+      top_logprobs: 3
+    })
+    ```
+  </Tab>
+</Tabs>
+
+## Supported Models
+
+### GPT-5 Series (Latest)
+
+| Model | Context Length | Description |
+|-------|----------------|-------------|
+| `gpt-5.2-pro` | 400K | Most advanced model, ARC-AGI-1 >90% |
+| `gpt-5.2` | 400K | Flagship model, GDPval 70.9% |
+| `gpt-5.1` | 128K | Balanced intelligence and speed, SWE-bench 76.3% |
+| `gpt-5` | 128K | Flagship stable version |
+| `gpt-5-mini` | 128K | Lightweight GPT-5 |
+| `gpt-5-nano` | 128K | Ultra-lightweight GPT-5 |
+
+### GPT-4 Series
+
+| Model | Context Length | Description |
+|-------|----------------|-------------|
+| `gpt-4.1` | 128K | Fast, main workhorse model |
+| `gpt-4.1-mini` | 128K | Cheaper lightweight version |
+| `gpt-4o` | 128K | Balanced multimodal capabilities |
+| `gpt-4o-mini` | 128K | Fast lightweight version |
+
+### Reasoning Models (Responses API only)
+
+| Model | Description |
+|-------|-------------|
+| `o3` | Latest reasoning model for complex tasks |
+| `o4-mini` | Lightweight reasoning model |
+
+<Callout type="info">
+Reasoning models (o3, o4-mini) are only available through the Responses API (`openaiResponsesAdapter`). They support reasoning effort control via the `reasoning.effort` parameter.
+</Callout>
+
+### Codex Series (Programming)
+
+| Model | Description |
+|-------|-------------|
+| `gpt-5.1-codex` | SWE-bench 76.3%, for long programming tasks |
+| `gpt-5.1-codex-mini` | Lightweight programming version |
+| `gpt-5-codex-high` | Strongest programming capability |
+| `gpt-5-codex-medium` | Medium performance |
+| `gpt-5-codex-low` | Lightweight version |
+
+<Callout type="warn">
+**GPT-5 Series Special Requirements:**
+- Temperature parameter must be set to 1
+- Use `max_completion_tokens` instead of `max_tokens`
+- Do not pass `top_p` parameter
+</Callout>
+
+<Callout type="info">
+Model list may be updated. Check the [OpenAI documentation](https://platform.openai.com/docs/models) for the latest information.
+</Callout>
+
+## Configuration Options
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter, // or openaiResponsesAdapter
+  outbound: openaiAdapter,
+  config: {
+    // Required: API key
+    apiKey: process.env.OPENAI_API_KEY,
+
+    // Optional: Custom API endpoint
+    baseURL: 'https://api.openai.com',
+
+    // Optional: Organization ID
+    organization: 'org-xxx',
+
+    // Optional: Request timeout (milliseconds)
+    timeout: 60000,
+
+    // Optional: Custom headers
+    headers: {
+      'Custom-Header': 'value'
+    }
+  }
+})
+```
+
+## Migrating Between Adapters
+
+### From openaiAdapter to openaiResponsesAdapter
+
+```typescript
+// Before: Using Chat Completions API
+import { openaiAdapter } from '@amux/adapter-openai'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: openaiAdapter,
+  config: { apiKey: process.env.OPENAI_API_KEY }
+})
+
+// After: Using Responses API
+import { openaiResponsesAdapter } from '@amux/adapter-openai'
+
+const bridge = createBridge({
+  inbound: openaiResponsesAdapter,
+  outbound: openaiResponsesAdapter,
+  config: { apiKey: process.env.OPENAI_API_KEY }
+})
+
+// Request format remains the same!
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hello' }]
+})
+```
+
+### Cross-API Conversion
+
+```typescript
+import { openaiAdapter, openaiResponsesAdapter } from '@amux/adapter-openai'
+
+// Accept old format requests, call new API
+const bridge = createBridge({
+  inbound: openaiAdapter,           // Accept Chat Completions format
+  outbound: openaiResponsesAdapter, // Call Responses API
+  config: { apiKey: process.env.OPENAI_API_KEY }
+})
+```
+
+## Error Handling
+
+```typescript
+try {
+  const response = await bridge.chat({
+    model: 'gpt-4',
+    messages: [{ role: 'user', content: 'Hello' }]
+  })
+} catch (error) {
+  if (error.response) {
+    // OpenAI API error
+    console.error('Status:', error.response.status)
+    console.error('Type:', error.response.data.error.type)
+    console.error('Message:', error.response.data.error.message)
+
+    // Common error types
+    switch (error.response.data.error.type) {
+      case 'invalid_request_error':
+        console.log('Invalid request parameters')
+        break
+      case 'authentication_error':
+        console.log('Invalid API key')
+        break
+      case 'rate_limit_error':
+        console.log('Rate limit exceeded')
+        break
+      case 'insufficient_quota':
+        console.log('Insufficient quota')
+        break
+    }
+  }
+}
+```
+
+## Best Practices
+
+### 1. Use Environment Variables
+
+```bash
+# .env
+OPENAI_API_KEY=sk-...
+OPENAI_ORG_ID=org-...
+```
+
+```typescript
+import 'dotenv/config'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: openaiAdapter,
+  config: {
+    apiKey: process.env.OPENAI_API_KEY,
+    organization: process.env.OPENAI_ORG_ID
+  }
+})
+```
+
+### 2. Control Costs
+
+```typescript
+// Use cheaper models
+const response = await bridge.chat({
+  model: 'gpt-4o-mini', // instead of gpt-5
+  messages: [...],
+  max_tokens: 100 // Limit output length
+})
+```
+
+### 3. Handle Rate Limits
+
+```typescript
+async function chatWithRetry(request, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await bridge.chat(request)
+    } catch (error) {
+      if (error.response?.data?.error?.type === 'rate_limit_error') {
+        const waitTime = Math.pow(2, i) * 1000 // Exponential backoff
+        console.log(`Rate limited, waiting ${waitTime}ms...`)
+        await new Promise(resolve => setTimeout(resolve, waitTime))
+        continue
+      }
+      throw error
+    }
+  }
+  throw new Error('Max retries reached')
+}
+```
+
+## Using with Other Adapters
+
+### OpenAI → Anthropic
+
+```typescript
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+
+// Accept OpenAI format, call Claude
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: process.env.ANTHROPIC_API_KEY
+  }
+})
+
+// Send request in OpenAI format
+const response = await bridge.chat({
+  model: 'gpt-4', // Will be mapped to Claude
+  messages: [{ role: 'user', content: 'Hello' }]
+})
+```
+
+### OpenAI → DeepSeek
+
+```typescript
+import { openaiAdapter } from '@amux/adapter-openai'
+import { deepseekAdapter } from '@amux/adapter-deepseek'
+
+// Accept OpenAI format, call DeepSeek
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: deepseekAdapter,
+  config: {
+    apiKey: process.env.DEEPSEEK_API_KEY
+  }
+})
+```
+
+## Feature Support Comparison
+
+| Feature | openaiAdapter | openaiResponsesAdapter |
+|---------|---------------|------------------------|
+| Chat Completion | ✅ | ✅ |
+| Streaming | ✅ | ✅ |
+| Function Calling | ✅ | ✅ |
+| Vision | ✅ | ✅ |
+| JSON Mode | ✅ | ✅ (via text.format) |
+| System Prompt | ✅ | ✅ (via instructions) |
+| Tool Choice | ✅ | ✅ |
+| Logprobs | ✅ | ❌ |
+| Seed | ✅ | ❌ |
+| Reasoning | ❌ | ✅ (o3, o4-mini) |
+| Web Search | ❌ | ✅ (built-in tool) |
+| File Search | ❌ | ✅ (built-in tool) |
+| Code Interpreter | ❌ | ✅ (built-in tool) |
+| Stateful Context | ❌ | ✅ (previous_response_id) |
+| Parallel Tool Calls | ✅ | ✅ |
+
+## Limitations
+
+- **Rate Limits**: Different limits based on your account tier
+- **Context Length**: Different models have different maximum tokens
+- **Cost**: GPT-4 is significantly more expensive than GPT-3.5
+- **Availability**: Some models may require waitlist access
+
+## Related Resources
+
+- [OpenAI API Documentation](https://platform.openai.com/docs/api-reference)
+- [OpenAI Models](https://platform.openai.com/docs/models)
+- [OpenAI Pricing](https://openai.com/pricing)
+- [OpenAI Usage Policies](https://openai.com/policies/usage-policies)
+
+## Next Steps
+
+<Cards>
+  <Card title="Anthropic Adapter" href="/docs/en/adapters/anthropic">
+    Learn how to use Claude models
+  </Card>
+  <Card title="Adapter API" href="/docs/en/api/adapters">
+    View the complete Adapter API reference
+  </Card>
+</Cards>

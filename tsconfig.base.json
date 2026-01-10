@@ -28,14 +28,15 @@
 
     "baseUrl": ".",
     "paths": {
-      "@llm-bridge/core": ["./packages/core/src/index.ts"],
-      "@llm-bridge/utils": ["./packages/utils/src/index.ts"],
-      "@llm-bridge/adapter-openai": ["./packages/adapter-openai/src/index.ts"],
-      "@llm-bridge/adapter-anthropic": ["./packages/adapter-anthropic/src/index.ts"],
-      "@llm-bridge/adapter-deepseek": ["./packages/adapter-deepseek/src/index.ts"],
-      "@llm-bridge/adapter-kimi": ["./packages/adapter-kimi/src/index.ts"],
-      "@llm-bridge/adapter-qwen": ["./packages/adapter-qwen/src/index.ts"],
-      "@llm-bridge/adapter-gemini": ["./packages/adapter-gemini/src/index.ts"]
+      "@amux/llm-bridge": ["./packages/llm-bridge/src/index.ts"],
+      "@amux/utils": ["./packages/utils/src/index.ts"],
+      "@amux/adapter-openai": ["./packages/adapter-openai/src/index.ts"],
+      "@amux/adapter-anthropic": ["./packages/adapter-anthropic/src/index.ts"],
+      "@amux/adapter-deepseek": ["./packages/adapter-deepseek/src/index.ts"],
+      "@amux/adapter-moonshot": ["./packages/adapter-moonshot/src/index.ts"],
+      "@amux/adapter-qwen": ["./packages/adapter-qwen/src/index.ts"],
+      "@amux/adapter-google": ["./packages/adapter-google/src/index.ts"],
+      "@amux/adapter-zhipu": ["./packages/adapter-zhipu/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "dist", "build", ".turbo"]

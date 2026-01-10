@@ -1,4 +1,4 @@
-import type { ToolCall, JSONSchema } from '@llm-bridge/core'
+import type { ToolCall, JSONSchema } from '@amux/llm-bridge'
 
 /**
  * Qwen message content part types

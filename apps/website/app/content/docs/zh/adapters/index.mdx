@@ -1,9 +1,9 @@
 ---
 title: 适配器概览
-description: LLM Bridge 支持的所有官方适配器
+description: Amux 支持的所有官方适配器
 ---
 
-LLM Bridge 提供了 6 个官方适配器，支持主流的 LLM 提供商。每个适配器都经过精心设计，确保与提供商 API 的完美兼容。
+Amux 提供了 6 个官方适配器，支持主流的 LLM 提供商。每个适配器都经过精心设计，确保与提供商 API 的完美兼容。
 
 ## 官方适配器
 
@@ -17,8 +17,11 @@ LLM Bridge 提供了 6 个官方适配器，支持主流的 LLM 提供商。每�
   <Card title="DeepSeek" href="/docs/zh/adapters/deepseek">
     支持 DeepSeek Chat 和 DeepSeek Coder 模型
   </Card>
-  <Card title="Kimi" href="/docs/zh/adapters/kimi">
-    支持月之暗面的 Moonshot 系列模型
+  <Card title="Moonshot" href="/docs/zh/adapters/moonshot">
+    支持月之暗面的 Kimi 系列模型
+  </Card>
+  <Card title="Zhipu" href="/docs/zh/adapters/zhipu">
+    支持智谱 AI 的 GLM 系列模型
   </Card>
   <Card title="Qwen" href="/docs/zh/adapters/qwen">
     支持阿里云通义千问系列模型
@@ -35,7 +38,8 @@ LLM Bridge 提供了 6 个官方适配器，支持主流的 LLM 提供商。每�
 | OpenAI | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Anthropic | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | DeepSeek | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
-| Kimi | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Moonshot | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Zhipu | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Qwen | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Gemini | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ |
 
@@ -49,23 +53,23 @@ LLM Bridge 提供了 6 个官方适配器，支持主流的 LLM 提供商。每�
 
 ```bash tab="pnpm"
 # 安装核心包和所需的适配器
-pnpm add @llm-bridge/core @llm-bridge/adapter-openai
+pnpm add @amux/llm-bridge @amux/adapter-openai
 ```
 
 ```bash tab="npm"
-npm install @llm-bridge/core @llm-bridge/adapter-openai
+npm install @amux/llm-bridge @amux/adapter-openai
 ```
 
 ```bash tab="yarn"
-yarn add @llm-bridge/core @llm-bridge/adapter-openai
+yarn add @amux/llm-bridge @amux/adapter-openai
 ```
 
 ### 使用
 
 ```typescript
-import { createBridge } from '@llm-bridge/core'
-import { openaiAdapter } from '@llm-bridge/adapter-openai'
-import { anthropicAdapter } from '@llm-bridge/adapter-anthropic'
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
 
 // 创建桥接
 const bridge = createBridge({
@@ -99,7 +103,7 @@ const response = await bridge.chat({
 - Anthropic (Claude 3.5 Sonnet)
 
 **需要长上下文？**
-- Kimi (Moonshot - 200K tokens)
+- Moonshot (Kimi - 200K tokens)
 - Anthropic (Claude - 200K tokens)
 - Gemini (Gemini Pro - 1M tokens)
 
@@ -111,7 +115,7 @@ const response = await bridge.chat({
 
 **中等价格：**
 - OpenAI GPT-3.5
-- Kimi
+- Moonshot
 
 **高端模型：**
 - OpenAI GPT-4
@@ -123,7 +127,8 @@ const response = await bridge.chat({
 以下适配器基于 OpenAI 格式，可以无缝替换：
 
 - **DeepSeek** - 完全兼容 OpenAI API
-- **Kimi** - 完全兼容 OpenAI API
+- **Moonshot** - 完全兼容 OpenAI API
+- **Zhipu** - 完全兼容 OpenAI API
 - **Qwen** - 部分兼容（有细微差异）
 - **Gemini** - 部分兼容（需要格式转换）
 
@@ -136,7 +141,7 @@ const response = await bridge.chat({
 如果您需要支持其他 LLM 提供商，可以创建自定义适配器：
 
 ```typescript
-import type { LLMAdapter } from '@llm-bridge/core'
+import type { LLMAdapter } from '@amux/llm-bridge'
 
 export const myAdapter: LLMAdapter = {
   name: 'my-provider',

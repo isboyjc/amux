@@ -1,6 +1,6 @@
 # Streaming Example
 
-This example demonstrates streaming responses with LLM Bridge.
+This example demonstrates streaming responses with Amux.
 
 ## Setup
 

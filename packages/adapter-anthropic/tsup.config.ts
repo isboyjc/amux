@@ -9,5 +9,5 @@ export default defineConfig({
   clean: true,
   treeshake: true,
   minify: false,
-  external: ['@llm-bridge/core'],
+  external: ['@amux/llm-bridge'],
 })

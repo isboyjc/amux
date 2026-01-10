@@ -1,4 +1,4 @@
-import type { JSONSchema } from '@llm-bridge/core'
+import type { JSONSchema } from '@amux/llm-bridge'
 
 /**
  * Anthropic request format
@@ -73,6 +73,7 @@ export interface AnthropicStreamEvent {
     type?: string
     text?: string
     stop_reason?: string
+    partial_json?: string
   }
   content_block?: AnthropicContent
   message?: Partial<AnthropicResponse>

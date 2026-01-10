@@ -1,0 +1,29 @@
+{
+  "name": "@amux/proxy",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Amux Proxy Server - Proxy LLM APIs bidirectionally",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "build": "tsup src/index.ts --format esm --dts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@amux/adapter-anthropic": "workspace:*",
+    "@amux/adapter-deepseek": "workspace:*",
+    "@amux/adapter-moonshot": "workspace:*",
+    "@amux/adapter-openai": "workspace:*",
+    "@amux/adapter-zhipu": "workspace:*",
+    "@amux/llm-bridge": "workspace:*",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^20.10.0",
+    "tsup": "^8.0.1",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

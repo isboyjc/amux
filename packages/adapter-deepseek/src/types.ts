@@ -1,4 +1,4 @@
-import type { ToolCall, JSONSchema } from '@llm-bridge/core'
+import type { ToolCall, JSONSchema } from '@amux/llm-bridge'
 
 /**
  * DeepSeek message content part types (same as OpenAI)

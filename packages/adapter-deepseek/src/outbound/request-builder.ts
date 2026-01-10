@@ -1,4 +1,4 @@
-import type { LLMRequestIR, ContentPart, ImageContent } from '@llm-bridge/core'
+import type { LLMRequestIR, ContentPart, ImageContent } from '@amux/llm-bridge'
 
 import type { DeepSeekRequest, DeepSeekMessage, DeepSeekContentPart } from '../types'
 
@@ -7,9 +7,11 @@ import type { DeepSeekRequest, DeepSeekMessage, DeepSeekContentPart } from '../t
  */
 export function buildRequest(ir: LLMRequestIR): DeepSeekRequest {
   const messages: DeepSeekMessage[] = []
+  const isReasonerModel = ir.model?.includes('reasoner')
 
-  // Add system message if present
-  if (ir.system) {
+  // Add system message if present (from ir.system field)
+  // Note: DeepSeek Reasoner does NOT support system messages
+  if (ir.system && !isReasonerModel) {
     messages.push({
       role: 'system',
       content: ir.system,
@@ -18,15 +20,27 @@ export function buildRequest(ir: LLMRequestIR): DeepSeekRequest {
 
   // Add conversation messages
   for (const msg of ir.messages) {
-    messages.push({
+    // DeepSeek Reasoner: Skip system messages entirely
+    // The API will return error if system messages are included
+    if (isReasonerModel && msg.role === 'system') {
+      continue
+    }
+
+    const message: DeepSeekMessage = {
       role: msg.role,
       content: buildContent(msg.content),
       name: msg.name,
       tool_calls: msg.toolCalls,
       tool_call_id: msg.toolCallId,
-      // DeepSeek-specific: reasoning content
-      reasoning_content: msg.reasoningContent,
-    })
+    }
+
+    // DeepSeek Reasoner: Do NOT include reasoning_content in input messages
+    // The API will return 400 error if reasoning_content is included
+    if (!isReasonerModel && msg.reasoningContent !== undefined) {
+      message.reasoning_content = msg.reasoningContent
+    }
+
+    messages.push(message)
   }
 
   const request: DeepSeekRequest = {
@@ -62,7 +76,8 @@ export function buildRequest(ir: LLMRequestIR): DeepSeekRequest {
       request.top_p = ir.generation.topP
     }
     if (ir.generation.maxTokens !== undefined) {
-      request.max_tokens = ir.generation.maxTokens
+      // DeepSeek max_tokens limit: 1-8192
+      request.max_tokens = Math.min(Math.max(ir.generation.maxTokens, 1), 8192)
     }
     if (ir.generation.stopSequences && ir.generation.stopSequences.length > 0) {
       request.stop = ir.generation.stopSequences

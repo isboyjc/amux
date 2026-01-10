@@ -3,7 +3,7 @@ title: IR Format API
 description: Complete API reference for Intermediate Representation (IR)
 ---
 
-IR is at the heart of the LLM Bridge, a unified format for all adapter conversions that captures all LLM functionality in a provider-agnostic manner, providing a common language understood by all adapters and enabling seamless conversions between any provider format.
+IR is at the heart of Amux, a unified format for all adapter conversions that captures all LLM functionality in a provider-agnostic manner, providing a common language understood by all adapters and enabling seamless conversions between any provider format.
 
 ## IR Type Hierarchy
 
@@ -19,8 +19,6 @@ graph TD
 
     G --> H[TextContent]
     G --> I[ImageContent]
-    G --> J[ToolUseContent]
-    G --> K[ToolResultContent]
 
     C --> L[FunctionDefinition]
     L --> M[JSONSchema]
@@ -398,8 +396,6 @@ graph TD
 
     C --> D[TextContent]
     C --> E[ImageContent]
-    C --> F[ToolUseContent]
-    C --> G[ToolResultContent]
 
     E --> H[URL Source]
     E --> I[Base64 Source]
@@ -408,7 +404,7 @@ graph TD
     style C fill:#fff4e1
 ```
 
-<Tabs items={['Text', 'Image', 'Tool Use', 'Tool Result']}>
+<Tabs items={['Text', 'Image']}>
   <Tab value="Text">
     ### TextContent
 
@@ -464,57 +460,11 @@ graph TD
     }
     ```
   </Tab>
-
-  <Tab value="Tool Use">
-    ### ToolUseContent
-
-    Anthropic-style tool call in message content.
-
-    ```typescript
-    interface ToolUseContent {
-      type: 'tool_use'
-      id: string
-      name: string
-      input: unknown
-    }
-    ```
-
-    **Example:**
-    ```typescript
-    {
-      type: 'tool_use',
-      id: 'toolu_123',
-      name: 'get_weather',
-      input: { location: 'Tokyo' }
-    }
-    ```
-  </Tab>
-
-  <Tab value="Tool Result">
-    ### ToolResultContent
-
-    Anthropic-style tool result in message content.
-
-    ```typescript
-    interface ToolResultContent {
-      type: 'tool_result'
-      toolUseId: string
-      content: string | ContentPart[]
-      isError?: boolean
-    }
-    ```
-
-    **Example:**
-    ```typescript
-    {
-      type: 'tool_result',
-      toolUseId: 'toolu_123',
-      content: '{"temperature":22,"condition":"sunny"}',
-      isError: false
-    }
-    ```
-  </Tab>
 </Tabs>
+
+<Callout type="info">
+**Note on Tool Calls:** Tool calls are represented using the `toolCalls` field on the Message object (OpenAI-style), not as ContentPart types. See the [Tool Calling Flow](#tool-calling-flow) section for details.
+</Callout>
 
 ## Generation Parameters
 
@@ -633,7 +583,11 @@ sequenceDiagram
     Model->>User: "The weather in Tokyo is sunny, 22°C"
 ```
 
-### OpenAI-Style Tool Calling
+<Callout type="info">
+**Unified Tool Call Format:** IR uses OpenAI-style tool calling as the unified format. When converting from Anthropic format, the adapter automatically converts `tool_use` content blocks to `toolCalls` and `tool_result` content blocks to tool role messages.
+</Callout>
+
+### Tool Calling in IR
 
 ```typescript
 // 1. User message
@@ -662,48 +616,6 @@ sequenceDiagram
   content: '{"temperature":22,"condition":"sunny"}',
   toolCallId: 'call_abc123',
   name: 'get_weather'
-}
-
-// 4. Final assistant response
-{
-  role: 'assistant',
-  content: 'The weather in Tokyo is sunny with a temperature of 22°C.'
-}
-```
-
-### Anthropic-Style Tool Calling
-
-```typescript
-// 1. User message
-{
-  role: 'user',
-  content: 'What is the weather in Tokyo?'
-}
-
-// 2. Assistant with tool use
-{
-  role: 'assistant',
-  content: [
-    { type: 'text', text: 'Let me check the weather for you.' },
-    {
-      type: 'tool_use',
-      id: 'toolu_123',
-      name: 'get_weather',
-      input: { location: 'Tokyo' }
-    }
-  ]
-}
-
-// 3. Tool result
-{
-  role: 'user',
-  content: [
-    {
-      type: 'tool_result',
-      toolUseId: 'toolu_123',
-      content: '{"temperature":22,"condition":"sunny"}'
-    }
-  ]
 }
 
 // 4. Final assistant response
