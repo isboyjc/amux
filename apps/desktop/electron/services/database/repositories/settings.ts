@@ -42,6 +42,7 @@ export interface SettingsSchema {
   'app.showTrayIcon': boolean
   'security.masterPassword.enabled': boolean
   'security.masterPassword.hash': string
+  'security.unifiedApiKey.enabled': boolean
 }
 
 export class SettingsRepository {

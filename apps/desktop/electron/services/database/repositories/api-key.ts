@@ -6,8 +6,8 @@ import { randomUUID, randomBytes } from 'crypto'
 import { getDatabase } from '../index'
 import type { ApiKeyRow } from '../types'
 
-// API Key prefix
-const API_KEY_PREFIX = 'sk-'
+// API Key prefix - use sk-amux. to clearly distinguish platform keys
+const API_KEY_PREFIX = 'sk-amux.'
 const API_KEY_LENGTH = 32
 
 export interface CreateApiKeyDTO {

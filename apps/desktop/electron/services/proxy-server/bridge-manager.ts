@@ -2,27 +2,28 @@
  * Bridge Manager - Manages Bridge instances with LRU caching
  */
 
-import { Bridge } from '@amux/llm-bridge'
-import { OpenAIAdapter } from '@amux/adapter-openai'
-import { AnthropicAdapter } from '@amux/adapter-anthropic'
-import { DeepSeekAdapter } from '@amux/adapter-deepseek'
-import { MoonshotAdapter } from '@amux/adapter-moonshot'
-import { QwenAdapter } from '@amux/adapter-qwen'
-import { ZhipuAdapter } from '@amux/adapter-zhipu'
-import { GoogleAdapter } from '@amux/adapter-google'
+import { Bridge, type LLMAdapter } from '@amux/llm-bridge'
+import { openaiAdapter, openaiResponsesAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { deepseekAdapter } from '@amux/adapter-deepseek'
+import { moonshotAdapter } from '@amux/adapter-moonshot'
+import { qwenAdapter } from '@amux/adapter-qwen'
+import { zhipuAdapter } from '@amux/adapter-zhipu'
+import { googleAdapter } from '@amux/adapter-google'
 import { getBridgeProxyRepository, getProviderRepository } from '../database/repositories'
 import { decryptApiKey } from '../crypto'
 import type { BridgeProxyRow, ProviderRow } from '../database/types'
 
-// Adapter type to class mapping
-const ADAPTER_MAP: Record<string, new () => unknown> = {
-  openai: OpenAIAdapter,
-  anthropic: AnthropicAdapter,
-  deepseek: DeepSeekAdapter,
-  moonshot: MoonshotAdapter,
-  qwen: QwenAdapter,
-  zhipu: ZhipuAdapter,
-  google: GoogleAdapter
+// Adapter type to instance mapping (adapters are exported as singleton instances)
+const ADAPTER_MAP: Record<string, LLMAdapter> = {
+  openai: openaiAdapter,
+  'openai-responses': openaiResponsesAdapter,
+  anthropic: anthropicAdapter,
+  deepseek: deepseekAdapter,
+  moonshot: moonshotAdapter,
+  qwen: qwenAdapter,
+  zhipu: zhipuAdapter,
+  google: googleAdapter
 }
 
 // Bridge cache entry
@@ -40,14 +41,20 @@ const MAX_CACHE_SIZE = 50
 const bridgeCache = new Map<string, BridgeCacheEntry>()
 
 /**
- * Create an adapter instance by type
+ * Get adapter instance by type
+ * Adapters are singleton instances, not classes
  */
-function createAdapter(adapterType: string): unknown {
-  const AdapterClass = ADAPTER_MAP[adapterType]
-  if (!AdapterClass) {
+function getAdapter(adapterType: string): LLMAdapter {
+  console.log(`[BridgeManager] getAdapter called with: "${adapterType}"`)
+  
+  const adapter = ADAPTER_MAP[adapterType]
+  if (!adapter) {
+    console.error(`[BridgeManager] Unknown adapter type: "${adapterType}". Available: ${Object.keys(ADAPTER_MAP).join(', ')}`)
     throw new Error(`Unknown adapter type: ${adapterType}`)
   }
-  return new AdapterClass()
+  
+  console.log(`[BridgeManager] Got adapter: ${adapter.name}`)
+  return adapter
 }
 
 /**
@@ -136,8 +143,10 @@ export function resolveProxyChain(proxyId: string): {
 
 /**
  * Get or create a Bridge instance
+ * @param proxyId - The proxy ID
+ * @param requestApiKey - Optional API key from request (for pass-through mode)
  */
-export function getBridge(proxyId: string): {
+export function getBridge(proxyId: string, requestApiKey?: string): {
   bridge: Bridge
   proxy: BridgeProxyRow
   provider: ProviderRow
@@ -145,6 +154,58 @@ export function getBridge(proxyId: string): {
   const { chain, provider } = resolveProxyChain(proxyId)
   const proxy = chain[0] // First proxy is the entry point
   
+  if (!proxy) {
+    throw new Error(`No proxy found in chain for: ${proxyId}`)
+  }
+  
+  // Determine API key to use:
+  // - If requestApiKey is provided: use it directly (pass-through mode)
+  // - Otherwise: use provider's stored API key (default mode or platform key mode)
+  let apiKey: string | undefined
+  let isPassThrough = false
+  
+  if (requestApiKey) {
+    // Pass-through mode: use the API key from request directly
+    apiKey = requestApiKey
+    isPassThrough = true
+    console.log(`[BridgeManager] Using pass-through API key`)
+  } else {
+    // Use provider's stored API key
+    if (provider.api_key) {
+      apiKey = decryptApiKey(provider.api_key)
+      if (apiKey) {
+        console.log(`[BridgeManager] Using provider API key`)
+      } else {
+        console.warn(`[BridgeManager] Provider has encrypted API key but decryption failed - using empty key`)
+      }
+    } else {
+      apiKey = undefined
+      console.warn(`[BridgeManager] Provider has no API key configured`)
+    }
+  }
+  
+  // For pass-through mode, don't cache (API key varies per request)
+  if (isPassThrough) {
+    // Get adapters
+    const inboundAdapter = getAdapter(proxy.inbound_adapter)
+    const outboundAdapter = getAdapter(provider.adapter_type)
+    
+    // Create bridge without caching
+    const bridge = new Bridge({
+      inbound: inboundAdapter,
+      outbound: outboundAdapter,
+      config: {
+        apiKey: apiKey || '',
+        baseURL: provider.base_url ?? undefined
+      }
+    })
+    
+    console.log(`[BridgeManager] Created bridge (pass-through) for proxy ${proxy.proxy_path}`)
+    
+    return { bridge, proxy, provider }
+  }
+  
+  // For cached mode (unified key or provider key)
   const cacheKey = getCacheKey(proxyId, provider.id)
   
   // Check cache
@@ -161,20 +222,17 @@ export function getBridge(proxyId: string): {
   // Create new bridge
   evictLRU()
   
-  // Get decrypted API key
-  const apiKey = provider.api_key ? decryptApiKey(provider.api_key) : undefined
-  
-  // Create adapters
-  const inboundAdapter = createAdapter(proxy.inbound_adapter)
-  const outboundAdapter = createAdapter(provider.adapter_type)
+  // Get adapters
+  const inboundAdapter = getAdapter(proxy.inbound_adapter)
+  const outboundAdapter = getAdapter(provider.adapter_type)
   
   // Create bridge
   const bridge = new Bridge({
-    inbound: inboundAdapter as Parameters<typeof Bridge.prototype.constructor>[0]['inbound'],
-    outbound: outboundAdapter as Parameters<typeof Bridge.prototype.constructor>[0]['outbound'],
-    outboundConfig: {
-      apiKey,
-      baseUrl: provider.base_url ?? undefined
+    inbound: inboundAdapter,
+    outbound: outboundAdapter,
+    config: {
+      apiKey: apiKey || '',
+      baseURL: provider.base_url ?? undefined
     }
   })
   

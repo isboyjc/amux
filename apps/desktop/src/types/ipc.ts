@@ -156,6 +156,7 @@ export interface IPCHandlers {
     targetModel: string
     isDefault?: boolean
   }>) => Promise<ModelMapping[]>
+  'proxy:test': (proxyId: string) => Promise<{ success: boolean; error?: string }>
 
   // Proxy Service operations
   'proxy-service:start': (config?: ProxyServiceConfig) => Promise<void>
@@ -212,7 +213,13 @@ export interface IPCHandlers {
       capabilities?: string[]
     }>
   }>>
-  'presets:refresh': () => Promise<void>
+  'presets:get-adapters': () => Promise<Array<{
+    id: string
+    name: string
+    description: string
+    provider: string
+  }>>
+  'presets:refresh': () => Promise<{ providers: number; adapters: number }>
 
   // Provider models fetch
   'providers:fetch-models': (params: {

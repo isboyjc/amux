@@ -6,6 +6,16 @@
 
 import { cn } from '@/lib/utils'
 
+type SizePreset = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
+
+const SIZE_MAP: Record<SizePreset, number> = {
+  xs: 16,
+  sm: 24,
+  md: 32,
+  lg: 40,
+  xl: 48
+}
+
 interface ProviderLogoProps {
   /** Logo base64 data URL from provider data */
   logo?: string
@@ -13,7 +23,8 @@ interface ProviderLogoProps {
   name?: string
   /** Background color for logo container (default: #ffffff) */
   color?: string
-  size?: number
+  /** Size can be a preset string ('xs', 'sm', 'md', 'lg', 'xl') or a number */
+  size?: SizePreset | number
   className?: string
 }
 
@@ -24,6 +35,8 @@ export function ProviderLogo({
   size = 24, 
   className 
 }: ProviderLogoProps) {
+  // Convert size to number if it's a preset string
+  const sizeValue = typeof size === 'string' ? SIZE_MAP[size] : size
   // Get first letter of name for fallback
   const initial = name.charAt(0).toUpperCase()
 
@@ -33,10 +46,10 @@ export function ProviderLogo({
       <div 
         className={cn('flex items-center justify-center font-semibold text-zinc-600', className)}
         style={{ 
-          width: size, 
-          height: size,
+          width: sizeValue, 
+          height: sizeValue,
           backgroundColor: color,
-          fontSize: size * 0.5
+          fontSize: sizeValue * 0.5
         }}
       >
         {initial || '?'}
@@ -48,16 +61,16 @@ export function ProviderLogo({
     <div
       className={cn('flex items-center justify-center', className)}
       style={{ 
-        width: size, 
-        height: size,
+        width: sizeValue, 
+        height: sizeValue,
         backgroundColor: color
       }}
     >
       <img
         src={logo}
         alt={name || 'Provider Logo'}
-        width={size * 0.7}
-        height={size * 0.7}
+        width={sizeValue * 0.7}
+        height={sizeValue * 0.7}
         className="object-contain"
       />
     </div>

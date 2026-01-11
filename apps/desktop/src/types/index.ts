@@ -176,3 +176,11 @@ export interface PresetsConfig {
   updatedAt: string
   providers: ProviderPreset[]
 }
+
+// Adapter preset from JSON config
+export interface AdapterPreset {
+  id: string
+  name: string
+  description: string
+  provider: string // corresponding provider type
+}

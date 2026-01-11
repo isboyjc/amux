@@ -50,29 +50,8 @@ export async function initCrypto(): Promise<void> {
     console.warn('[Crypto] safeStorage not available, using fallback')
   }
   
-  if (existsSync(keyPath)) {
-    // Load existing master key
-    try {
-      const encryptedKey = readFileSync(keyPath)
-      
-      if (safeStorage.isEncryptionAvailable()) {
-        // Decrypt using safeStorage
-        masterKey = safeStorage.decryptString(encryptedKey)
-          ? Buffer.from(safeStorage.decryptString(encryptedKey), 'base64')
-          : encryptedKey
-      } else {
-        // Fallback: use the key directly (less secure)
-        masterKey = encryptedKey
-      }
-      
-      isUnlocked = true
-      console.log('[Crypto] Master key loaded')
-    } catch (error) {
-      console.error('[Crypto] Failed to load master key:', error)
-      throw new Error('Failed to initialize encryption')
-    }
-  } else {
-    // Generate new master key
+  // Helper to generate and save new master key
+  const generateAndSaveKey = (): void => {
     masterKey = generateMasterKey()
     
     // Ensure directory exists
@@ -81,22 +60,60 @@ export async function initCrypto(): Promise<void> {
       mkdirSync(dir, { recursive: true })
     }
     
+    // Save as plain base64 with a marker prefix for format detection
+    // Format: "AMUX_KEY_V1:" + base64(key)
+    const keyData = 'AMUX_KEY_V1:' + masterKey.toString('base64')
+    writeFileSync(keyPath, keyData, 'utf8')
+    isUnlocked = true
+    console.log(`[Crypto] New master key generated and saved, fingerprint: ${masterKey.toString('base64').slice(0, 8)}...`)
+  }
+
+  // Helper to check if string is valid base64
+  const isValidBase64 = (str: string): boolean => {
+    return /^[A-Za-z0-9+/]+=*$/.test(str) && str.length > 0
+  }
+
+  if (existsSync(keyPath)) {
+    // Load existing master key
     try {
-      if (safeStorage.isEncryptionAvailable()) {
-        // Encrypt using safeStorage
-        const encryptedKey = safeStorage.encryptString(masterKey.toString('base64'))
-        writeFileSync(keyPath, encryptedKey)
-      } else {
-        // Fallback: store directly (less secure)
-        writeFileSync(keyPath, masterKey)
-      }
+      const keyContent = readFileSync(keyPath, 'utf8')
       
-      isUnlocked = true
-      console.log('[Crypto] New master key generated and saved')
+      // Check for new format marker
+      if (keyContent.startsWith('AMUX_KEY_V1:')) {
+        const base64Key = keyContent.slice('AMUX_KEY_V1:'.length)
+        masterKey = Buffer.from(base64Key, 'base64')
+        if (masterKey.length === KEY_LENGTH) {
+          isUnlocked = true
+          console.log(`[Crypto] Master key loaded successfully (v1 format), fingerprint: ${masterKey.toString('base64').slice(0, 8)}...`)
+        } else {
+          throw new Error('Invalid key length')
+        }
+      } else if (isValidBase64(keyContent.trim()) && keyContent.length < 100) {
+        // Try legacy base64 format (without marker)
+        masterKey = Buffer.from(keyContent.trim(), 'base64')
+        if (masterKey.length === KEY_LENGTH) {
+          isUnlocked = true
+          console.log('[Crypto] Master key loaded (legacy base64 format)')
+          // Upgrade to new format
+          const keyData = 'AMUX_KEY_V1:' + masterKey.toString('base64')
+          writeFileSync(keyPath, keyData, 'utf8')
+          console.log('[Crypto] Upgraded to v1 format')
+        } else {
+          throw new Error('Invalid key length')
+        }
+      } else {
+        // Old safeStorage format or corrupted, regenerate
+        console.warn('[Crypto] Old format detected, regenerating master key...')
+        generateAndSaveKey()
+      }
     } catch (error) {
-      console.error('[Crypto] Failed to save master key:', error)
-      throw new Error('Failed to initialize encryption')
+      console.error('[Crypto] Failed to load master key:', error)
+      console.log('[Crypto] Regenerating master key...')
+      generateAndSaveKey()
     }
+  } else {
+    // Generate new master key
+    generateAndSaveKey()
   }
 }
 
@@ -115,6 +132,14 @@ export function isSafeStorageAvailable(): boolean {
 }
 
 /**
+ * Get master key fingerprint for debugging (first 8 chars of base64)
+ */
+function getMasterKeyFingerprint(): string {
+  if (!masterKey) return 'null'
+  return masterKey.toString('base64').slice(0, 8) + '...'
+}
+
+/**
  * Encrypt a plaintext string using AES-256-GCM
  * @param plaintext The string to encrypt
  * @returns Base64-encoded encrypted string (iv + ciphertext + authTag)
@@ -123,6 +148,8 @@ export function encrypt(plaintext: string): string {
   if (!masterKey) {
     throw new Error('Crypto service not initialized')
   }
+  
+  console.log(`[Crypto] encrypt() using key: ${getMasterKeyFingerprint()}`)
   
   const iv = randomBytes(IV_LENGTH)
   const cipher = createCipheriv(ALGORITHM, masterKey, iv)
@@ -149,6 +176,8 @@ export function decrypt(ciphertext: string): string {
   if (!masterKey) {
     throw new Error('Crypto service not initialized')
   }
+  
+  console.log(`[Crypto] decrypt() using key: ${getMasterKeyFingerprint()}, data length: ${ciphertext.length}`)
   
   const combined = Buffer.from(ciphertext, 'base64')
   

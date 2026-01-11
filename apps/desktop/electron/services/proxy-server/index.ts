@@ -141,8 +141,13 @@ function createServer(config: ProxyServerConfig): FastifyInstance {
 
 /**
  * Start the proxy server
+ * @param config - Server configuration
+ * @param routeRegistrar - Optional function to register routes before listening
  */
-export async function startServer(config?: Partial<ProxyServerConfig>): Promise<void> {
+export async function startServer(
+  config?: Partial<ProxyServerConfig>,
+  routeRegistrar?: (app: FastifyInstance) => void
+): Promise<void> {
   if (server) {
     throw new Error('Server is already running')
   }
@@ -152,7 +157,17 @@ export async function startServer(config?: Partial<ProxyServerConfig>): Promise<
     ...config
   }
 
+  // Clear bridge cache on server start to ensure fresh API keys
+  const { invalidateCache } = await import('./bridge-manager')
+  invalidateCache()
+  console.log('[ProxyServer] Bridge cache cleared')
+
   server = createServer(fullConfig)
+
+  // Register routes BEFORE listening (Fastify requirement)
+  if (routeRegistrar) {
+    routeRegistrar(server)
+  }
 
   try {
     await server.listen({
@@ -217,9 +232,12 @@ export async function stopServer(): Promise<void> {
 /**
  * Restart the proxy server
  */
-export async function restartServer(config?: Partial<ProxyServerConfig>): Promise<void> {
+export async function restartServer(
+  config?: Partial<ProxyServerConfig>,
+  routeRegistrar?: (app: FastifyInstance) => void
+): Promise<void> {
   await stopServer()
-  await startServer(config)
+  await startServer(config, routeRegistrar)
 }
 
 /**

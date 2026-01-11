@@ -55,6 +55,8 @@ function startFlushTimer(): void {
  * Flush buffered logs to database
  */
 function flush(): void {
+  console.log('[Logger] flush() called, buffer size:', logBuffer.length)
+  
   if (logBuffer.length === 0) {
     return
   }
@@ -63,6 +65,7 @@ function flush(): void {
   const logsEnabled = settings.get('logs.enabled') ?? true
   
   if (!logsEnabled) {
+    console.log('[Logger] Logs disabled during flush, clearing buffer')
     logBuffer.length = 0
     return
   }
@@ -72,10 +75,11 @@ function flush(): void {
   
   try {
     for (const log of logsToWrite) {
+      console.log('[Logger] Inserting log:', log.proxyPath, log.sourceModel, log.statusCode)
       repo.insert(log)
     }
     
-    console.log(`[Logger] Flushed ${logsToWrite.length} logs`)
+    console.log(`[Logger] Flushed ${logsToWrite.length} logs successfully`)
   } catch (error) {
     console.error('[Logger] Flush failed:', error)
     // Re-add failed logs to buffer (at the beginning)
@@ -87,10 +91,15 @@ function flush(): void {
  * Log a request
  */
 export function logRequest(data: CreateLogDTO): void {
+  console.log('[Logger] logRequest called:', data.proxyPath, data.sourceModel)
+  
   const settings = getSettingsRepository()
   const logsEnabled = settings.get('logs.enabled') ?? true
   
+  console.log('[Logger] logsEnabled:', logsEnabled)
+  
   if (!logsEnabled) {
+    console.log('[Logger] Logs disabled, skipping')
     return
   }
   
@@ -111,11 +120,10 @@ export function logRequest(data: CreateLogDTO): void {
   
   // Add to buffer
   logBuffer.push(logData)
+  console.log('[Logger] Added to buffer, size:', logBuffer.length)
   
-  // Flush if buffer is full
-  if (logBuffer.length >= MAX_BUFFER_SIZE) {
-    flush()
-  }
+  // Flush immediately for now (can be changed back to buffered later)
+  flush()
 }
 
 /**

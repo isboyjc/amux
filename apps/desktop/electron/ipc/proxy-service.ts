@@ -7,23 +7,16 @@ import {
   startServer,
   stopServer,
   restartServer,
-  getServerState,
-  getMetrics as getServerMetrics
+  getServerState
 } from '../services/proxy-server'
 import { registerRoutes } from '../services/proxy-server/routes'
-import { getServerInstance } from '../services/proxy-server'
 import { getMetrics as getDetailedMetrics } from '../services/metrics'
 
 export function registerProxyServiceHandlers(): void {
   // Start proxy service
   ipcMain.handle('proxy-service:start', async (_event, config?: { port?: number; host?: string }) => {
-    await startServer(config)
-    
-    // Register routes after server starts
-    const server = getServerInstance()
-    if (server) {
-      registerRoutes(server)
-    }
+    // Pass route registrar to startServer - routes must be registered BEFORE listen()
+    await startServer(config, registerRoutes)
     
     // Notify renderer of state change
     notifyStateChange()
@@ -37,13 +30,8 @@ export function registerProxyServiceHandlers(): void {
 
   // Restart proxy service
   ipcMain.handle('proxy-service:restart', async (_event, config?: { port?: number; host?: string }) => {
-    await restartServer(config)
-    
-    // Register routes after server restarts
-    const server = getServerInstance()
-    if (server) {
-      registerRoutes(server)
-    }
+    // Pass route registrar to restartServer - routes must be registered BEFORE listen()
+    await restartServer(config, registerRoutes)
     
     notifyStateChange()
   })

@@ -8,7 +8,6 @@ import {
   GearIcon,
   RocketIcon,
   KeyframesIcon,
-  ChartLineIcon,
   TerminalIcon
 } from '@/components/icons'
 import type { AnimatedIconHandle } from '@/components/icons'
@@ -27,7 +26,6 @@ const navItems: NavItemData[] = [
   { to: '/', icon: GaugeIcon, labelKey: 'nav.dashboard' },
   { to: '/providers', icon: KeyframesIcon, labelKey: 'nav.providers' },
   { to: '/proxies', icon: RocketIcon, labelKey: 'nav.proxies' },
-  { to: '/service', icon: ChartLineIcon, labelKey: 'nav.service' },
   { to: '/logs', icon: TerminalIcon, labelKey: 'nav.logs' },
 ]
 

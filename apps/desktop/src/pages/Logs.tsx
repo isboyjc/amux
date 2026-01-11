@@ -1,26 +1,35 @@
-import { useEffect, useState, useCallback } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useEffect, useState, useCallback, useRef } from 'react'
+import { toast } from 'sonner'
+import {
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  Download,
+  Loader2,
+  Clock,
+  Zap,
+  Hash,
+  ArrowRight,
+  AlertCircle
+} from 'lucide-react'
+
+import { TerminalIcon, TrashIcon, RefreshIcon } from '@/components/icons'
+import type { AnimatedIconHandle } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Modal, ModalHeader, ModalContent } from '@/components/ui/modal'
-import { PageContainer } from '@/components/layout'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ipc } from '@/lib/ipc'
-import {
-  Search,
-  RefreshCw,
-  Download,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
-  Filter
-} from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/stores'
 import type { RequestLog } from '@/types'
 import type { LogFilter, PaginatedResult } from '@/types/ipc'
 
 export function Logs() {
+  const { t, locale } = useI18n()
   const [logs, setLogs] = useState<RequestLog[]>([])
   const [loading, setLoading] = useState(false)
   const [total, setTotal] = useState(0)
@@ -29,6 +38,7 @@ export function Logs() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'success' | 'error'>('all')
   const [selectedLog, setSelectedLog] = useState<RequestLog | null>(null)
+  const refreshIconRef = useRef<AnimatedIconHandle>(null)
 
   const fetchLogs = useCallback(async () => {
     setLoading(true)
@@ -59,7 +69,6 @@ export function Logs() {
       }
       const data = await ipc.invoke('logs:export', filter, format)
       
-      // Create download
       const blob = new Blob([data], { type: format === 'json' ? 'application/json' : 'text/csv' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -67,16 +76,19 @@ export function Logs() {
       a.download = `logs-${new Date().toISOString().split('T')[0]}.${format}`
       a.click()
       URL.revokeObjectURL(url)
+      toast.success(t('logs.exportSuccess') || 'Exported successfully')
     } catch (error) {
       console.error('Failed to export logs:', error)
+      toast.error(t('logs.exportFailed') || 'Export failed')
     }
   }
 
   const handleClear = async () => {
-    if (confirm('确定要清空所有日志吗？此操作不可撤销。')) {
+    if (confirm(t('logs.clearConfirm'))) {
       try {
         await ipc.invoke('logs:clear')
         fetchLogs()
+        toast.success(t('logs.clearSuccess') || 'Logs cleared')
       } catch (error) {
         console.error('Failed to clear logs:', error)
       }
@@ -84,251 +96,397 @@ export function Logs() {
   }
 
   const totalPages = Math.ceil(total / pageSize)
+  const successCount = logs.filter(l => l.statusCode >= 200 && l.statusCode < 300).length
+  const errorCount = logs.filter(l => l.statusCode >= 400).length
+
+  const formatTime = (timestamp: number): string => {
+    return new Date(timestamp).toLocaleString(locale === 'zh-CN' ? 'zh-CN' : 'en-US', {
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  }
 
   return (
-    <PageContainer>
-      <div className="space-y-6 animate-fade-in">
-        {/* Header */}
+    <div className="h-full flex flex-col gap-3 animate-fade-in">
+      {/* Header Card */}
+      <div className="content-card p-4">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">请求日志</h1>
-            <p className="text-muted-foreground">
-              查看代理请求历史记录
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <TerminalIcon size={20} className="text-primary" />
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold">{t('logs.title')}</h1>
+              <p className="text-xs text-muted-foreground">{t('logs.description')}</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => handleExport('json')}>
-              <Download className="h-4 w-4 mr-2" />
-              导出 JSON
-            </Button>
-            <Button variant="outline" onClick={() => handleExport('csv')}>
-              <Download className="h-4 w-4 mr-2" />
-              导出 CSV
-            </Button>
-            <Button variant="destructive" onClick={handleClear}>
-              <Trash2 className="h-4 w-4 mr-2" />
-              清空
-            </Button>
+            {/* Export Dropdown */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="sm" onClick={() => handleExport('json')}>
+                    <Download className="h-4 w-4 mr-1.5" />
+                    JSON
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('logs.export')} JSON</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="sm" onClick={() => handleExport('csv')}>
+                    <Download className="h-4 w-4 mr-1.5" />
+                    CSV
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('logs.export')} CSV</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="destructive" size="sm" onClick={handleClear}>
+                    <TrashIcon size={14} dangerHover className="mr-1.5" />
+                    {t('logs.clear')}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('logs.clear')}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-4">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="搜索代理路径、模型名称..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-                className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-              >
-                <option value="all">全部状态</option>
-                <option value="success">成功</option>
-                <option value="error">失败</option>
-              </select>
-            </div>
-            <Button variant="outline" size="icon" onClick={fetchLogs}>
-              <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Log Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="text-left p-3 text-sm font-medium">时间</th>
-                  <th className="text-left p-3 text-sm font-medium">代理路径</th>
-                  <th className="text-left p-3 text-sm font-medium">模型</th>
-                  <th className="text-left p-3 text-sm font-medium">状态</th>
-                  <th className="text-right p-3 text-sm font-medium">延迟</th>
-                  <th className="text-right p-3 text-sm font-medium">Token</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={6} className="p-8 text-center text-muted-foreground">
-                      加载中...
-                    </td>
-                  </tr>
-                ) : logs.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="p-8 text-center text-muted-foreground">
-                      暂无日志记录
-                    </td>
-                  </tr>
-                ) : (
-                  logs.map((log) => (
-                    <tr
-                      key={log.id}
-                      className="border-b hover:bg-muted/30 cursor-pointer transition-colors"
-                      onClick={() => setSelectedLog(log)}
-                    >
-                      <td className="p-3 text-sm text-muted-foreground">
-                        {formatTime(log.createdAt)}
-                      </td>
-                      <td className="p-3">
-                        <code className="text-sm bg-muted px-1.5 py-0.5 rounded">
-                          /{log.proxyPath}
-                        </code>
-                      </td>
-                      <td className="p-3 text-sm">
-                        <div className="flex flex-col">
-                          <span>{log.sourceModel}</span>
-                          {log.targetModel !== log.sourceModel && (
-                            <span className="text-xs text-muted-foreground">
-                              → {log.targetModel}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        <Badge
-                          variant={log.statusCode >= 200 && log.statusCode < 300 ? 'success' : 'destructive'}
-                        >
-                          {log.statusCode}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-right text-sm tabular-nums">
-                        {log.latencyMs}ms
-                      </td>
-                      <td className="p-3 text-right text-sm text-muted-foreground tabular-nums">
-                        {log.inputTokens ?? '-'} / {log.outputTokens ?? '-'}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            共 {total} 条记录，第 {page} / {totalPages} 页
-          </p>
+        {/* Quick Stats */}
+        <div className="flex items-center gap-6 mt-4 pt-4 border-t text-sm">
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+            <Hash className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">{t('logs.total') || 'Total'}:</span>
+            <span className="font-medium">{total}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-green-500" />
+            <span className="text-muted-foreground">{t('logs.success') || 'Success'}:</span>
+            <span className="font-medium text-green-600">{successCount}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-red-500" />
+            <span className="text-muted-foreground">{t('logs.error') || 'Error'}:</span>
+            <span className="font-medium text-red-600">{errorCount}</span>
           </div>
         </div>
-      )}
-
-        {/* Log Detail Modal */}
-        <LogDetailModal 
-          log={selectedLog} 
-          onClose={() => setSelectedLog(null)} 
-        />
       </div>
-    </PageContainer>
+
+      {/* Main Content */}
+      <div className="content-card flex-1 flex flex-col overflow-hidden">
+        {/* Filters */}
+        <div className="p-4 border-b flex items-center gap-3">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder={t('logs.searchPlaceholder') || 'Search proxy path, model...'}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 h-9"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="all">{t('logs.filterAll') || 'All Status'}</option>
+              <option value="success">{t('logs.filterSuccess') || 'Success'}</option>
+              <option value="error">{t('logs.filterError') || 'Error'}</option>
+            </select>
+          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  className="h-9 w-9"
+                  onClick={fetchLogs}
+                  onMouseEnter={() => refreshIconRef.current?.startAnimation()}
+                  onMouseLeave={() => refreshIconRef.current?.stopAnimation()}
+                >
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshIcon ref={refreshIconRef} size={16} />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('common.refresh')}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+
+        {/* Log List */}
+        <div className="flex-1 overflow-y-auto">
+          {loading && logs.length === 0 ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : logs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+              <TerminalIcon size={40} className="mb-3 text-muted-foreground/50" />
+              <p className="text-sm font-medium">{t('logs.noLogs')}</p>
+              <p className="text-xs mt-1">{t('logs.noLogsDesc')}</p>
+            </div>
+          ) : (
+            <div className="divide-y">
+              {logs.map((log) => (
+                <LogItem 
+                  key={log.id} 
+                  log={log} 
+                  onClick={() => setSelectedLog(log)}
+                  formatTime={formatTime}
+                  t={t}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="p-4 border-t flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              {t('logs.paginationInfo')
+                ?.replace('{total}', String(total))
+                .replace('{page}', String(page))
+                .replace('{totalPages}', String(totalPages)) ||
+                `Total ${total} records, Page ${page} / ${totalPages}`
+              }
+            </p>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Log Detail Modal */}
+      <LogDetailModal 
+        log={selectedLog} 
+        onClose={() => setSelectedLog(null)}
+        t={t}
+        locale={locale}
+      />
+    </div>
   )
 }
 
-function LogDetailModal({
-  log,
-  onClose
-}: {
+// ==================== Log Item ====================
+
+interface LogItemProps {
+  log: RequestLog
+  onClick: () => void
+  formatTime: (timestamp: number) => string
+  t: (key: string) => string
+}
+
+function LogItem({ log, onClick, formatTime, t }: LogItemProps) {
+  const isSuccess = log.statusCode >= 200 && log.statusCode < 300
+  const hasError = log.error || log.statusCode >= 400
+
+  return (
+    <div
+      className="group flex items-center gap-4 px-4 py-3 hover:bg-muted/50 cursor-pointer transition-colors"
+      onClick={onClick}
+    >
+      {/* Status Icon */}
+      <div className={cn(
+        "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+        isSuccess ? "bg-green-500/10" : "bg-red-500/10"
+      )}>
+        {isSuccess ? (
+          <Zap className="h-4 w-4 text-green-500" />
+        ) : (
+          <AlertCircle className="h-4 w-4 text-red-500" />
+        )}
+      </div>
+
+      {/* Main Info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <code className="text-sm font-medium bg-muted px-1.5 py-0.5 rounded">
+            /{log.proxyPath}
+          </code>
+          <Badge
+            variant={isSuccess ? 'success' : 'destructive'}
+            className="text-[10px] px-1.5 py-0"
+          >
+            {log.statusCode}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+          <span className="truncate max-w-[200px]">{log.sourceModel}</span>
+          {log.targetModel !== log.sourceModel && (
+            <>
+              <ArrowRight className="h-3 w-3" />
+              <span className="truncate max-w-[200px]">{log.targetModel}</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="flex items-center gap-4 text-xs text-muted-foreground shrink-0">
+        <div className="flex items-center gap-1">
+          <Zap className="h-3 w-3" />
+          <span className="tabular-nums">{log.latencyMs}ms</span>
+        </div>
+        <div className="flex items-center gap-1 w-24 justify-end">
+          <span className="tabular-nums">
+            {log.inputTokens ?? '-'} / {log.outputTokens ?? '-'}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 w-32 justify-end">
+          <Clock className="h-3 w-3" />
+          <span>{formatTime(log.createdAt)}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ==================== Log Detail Modal ====================
+
+interface LogDetailModalProps {
   log: RequestLog | null
   onClose: () => void
-}) {
+  t: (key: string) => string
+  locale: string
+}
+
+function LogDetailModal({ log, onClose, t, locale }: LogDetailModalProps) {
   if (!log) return null
-  
+
+  const isSuccess = log.statusCode >= 200 && log.statusCode < 300
+
+  const formatFullTime = (timestamp: number): string => {
+    return new Date(timestamp).toLocaleString(locale === 'zh-CN' ? 'zh-CN' : 'en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  }
+
+  const formatJson = (str: string): string => {
+    try {
+      return JSON.stringify(JSON.parse(str), null, 2)
+    } catch {
+      return str
+    }
+  }
+
   return (
     <Modal open={!!log} onClose={onClose} className="w-full max-w-2xl">
       <ModalHeader onClose={onClose}>
-        <h2 className="text-lg font-semibold">请求详情</h2>
-        <p className="text-sm text-muted-foreground">{formatTime(log.createdAt)}</p>
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            "w-8 h-8 rounded-lg flex items-center justify-center",
+            isSuccess ? "bg-green-500/10" : "bg-red-500/10"
+          )}>
+            {isSuccess ? (
+              <Zap className="h-4 w-4 text-green-500" />
+            ) : (
+              <AlertCircle className="h-4 w-4 text-red-500" />
+            )}
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold">{t('logs.requestDetail') || 'Request Detail'}</h2>
+            <p className="text-sm text-muted-foreground">{formatFullTime(log.createdAt)}</p>
+          </div>
+        </div>
       </ModalHeader>
-      <ModalContent className="space-y-4">
+      <ModalContent className="space-y-4 max-h-[60vh] overflow-y-auto">
+        {/* Basic Info Grid */}
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label className="text-muted-foreground">代理路径</Label>
-            <p className="font-mono">/{log.proxyPath}</p>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">{t('logs.proxyPath')}</Label>
+            <p className="font-mono text-sm">/{log.proxyPath}</p>
           </div>
-          <div>
-            <Label className="text-muted-foreground">状态码</Label>
-            <p>
-              <Badge
-                variant={log.statusCode >= 200 && log.statusCode < 300 ? 'success' : 'destructive'}
-              >
-                {log.statusCode}
-              </Badge>
-            </p>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">{t('logs.status')}</Label>
+            <Badge variant={isSuccess ? 'success' : 'destructive'}>
+              {log.statusCode}
+            </Badge>
           </div>
-          <div>
-            <Label className="text-muted-foreground">源模型</Label>
-            <p>{log.sourceModel}</p>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">{t('logs.sourceModel') || 'Source Model'}</Label>
+            <p className="text-sm">{log.sourceModel}</p>
           </div>
-          <div>
-            <Label className="text-muted-foreground">目标模型</Label>
-            <p>{log.targetModel}</p>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">{t('logs.targetModel') || 'Target Model'}</Label>
+            <p className="text-sm">{log.targetModel}</p>
           </div>
-          <div>
-            <Label className="text-muted-foreground">延迟</Label>
-            <p>{log.latencyMs}ms</p>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">{t('logs.latency')}</Label>
+            <p className="text-sm tabular-nums">{log.latencyMs}ms</p>
           </div>
-          <div>
-            <Label className="text-muted-foreground">Token 用量</Label>
-            <p>
-              输入: {log.inputTokens ?? '-'} / 输出: {log.outputTokens ?? '-'}
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">{t('logs.tokens')}</Label>
+            <p className="text-sm tabular-nums">
+              {t('logs.input') || 'In'}: {log.inputTokens ?? '-'} / {t('logs.output') || 'Out'}: {log.outputTokens ?? '-'}
             </p>
           </div>
         </div>
         
+        {/* Error */}
         {log.error && (
-          <div>
-            <Label className="text-muted-foreground">错误信息</Label>
-            <pre className="mt-1 p-3 bg-destructive/10 rounded-lg text-sm text-destructive overflow-x-auto">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">{t('common.error')}</Label>
+            <pre className="p-3 bg-destructive/10 rounded-lg text-sm text-destructive overflow-x-auto">
               {log.error}
             </pre>
           </div>
         )}
 
+        {/* Request Body */}
         {log.requestBody && (
-          <div>
-            <Label className="text-muted-foreground">请求体</Label>
-            <pre className="mt-1 p-3 bg-muted rounded-lg text-sm overflow-x-auto max-h-[200px]">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">{t('logs.requestBody') || 'Request Body'}</Label>
+            <pre className="p-3 bg-muted rounded-lg text-xs font-mono overflow-x-auto max-h-[200px]">
               {formatJson(log.requestBody)}
             </pre>
           </div>
         )}
 
+        {/* Response Body */}
         {log.responseBody && (
-          <div>
-            <Label className="text-muted-foreground">响应体</Label>
-            <pre className="mt-1 p-3 bg-muted rounded-lg text-sm overflow-x-auto max-h-[200px]">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">{t('logs.responseBody') || 'Response Body'}</Label>
+            <pre className="p-3 bg-muted rounded-lg text-xs font-mono overflow-x-auto max-h-[200px]">
               {formatJson(log.responseBody)}
             </pre>
           </div>
@@ -336,23 +494,4 @@ function LogDetailModal({
       </ModalContent>
     </Modal>
   )
-}
-
-function formatTime(timestamp: number): string {
-  return new Date(timestamp).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  })
-}
-
-function formatJson(str: string): string {
-  try {
-    return JSON.stringify(JSON.parse(str), null, 2)
-  } catch {
-    return str
-  }
 }

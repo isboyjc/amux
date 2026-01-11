@@ -1,0 +1,54 @@
+{
+  "version": "1.0.0",
+  "updatedAt": "2026-01-11T00:00:00Z",
+  "adapters": [
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "description": "OpenAI Chat Completions API format",
+      "provider": "openai"
+    },
+    {
+      "id": "openai-responses",
+      "name": "OpenAI Responses",
+      "description": "OpenAI Responses API format (with reasoning)",
+      "provider": "openai"
+    },
+    {
+      "id": "anthropic",
+      "name": "Anthropic",
+      "description": "Anthropic Claude Messages API format",
+      "provider": "anthropic"
+    },
+    {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "description": "DeepSeek API format (OpenAI compatible)",
+      "provider": "deepseek"
+    },
+    {
+      "id": "moonshot",
+      "name": "Moonshot",
+      "description": "Moonshot Kimi API format (OpenAI compatible)",
+      "provider": "moonshot"
+    },
+    {
+      "id": "qwen",
+      "name": "Qwen",
+      "description": "Alibaba Qwen API format (OpenAI compatible)",
+      "provider": "qwen"
+    },
+    {
+      "id": "zhipu",
+      "name": "Zhipu",
+      "description": "Zhipu GLM API format (OpenAI compatible)",
+      "provider": "zhipu"
+    },
+    {
+      "id": "google",
+      "name": "Google",
+      "description": "Google Gemini API format",
+      "provider": "google"
+    }
+  ]
+}

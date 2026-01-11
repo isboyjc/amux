@@ -1,5 +1,11 @@
 /**
  * Proxy server routes
+ * 
+ * Routes are dynamically registered based on proxy configurations.
+ * Each proxy's inbound adapter determines the endpoint:
+ *   - openai, deepseek, moonshot, qwen, zhipu, google → /v1/chat/completions
+ *   - anthropic → /v1/messages
+ *   - openai-responses → /v1/responses
  */
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
@@ -8,15 +14,34 @@ import {
   getBridgeProxyRepository,
   getApiKeyRepository,
   getModelMappingRepository,
-  getProviderRepository
+  getSettingsRepository
 } from '../database/repositories'
 import { getBridge, resolveProxyChain } from './bridge-manager'
 import { ProxyErrorCode } from './types'
+import { logRequest } from '../logger'
+import { recordRequest as recordMetrics } from '../metrics'
+
+// Endpoint mapping by adapter type
+const ADAPTER_ENDPOINTS: Record<string, string> = {
+  openai: '/v1/chat/completions',
+  'openai-responses': '/v1/responses',
+  anthropic: '/v1/messages',
+  deepseek: '/v1/chat/completions',
+  moonshot: '/v1/chat/completions',
+  qwen: '/v1/chat/completions',
+  zhipu: '/v1/chat/completions',
+  google: '/v1/chat/completions'
+}
+
+// Get endpoint for adapter type
+function getEndpointForAdapter(adapterType: string): string {
+  return ADAPTER_ENDPOINTS[adapterType] || '/v1/chat/completions'
+}
 
 // Request body type
 interface ChatCompletionRequest {
   model: string
-  messages: unknown[]
+  messages?: unknown[]
   stream?: boolean
   [key: string]: unknown
 }
@@ -27,8 +52,22 @@ interface ChatCompletionRequest {
 function createErrorResponse(
   code: ProxyErrorCode,
   message: string,
-  statusCode: number = 500
+  statusCode: number = 500,
+  format: 'openai' | 'anthropic' = 'openai'
 ): { statusCode: number; body: unknown } {
+  if (format === 'anthropic') {
+    return {
+      statusCode,
+      body: {
+        type: 'error',
+        error: {
+          type: code,
+          message
+        }
+      }
+    }
+  }
+  
   return {
     statusCode,
     body: {
@@ -42,107 +81,189 @@ function createErrorResponse(
 }
 
 /**
- * Extract API key from Authorization header
+ * Extract API key from request headers
+ * Supports multiple formats:
+ *   - Authorization: Bearer xxx (OpenAI style)
+ *   - x-api-key: xxx (Anthropic style)
+ *   - Authorization: xxx (raw)
  */
 function extractApiKey(request: FastifyRequest): string | null {
+  // Check Authorization header first (OpenAI style)
   const auth = request.headers.authorization
-  if (!auth) return null
-  
-  if (auth.startsWith('Bearer ')) {
-    return auth.slice(7)
+  if (auth) {
+    if (auth.startsWith('Bearer ')) {
+      return auth.slice(7)
+    }
+    return auth
   }
   
-  return auth
+  // Check x-api-key header (Anthropic style)
+  const xApiKey = request.headers['x-api-key']
+  if (xApiKey && typeof xApiKey === 'string') {
+    return xApiKey
+  }
+  
+  return null
+}
+
+// Platform key prefix - all platform keys start with sk-amux.
+const PLATFORM_KEY_PREFIX = 'sk-amux.'
+
+/**
+ * Check if authentication is enabled
+ */
+function isAuthEnabled(): boolean {
+  const settingsRepo = getSettingsRepository()
+  const enabled = settingsRepo.get('security.unifiedApiKey.enabled')
+  return enabled === true
 }
 
 /**
- * Validate API key
- * Supports both unified keys (sk-xxx) and provider keys
+ * Check if a key is a platform key (starts with sk-amux.)
  */
-function validateApiKey(apiKey: string): boolean {
-  // Check if it's a unified key
-  if (apiKey.startsWith('sk-')) {
-    const apiKeyRepo = getApiKeyRepository()
-    const key = apiKeyRepo.validateKey(apiKey)
-    if (key) {
-      // Update last used
-      apiKeyRepo.updateLastUsed(key.id)
-      return true
+function isPlatformKey(apiKey: string): boolean {
+  return apiKey.startsWith(PLATFORM_KEY_PREFIX)
+}
+
+/**
+ * Validate API key based on authentication mode
+ * 
+ * Auth disabled (default):
+ *   - No key needed, use provider's configured key
+ *   - Returns: { valid: true, usePlatformKey: false, usePassThrough: false }
+ * 
+ * Auth enabled:
+ *   - Must provide a key
+ *   - sk-amux.xxx → Platform key → validate and use provider's key
+ *   - Other format → Pass-through key → use directly
+ * 
+ * Returns: { 
+ *   valid: boolean,
+ *   usePlatformKey: boolean,  // Use provider's configured key
+ *   usePassThrough: boolean,  // Use the key from request directly
+ *   error?: string 
+ * }
+ */
+function validateApiKey(apiKey: string | null): { 
+  valid: boolean
+  usePlatformKey: boolean
+  usePassThrough: boolean
+  error?: string 
+} {
+  const authEnabled = isAuthEnabled()
+  
+  // Auth disabled - no key needed, use provider's configured key
+  if (!authEnabled) {
+    return { valid: true, usePlatformKey: false, usePassThrough: false }
+  }
+  
+  // Auth enabled - key is required
+  if (!apiKey) {
+    return { 
+      valid: false, 
+      usePlatformKey: false, 
+      usePassThrough: false,
+      error: 'Authentication required. Provide an API key in Authorization header.'
     }
   }
   
-  // For now, accept any API key format
-  // In production, you might want stricter validation
-  return apiKey.length > 0
+  // Check if it's a platform key (sk-amux.xxx)
+  if (isPlatformKey(apiKey)) {
+    const apiKeyRepo = getApiKeyRepository()
+    const key = apiKeyRepo.validateKey(apiKey)
+    if (key) {
+      // Valid platform key - use provider's configured key
+      apiKeyRepo.updateLastUsed(key.id)
+      return { valid: true, usePlatformKey: true, usePassThrough: false }
+    }
+    // Invalid or disabled platform key
+    return { 
+      valid: false, 
+      usePlatformKey: true, 
+      usePassThrough: false,
+      error: 'Invalid or disabled platform API key.'
+    }
+  }
+  
+  // Other key format - pass-through mode, use the key directly
+  return { valid: true, usePlatformKey: false, usePassThrough: true }
 }
 
 /**
  * Register proxy routes
  */
 export function registerRoutes(app: FastifyInstance): void {
-  // Chat completions endpoint
-  app.post<{
-    Params: { proxyPath: string }
-    Body: ChatCompletionRequest
-  }>(
-    '/:proxyPath/v1/chat/completions',
-    async (request, reply) => {
+  // Get all enabled proxies
+  const proxyRepo = getBridgeProxyRepository()
+  const proxies = proxyRepo.findAllEnabled()
+  
+  console.log(`[Routes] Registering routes for ${proxies.length} enabled proxies`)
+  
+  // Register routes for each proxy
+  for (const proxy of proxies) {
+    const endpoint = getEndpointForAdapter(proxy.inbound_adapter)
+    const routePath = `/${proxy.proxy_path}${endpoint}`
+    const errorFormat = proxy.inbound_adapter === 'anthropic' ? 'anthropic' : 'openai'
+    
+    console.log(`[Routes] Registering: ${routePath} (${proxy.inbound_adapter} -> ${proxy.outbound_type})`)
+    
+    // Chat/Messages endpoint
+    app.post(routePath, async (request: FastifyRequest, reply: FastifyReply) => {
       const requestId = randomUUID()
       const startTime = Date.now()
       
+      console.log(`[Routes] Request received: ${routePath}`)
+      
       try {
-        const { proxyPath } = request.params
-        const body = request.body
+        const body = request.body as ChatCompletionRequest
         
-        // Find proxy by path
-        const proxyRepo = getBridgeProxyRepository()
-        const proxy = proxyRepo.findByPath(proxyPath)
-        
-        if (!proxy) {
-          const error = createErrorResponse(
-            ProxyErrorCode.PROXY_NOT_FOUND,
-            `Proxy not found: ${proxyPath}`,
-            404
-          )
-          return reply.status(error.statusCode).send(error.body)
-        }
-        
-        if (!proxy.enabled) {
-          const error = createErrorResponse(
-            ProxyErrorCode.PROXY_DISABLED,
-            `Proxy is disabled: ${proxyPath}`,
-            403
-          )
-          return reply.status(error.statusCode).send(error.body)
-        }
+        console.log(`[Routes] proxyPath: ${proxy.proxy_path}, model: ${body?.model}`)
         
         // Validate API key
         const apiKey = extractApiKey(request)
-        if (!apiKey) {
+        console.log(`[Routes] API key: ${apiKey ? '***' + apiKey.slice(-4) : 'missing'}`)
+        
+        // Validate API key based on authentication mode
+        const keyValidation = validateApiKey(apiKey)
+        console.log(`[Routes] Key validation: valid=${keyValidation.valid}, usePlatformKey=${keyValidation.usePlatformKey}, usePassThrough=${keyValidation.usePassThrough}`)
+        
+        if (!keyValidation.valid) {
+          console.log(`[Routes] Key validation failed: ${keyValidation.error}`)
           const error = createErrorResponse(
-            ProxyErrorCode.MISSING_API_KEY,
-            'Missing API key in Authorization header',
-            401
+            keyValidation.error?.includes('required') ? ProxyErrorCode.MISSING_API_KEY : ProxyErrorCode.INVALID_API_KEY,
+            keyValidation.error || 'Invalid API key',
+            401,
+            errorFormat
           )
           return reply.status(error.statusCode).send(error.body)
         }
         
-        if (!validateApiKey(apiKey)) {
-          const error = createErrorResponse(
-            ProxyErrorCode.INVALID_API_KEY,
-            'Invalid API key',
-            401
-          )
-          return reply.status(error.statusCode).send(error.body)
+        // Get bridge with appropriate API key handling:
+        // - Auth disabled or Platform key: use provider's configured key (passThruKey = undefined)
+        // - Pass-through mode: use the request key directly (passThruKey = apiKey)
+        console.log(`[Routes] Getting bridge for proxy: ${proxy.id}`)
+        let bridge, provider
+        try {
+          const passThruKey = keyValidation.usePassThrough ? apiKey : undefined
+          const result = getBridge(proxy.id, passThruKey ?? undefined)
+          bridge = result.bridge
+          provider = result.provider
+          
+          const mode = keyValidation.usePassThrough 
+            ? 'pass-through' 
+            : (keyValidation.usePlatformKey ? 'platform-key' : 'no-auth')
+          console.log(`[Routes] Bridge created, provider: ${provider.name}, mode: ${mode}`)
+        } catch (error) {
+          console.error(`[Routes] Failed to get bridge:`, error)
+          throw error
         }
-        
-        // Get bridge
-        const { bridge, provider } = getBridge(proxy.id)
         
         // Resolve model mapping
         const mappingRepo = getModelMappingRepository()
-        const sourceModel = body.model
+        const sourceModel = body.model || ''
         const targetModel = mappingRepo.resolveTargetModel(proxy.id, sourceModel) ?? sourceModel
+        
+        console.log(`[Routes] Model: ${sourceModel} -> ${targetModel}`)
         
         // Update request with mapped model
         const mappedRequest = {
@@ -151,57 +272,127 @@ export function registerRoutes(app: FastifyInstance): void {
         }
         
         // Handle streaming vs non-streaming
+        console.log(`[Routes] Stream mode: ${body.stream ? 'streaming' : 'non-streaming'}`)
+        
         if (body.stream) {
           // Streaming response
+          console.log(`[Routes] Starting stream request`)
           reply.raw.setHeader('Content-Type', 'text/event-stream')
           reply.raw.setHeader('Cache-Control', 'no-cache')
           reply.raw.setHeader('Connection', 'keep-alive')
           reply.raw.setHeader('X-Request-ID', requestId)
           
+          let streamSuccess = true
+          let streamError: string | undefined
+          
           try {
             const stream = await bridge.chatStream(mappedRequest)
             
-            for await (const event of stream) {
-              if (event.type === 'done') {
-                reply.raw.write('data: [DONE]\n\n')
-                break
+            for await (const sse of stream) {
+              // Format SSE based on inbound adapter format
+              if (proxy.inbound_adapter === 'anthropic' || proxy.inbound_adapter === 'openai-responses') {
+                // Anthropic and OpenAI Responses API format: event: xxx\ndata: {...}\n\n
+                const sseData = sse as { event?: string; data?: unknown; type?: string }
+                const eventType = sseData.event || sseData.type || 'message'
+                reply.raw.write(`event: ${eventType}\ndata: ${JSON.stringify(sseData.data || sseData)}\n\n`)
+              } else {
+                // OpenAI Chat Completions format: data: {...}\n\n
+                reply.raw.write(`data: ${JSON.stringify(sse)}\n\n`)
               }
-              
-              // Build SSE response format
-              const chunk = buildStreamChunk(event, requestId)
-              if (chunk) {
-                reply.raw.write(`data: ${JSON.stringify(chunk)}\n\n`)
-              }
+            }
+            
+            // Add protocol-level end marker for OpenAI Chat Completions format only
+            if (proxy.inbound_adapter !== 'anthropic' && proxy.inbound_adapter !== 'openai-responses') {
+              reply.raw.write('data: [DONE]\n\n')
             }
             
             reply.raw.end()
           } catch (error) {
+            streamSuccess = false
+            streamError = error instanceof Error ? error.message : 'Stream error'
             console.error(`[Routes] Stream error:`, error)
-            reply.raw.write(`data: ${JSON.stringify({
-              error: {
-                message: error instanceof Error ? error.message : 'Stream error',
-                type: 'api_error',
-                code: ProxyErrorCode.INTERNAL_ERROR
-              }
-            })}\n\n`)
+            
+            if (proxy.inbound_adapter === 'anthropic') {
+              reply.raw.write(`event: error\ndata: ${JSON.stringify({
+                type: 'error',
+                error: { type: 'api_error', message: streamError }
+              })}\n\n`)
+            } else {
+              reply.raw.write(`data: ${JSON.stringify({
+                error: {
+                  message: streamError,
+                  type: 'api_error',
+                  code: ProxyErrorCode.INTERNAL_ERROR
+                }
+              })}\n\n`)
+            }
             reply.raw.end()
           }
+          
+          // Log streaming request
+          const latencyMs = Date.now() - startTime
+          logRequest({
+            proxyId: proxy.id,
+            proxyPath: proxy.proxy_path,
+            sourceModel,
+            targetModel,
+            statusCode: streamSuccess ? 200 : 500,
+            latencyMs,
+            requestBody: JSON.stringify(body),
+            error: streamError
+          })
+          recordMetrics(proxy.id, provider.id, streamSuccess, latencyMs)
           
           return
         }
         
         // Non-streaming response
+        console.log(`[Routes] Starting non-streaming request`)
         try {
+          console.log(`[Routes] Calling bridge.chat...`)
           const response = await bridge.chat(mappedRequest)
+          console.log(`[Routes] bridge.chat completed`)
+          const latencyMs = Date.now() - startTime
+          
+          // Log successful request
+          console.log(`[Routes] Logging request, latency: ${latencyMs}ms`)
+          logRequest({
+            proxyId: proxy.id,
+            proxyPath: proxy.proxy_path,
+            sourceModel,
+            targetModel,
+            statusCode: 200,
+            latencyMs,
+            requestBody: JSON.stringify(body),
+            responseBody: JSON.stringify(response)
+          })
+          recordMetrics(proxy.id, provider.id, true, latencyMs)
           
           reply.header('X-Request-ID', requestId)
           return reply.send(response)
         } catch (error) {
+          const latencyMs = Date.now() - startTime
+          const errorMessage = error instanceof Error ? error.message : 'Chat request failed'
+          
+          // Log failed request
+          logRequest({
+            proxyId: proxy.id,
+            proxyPath: proxy.proxy_path,
+            sourceModel,
+            targetModel,
+            statusCode: 502,
+            latencyMs,
+            requestBody: JSON.stringify(body),
+            error: errorMessage
+          })
+          recordMetrics(proxy.id, provider.id, false, latencyMs)
+          
           console.error(`[Routes] Chat error:`, error)
           const err = createErrorResponse(
             ProxyErrorCode.ADAPTER_ERROR,
-            error instanceof Error ? error.message : 'Chat request failed',
-            502
+            errorMessage,
+            502,
+            errorFormat
           )
           return reply.status(err.statusCode).send(err.body)
         }
@@ -210,35 +401,18 @@ export function registerRoutes(app: FastifyInstance): void {
         const err = createErrorResponse(
           ProxyErrorCode.INTERNAL_ERROR,
           error instanceof Error ? error.message : 'Internal server error',
-          500
+          500,
+          errorFormat
         )
         return reply.status(err.statusCode).send(err.body)
       }
-    }
-  )
+    })
+  }
   
-  // Models endpoint
-  app.get<{
-    Params: { proxyPath: string }
-  }>(
-    '/:proxyPath/v1/models',
-    async (request, reply) => {
+  // Models endpoint for each proxy
+  for (const proxy of proxies) {
+    app.get(`/${proxy.proxy_path}/v1/models`, async (_request, reply) => {
       try {
-        const { proxyPath } = request.params
-        
-        // Find proxy by path
-        const proxyRepo = getBridgeProxyRepository()
-        const proxy = proxyRepo.findByPath(proxyPath)
-        
-        if (!proxy) {
-          const error = createErrorResponse(
-            ProxyErrorCode.PROXY_NOT_FOUND,
-            `Proxy not found: ${proxyPath}`,
-            404
-          )
-          return reply.status(error.statusCode).send(error.body)
-        }
-        
         // Resolve to provider
         const { provider } = resolveProxyChain(proxy.id)
         
@@ -265,62 +439,25 @@ export function registerRoutes(app: FastifyInstance): void {
         )
         return reply.status(err.statusCode).send(err.body)
       }
-    }
-  )
+    })
+  }
   
   // List all proxies endpoint
-  app.get('/v1/proxies', async (request, reply) => {
-    const proxyRepo = getBridgeProxyRepository()
-    const proxies = proxyRepo.findAllEnabled()
+  app.get('/v1/proxies', async (_request, reply) => {
+    const allProxies = proxyRepo.findAllEnabled()
     
     return reply.send({
       object: 'list',
-      data: proxies.map(p => ({
+      data: allProxies.map(p => ({
         id: p.id,
         path: p.proxy_path,
         name: p.name,
         inbound: p.inbound_adapter,
+        endpoint: getEndpointForAdapter(p.inbound_adapter),
         enabled: p.enabled === 1
       }))
     })
   })
-}
-
-/**
- * Build streaming response chunk
- */
-function buildStreamChunk(event: unknown, requestId: string): unknown {
-  // This is a simplified version - in production, you'd properly transform
-  // the IR stream events to the inbound format
-  const e = event as { type: string; content?: string; delta?: unknown }
   
-  if (e.type === 'content' || e.type === 'delta') {
-    return {
-      id: `chatcmpl-${requestId}`,
-      object: 'chat.completion.chunk',
-      created: Math.floor(Date.now() / 1000),
-      model: 'unknown', // Would come from context
-      choices: [{
-        index: 0,
-        delta: e.delta ?? { content: e.content ?? '' },
-        finish_reason: null
-      }]
-    }
-  }
-  
-  if (e.type === 'end') {
-    return {
-      id: `chatcmpl-${requestId}`,
-      object: 'chat.completion.chunk',
-      created: Math.floor(Date.now() / 1000),
-      model: 'unknown',
-      choices: [{
-        index: 0,
-        delta: {},
-        finish_reason: 'stop'
-      }]
-    }
-  }
-  
-  return null
+  console.log(`[Routes] All routes registered`)
 }

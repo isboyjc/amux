@@ -8,7 +8,10 @@ import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { initDatabase, closeDatabase } from './services/database'
 import { runMigrations } from './services/database/migrator'
 import { getBridgeProxyRepository } from './services/database/repositories/bridge-proxy'
+import { getModelMappingRepository } from './services/database/repositories/model-mapping'
 import { getProviderRepository } from './services/database/repositories/provider'
+import { getRequestLogRepository } from './services/database/repositories/request-log'
+import { getApiKeyRepository } from './services/database/repositories/api-key'
 
 // Main window instance
 let mainWindow: BrowserWindow | null = null
@@ -48,8 +51,23 @@ interface ProviderPresetsFile {
   providers: ProviderPreset[]
 }
 
-// Cached provider presets (loaded from JSON file)
+// Adapter preset types
+interface AdapterPreset {
+  id: string
+  name: string
+  description: string
+  provider: string
+}
+
+interface AdapterPresetsFile {
+  version: string
+  updatedAt: string
+  adapters: AdapterPreset[]
+}
+
+// Cached presets (loaded from JSON files)
 let cachedPresets: ProviderPreset[] | null = null
+let cachedAdapters: AdapterPreset[] | null = null
 
 /**
  * Get the path to provider presets JSON file
@@ -64,15 +82,51 @@ function getPresetsFilePath(): string {
 }
 
 /**
+ * Get the path to adapter presets JSON file
+ */
+function getAdaptersFilePath(): string {
+  if (!app.isPackaged) {
+    return join(__dirname, '../../resources/presets/adapters.json')
+  }
+  return join(process.resourcesPath, 'presets/adapters.json')
+}
+
+/**
+ * Load adapter presets from JSON file
+ */
+function loadAdapterPresets(): AdapterPreset[] {
+  if (cachedAdapters) {
+    return cachedAdapters
+  }
+
+  const adaptersPath = getAdaptersFilePath()
+
+  try {
+    if (existsSync(adaptersPath)) {
+      const content = readFileSync(adaptersPath, 'utf-8')
+      const data: AdapterPresetsFile = JSON.parse(content)
+      cachedAdapters = data.adapters
+      console.log(`[Presets] Loaded ${cachedAdapters.length} adapter presets from ${adaptersPath}`)
+      return cachedAdapters
+    }
+  } catch (error) {
+    console.error('[Presets] Failed to load adapter presets:', error)
+  }
+
+  console.warn('[Presets] No adapters file found, returning empty array')
+  return []
+}
+
+/**
  * Load provider presets from JSON file
  */
 function loadProviderPresets(): ProviderPreset[] {
   if (cachedPresets) {
     return cachedPresets
   }
-  
+
   const presetsPath = getPresetsFilePath()
-  
+
   try {
     if (existsSync(presetsPath)) {
       const content = readFileSync(presetsPath, 'utf-8')
@@ -84,7 +138,7 @@ function loadProviderPresets(): ProviderPreset[] {
   } catch (error) {
     console.error('[Presets] Failed to load provider presets:', error)
   }
-  
+
   // Return empty array if file not found or error
   console.warn('[Presets] No presets file found, returning empty array')
   return []
@@ -192,18 +246,19 @@ function initializeDefaultProviders(): void {
 function registerIpcHandlers(): void {
   const providerRepo = getProviderRepository()
   const proxyRepo = getBridgeProxyRepository()
+  const mappingRepo = getModelMappingRepository()
 
   // Provider handlers - using SQLite
   ipcMain.handle('provider:list', () => {
     const rows = providerRepo.findAll()
     return rows.map(formatProviderRow)
   })
-  
+
   ipcMain.handle('provider:get', (_event, id: string) => {
     const row = providerRepo.findById(id)
     return row ? formatProviderRow(row) : null
   })
-  
+
   ipcMain.handle('provider:create', (_event, data) => {
     const row = providerRepo.create({
       name: data.name,
@@ -219,7 +274,7 @@ function registerIpcHandlers(): void {
     })
     return formatProviderRow(row)
   })
-  
+
   ipcMain.handle('provider:update', (_event, id: string, data) => {
     const row = providerRepo.update(id, {
       name: data.name,
@@ -236,56 +291,56 @@ function registerIpcHandlers(): void {
     })
     return row ? formatProviderRow(row) : null
   })
-  
+
   ipcMain.handle('provider:delete', (_event, id: string) => {
     return providerRepo.delete(id)
   })
-  
+
   ipcMain.handle('provider:toggle', (_event, id: string, enabled: boolean) => {
     return providerRepo.toggleEnabled(id, enabled)
   })
-  
+
   ipcMain.handle('provider:test', async (_event, id: string, modelId?: string) => {
     const row = providerRepo.findById(id)
     if (!row) {
       return { success: false, latency: 0, error: 'Provider not found' }
     }
-    
+
     if (!row.api_key || !row.base_url) {
       return { success: false, latency: 0, error: 'API key or base URL not configured' }
     }
-    
+
     if (!row.chat_path) {
       return { success: false, latency: 0, error: 'Chat API path not configured' }
     }
-    
+
     const models = JSON.parse(row.models || '[]')
     const testModel = modelId || models[0]
     if (!testModel) {
       return { success: false, latency: 0, error: 'No model available for testing' }
     }
-    
+
     try {
       const startTime = Date.now()
-      
+
       // Build the API endpoint using chatPath from database
       const baseUrl = row.base_url.endsWith('/') ? row.base_url.slice(0, -1) : row.base_url
       let chatPath = row.chat_path.startsWith('/') ? row.chat_path : `/${row.chat_path}`
-      
+
       // Handle model placeholder in chatPath (e.g., for Gemini: /v1beta/models/{model}:generateContent)
       if (chatPath.includes('{model}')) {
         chatPath = chatPath.replace('{model}', testModel)
       }
-      
+
       const endpoint = `${baseUrl}${chatPath}`
       console.log(`[ProviderTest] Testing endpoint: ${endpoint} with model: ${testModel}`)
-      
+
       // Determine the request body format based on adapter type
       let requestBody: Record<string, unknown>
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       }
-      
+
       // Different providers have different request formats
       if (row.adapter_type === 'anthropic') {
         headers['x-api-key'] = row.api_key
@@ -305,9 +360,9 @@ function registerIpcHandlers(): void {
             contents: [{ parts: [{ text: 'Hi' }] }]
           })
         })
-        
+
         const latency = Date.now() - startTime
-        
+
         if (!geminiResponse.ok) {
           const errorText = await geminiResponse.text()
           let errorMessage = `HTTP ${geminiResponse.status}`
@@ -319,7 +374,7 @@ function registerIpcHandlers(): void {
           }
           return { success: false, latency, error: errorMessage }
         }
-        
+
         return { success: true, latency, models }
       } else {
         // OpenAI-compatible format (default)
@@ -331,16 +386,16 @@ function registerIpcHandlers(): void {
           stream: false
         }
       }
-      
+
       // Make the test request
       const response = await fetch(endpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify(requestBody)
       })
-      
+
       const latency = Date.now() - startTime
-      
+
       if (!response.ok) {
         const errorText = await response.text()
         let errorMessage = `HTTP ${response.status}`
@@ -352,22 +407,22 @@ function registerIpcHandlers(): void {
         }
         return { success: false, latency, error: errorMessage }
       }
-      
+
       return { success: true, latency, models }
     } catch (error) {
-      return { 
-        success: false, 
-        latency: 0, 
-        error: error instanceof Error ? error.message : 'Connection failed' 
+      return {
+        success: false,
+        latency: 0,
+        error: error instanceof Error ? error.message : 'Connection failed'
       }
     }
   })
-  
+
   ipcMain.handle('provider:fetch-models', async (_event, id: string) => {
     const row = providerRepo.findById(id)
     return row ? JSON.parse(row.models || '[]') : []
   })
-  
+
   // Fetch models from provider API
   ipcMain.handle('providers:fetch-models', async (_event, params: {
     baseUrl: string
@@ -378,10 +433,10 @@ function registerIpcHandlers(): void {
     try {
       const { baseUrl, apiKey, modelsPath } = params
       const url = `${baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl}${modelsPath}`
-      
+
       console.log(`[FetchModels] Request URL: ${url}`)
       console.log(`[FetchModels] Adapter Type: ${params.adapterType}`)
-      
+
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -389,18 +444,18 @@ function registerIpcHandlers(): void {
           'Content-Type': 'application/json'
         }
       })
-      
+
       console.log(`[FetchModels] Response Status: ${response.status}`)
-      
+
       if (!response.ok) {
         const errorText = await response.text()
         console.log(`[FetchModels] Error Response: ${errorText.substring(0, 200)}`)
         return { success: false, error: `HTTP ${response.status}: ${errorText.substring(0, 100)}`, models: [] }
       }
-      
+
       const data = await response.json()
       console.log(`[FetchModels] Response Data Keys:`, Object.keys(data))
-      
+
       // Handle different API response formats
       let models: Array<{ id: string; name?: string }> = []
       if (Array.isArray(data)) {
@@ -420,18 +475,18 @@ function registerIpcHandlers(): void {
           name: m.name || m.id || m.model || ''
         }))
       }
-      
+
       console.log(`[FetchModels] Success! Found ${models.length} models`)
       if (models.length > 0) {
         console.log(`[FetchModels] First 5 models:`, models.slice(0, 5).map(m => m.id))
       }
-      
+
       return { success: true, models }
     } catch (error) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: error instanceof Error ? error.message : 'Failed to fetch models',
-        models: [] 
+        models: []
       }
     }
   })
@@ -441,12 +496,12 @@ function registerIpcHandlers(): void {
     const rows = proxyRepo.findAll()
     return rows.map(formatProxyRow)
   })
-  
+
   ipcMain.handle('proxy:get', (_event, id: string) => {
     const row = proxyRepo.findById(id)
     return row ? formatProxyRow(row) : null
   })
-  
+
   ipcMain.handle('proxy:create', (_event, data) => {
     const row = proxyRepo.create({
       name: data.name || '',
@@ -458,7 +513,7 @@ function registerIpcHandlers(): void {
     })
     return formatProxyRow(row)
   })
-  
+
   ipcMain.handle('proxy:update', (_event, id: string, data) => {
     const row = proxyRepo.update(id, {
       name: data.name,
@@ -471,65 +526,195 @@ function registerIpcHandlers(): void {
     })
     return row ? formatProxyRow(row) : null
   })
-  
+
   ipcMain.handle('proxy:delete', (_event, id: string) => {
     return proxyRepo.delete(id)
   })
-  
+
   ipcMain.handle('proxy:toggle', (_event, id: string, enabled: boolean) => {
     return proxyRepo.toggleEnabled(id, enabled)
   })
-  
+
   ipcMain.handle('proxy:validate-path', (_event, path: string, excludeId?: string) => {
     return proxyRepo.isPathUnique(path, excludeId)
   })
-  
+
   ipcMain.handle('proxy:check-circular', (_event, proxyId: string, outboundId: string) => {
     return proxyRepo.checkCircularDependency(proxyId, outboundId)
   })
-  
-  ipcMain.handle('proxy:get-mappings', () => [])
-  ipcMain.handle('proxy:set-mappings', () => [])
 
-  // Proxy service handlers
-  ipcMain.handle('proxy-service:start', async (_event, config?: { port?: number; host?: string }) => {
-    proxyServiceState = {
-      status: 'running',
-      port: config?.port ?? 9527,
-      host: config?.host ?? '127.0.0.1',
-      error: null
+  ipcMain.handle('proxy:get-mappings', (_event, proxyId: string) => {
+    const rows = mappingRepo.findByProxyId(proxyId)
+    return rows.map(row => ({
+      id: row.id,
+      proxyId: row.proxy_id,
+      sourceModel: row.source_model,
+      targetModel: row.target_model,
+      isDefault: row.is_default === 1
+    }))
+  })
+
+  ipcMain.handle('proxy:set-mappings', (_event, proxyId: string, mappings: Array<{
+    sourceModel: string
+    targetModel: string
+    isDefault?: boolean
+  }>) => {
+    const rows = mappingRepo.bulkCreate(proxyId, mappings)
+    return rows.map(row => ({
+      id: row.id,
+      proxyId: row.proxy_id,
+      sourceModel: row.source_model,
+      targetModel: row.target_model,
+      isDefault: row.is_default === 1
+    }))
+  })
+
+  // Proxy test handler
+  ipcMain.handle('proxy:test', async (_event, proxyId: string) => {
+    const proxy = proxyRepo.findById(proxyId)
+    if (!proxy) {
+      return { success: false, error: 'Proxy not found' }
     }
-    console.log(`[Proxy Service] Started on ${proxyServiceState.host}:${proxyServiceState.port}`)
+
+    // Get outbound provider if type is provider
+    if (proxy.outbound_type === 'provider') {
+      const provider = providerRepo.findById(proxy.outbound_id)
+      if (!provider) {
+        return { success: false, error: 'Provider not found' }
+      }
+
+      if (!provider.api_key) {
+        return { success: false, error: 'Provider API key not configured' }
+      }
+
+      if (!provider.base_url) {
+        return { success: false, error: 'Provider base URL not configured' }
+      }
+
+      // Use the same test logic as provider:test
+      try {
+        const response = await fetch(`${provider.base_url}${provider.chat_path || '/v1/chat/completions'}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${provider.api_key}`
+          },
+          body: JSON.stringify({
+            model: provider.models ? JSON.parse(provider.models)[0] : 'gpt-4o-mini',
+            messages: [{ role: 'user', content: 'Hi' }],
+            max_tokens: 5
+          })
+        })
+
+        if (response.ok) {
+          return { success: true }
+        } else {
+          const text = await response.text()
+          return { success: false, error: `HTTP ${response.status}: ${text.slice(0, 200)}` }
+        }
+      } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : 'Connection failed' }
+      }
+    } else {
+      // Chain proxy - just verify the target proxy exists and is enabled
+      const targetProxy = proxyRepo.findById(proxy.outbound_id)
+      if (!targetProxy) {
+        return { success: false, error: 'Target proxy not found' }
+      }
+      if (!targetProxy.enabled) {
+        return { success: false, error: 'Target proxy is disabled' }
+      }
+      return { success: true }
+    }
+  })
+
+  // Proxy service handlers - use real server implementation
+  ipcMain.handle('proxy-service:start', async (_event, config?: { port?: number; host?: string }) => {
+    try {
+      const { startServer } = await import('./services/proxy-server')
+      const { registerRoutes } = await import('./services/proxy-server/routes')
+
+      // Pass route registrar to startServer - routes must be registered BEFORE listen()
+      await startServer(config, registerRoutes)
+
+      proxyServiceState = {
+        status: 'running',
+        port: config?.port ?? 9527,
+        host: config?.host ?? '127.0.0.1',
+        error: null
+      }
+      console.log(`[Proxy Service] Started on ${proxyServiceState.host}:${proxyServiceState.port}`)
+    } catch (error) {
+      proxyServiceState = {
+        status: 'error',
+        port: null,
+        host: null,
+        error: error instanceof Error ? error.message : 'Failed to start server'
+      }
+      console.error('[Proxy Service] Failed to start:', error)
+      throw error
+    }
   })
   ipcMain.handle('proxy-service:stop', async () => {
-    proxyServiceState = { status: 'stopped', port: null, host: null, error: null }
-    console.log('[Proxy Service] Stopped')
+    try {
+      const { stopServer } = await import('./services/proxy-server')
+      await stopServer()
+      proxyServiceState = { status: 'stopped', port: null, host: null, error: null }
+      console.log('[Proxy Service] Stopped')
+    } catch (error) {
+      console.error('[Proxy Service] Failed to stop:', error)
+      throw error
+    }
   })
   ipcMain.handle('proxy-service:restart', async (_event, config?: { port?: number; host?: string }) => {
-    proxyServiceState = {
-      status: 'running',
-      port: config?.port ?? 9527,
-      host: config?.host ?? '127.0.0.1',
-      error: null
+    try {
+      const { restartServer } = await import('./services/proxy-server')
+      const { registerRoutes } = await import('./services/proxy-server/routes')
+
+      // Pass route registrar to restartServer - routes must be registered BEFORE listen()
+      await restartServer(config, registerRoutes)
+
+      proxyServiceState = {
+        status: 'running',
+        port: config?.port ?? 9527,
+        host: config?.host ?? '127.0.0.1',
+        error: null
+      }
+      console.log(`[Proxy Service] Restarted on ${proxyServiceState.host}:${proxyServiceState.port}`)
+    } catch (error) {
+      proxyServiceState = {
+        status: 'error',
+        port: null,
+        host: null,
+        error: error instanceof Error ? error.message : 'Failed to restart server'
+      }
+      console.error('[Proxy Service] Failed to restart:', error)
+      throw error
     }
-    console.log(`[Proxy Service] Restarted on ${proxyServiceState.host}:${proxyServiceState.port}`)
   })
   ipcMain.handle('proxy-service:status', () => proxyServiceState)
-  ipcMain.handle('proxy-service:metrics', () => ({
-    totalRequests: 0,
-    successRequests: 0,
-    failedRequests: 0,
-    averageLatency: 0,
-    p50Latency: 0,
-    p95Latency: 0,
-    p99Latency: 0,
-    requestsPerMinute: 0,
-    activeConnections: 0,
-    totalInputTokens: 0,
-    totalOutputTokens: 0,
-    windowStart: Date.now(),
-    windowEnd: Date.now()
-  }))
+  ipcMain.handle('proxy-service:metrics', async () => {
+    try {
+      const { getMetrics } = await import('./services/proxy-server')
+      return getMetrics()
+    } catch {
+      return {
+        totalRequests: 0,
+        successRequests: 0,
+        failedRequests: 0,
+        averageLatency: 0,
+        p50Latency: 0,
+        p95Latency: 0,
+        p99Latency: 0,
+        requestsPerMinute: 0,
+        activeConnections: 0,
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        windowStart: Date.now(),
+        windowEnd: Date.now()
+      }
+    }
+  })
 
   // Settings handlers
   ipcMain.handle('settings:get', () => undefined)
@@ -537,26 +722,100 @@ function registerIpcHandlers(): void {
   ipcMain.handle('settings:getAll', () => ({}))
   ipcMain.handle('settings:setMany', () => {})
 
-  // API Key handlers
-  ipcMain.handle('api-key:list', () => [])
-  ipcMain.handle('api-key:create', () => null)
-  ipcMain.handle('api-key:delete', () => false)
-  ipcMain.handle('api-key:toggle', () => false)
-  ipcMain.handle('api-key:rename', () => null)
+  // API Key handlers - use real database
+  ipcMain.handle('api-key:list', () => {
+    const repo = getApiKeyRepository()
+    const rows = repo.findAll()
+    return rows.map(row => ({
+      id: row.id,
+      key: row.key,
+      name: row.name,
+      enabled: row.enabled === 1,
+      createdAt: row.created_at,
+      lastUsedAt: row.last_used_at
+    }))
+  })
 
-  // Logs handlers
-  ipcMain.handle('logs:query', () => ({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 }))
-  ipcMain.handle('logs:get-stats', () => ({
-    totalRequests: 0,
-    successRequests: 0,
-    failedRequests: 0,
-    totalInputTokens: 0,
-    totalOutputTokens: 0,
-    averageLatency: 0
-  }))
-  ipcMain.handle('logs:export', () => '[]')
-  ipcMain.handle('logs:clear', () => 0)
-  ipcMain.handle('logs:cleanup', () => ({ deletedByDate: 0, deletedByCount: 0 }))
+  ipcMain.handle('api-key:create', (_event, name?: string) => {
+    const repo = getApiKeyRepository()
+    const row = repo.create({ name })
+    return {
+      id: row.id,
+      key: row.key,
+      name: row.name,
+      enabled: row.enabled === 1,
+      createdAt: row.created_at,
+      lastUsedAt: row.last_used_at
+    }
+  })
+
+  ipcMain.handle('api-key:delete', (_event, id: string) => {
+    const repo = getApiKeyRepository()
+    return repo.delete(id)
+  })
+
+  ipcMain.handle('api-key:toggle', (_event, id: string, enabled: boolean) => {
+    const repo = getApiKeyRepository()
+    return repo.toggleEnabled(id, enabled)
+  })
+
+  ipcMain.handle('api-key:rename', (_event, id: string, name: string) => {
+    const repo = getApiKeyRepository()
+    const row = repo.updateName(id, name)
+    if (!row) return null
+    return {
+      id: row.id,
+      key: row.key,
+      name: row.name,
+      enabled: row.enabled === 1,
+      createdAt: row.created_at,
+      lastUsedAt: row.last_used_at
+    }
+  })
+
+  // Logs handlers - use real database queries
+  const logRepo = getRequestLogRepository()
+
+  ipcMain.handle('logs:query', (_event, filter: unknown, pagination: unknown) => {
+    const result = logRepo.query(filter as Record<string, unknown>, pagination as { page: number; pageSize: number })
+    return {
+      ...result,
+      data: result.data.map(row => ({
+        id: row.id,
+        proxyId: row.proxy_id ?? undefined,
+        proxyPath: row.proxy_path,
+        sourceModel: row.source_model,
+        targetModel: row.target_model,
+        statusCode: row.status_code,
+        inputTokens: row.input_tokens ?? undefined,
+        outputTokens: row.output_tokens ?? undefined,
+        latencyMs: row.latency_ms,
+        requestBody: row.request_body ?? undefined,
+        responseBody: row.response_body ?? undefined,
+        error: row.error ?? undefined,
+        createdAt: row.created_at
+      }))
+    }
+  })
+  ipcMain.handle('logs:get-stats', (_event, filter?: unknown) => {
+    return logRepo.getStats((filter || {}) as Record<string, unknown>)
+  })
+  ipcMain.handle('logs:export', (_event, filter: unknown, format: 'json' | 'csv') => {
+    if (format === 'csv') {
+      return logRepo.exportToCsv(filter as Record<string, unknown>)
+    }
+    return logRepo.exportToJson(filter as Record<string, unknown>)
+  })
+  ipcMain.handle('logs:clear', (_event, before?: number) => {
+    if (before) {
+      return logRepo.clearBefore(before)
+    }
+    return logRepo.clearAll()
+  })
+  ipcMain.handle('logs:cleanup', async () => {
+    const { cleanupOldLogs } = await import('./services/logger')
+    return cleanupOldLogs()
+  })
 
   // Config handlers
   ipcMain.handle('config:export', () => JSON.stringify({ version: '1.0.0', exportedAt: new Date().toISOString() }))
@@ -564,10 +823,14 @@ function registerIpcHandlers(): void {
 
   // Presets handlers - return official presets (from JSON file)
   ipcMain.handle('presets:get-providers', () => loadProviderPresets())
+  ipcMain.handle('presets:get-adapters', () => loadAdapterPresets())
   ipcMain.handle('presets:refresh', () => {
     // Clear cache to force reload
     cachedPresets = null
-    return loadProviderPresets()
+    cachedAdapters = null
+    const providers = loadProviderPresets()
+    const adapters = loadAdapterPresets()
+    return { providers: providers.length, adapters: adapters.length }
   })
 
   // App handlers
@@ -657,7 +920,7 @@ export function showMainWindow(): void {
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.amux.desktop')
 
@@ -666,6 +929,16 @@ app.whenReady().then(() => {
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
+
+  // Initialize crypto service (must be before database for API key encryption)
+  console.log('[App] Initializing crypto service...')
+  try {
+    const { initCrypto } = await import('./services/crypto')
+    await initCrypto()
+    console.log('[App] Crypto service initialized')
+  } catch (error) {
+    console.error('[App] Failed to initialize crypto service:', error)
+  }
 
   // Initialize database
   console.log('[App] Initializing database...')
@@ -677,6 +950,11 @@ app.whenReady().then(() => {
   
   // Initialize default providers if database is empty
   initializeDefaultProviders()
+
+  // Initialize logger service
+  import('./services/logger').then(({ initLogger }) => {
+    initLogger()
+  })
 
   // Register IPC handlers (after database is ready)
   registerIpcHandlers()
@@ -698,7 +976,15 @@ app.on('window-all-closed', () => {
 })
 
 // Handle app before quit
-app.on('before-quit', () => {
+app.on('before-quit', async () => {
+  // Shutdown logger (flush remaining logs)
+  try {
+    const { shutdownLogger } = await import('./services/logger')
+    shutdownLogger()
+  } catch (e) {
+    // Ignore errors during shutdown
+  }
+  
   // Close database connection
   closeDatabase()
   console.log('[App] Cleanup completed')
