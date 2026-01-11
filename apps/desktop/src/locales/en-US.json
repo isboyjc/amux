@@ -114,7 +114,9 @@
     "connectionTest": "Connection Test",
     "test": "Test Connection",
     "testSuccess": "Proxy connection test successful",
-    "testFailed": "Proxy connection test failed"
+    "testFailed": "Proxy connection test failed",
+    "bottomProvider": "Bottom Provider",
+    "latency": "Latency"
   },
   "service": {
     "title": "Service Management",

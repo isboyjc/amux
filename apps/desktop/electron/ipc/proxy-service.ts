@@ -10,7 +10,7 @@ import {
   getServerState
 } from '../services/proxy-server'
 import { registerRoutes } from '../services/proxy-server/routes'
-import { getMetrics as getDetailedMetrics } from '../services/metrics'
+import { getMetrics } from '../services/metrics'
 
 export function registerProxyServiceHandlers(): void {
   // Start proxy service
@@ -38,12 +38,19 @@ export function registerProxyServiceHandlers(): void {
 
   // Get proxy service status
   ipcMain.handle('proxy-service:status', async () => {
-    return getServerState()
+    const state = getServerState()
+    // Convert backend format to frontend format
+    return {
+      status: state.running ? 'running' as const : (state.error ? 'error' as const : 'stopped' as const),
+      port: state.running ? state.port : null,
+      host: state.running ? state.host : null,
+      error: state.error || null
+    }
   })
 
   // Get proxy metrics
   ipcMain.handle('proxy-service:metrics', async () => {
-    return getDetailedMetrics()
+    return getMetrics()
   })
 }
 

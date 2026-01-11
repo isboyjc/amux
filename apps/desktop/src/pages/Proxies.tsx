@@ -776,13 +776,30 @@ function ProxyConfigPanel({
     setTestResult(null)
     
     try {
-      // Test connectivity through the proxy
-      const result = await ipc.invoke('proxy:test', proxy.id) as { success: boolean; error?: string }
+      // Test connectivity through the proxy (Level 1 + Level 2)
+      const result = await ipc.invoke('proxy:test', proxy.id) as { 
+        success: boolean
+        error?: string
+        details?: string
+        latency?: number
+        provider?: { name: string; type: string }
+      }
+      
       setTestResult({ success: result.success, error: result.error })
+      
       if (result.success) {
-        toast.success(t('proxies.testSuccess'))
+        // Success toast with detailed info
+        toast.success(t('proxies.testSuccess'), { 
+          description: result.details || `✅ All checks passed (${result.latency}ms)`
+        })
       } else {
-        toast.error(t('proxies.testFailed'), { description: result.error })
+        // Error toast with detailed info
+        const description = result.details 
+          ? `${result.error || 'Test failed'}\n${result.details}`
+          : result.error
+        toast.error(t('proxies.testFailed'), { 
+          description: description || 'Unknown error'
+        })
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error'

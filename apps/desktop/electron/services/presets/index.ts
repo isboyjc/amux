@@ -21,9 +21,11 @@ export interface ProviderPreset {
   name: string
   adapterType: string
   baseUrl: string
-  modelsApiPath?: string
+  chatPath?: string
+  modelsPath?: string
   models: ModelPreset[]
-  icon?: string
+  logo?: string
+  color?: string
 }
 
 export interface PresetsConfig {
@@ -52,7 +54,8 @@ function getBuiltinPresetsPath(): string {
   if (app.isPackaged) {
     return join(process.resourcesPath, 'presets', 'providers.json')
   }
-  return join(__dirname, '../../../resources/presets/providers.json')
+  // __dirname is out/main/, so go up 2 levels to apps/desktop/
+  return join(__dirname, '../../resources/presets/providers.json')
 }
 
 /**
@@ -69,10 +72,17 @@ function getCachePresetsPath(): string {
 export function loadBuiltinPresets(): PresetsConfig | null {
   const path = getBuiltinPresetsPath()
   
+  console.log('[Presets] Loading built-in presets from:', path)
+  console.log('[Presets] File exists:', existsSync(path))
+  
   try {
     if (existsSync(path)) {
       const content = readFileSync(path, 'utf8')
-      return JSON.parse(content) as PresetsConfig
+      const config = JSON.parse(content) as PresetsConfig
+      console.log(`[Presets] Loaded ${config.providers.length} built-in providers`)
+      return config
+    } else {
+      console.error('[Presets] Built-in presets file not found at:', path)
     }
   } catch (error) {
     console.error('[Presets] Failed to load built-in presets:', error)
@@ -209,9 +219,14 @@ function mergePresets(remote: PresetsConfig | null, builtin: PresetsConfig | nul
  * Loads from cache/built-in and starts background refresh
  */
 export async function initPresets(): Promise<PresetsConfig> {
+  console.log('[Presets] Starting initialization...')
+  
   // Try loading in order: cache -> built-in
   const cached = loadCachedPresets()
+  console.log('[Presets] Cached presets:', cached ? `${cached.providers.length} providers` : 'none')
+  
   const builtin = loadBuiltinPresets()
+  console.log('[Presets] Built-in presets:', builtin ? `${builtin.providers.length} providers` : 'none')
   
   presetsCache = mergePresets(cached, builtin)
   lastFetchTime = Date.now()

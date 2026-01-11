@@ -114,7 +114,9 @@
     "connectionTest": "连接测试",
     "test": "测试连接",
     "testSuccess": "代理连接测试成功",
-    "testFailed": "代理连接测试失败"
+    "testFailed": "代理连接测试失败",
+    "bottomProvider": "底层供应商",
+    "latency": "延迟"
   },
   "service": {
     "title": "服务管理",

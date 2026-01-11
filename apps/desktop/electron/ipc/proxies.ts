@@ -6,10 +6,12 @@ import { ipcMain } from 'electron'
 import {
   getBridgeProxyRepository,
   getModelMappingRepository,
+  getProviderRepository,
   type CreateProxyDTO,
   type UpdateProxyDTO
 } from '../services/database/repositories'
 import { invalidateCache } from '../services/proxy-server/bridge-manager'
+import { decryptApiKey } from '../services/crypto'
 import type { BridgeProxyRow, ModelMappingRow } from '../services/database/types'
 
 // Convert DB row to BridgeProxy object
@@ -143,4 +145,199 @@ export function registerProxyHandlers(): void {
     invalidateCache(proxyId)
     return rows.map(toMapping)
   })
+
+  // Test proxy connectivity (Level 1 + Level 2)
+  ipcMain.handle('proxy:test', async (_event, proxyId: string) => {
+    const startTime = Date.now()
+    
+    try {
+      // Level 1: Configuration Check
+      const configCheck = await performConfigCheck(proxyId, proxyRepo)
+      if (!configCheck.success) {
+        return {
+          success: false,
+          error: configCheck.error,
+          details: configCheck.details
+        }
+      }
+
+      // Level 2: Health Check - Find bottom provider
+      const bottomProvider = await findBottomProvider(proxyId, proxyRepo)
+      if (!bottomProvider) {
+        return {
+          success: false,
+          error: 'Failed to resolve bottom provider',
+          details: 'Cannot find the underlying provider for this proxy chain'
+        }
+      }
+
+      const providerRepo = getProviderRepository()
+      const provider = providerRepo.findById(bottomProvider.providerId)
+      if (!provider) {
+        return {
+          success: false,
+          error: 'Provider not found',
+          details: `Provider ${bottomProvider.providerId} does not exist`
+        }
+      }
+
+      // Test provider health
+      const apiKey = provider.api_key ? decryptApiKey(provider.api_key) : ''
+      if (!apiKey) {
+        return {
+          success: false,
+          error: 'API Key not configured',
+          details: `Bottom provider "${provider.name}" (${provider.adapter_type}) has no API key`
+        }
+      }
+
+      const baseUrl = provider.base_url || getDefaultBaseUrl(provider.adapter_type)
+      const modelsPath = provider.models_path || '/v1/models'
+
+      try {
+        const response = await fetch(`${baseUrl}${modelsPath}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          signal: AbortSignal.timeout(10000)
+        })
+
+        const latency = Date.now() - startTime
+
+        if (!response.ok) {
+          return {
+            success: false,
+            error: `HTTP ${response.status}`,
+            details: `Bottom provider "${provider.name}" returned ${response.status}: ${response.statusText}`,
+            latency,
+            provider: {
+              name: provider.name,
+              type: provider.adapter_type
+            }
+          }
+        }
+
+        return {
+          success: true,
+          latency,
+          provider: {
+            name: provider.name,
+            type: provider.adapter_type
+          },
+          details: `All checks passed. Bottom provider: ${provider.name}`
+        }
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Network error',
+          details: `Failed to connect to bottom provider "${provider.name}"`,
+          latency: Date.now() - startTime,
+          provider: {
+            name: provider.name,
+            type: provider.adapter_type
+          }
+        }
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Test failed',
+        details: 'Unexpected error during test',
+        latency: Date.now() - startTime
+      }
+    }
+  })
+}
+
+/**
+ * Level 1: Configuration Check
+ */
+async function performConfigCheck(
+  proxyId: string,
+  proxyRepo: ReturnType<typeof getBridgeProxyRepository>
+): Promise<{ success: boolean; error?: string; details?: string }> {
+  const proxy = proxyRepo.findById(proxyId)
+  if (!proxy) {
+    return { success: false, error: 'Proxy not found', details: 'The proxy configuration does not exist' }
+  }
+
+  // Check if proxy path is unique
+  if (!proxyRepo.isPathUnique(proxy.proxy_path, proxy.id)) {
+    return { success: false, error: 'Proxy path conflict', details: 'Proxy path is already in use' }
+  }
+
+  // Check outbound target
+  if (proxy.outbound_type === 'provider') {
+    const providerRepo = getProviderRepository()
+    const provider = providerRepo.findById(proxy.outbound_id)
+    if (!provider) {
+      return { success: false, error: 'Provider not found', details: 'The target provider does not exist' }
+    }
+    if (!provider.enabled) {
+      return { success: false, error: 'Provider disabled', details: `Provider "${provider.name}" is disabled` }
+    }
+  } else if (proxy.outbound_type === 'proxy') {
+    const targetProxy = proxyRepo.findById(proxy.outbound_id)
+    if (!targetProxy) {
+      return { success: false, error: 'Target proxy not found', details: 'The target proxy does not exist' }
+    }
+    if (!targetProxy.enabled) {
+      return { success: false, error: 'Target proxy disabled', details: `Target proxy "${targetProxy.name}" is disabled` }
+    }
+    
+    // Check for circular dependency
+    if (proxyRepo.checkCircularDependency(proxy.id, proxy.outbound_id)) {
+      return { success: false, error: 'Circular dependency detected', details: 'Proxy chain contains a circular reference' }
+    }
+  }
+
+  return { success: true }
+}
+
+/**
+ * Find the bottom provider in a proxy chain
+ */
+async function findBottomProvider(
+  proxyId: string,
+  proxyRepo: ReturnType<typeof getBridgeProxyRepository>,
+  visited: Set<string> = new Set()
+): Promise<{ providerId: string; chainLength: number } | null> {
+  if (visited.has(proxyId)) {
+    return null // Circular dependency
+  }
+  visited.add(proxyId)
+
+  const proxy = proxyRepo.findById(proxyId)
+  if (!proxy) {
+    return null
+  }
+
+  if (proxy.outbound_type === 'provider') {
+    return {
+      providerId: proxy.outbound_id,
+      chainLength: visited.size
+    }
+  } else if (proxy.outbound_type === 'proxy') {
+    return findBottomProvider(proxy.outbound_id, proxyRepo, visited)
+  }
+
+  return null
+}
+
+/**
+ * Get default base URL for adapter type
+ */
+function getDefaultBaseUrl(adapterType: string): string {
+  const defaults: Record<string, string> = {
+    openai: 'https://api.openai.com',
+    anthropic: 'https://api.anthropic.com',
+    deepseek: 'https://api.deepseek.com',
+    moonshot: 'https://api.moonshot.cn',
+    qwen: 'https://dashscope.aliyuncs.com/compatible-mode',
+    zhipu: 'https://open.bigmodel.cn/api/paas',
+    google: 'https://generativelanguage.googleapis.com'
+  }
+  return defaults[adapterType] || ''
 }

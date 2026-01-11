@@ -15,7 +15,8 @@
     "package:win": "electron-builder --win",
     "package:linux": "electron-builder --linux",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint . --ext .ts,.tsx"
+    "lint": "eslint . --ext .ts,.tsx",
+    "clean:data": "bash ../../clean-data.sh"
   },
   "dependencies": {
     "@amux/adapter-anthropic": "workspace:*",

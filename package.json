@@ -51,7 +51,8 @@
     "package:desktop": "cd apps/desktop && pnpm package",
     "package:desktop:mac": "cd apps/desktop && pnpm package:mac",
     "package:desktop:win": "cd apps/desktop && pnpm package:win",
-    "package:desktop:linux": "cd apps/desktop && pnpm package:linux"
+    "package:desktop:linux": "cd apps/desktop && pnpm package:linux",
+    "clean:desktop:data": "bash ./clean-data.sh"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.1",

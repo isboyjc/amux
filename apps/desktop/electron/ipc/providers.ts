@@ -3,12 +3,13 @@
  */
 
 import { ipcMain } from 'electron'
+
+import { encryptApiKey, decryptApiKey } from '../services/crypto'
 import {
   getProviderRepository,
   type CreateProviderDTO,
   type UpdateProviderDTO
 } from '../services/database/repositories'
-import { encryptApiKey, decryptApiKey } from '../services/crypto'
 import type { ProviderRow } from '../services/database/types'
 
 // Convert DB row to Provider object
@@ -19,10 +20,14 @@ function toProvider(row: ProviderRow) {
     adapterType: row.adapter_type,
     apiKey: row.api_key ? decryptApiKey(row.api_key) : undefined,
     baseUrl: row.base_url ?? undefined,
+    chatPath: row.chat_path ?? undefined,
+    modelsPath: row.models_path ?? undefined,
     models: JSON.parse(row.models || '[]'),
     isCustom: !['openai', 'anthropic', 'deepseek', 'moonshot', 'qwen', 'zhipu', 'google'].includes(row.adapter_type),
     enabled: row.enabled === 1,
     sortOrder: row.sort_order,
+    logo: row.logo ?? undefined,
+    color: row.color ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   }
@@ -50,8 +55,12 @@ export function registerProviderHandlers(): void {
       adapterType: data.adapterType,
       apiKey: data.apiKey ? encryptApiKey(data.apiKey) : undefined,
       baseUrl: data.baseUrl,
+      chatPath: data.chatPath,
+      modelsPath: data.modelsPath,
       models: data.models,
-      enabled: data.enabled
+      enabled: data.enabled,
+      logo: data.logo,
+      color: data.color
     }
     const row = repo.create(createData)
     return toProvider(row)
@@ -59,7 +68,13 @@ export function registerProviderHandlers(): void {
 
   // Update provider
   ipcMain.handle('provider:update', async (_event, id: string, data: UpdateProviderDTO) => {
-    const updateData: UpdateProviderDTO = { ...data }
+    const updateData: UpdateProviderDTO = { 
+      ...data,
+      chatPath: data.chatPath,
+      modelsPath: data.modelsPath,
+      logo: data.logo,
+      color: data.color
+    }
     if (data.apiKey !== undefined) {
       updateData.apiKey = data.apiKey ? encryptApiKey(data.apiKey) : ''
     }
@@ -134,7 +149,7 @@ export function registerProviderHandlers(): void {
     }
   })
 
-  // Fetch models from provider API
+  // Fetch models from provider API (by provider ID)
   ipcMain.handle('provider:fetch-models', async (_event, id: string) => {
     const row = repo.findById(id)
     if (!row) {
@@ -162,6 +177,75 @@ export function registerProviderHandlers(): void {
 
     const data = await response.json()
     return (data.data || []).map((m: { id: string }) => m.id)
+  })
+
+  // Fetch models directly from API (with params)
+  ipcMain.handle('providers:fetch-models', async (_event, params: {
+    baseUrl: string
+    apiKey: string
+    modelsPath: string
+    adapterType: string
+  }) => {
+    try {
+      const { baseUrl, apiKey, modelsPath } = params
+      const url = `${baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl}${modelsPath}`
+
+      console.log(`[FetchModels] Request URL: ${url}`)
+      console.log(`[FetchModels] Adapter Type: ${params.adapterType}`)
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        signal: AbortSignal.timeout(10000)
+      })
+
+      console.log(`[FetchModels] Response Status: ${response.status}`)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.log(`[FetchModels] Error Response: ${errorText.substring(0, 200)}`)
+        return { success: false, error: `HTTP ${response.status}: ${errorText.substring(0, 100)}`, models: [] }
+      }
+
+      const data = await response.json()
+      console.log(`[FetchModels] Response Data Keys:`, Object.keys(data))
+
+      // Handle different API response formats
+      let models: Array<{ id: string; name?: string }> = []
+      if (Array.isArray(data)) {
+        models = data.map((m: { id?: string; name?: string }) => ({
+          id: m.id || '',
+          name: m.name || m.id || ''
+        }))
+      } else if (data.data && Array.isArray(data.data)) {
+        // OpenAI format
+        models = data.data.map((m: { id: string; name?: string }) => ({
+          id: m.id,
+          name: m.name || m.id
+        }))
+      } else if (data.models && Array.isArray(data.models)) {
+        models = data.models.map((m: { id?: string; name?: string; model?: string }) => ({
+          id: m.id || m.model || '',
+          name: m.name || m.id || m.model || ''
+        }))
+      }
+
+      console.log(`[FetchModels] Success! Found ${models.length} models`)
+      if (models.length > 0) {
+        console.log(`[FetchModels] First 5 models:`, models.slice(0, 5).map(m => m.id))
+      }
+
+      return { success: true, models }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch models',
+        models: []
+      }
+    }
   })
 }
 
