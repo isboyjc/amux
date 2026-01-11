@@ -16,7 +16,10 @@ import {
   Check,
   Key,
   Eye,
-  EyeOff
+  EyeOff,
+  Palette,
+  Database,
+  ScrollText
 } from 'lucide-react'
 
 import { GearIcon, RefreshIcon, TrashIcon, GithubIcon } from '@/components/icons'
@@ -35,12 +38,12 @@ import type { ApiKey } from '@/types'
 type SettingSection = 'appearance' | 'general' | 'proxy' | 'logs' | 'security' | 'data' | 'about'
 
 const SECTIONS: { id: SettingSection; icon: React.ReactNode; labelKey: string }[] = [
-  { id: 'appearance', icon: <Sun className="h-4 w-4" />, labelKey: 'settings.appearance' },
+  { id: 'appearance', icon: <Palette className="h-4 w-4" />, labelKey: 'settings.appearance' },
   { id: 'general', icon: <GearIcon size={16} />, labelKey: 'settings.general' },
   { id: 'proxy', icon: <Globe className="h-4 w-4" />, labelKey: 'settings.proxy' },
-  { id: 'logs', icon: <Info className="h-4 w-4" />, labelKey: 'settings.logs' },
+  { id: 'logs', icon: <ScrollText className="h-4 w-4" />, labelKey: 'settings.logs' },
   { id: 'security', icon: <Shield className="h-4 w-4" />, labelKey: 'settings.security' },
-  { id: 'data', icon: <FolderOpen className="h-4 w-4" />, labelKey: 'settings.data' },
+  { id: 'data', icon: <Database className="h-4 w-4" />, labelKey: 'settings.data' },
   { id: 'about', icon: <Info className="h-4 w-4" />, labelKey: 'settings.about' },
 ]
 
@@ -105,10 +108,19 @@ export function Settings() {
   const handleCleanupLogs = async () => {
     setLoading('cleanup')
     try {
-      await ipc.invoke('logs:cleanup')
-      toast.success(t('settings.cleanupSuccess') || 'Logs cleaned up')
+      const result = await ipc.invoke('logs:cleanup') as { deletedByDate: number; deletedByCount: number }
+      const totalDeleted = result.deletedByDate + result.deletedByCount
+      if (totalDeleted > 0) {
+        toast.success(
+          t('settings.cleanupSuccess') || 'Logs cleaned up',
+          { description: `${t('settings.deletedLogs') || 'Deleted'}: ${totalDeleted} ${t('settings.entries') || 'entries'}` }
+        )
+      } else {
+        toast.info(t('settings.noLogsToCleanup') || 'No logs to cleanup')
+      }
     } catch (error) {
       console.error('Failed to cleanup logs:', error)
+      toast.error(t('settings.cleanupFailed') || 'Failed to cleanup logs')
     } finally {
       setLoading(null)
     }
@@ -570,7 +582,7 @@ function SecuritySection({ settings, setSetting, t }: SettingsSectionProps) {
 
       {/* API Keys Management - only show when enabled */}
       {unifiedKeyEnabled && (
-        <div className="space-y-4 pt-4 border-t">
+        <div className="space-y-4 pt-2">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-medium flex items-center gap-2">

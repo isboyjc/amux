@@ -2,16 +2,17 @@
  * Bridge Manager - Manages Bridge instances with LRU caching
  */
 
-import { Bridge, type LLMAdapter } from '@amux/llm-bridge'
-import { openaiAdapter, openaiResponsesAdapter } from '@amux/adapter-openai'
 import { anthropicAdapter } from '@amux/adapter-anthropic'
 import { deepseekAdapter } from '@amux/adapter-deepseek'
+import { googleAdapter } from '@amux/adapter-google'
 import { moonshotAdapter } from '@amux/adapter-moonshot'
+import { openaiAdapter, openaiResponsesAdapter } from '@amux/adapter-openai'
 import { qwenAdapter } from '@amux/adapter-qwen'
 import { zhipuAdapter } from '@amux/adapter-zhipu'
-import { googleAdapter } from '@amux/adapter-google'
-import { getBridgeProxyRepository, getProviderRepository } from '../database/repositories'
+import { Bridge, type LLMAdapter, type LLMRequestIR, type LLMResponseIR, type LLMStreamEvent } from '@amux/llm-bridge'
+
 import { decryptApiKey } from '../crypto'
+import { getBridgeProxyRepository, getProviderRepository } from '../database/repositories'
 import type { BridgeProxyRow, ProviderRow } from '../database/types'
 
 // Adapter type to instance mapping (adapters are exported as singleton instances)
@@ -197,10 +198,29 @@ export function getBridge(proxyId: string, requestApiKey?: string): {
       config: {
         apiKey: apiKey || '',
         baseURL: provider.base_url ?? undefined
+      },
+      // ⭐ 使用钩子系统提取 Token（统一的 IR 格式！）
+      hooks: {
+        onResponse: async (ir: LLMResponseIR) => {
+          // Token 已经是统一格式，无需区分 Provider！
+          if (ir.usage) {
+            console.log(`[Bridge:Hook] Tokens extracted: input=${ir.usage.promptTokens}, output=${ir.usage.completionTokens}`)
+            // 可以在这里记录到全局变量或直接传递给日志系统
+            // 这里先存储起来，让 routes.ts 可以访问
+            ;(bridge as any)._lastUsage = ir.usage
+          }
+        },
+        onStreamEvent: async (event: LLMStreamEvent) => {
+          // 流式响应中的 Token 也是统一格式
+          if (event.type === 'end' && event.usage) {
+            console.log(`[Bridge:Hook:Stream] Tokens extracted: input=${event.usage.promptTokens}, output=${event.usage.completionTokens}`)
+            ;(bridge as any)._lastUsage = event.usage
+          }
+        }
       }
     })
     
-    console.log(`[BridgeManager] Created bridge (pass-through) for proxy ${proxy.proxy_path}`)
+    console.log(`[BridgeManager] Created bridge (pass-through) with hooks for proxy ${proxy.proxy_path}`)
     
     return { bridge, proxy, provider }
   }
@@ -233,6 +253,24 @@ export function getBridge(proxyId: string, requestApiKey?: string): {
     config: {
       apiKey: apiKey || '',
       baseURL: provider.base_url ?? undefined
+    },
+    // ⭐ 使用钩子系统提取 Token（统一的 IR 格式！）
+    hooks: {
+      onResponse: async (ir: LLMResponseIR) => {
+        // Token 已经是统一格式，无需区分 Provider！
+        if (ir.usage) {
+          console.log(`[Bridge:Hook] Tokens extracted: input=${ir.usage.promptTokens}, output=${ir.usage.completionTokens}`)
+          // 存储到 bridge 实例上，供 routes.ts 访问
+          ;(bridge as any)._lastUsage = ir.usage
+        }
+      },
+      onStreamEvent: async (event: LLMStreamEvent) => {
+        // 流式响应中的 Token 也是统一格式
+        if (event.type === 'end' && event.usage) {
+          console.log(`[Bridge:Hook:Stream] Tokens extracted: input=${event.usage.promptTokens}, output=${event.usage.completionTokens}`)
+          ;(bridge as any)._lastUsage = event.usage
+        }
+      }
     }
   })
   
@@ -244,7 +282,7 @@ export function getBridge(proxyId: string, requestApiKey?: string): {
     providerId: provider.id
   })
   
-  console.log(`[BridgeManager] Created bridge for proxy ${proxy.proxy_path}`)
+  console.log(`[BridgeManager] Created bridge with hooks for proxy ${proxy.proxy_path}`)
   
   return { bridge, proxy, provider }
 }

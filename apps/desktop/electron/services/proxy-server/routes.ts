@@ -8,18 +8,22 @@
  *   - openai-responses → /v1/responses
  */
 
-import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { randomUUID } from 'crypto'
+
+import type { Usage } from '@amux/llm-bridge'
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
+
 import {
   getBridgeProxyRepository,
   getApiKeyRepository,
   getModelMappingRepository,
   getSettingsRepository
 } from '../database/repositories'
-import { getBridge, resolveProxyChain } from './bridge-manager'
-import { ProxyErrorCode } from './types'
 import { logRequest } from '../logger'
 import { recordRequest as recordMetrics } from '../metrics'
+
+import { getBridge, resolveProxyChain } from './bridge-manager'
+import { ProxyErrorCode } from './types'
 
 // Endpoint mapping by adapter type
 const ADAPTER_ENDPOINTS: Record<string, string> = {
@@ -284,11 +288,15 @@ export function registerRoutes(app: FastifyInstance): void {
           
           let streamSuccess = true
           let streamError: string | undefined
+          const streamChunks: unknown[] = []  // Collect chunks for response body
           
           try {
             const stream = await bridge.chatStream(mappedRequest)
             
             for await (const sse of stream) {
+              // Collect chunk for response body
+              streamChunks.push(sse)
+              
               // Format SSE based on inbound adapter format
               if (proxy.inbound_adapter === 'anthropic' || proxy.inbound_adapter === 'openai-responses') {
                 // Anthropic and OpenAI Responses API format: event: xxx\ndata: {...}\n\n
@@ -329,19 +337,39 @@ export function registerRoutes(app: FastifyInstance): void {
             reply.raw.end()
           }
           
-          // Log streaming request
           const latencyMs = Date.now() - startTime
+          
+          // ⭐ 从 Bridge 钩子中获取 Token（已经是 IR 统一格式！）
+          const usage = (bridge as any)._lastUsage as Usage | undefined
+          const inputTokens = usage?.promptTokens
+          const outputTokens = usage?.completionTokens
+          
+          console.log(`[Routes] Stream completed, tokens: ${usage ? `${inputTokens}/${outputTokens}` : 'N/A'}`)
+          
+          // Log streaming request
           logRequest({
             proxyId: proxy.id,
             proxyPath: proxy.proxy_path,
             sourceModel,
             targetModel,
             statusCode: streamSuccess ? 200 : 500,
+            inputTokens,
+            outputTokens,
             latencyMs,
             requestBody: JSON.stringify(body),
+            responseBody: streamSuccess && streamChunks.length > 0 
+              ? JSON.stringify({ chunks: streamChunks, totalChunks: streamChunks.length })
+              : undefined,
             error: streamError
           })
-          recordMetrics(proxy.id, provider.id, streamSuccess, latencyMs)
+          recordMetrics(
+            proxy.id, 
+            provider.id, 
+            streamSuccess, 
+            latencyMs,
+            inputTokens,
+            outputTokens
+          )
           
           return
         }
@@ -354,6 +382,13 @@ export function registerRoutes(app: FastifyInstance): void {
           console.log(`[Routes] bridge.chat completed`)
           const latencyMs = Date.now() - startTime
           
+          // ⭐ 从 Bridge 钩子中获取 Token（已经是 IR 统一格式！）
+          const usage = (bridge as any)._lastUsage as Usage | undefined
+          const inputTokens = usage?.promptTokens
+          const outputTokens = usage?.completionTokens
+          
+          console.log(`[Routes] Tokens: ${usage ? `${inputTokens}/${outputTokens}` : 'N/A'}`)
+          
           // Log successful request
           console.log(`[Routes] Logging request, latency: ${latencyMs}ms`)
           logRequest({
@@ -362,11 +397,20 @@ export function registerRoutes(app: FastifyInstance): void {
             sourceModel,
             targetModel,
             statusCode: 200,
+            inputTokens,
+            outputTokens,
             latencyMs,
             requestBody: JSON.stringify(body),
             responseBody: JSON.stringify(response)
           })
-          recordMetrics(proxy.id, provider.id, true, latencyMs)
+          recordMetrics(
+            proxy.id, 
+            provider.id, 
+            true, 
+            latencyMs,
+            inputTokens,
+            outputTokens
+          )
           
           reply.header('X-Request-ID', requestId)
           return reply.send(response)
@@ -374,13 +418,15 @@ export function registerRoutes(app: FastifyInstance): void {
           const latencyMs = Date.now() - startTime
           const errorMessage = error instanceof Error ? error.message : 'Chat request failed'
           
-          // Log failed request
+          // Log failed request (no tokens for failed requests)
           logRequest({
             proxyId: proxy.id,
             proxyPath: proxy.proxy_path,
             sourceModel,
             targetModel,
             statusCode: 502,
+            inputTokens: undefined,
+            outputTokens: undefined,
             latencyMs,
             requestBody: JSON.stringify(body),
             error: errorMessage

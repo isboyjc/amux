@@ -203,6 +203,388 @@ function createBridge(options: BridgeOptions): Bridge
   </Tab>
 </Tabs>
 
+## 生命周期钩子
+
+<Callout type="info">
+**v0.1.0 新特性**: Bridge 现在支持生命周期钩子，用于在 IR (中间表示层) 进行监控、日志记录和自定义处理。
+</Callout>
+
+生命周期钩子允许您在所有数据都以统一格式呈现的关键点拦截和观察 Bridge 的请求/响应流程。这非常适合日志记录、监控、成本追踪和调试。
+
+### 钩子接口
+
+```typescript
+interface BridgeHooks {
+  // 在解析入站请求为 IR 后调用
+  onRequest?: (ir: LLMRequestIR) => void | Promise<void>
+  
+  // 在解析提供商响应为 IR 后调用
+  // ⭐ 提取 Token 用量的最佳位置 - 所有提供商使用相同格式
+  onResponse?: (ir: LLMResponseIR) => void | Promise<void>
+  
+  // 在每个流式事件解析为 IR 后调用
+  onStreamEvent?: (event: LLMStreamEvent) => void | Promise<void>
+  
+  // 发生错误时调用
+  onError?: (error: LLMErrorIR) => void | Promise<void>
+}
+```
+
+### 为什么需要钩子？
+
+**问题**: 不同的 LLM 提供商以不同的格式返回 Token 用量：
+- OpenAI: `{ usage: { prompt_tokens, completion_tokens } }`
+- Anthropic: `{ usage: { input_tokens, output_tokens } }`
+- DeepSeek、Moonshot: 各种不同的变体
+
+**解决方案**: 钩子在 IR 层操作，此时所有提供商的数据已经统一！
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: '...' },
+  
+  hooks: {
+    onResponse: async (ir) => {
+      // ✅ 无论哪个提供商，格式都相同！
+      if (ir.usage) {
+        console.log(`输入 Token: ${ir.usage.promptTokens}`)
+        console.log(`输出 Token: ${ir.usage.completionTokens}`)
+        console.log(`总 Token: ${ir.usage.totalTokens}`)
+        
+        // 保存到数据库、追踪成本等
+        await saveTokenMetrics({
+          input: ir.usage.promptTokens,
+          output: ir.usage.completionTokens
+        })
+      }
+    }
+  }
+})
+```
+
+### 使用场景
+
+<Tabs items={['Token 统计', '成本监控', '请求日志', '速率限制']}>
+  <Tab value="Token 统计">
+    ### 追踪 Token 使用量
+
+    以统一的方式从任何提供商提取 Token 用量：
+
+    ```typescript
+    const bridge = createBridge({
+      inbound: openaiAdapter,
+      outbound: anthropicAdapter, // 或任何提供商
+      config: { apiKey: process.env.ANTHROPIC_API_KEY },
+      
+      hooks: {
+        // 非流式响应
+        onResponse: async (ir) => {
+          if (ir.usage) {
+            await recordTokens({
+              proxyId: 'proxy-123',
+              inputTokens: ir.usage.promptTokens,
+              outputTokens: ir.usage.completionTokens,
+              totalTokens: ir.usage.totalTokens,
+              timestamp: Date.now()
+            })
+          }
+        },
+        
+        // 流式响应
+        onStreamEvent: async (event) => {
+          if (event.type === 'end' && event.usage) {
+            await recordTokens({
+              proxyId: 'proxy-123',
+              inputTokens: event.usage.promptTokens,
+              outputTokens: event.usage.completionTokens,
+              totalTokens: event.usage.totalTokens,
+              timestamp: Date.now()
+            })
+          }
+        }
+      }
+    })
+    ```
+
+    **优势**:
+    - ✅ 无需处理不同提供商的格式
+    - ✅ 自动支持所有适配器
+    - ✅ 流式和非流式使用相同代码
+  </Tab>
+
+  <Tab value="成本监控">
+    ### 实时成本追踪
+
+    基于 Token 用量计算成本：
+
+    ```typescript
+    // 定义每 1K Token 的价格
+    const pricing = {
+      'gpt-4': { input: 0.03, output: 0.06 },
+      'gpt-3.5-turbo': { input: 0.001, output: 0.002 },
+      'claude-3-5-sonnet': { input: 0.003, output: 0.015 }
+    }
+
+    const bridge = createBridge({
+      inbound: openaiAdapter,
+      outbound: openaiAdapter,
+      config: { apiKey: process.env.OPENAI_API_KEY },
+      
+      hooks: {
+        onResponse: async (ir) => {
+          if (ir.usage && ir.model) {
+            const modelPricing = pricing[ir.model]
+            if (modelPricing) {
+              const cost = 
+                (ir.usage.promptTokens / 1000) * modelPricing.input +
+                (ir.usage.completionTokens / 1000) * modelPricing.output
+              
+              await recordCost({
+                model: ir.model,
+                inputTokens: ir.usage.promptTokens,
+                outputTokens: ir.usage.completionTokens,
+                cost: cost,
+                currency: 'USD',
+                timestamp: Date.now()
+              })
+              
+              console.log(`请求成本: $${cost.toFixed(4)}`)
+            }
+          }
+        }
+      }
+    })
+    ```
+  </Tab>
+
+  <Tab value="请求日志">
+    ### 完整的请求日志记录
+
+    记录请求和响应用于调试和审计：
+
+    ```typescript
+    const bridge = createBridge({
+      inbound: openaiAdapter,
+      outbound: anthropicAdapter,
+      config: { apiKey: process.env.ANTHROPIC_API_KEY },
+      
+      hooks: {
+        onRequest: async (ir) => {
+          console.log('[Bridge] 请求:', {
+            model: ir.model,
+            messageCount: ir.messages.length,
+            hasTools: !!ir.tools,
+            hasSystemPrompt: !!ir.system,
+            stream: ir.stream
+          })
+        },
+        
+        onResponse: async (ir) => {
+          console.log('[Bridge] 响应:', {
+            model: ir.model,
+            choiceCount: ir.choices.length,
+            finishReason: ir.choices[0]?.finishReason,
+            usage: ir.usage
+          })
+          
+          // 保存到数据库
+          await saveRequestLog({
+            requestId: ir.id,
+            model: ir.model,
+            status: 'success',
+            usage: ir.usage,
+            timestamp: Date.now()
+          })
+        },
+        
+        onError: async (error) => {
+          console.error('[Bridge] 错误:', {
+            type: error.type,
+            message: error.message,
+            code: error.code,
+            status: error.status
+          })
+          
+          // 记录错误到监控服务
+          await logError({
+            type: error.type,
+            message: error.message,
+            timestamp: Date.now()
+          })
+        }
+      }
+    })
+    ```
+  </Tab>
+
+  <Tab value="速率限制">
+    ### 实现速率限制
+
+    强制实施基于 Token 的速率限制：
+
+    ```typescript
+    let dailyTokens = 0
+    const DAILY_LIMIT = 1000000  // 每天 100 万 Token
+
+    const bridge = createBridge({
+      inbound: openaiAdapter,
+      outbound: openaiAdapter,
+      config: { apiKey: process.env.OPENAI_API_KEY },
+      
+      hooks: {
+        onRequest: async (ir) => {
+          // 检查是否接近限制
+          if (dailyTokens > DAILY_LIMIT * 0.9) {
+            console.warn(`警告: 已达到每日 Token 限制的 90%`)
+          }
+          
+          if (dailyTokens >= DAILY_LIMIT) {
+            throw new Error('已超出每日 Token 限制')
+          }
+        },
+        
+        onResponse: async (ir) => {
+          if (ir.usage) {
+            dailyTokens += ir.usage.totalTokens
+            
+            console.log(`每日用量: ${dailyTokens}/${DAILY_LIMIT} Token`)
+            
+            // 80% 时发送警报
+            if (dailyTokens > DAILY_LIMIT * 0.8) {
+              await sendAlert({
+                message: `Token 使用量达到 ${Math.round(dailyTokens / DAILY_LIMIT * 100)}%`,
+                usage: dailyTokens,
+                limit: DAILY_LIMIT
+              })
+            }
+          }
+        }
+      }
+    })
+    ```
+  </Tab>
+</Tabs>
+
+### 钩子执行流程
+
+```mermaid
+sequenceDiagram
+    participant App as 应用
+    participant Bridge
+    participant Hook as 钩子
+    participant API as 提供商 API
+    
+    App->>Bridge: chat(request)
+    Bridge->>Bridge: 解析请求为 IR
+    Bridge->>Hook: onRequest(ir)
+    Hook-->>Bridge: 
+    Bridge->>API: 发送请求
+    API-->>Bridge: 响应
+    Bridge->>Bridge: 解析响应为 IR
+    Bridge->>Hook: onResponse(ir)
+    Hook-->>Bridge: 
+    Bridge->>App: 返回响应
+    
+    Note over Bridge,Hook: 钩子访问统一的 IR<br/>无需处理提供商特定格式
+```
+
+### 最佳实践
+
+1. **使用钩子进行可观测性**: 非常适合日志记录、监控和调试
+2. **保持钩子轻量**: 避免在钩子中进行重计算，以免增加延迟
+3. **优雅地处理错误**: 钩子中的错误不应破坏主流程
+4. **利用 IR 格式**: 无需解析提供商特定格式
+
+```typescript
+// ✅ 好: 轻量级日志记录
+hooks: {
+  onResponse: async (ir) => {
+    console.log(`Tokens: ${ir.usage?.totalTokens}`)
+  }
+}
+
+// ⚠️ 可接受: 异步操作（但要注意延迟）
+hooks: {
+  onResponse: async (ir) => {
+    await saveToDatabase(ir.usage) // 保持快速
+  }
+}
+
+// ❌ 不好: 重计算
+hooks: {
+  onResponse: async (ir) => {
+    // 不要在这里进行昂贵的操作
+    await processLargeDataset()
+    await complexAnalysis()
+  }
+}
+```
+
+### 多钩子示例
+
+您可以组合多个钩子进行全面监控：
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  
+  hooks: {
+    onRequest: async (ir) => {
+      // 记录传入请求
+      logger.info('收到请求', {
+        model: ir.model,
+        messageCount: ir.messages.length
+      })
+    },
+    
+    onResponse: async (ir) => {
+      // 追踪 Token
+      metrics.recordTokens(ir.usage)
+      
+      // 计算成本
+      const cost = calculateCost(ir.model, ir.usage)
+      metrics.recordCost(cost)
+      
+      // 记录成功
+      logger.info('请求完成', {
+        model: ir.model,
+        tokens: ir.usage?.totalTokens,
+        cost
+      })
+    },
+    
+    onStreamEvent: async (event) => {
+      // 追踪流式进度
+      if (event.type === 'content' && event.content?.delta) {
+        metrics.incrementStreamChunks()
+      }
+      
+      if (event.type === 'end' && event.usage) {
+        metrics.recordTokens(event.usage)
+      }
+    },
+    
+    onError: async (error) => {
+      // 记录和警报错误
+      logger.error('请求失败', {
+        type: error.type,
+        message: error.message,
+        code: error.code
+      })
+      
+      await alerting.sendAlert({
+        severity: 'error',
+        message: `Bridge 错误: ${error.message}`
+      })
+    }
+  }
+})
+```
+
 ## Bridge 方法
 
 ### chat

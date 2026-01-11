@@ -125,4 +125,160 @@ describe('Bridge', () => {
       expect(compat.issues?.[0]).toContain('tools')
     })
   })
+
+  describe('Hooks', () => {
+    it('should call onResponse hook when response is received', async () => {
+      const onResponseMock = vi.fn()
+      
+      const bridge = createBridge({
+        inbound: mockInboundAdapter,
+        outbound: mockOutboundAdapter,
+        config: {
+          apiKey: 'test-key',
+        },
+        hooks: {
+          onResponse: onResponseMock,
+        },
+      })
+
+      // Mock HTTP response
+      const mockHttpClient = (bridge as any).httpClient
+      mockHttpClient.request = vi.fn().mockResolvedValue({
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        data: { test: 'response' },
+      })
+
+      await bridge.chat({ test: 'request' })
+
+      expect(onResponseMock).toHaveBeenCalledTimes(1)
+      expect(onResponseMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'test-id',
+          model: 'test-model',
+          choices: expect.any(Array),
+        })
+      )
+    })
+
+    it('should call onRequest hook before sending request', async () => {
+      const onRequestMock = vi.fn()
+      
+      const bridge = createBridge({
+        inbound: mockInboundAdapter,
+        outbound: mockOutboundAdapter,
+        config: {
+          apiKey: 'test-key',
+        },
+        hooks: {
+          onRequest: onRequestMock,
+        },
+      })
+
+      // Mock HTTP response
+      const mockHttpClient = (bridge as any).httpClient
+      mockHttpClient.request = vi.fn().mockResolvedValue({
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        data: { test: 'response' },
+      })
+
+      await bridge.chat({ test: 'request' })
+
+      expect(onRequestMock).toHaveBeenCalledTimes(1)
+      expect(onRequestMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          messages: expect.any(Array),
+        })
+      )
+    })
+
+    it('should call onError hook when error occurs', async () => {
+      const onErrorMock = vi.fn()
+      
+      const bridge = createBridge({
+        inbound: mockInboundAdapter,
+        outbound: mockOutboundAdapter,
+        config: {
+          apiKey: 'test-key',
+        },
+        hooks: {
+          onError: onErrorMock,
+        },
+      })
+
+      // Mock HTTP error
+      const mockHttpClient = (bridge as any).httpClient
+      mockHttpClient.request = vi.fn().mockRejectedValue(new Error('Test error'))
+
+      await expect(bridge.chat({ test: 'request' })).rejects.toThrow('Test error')
+
+      expect(onErrorMock).toHaveBeenCalledTimes(1)
+      expect(onErrorMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Test error',
+          type: 'unknown',
+        })
+      )
+    })
+
+    it('should extract token usage in onResponse hook', async () => {
+      let extractedUsage: any = null
+      
+      const mockAdapterWithUsage: LLMAdapter = {
+        ...mockInboundAdapter,
+        inbound: {
+          ...mockInboundAdapter.inbound,
+          parseResponse: vi.fn(() => ({
+            id: 'test-id',
+            model: 'test-model',
+            choices: [
+              {
+                index: 0,
+                message: { role: 'assistant', content: 'response' },
+                finishReason: 'stop',
+              },
+            ],
+            usage: {
+              promptTokens: 10,
+              completionTokens: 20,
+              totalTokens: 30,
+            },
+          })),
+        },
+      }
+      
+      const bridge = createBridge({
+        inbound: mockAdapterWithUsage,
+        outbound: mockAdapterWithUsage,
+        config: {
+          apiKey: 'test-key',
+        },
+        hooks: {
+          onResponse: async (ir) => {
+            extractedUsage = ir.usage
+          },
+        },
+      })
+
+      // Mock HTTP response
+      const mockHttpClient = (bridge as any).httpClient
+      mockHttpClient.request = vi.fn().mockResolvedValue({
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        data: { test: 'response' },
+      })
+
+      await bridge.chat({ test: 'request' })
+
+      expect(extractedUsage).toEqual({
+        promptTokens: 10,
+        completionTokens: 20,
+        totalTokens: 30,
+      })
+    })
+  })
 })

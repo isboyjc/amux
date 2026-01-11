@@ -1,4 +1,6 @@
 import type { LLMAdapter } from '../adapter'
+import type { LLMErrorIR } from '../ir/error'
+import type { LLMRequestIR } from '../ir/request'
 import type { LLMResponseIR } from '../ir/response'
 import type { LLMStreamEvent, SSEEvent } from '../ir/stream'
 
@@ -49,6 +51,92 @@ export interface BridgeConfig {
 }
 
 /**
+ * Bridge lifecycle hooks
+ * 
+ * Hooks allow external code to intercept and observe the Bridge's request/response flow
+ * at the IR (Intermediate Representation) layer, where all data is in a unified format.
+ * 
+ * Use cases:
+ * - Logging and monitoring (track token usage, latency, errors)
+ * - Cost tracking (calculate costs based on token usage)
+ * - Debugging and tracing (inspect IR transformations)
+ * - Rate limiting and alerting (implement usage-based limits)
+ * - Audit logging (record all LLM API calls)
+ */
+export interface BridgeHooks {
+  /**
+   * Called after parsing the inbound request into IR, before building the outbound request
+   * 
+   * @param ir - The unified request IR
+   * @returns void or Promise<void>
+   * 
+   * @example
+   * ```typescript
+   * onRequest: async (ir) => {
+   *   console.log(`Request to model: ${ir.model}`)
+   *   console.log(`Message count: ${ir.messages.length}`)
+   * }
+   * ```
+   */
+  onRequest?: (ir: LLMRequestIR) => void | Promise<void>
+
+  /**
+   * Called after parsing the provider response into IR, before building the final response
+   * 
+   * This is the ideal place to extract metadata like token usage, as all providers'
+   * responses have been normalized to the same IR format.
+   * 
+   * @param ir - The unified response IR
+   * @returns void or Promise<void>
+   * 
+   * @example
+   * ```typescript
+   * onResponse: async (ir) => {
+   *   if (ir.usage) {
+   *     console.log(`Input tokens: ${ir.usage.promptTokens}`)
+   *     console.log(`Output tokens: ${ir.usage.completionTokens}`)
+   *     await recordTokenUsage(ir.usage)
+   *   }
+   * }
+   * ```
+   */
+  onResponse?: (ir: LLMResponseIR) => void | Promise<void>
+
+  /**
+   * Called for each streaming event after parsing into IR, before building the SSE event
+   * 
+   * @param event - The unified stream event IR
+   * @returns void or Promise<void>
+   * 
+   * @example
+   * ```typescript
+   * onStreamEvent: async (event) => {
+   *   if (event.type === 'end' && event.usage) {
+   *     await recordTokenUsage(event.usage)
+   *   }
+   * }
+   * ```
+   */
+  onStreamEvent?: (event: LLMStreamEvent) => void | Promise<void>
+
+  /**
+   * Called when an error occurs during the request/response flow
+   * 
+   * @param error - The unified error IR
+   * @returns void or Promise<void>
+   * 
+   * @example
+   * ```typescript
+   * onError: async (error) => {
+   *   console.error(`Bridge error: ${error.message}`)
+   *   await logError(error)
+   * }
+   * ```
+   */
+  onError?: (error: LLMErrorIR) => void | Promise<void>
+}
+
+/**
  * Bridge options
  */
 export interface BridgeOptions {
@@ -66,6 +154,33 @@ export interface BridgeOptions {
    * Configuration for the target provider
    */
   config: BridgeConfig
+
+  /**
+   * Lifecycle hooks for intercepting IR-level events
+   * 
+   * Hooks are called at key points in the request/response flow, allowing
+   * external code to observe and react to events at the IR layer where all
+   * data is in a unified format.
+   * 
+   * @example
+   * ```typescript
+   * const bridge = createBridge({
+   *   inbound: openaiAdapter,
+   *   outbound: anthropicAdapter,
+   *   config: { apiKey: '...' },
+   *   hooks: {
+   *     onResponse: async (ir) => {
+   *       // Track token usage in unified format
+   *       await recordTokens({
+   *         input: ir.usage?.promptTokens ?? 0,
+   *         output: ir.usage?.completionTokens ?? 0
+   *       })
+   *     }
+   *   }
+   * })
+   * ```
+   */
+  hooks?: BridgeHooks
 
   /**
    * Fixed target model (highest priority)

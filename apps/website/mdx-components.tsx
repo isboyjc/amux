@@ -9,5 +9,5 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     ...TabsComponents,
     Mermaid,
     ...components,
-  };
+  } as MDXComponents;
 }

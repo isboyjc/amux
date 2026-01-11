@@ -203,6 +203,388 @@ function createBridge(options: BridgeOptions): Bridge
   </Tab>
 </Tabs>
 
+## Lifecycle Hooks
+
+<Callout type="info">
+**New in v0.1.0**: Bridge now supports lifecycle hooks for monitoring, logging, and custom processing at the IR (Intermediate Representation) layer.
+</Callout>
+
+Lifecycle hooks allow you to intercept and observe the Bridge's request/response flow at key points where all data is in a unified format. This is perfect for logging, monitoring, cost tracking, and debugging.
+
+### Hook Interface
+
+```typescript
+interface BridgeHooks {
+  // Called after parsing the inbound request into IR
+  onRequest?: (ir: LLMRequestIR) => void | Promise<void>
+  
+  // Called after parsing the provider response into IR
+  // ⭐ Best place to extract token usage - all providers use same format
+  onResponse?: (ir: LLMResponseIR) => void | Promise<void>
+  
+  // Called for each streaming event after parsing into IR
+  onStreamEvent?: (event: LLMStreamEvent) => void | Promise<void>
+  
+  // Called when an error occurs
+  onError?: (error: LLMErrorIR) => void | Promise<void>
+}
+```
+
+### Why Hooks?
+
+**Problem**: Different LLM providers return token usage in different formats:
+- OpenAI: `{ usage: { prompt_tokens, completion_tokens } }`
+- Anthropic: `{ usage: { input_tokens, output_tokens } }`
+- DeepSeek, Moonshot: Different variations
+
+**Solution**: Hooks operate at the IR layer where all providers' data is already unified!
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: '...' },
+  
+  hooks: {
+    onResponse: async (ir) => {
+      // ✅ Always the same format, regardless of provider!
+      if (ir.usage) {
+        console.log(`Input tokens: ${ir.usage.promptTokens}`)
+        console.log(`Output tokens: ${ir.usage.completionTokens}`)
+        console.log(`Total tokens: ${ir.usage.totalTokens}`)
+        
+        // Save to database, track costs, etc.
+        await saveTokenMetrics({
+          input: ir.usage.promptTokens,
+          output: ir.usage.completionTokens
+        })
+      }
+    }
+  }
+})
+```
+
+### Use Cases
+
+<Tabs items={['Token Tracking', 'Cost Monitoring', 'Request Logging', 'Rate Limiting']}>
+  <Tab value="Token Tracking">
+    ### Tracking Token Usage
+
+    Extract token usage from any provider in a unified way:
+
+    ```typescript
+    const bridge = createBridge({
+      inbound: openaiAdapter,
+      outbound: anthropicAdapter, // Or any provider
+      config: { apiKey: process.env.ANTHROPIC_API_KEY },
+      
+      hooks: {
+        // Non-streaming responses
+        onResponse: async (ir) => {
+          if (ir.usage) {
+            await recordTokens({
+              proxyId: 'proxy-123',
+              inputTokens: ir.usage.promptTokens,
+              outputTokens: ir.usage.completionTokens,
+              totalTokens: ir.usage.totalTokens,
+              timestamp: Date.now()
+            })
+          }
+        },
+        
+        // Streaming responses
+        onStreamEvent: async (event) => {
+          if (event.type === 'end' && event.usage) {
+            await recordTokens({
+              proxyId: 'proxy-123',
+              inputTokens: event.usage.promptTokens,
+              outputTokens: event.usage.completionTokens,
+              totalTokens: event.usage.totalTokens,
+              timestamp: Date.now()
+            })
+          }
+        }
+      }
+    })
+    ```
+
+    **Benefits**:
+    - ✅ No need to handle different provider formats
+    - ✅ Works with all adapters automatically
+    - ✅ Same code for streaming and non-streaming
+  </Tab>
+
+  <Tab value="Cost Monitoring">
+    ### Real-time Cost Tracking
+
+    Calculate costs based on token usage:
+
+    ```typescript
+    // Define pricing per 1K tokens
+    const pricing = {
+      'gpt-4': { input: 0.03, output: 0.06 },
+      'gpt-3.5-turbo': { input: 0.001, output: 0.002 },
+      'claude-3-5-sonnet': { input: 0.003, output: 0.015 }
+    }
+
+    const bridge = createBridge({
+      inbound: openaiAdapter,
+      outbound: openaiAdapter,
+      config: { apiKey: process.env.OPENAI_API_KEY },
+      
+      hooks: {
+        onResponse: async (ir) => {
+          if (ir.usage && ir.model) {
+            const modelPricing = pricing[ir.model]
+            if (modelPricing) {
+              const cost = 
+                (ir.usage.promptTokens / 1000) * modelPricing.input +
+                (ir.usage.completionTokens / 1000) * modelPricing.output
+              
+              await recordCost({
+                model: ir.model,
+                inputTokens: ir.usage.promptTokens,
+                outputTokens: ir.usage.completionTokens,
+                cost: cost,
+                currency: 'USD',
+                timestamp: Date.now()
+              })
+              
+              console.log(`Request cost: $${cost.toFixed(4)}`)
+            }
+          }
+        }
+      }
+    })
+    ```
+  </Tab>
+
+  <Tab value="Request Logging">
+    ### Comprehensive Request Logging
+
+    Log requests and responses for debugging and auditing:
+
+    ```typescript
+    const bridge = createBridge({
+      inbound: openaiAdapter,
+      outbound: anthropicAdapter,
+      config: { apiKey: process.env.ANTHROPIC_API_KEY },
+      
+      hooks: {
+        onRequest: async (ir) => {
+          console.log('[Bridge] Request:', {
+            model: ir.model,
+            messageCount: ir.messages.length,
+            hasTools: !!ir.tools,
+            hasSystemPrompt: !!ir.system,
+            stream: ir.stream
+          })
+        },
+        
+        onResponse: async (ir) => {
+          console.log('[Bridge] Response:', {
+            model: ir.model,
+            choiceCount: ir.choices.length,
+            finishReason: ir.choices[0]?.finishReason,
+            usage: ir.usage
+          })
+          
+          // Save to database
+          await saveRequestLog({
+            requestId: ir.id,
+            model: ir.model,
+            status: 'success',
+            usage: ir.usage,
+            timestamp: Date.now()
+          })
+        },
+        
+        onError: async (error) => {
+          console.error('[Bridge] Error:', {
+            type: error.type,
+            message: error.message,
+            code: error.code,
+            status: error.status
+          })
+          
+          // Log error to monitoring service
+          await logError({
+            type: error.type,
+            message: error.message,
+            timestamp: Date.now()
+          })
+        }
+      }
+    })
+    ```
+  </Tab>
+
+  <Tab value="Rate Limiting">
+    ### Implementing Rate Limits
+
+    Enforce token-based rate limits:
+
+    ```typescript
+    let dailyTokens = 0
+    const DAILY_LIMIT = 1000000  // 1M tokens per day
+
+    const bridge = createBridge({
+      inbound: openaiAdapter,
+      outbound: openaiAdapter,
+      config: { apiKey: process.env.OPENAI_API_KEY },
+      
+      hooks: {
+        onRequest: async (ir) => {
+          // Check if approaching limit
+          if (dailyTokens > DAILY_LIMIT * 0.9) {
+            console.warn(`Warning: 90% of daily token limit reached`)
+          }
+          
+          if (dailyTokens >= DAILY_LIMIT) {
+            throw new Error('Daily token limit exceeded')
+          }
+        },
+        
+        onResponse: async (ir) => {
+          if (ir.usage) {
+            dailyTokens += ir.usage.totalTokens
+            
+            console.log(`Daily usage: ${dailyTokens}/${DAILY_LIMIT} tokens`)
+            
+            // Send alert at 80%
+            if (dailyTokens > DAILY_LIMIT * 0.8) {
+              await sendAlert({
+                message: `Token usage at ${Math.round(dailyTokens / DAILY_LIMIT * 100)}%`,
+                usage: dailyTokens,
+                limit: DAILY_LIMIT
+              })
+            }
+          }
+        }
+      }
+    })
+    ```
+  </Tab>
+</Tabs>
+
+### Hook Execution Flow
+
+```mermaid
+sequenceDiagram
+    participant App
+    participant Bridge
+    participant Hook as Hooks
+    participant API as Provider API
+    
+    App->>Bridge: chat(request)
+    Bridge->>Bridge: Parse request to IR
+    Bridge->>Hook: onRequest(ir)
+    Hook-->>Bridge: 
+    Bridge->>API: Send request
+    API-->>Bridge: Response
+    Bridge->>Bridge: Parse response to IR
+    Bridge->>Hook: onResponse(ir)
+    Hook-->>Bridge: 
+    Bridge->>App: Return response
+    
+    Note over Bridge,Hook: Hooks access unified IR<br/>No provider-specific handling needed
+```
+
+### Best Practices
+
+1. **Use hooks for observability**: Perfect for logging, monitoring, and debugging
+2. **Keep hooks lightweight**: Avoid heavy computation in hooks to prevent latency
+3. **Handle errors gracefully**: Errors in hooks should not break the main flow
+4. **Leverage the IR format**: No need to parse provider-specific formats
+
+```typescript
+// ✅ Good: Lightweight logging
+hooks: {
+  onResponse: async (ir) => {
+    console.log(`Tokens: ${ir.usage?.totalTokens}`)
+  }
+}
+
+// ⚠️ Acceptable: Async operations (but be mindful of latency)
+hooks: {
+  onResponse: async (ir) => {
+    await saveToDatabase(ir.usage) // Keep this fast
+  }
+}
+
+// ❌ Bad: Heavy computation
+hooks: {
+  onResponse: async (ir) => {
+    // Don't do expensive operations here
+    await processLargeDataset()
+    await complexAnalysis()
+  }
+}
+```
+
+### Multiple Hooks Example
+
+You can combine multiple hooks for comprehensive monitoring:
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  
+  hooks: {
+    onRequest: async (ir) => {
+      // Log incoming request
+      logger.info('Request received', {
+        model: ir.model,
+        messageCount: ir.messages.length
+      })
+    },
+    
+    onResponse: async (ir) => {
+      // Track tokens
+      metrics.recordTokens(ir.usage)
+      
+      // Calculate cost
+      const cost = calculateCost(ir.model, ir.usage)
+      metrics.recordCost(cost)
+      
+      // Log success
+      logger.info('Request completed', {
+        model: ir.model,
+        tokens: ir.usage?.totalTokens,
+        cost
+      })
+    },
+    
+    onStreamEvent: async (event) => {
+      // Track streaming progress
+      if (event.type === 'content' && event.content?.delta) {
+        metrics.incrementStreamChunks()
+      }
+      
+      if (event.type === 'end' && event.usage) {
+        metrics.recordTokens(event.usage)
+      }
+    },
+    
+    onError: async (error) => {
+      // Log and alert on errors
+      logger.error('Request failed', {
+        type: error.type,
+        message: error.message,
+        code: error.code
+      })
+      
+      await alerting.sendAlert({
+        severity: 'error',
+        message: `Bridge error: ${error.message}`
+      })
+    }
+  }
+})
+```
+
 ## Bridge Methods
 
 ### chat

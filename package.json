@@ -28,7 +28,8 @@
     "examples/*"
   ],
   "scripts": {
-    "build": "nx run-many -t build",
+    "build": "pnpm --filter \"./packages/**\" build",
+    "build:all": "nx run-many -t build",
     "test": "nx run-many -t test",
     "test:coverage": "nx run-many -t test:coverage",
     "lint": "nx run-many -t lint",
@@ -43,6 +44,7 @@
     "build:website": "cd apps/website && pnpm build",
     "start:website": "cd apps/website && pnpm start",
     "dev:proxy": "cd apps/proxy && pnpm dev",
+    "build:proxy": "cd apps/proxy && pnpm build",
     "start:proxy": "cd apps/proxy && pnpm start",
     "dev:example": "cd examples/basic && pnpm start",
     "dev:example:streaming": "cd examples/streaming && pnpm start",

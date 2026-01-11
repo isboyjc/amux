@@ -5,6 +5,7 @@ import type { LLMStreamEvent, SSEEvent } from '../ir/stream'
 import { HTTPClient } from './http-client'
 import type {
   BridgeConfig,
+  BridgeHooks,
   BridgeOptions,
   CompatibilityReport,
   LLMBridge,
@@ -19,6 +20,9 @@ export class Bridge implements LLMBridge {
   private config: BridgeConfig
   private httpClient: HTTPClient
 
+  // Lifecycle hooks
+  private hooks?: BridgeHooks
+
   // Model mapping configuration
   private targetModel?: string
   private modelMapper?: (model: string) => string
@@ -28,6 +32,7 @@ export class Bridge implements LLMBridge {
     this.inboundAdapter = options.inbound
     this.outboundAdapter = options.outbound
     this.config = options.config
+    this.hooks = options.hooks
 
     // Save model mapping configuration
     this.targetModel = options.targetModel
@@ -84,56 +89,79 @@ export class Bridge implements LLMBridge {
    * Send a chat request
    */
   async chat(request: unknown): Promise<unknown> {
-    // Step 1: Inbound adapter parses request → IR
-    const ir = this.inboundAdapter.inbound.parseRequest(request)
+    try {
+      // Step 1: Inbound adapter parses request → IR
+      const ir = this.inboundAdapter.inbound.parseRequest(request)
 
-    // Step 2: Map model if configured
-    if (ir.model) {
-      ir.model = this.mapModel(ir.model)
-    }
-
-    // Step 3: Validate IR (optional)
-    if (this.inboundAdapter.validateRequest) {
-      const validation = this.inboundAdapter.validateRequest(ir)
-      if (!validation.valid) {
-        throw new Error(
-          `Invalid request: ${validation.errors?.join(', ') ?? 'Unknown error'}`
-        )
+      // Step 2: Map model if configured
+      if (ir.model) {
+        ir.model = this.mapModel(ir.model)
       }
+
+      // Step 3: Trigger onRequest hook
+      if (this.hooks?.onRequest) {
+        await this.hooks.onRequest(ir)
+      }
+
+      // Step 4: Validate IR (optional)
+      if (this.inboundAdapter.validateRequest) {
+        const validation = this.inboundAdapter.validateRequest(ir)
+        if (!validation.valid) {
+          throw new Error(
+            `Invalid request: ${validation.errors?.join(', ') ?? 'Unknown error'}`
+          )
+        }
+      }
+
+      // Step 5: Outbound adapter builds provider request from IR
+      const providerRequest = this.outboundAdapter.outbound.buildRequest(ir)
+
+      // Step 6: Send HTTP request to provider API
+      const baseURL = this.config.baseURL ?? this.getDefaultBaseURL()
+      const endpoint = this.getEndpoint()
+
+      const response = await this.httpClient.request({
+        method: 'POST',
+        url: `${baseURL}${endpoint}`,
+        body: providerRequest,
+      })
+
+      // Step 7: Outbound adapter parses response → IR
+      const responseIR = this.outboundAdapter.inbound.parseResponse?.(
+        response.data
+      )
+
+      if (!responseIR) {
+        throw new Error('Outbound adapter does not support response parsing')
+      }
+
+      // Step 8: Trigger onResponse hook (before building final response)
+      if (this.hooks?.onResponse) {
+        await this.hooks.onResponse(responseIR)
+      }
+
+      // Step 9: Inbound adapter builds response from IR
+      const finalResponse =
+        this.inboundAdapter.outbound.buildResponse?.(responseIR)
+
+      if (!finalResponse) {
+        // If inbound adapter doesn't support response building, return IR
+        return responseIR
+      }
+
+      return finalResponse
+    } catch (error) {
+      // Trigger onError hook
+      if (this.hooks?.onError && error instanceof Error) {
+        const errorIR = this.outboundAdapter.inbound.parseError?.(error) ?? {
+          message: error.message,
+          code: 'UNKNOWN_ERROR',
+          type: 'unknown' as const,
+        }
+        await this.hooks.onError(errorIR)
+      }
+      throw error
     }
-
-    // Step 4: Outbound adapter builds provider request from IR
-    const providerRequest = this.outboundAdapter.outbound.buildRequest(ir)
-
-    // Step 5: Send HTTP request to provider API
-    const baseURL = this.config.baseURL ?? this.getDefaultBaseURL()
-    const endpoint = this.getEndpoint()
-
-    const response = await this.httpClient.request({
-      method: 'POST',
-      url: `${baseURL}${endpoint}`,
-      body: providerRequest,
-    })
-
-    // Step 6: Outbound adapter parses response → IR
-    const responseIR = this.outboundAdapter.inbound.parseResponse?.(
-      response.data
-    )
-
-    if (!responseIR) {
-      throw new Error('Outbound adapter does not support response parsing')
-    }
-
-    // Step 7: Inbound adapter builds response from IR
-    const finalResponse =
-      this.inboundAdapter.outbound.buildResponse?.(responseIR)
-
-    if (!finalResponse) {
-      // If inbound adapter doesn't support response building, return IR
-      return responseIR
-    }
-
-    return finalResponse
   }
 
   /**
@@ -227,38 +255,44 @@ export class Bridge implements LLMBridge {
    * Returns raw IR stream events for custom processing
    */
   async *chatStreamRaw(request: unknown): AsyncIterable<LLMStreamEvent> {
-    // Step 1: Inbound adapter parses request → IR
-    const ir = this.inboundAdapter.inbound.parseRequest(request)
+    try {
+      // Step 1: Inbound adapter parses request → IR
+      const ir = this.inboundAdapter.inbound.parseRequest(request)
 
-    // Step 2: Map model if configured
-    if (ir.model) {
-      ir.model = this.mapModel(ir.model)
-    }
+      // Step 2: Map model if configured
+      if (ir.model) {
+        ir.model = this.mapModel(ir.model)
+      }
 
-    // Ensure streaming is enabled
-    ir.stream = true
+      // Ensure streaming is enabled
+      ir.stream = true
 
-    // Step 3: Outbound adapter builds provider request from IR
-    const providerRequest = this.outboundAdapter.outbound.buildRequest(ir)
+      // Step 3: Trigger onRequest hook
+      if (this.hooks?.onRequest) {
+        await this.hooks.onRequest(ir)
+      }
 
-    // Step 4: Send streaming HTTP request
-    const baseURL = this.config.baseURL ?? this.getDefaultBaseURL()
-    const endpoint = this.getEndpoint()
+      // Step 4: Outbound adapter builds provider request from IR
+      const providerRequest = this.outboundAdapter.outbound.buildRequest(ir)
 
-    const streamHandler = this.outboundAdapter.inbound.parseStream
-    if (!streamHandler) {
-      throw new Error('Outbound adapter does not support streaming')
-    }
+      // Step 5: Send streaming HTTP request
+      const baseURL = this.config.baseURL ?? this.getDefaultBaseURL()
+      const endpoint = this.getEndpoint()
 
-    // SSE buffer for handling incomplete chunks
-    let sseBuffer = ''
+      const streamHandler = this.outboundAdapter.inbound.parseStream
+      if (!streamHandler) {
+        throw new Error('Outbound adapter does not support streaming')
+      }
 
-    // Step 5: Process stream chunks
-    for await (const chunk of this.httpClient.requestStream({
-      method: 'POST',
-      url: `${baseURL}${endpoint}`,
-      body: providerRequest,
-    })) {
+      // SSE buffer for handling incomplete chunks
+      let sseBuffer = ''
+
+      // Step 6: Process stream chunks
+      for await (const chunk of this.httpClient.requestStream({
+        method: 'POST',
+        url: `${baseURL}${endpoint}`,
+        body: providerRequest,
+      })) {
       // Add chunk to buffer
       sseBuffer += chunk
       const lines = sseBuffer.split('\n')
@@ -279,6 +313,10 @@ export class Bridge implements LLMBridge {
             if (events) {
               const eventArray = Array.isArray(events) ? events : [events]
               for (const event of eventArray) {
+                // Trigger onStreamEvent hook
+                if (this.hooks?.onStreamEvent) {
+                  await this.hooks.onStreamEvent(event)
+                }
                 yield event
               }
             }
@@ -290,30 +328,46 @@ export class Bridge implements LLMBridge {
       }
     }
 
-    // Process remaining buffer
-    if (sseBuffer.trim()) {
-      const lines = sseBuffer.split('\n')
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6).trim()
-          if (data === '[DONE]') continue
+      // Process remaining buffer
+      if (sseBuffer.trim()) {
+        const lines = sseBuffer.split('\n')
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6).trim()
+            if (data === '[DONE]') continue
 
-          try {
-            const parsed = JSON.parse(data) as unknown
-            const events = streamHandler(parsed)
+            try {
+              const parsed = JSON.parse(data) as unknown
+              const events = streamHandler(parsed)
 
-            if (events) {
-              const eventArray = Array.isArray(events) ? events : [events]
-              for (const event of eventArray) {
-                yield event
+              if (events) {
+                const eventArray = Array.isArray(events) ? events : [events]
+                for (const event of eventArray) {
+                  // Trigger onStreamEvent hook
+                  if (this.hooks?.onStreamEvent) {
+                    await this.hooks.onStreamEvent(event)
+                  }
+                  yield event
+                }
               }
+            } catch {
+              // Skip invalid JSON
+              continue
             }
-          } catch {
-            // Skip invalid JSON
-            continue
           }
         }
       }
+    } catch (error) {
+      // Trigger onError hook
+      if (this.hooks?.onError && error instanceof Error) {
+        const errorIR = this.outboundAdapter.inbound.parseError?.(error) ?? {
+          message: error.message,
+          code: 'UNKNOWN_ERROR',
+          type: 'unknown' as const,
+        }
+        await this.hooks.onError(errorIR)
+      }
+      throw error
     }
   }
 
