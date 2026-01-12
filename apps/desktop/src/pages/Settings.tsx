@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   Shield,
@@ -48,9 +49,13 @@ const SECTIONS: { id: SettingSection; icon: React.ReactNode; labelKey: string }[
 ]
 
 export function Settings() {
+  const [searchParams] = useSearchParams()
   const { settings, fetch: fetchSettings, set: setSetting, theme, setTheme } = useSettingsStore()
   const { t, locale, setLocale } = useI18n()
-  const [activeSection, setActiveSection] = useState<SettingSection>('appearance')
+  const [activeSection, setActiveSection] = useState<SettingSection>(() => {
+    const section = searchParams.get('section') as SettingSection
+    return section && SECTIONS.some(s => s.id === section) ? section : 'appearance'
+  })
   const [appVersion, setAppVersion] = useState('')
   const [platform, setPlatform] = useState('')
   const [loading, setLoading] = useState<string | null>(null)
@@ -60,6 +65,14 @@ export function Settings() {
     ipc.invoke('app:get-version').then(setAppVersion)
     ipc.invoke('app:get-platform').then(setPlatform)
   }, [fetchSettings])
+
+  // Update URL when section changes
+  useEffect(() => {
+    const section = searchParams.get('section') as SettingSection
+    if (section && SECTIONS.some(s => s.id === section) && section !== activeSection) {
+      setActiveSection(section)
+    }
+  }, [searchParams, activeSection])
 
   const handleExportConfig = async () => {
     setLoading('export')

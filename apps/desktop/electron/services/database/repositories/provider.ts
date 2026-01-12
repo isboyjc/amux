@@ -30,6 +30,8 @@ export interface UpdateProviderDTO {
   sortOrder?: number
   logo?: string
   color?: string
+  enableAsProxy?: boolean
+  proxyPath?: string | null
 }
 
 export class ProviderRepository extends BaseRepository<ProviderRow> {
@@ -132,6 +134,14 @@ export class ProviderRepository extends BaseRepository<ProviderRow> {
       updates.push('color = ?')
       values.push(data.color)
     }
+    if (data.enableAsProxy !== undefined) {
+      updates.push('enable_as_proxy = ?')
+      values.push(data.enableAsProxy ? 1 : 0)
+    }
+    if (data.proxyPath !== undefined) {
+      updates.push('proxy_path = ?')
+      values.push(data.proxyPath)
+    }
     
     if (updates.length === 0) {
       return existing
@@ -184,6 +194,41 @@ export class ProviderRepository extends BaseRepository<ProviderRow> {
       'SELECT * FROM providers WHERE adapter_type = ? ORDER BY sort_order ASC'
     )
     return stmt.all(adapterType) as ProviderRow[]
+  }
+
+  /**
+   * Find all providers with passthrough proxy enabled
+   */
+  findAllPassthrough(): ProviderRow[] {
+    const stmt = this.db.prepare(
+      'SELECT * FROM providers WHERE enabled = 1 AND enable_as_proxy = 1 AND proxy_path IS NOT NULL ORDER BY sort_order ASC, created_at DESC'
+    )
+    return stmt.all() as ProviderRow[]
+  }
+
+  /**
+   * Find provider by proxy path
+   */
+  findByProxyPath(proxyPath: string): ProviderRow | null {
+    const stmt = this.db.prepare(
+      'SELECT * FROM providers WHERE proxy_path = ?'
+    )
+    return (stmt.get(proxyPath) as ProviderRow) || null
+  }
+
+  /**
+   * Check if proxy path is already in use (excluding a specific provider ID)
+   */
+  isProxyPathTaken(proxyPath: string, excludeId?: string): boolean {
+    const stmt = excludeId
+      ? this.db.prepare('SELECT COUNT(*) as count FROM providers WHERE proxy_path = ? AND id != ?')
+      : this.db.prepare('SELECT COUNT(*) as count FROM providers WHERE proxy_path = ?')
+    
+    const result = excludeId
+      ? stmt.get(proxyPath, excludeId) as { count: number }
+      : stmt.get(proxyPath) as { count: number }
+    
+    return result.count > 0
   }
 }
 

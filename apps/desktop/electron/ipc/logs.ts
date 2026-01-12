@@ -44,6 +44,11 @@ export function registerLogHandlers(): void {
     return repo.getStats(filter || {})
   })
 
+  // Get time series statistics
+  ipcMain.handle('logs:get-time-series-stats', async (_event, hours?: number) => {
+    return repo.getTimeSeriesStats(hours || 24)
+  })
+
   // Export logs
   ipcMain.handle('logs:export', async (_event, filter: LogFilter, format: 'json' | 'csv') => {
     if (format === 'csv') {

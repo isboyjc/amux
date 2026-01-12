@@ -20,6 +20,8 @@ export interface Provider {
   sortOrder: number
   logo?: string  // Base64 data URL for logo
   color?: string // Brand color hex code
+  enableAsProxy?: boolean // Enable provider as passthrough proxy
+  proxyPath?: string | null // URL path identifier for passthrough proxy
   createdAt: number
   updatedAt: number
 }

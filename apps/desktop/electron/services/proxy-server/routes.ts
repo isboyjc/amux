@@ -2,10 +2,14 @@
  * Proxy server routes
  * 
  * Routes are dynamically registered based on proxy configurations.
+ * Route format: /proxies/{proxy_path}{endpoint}
+ * 
  * Each proxy's inbound adapter determines the endpoint:
  *   - openai, deepseek, moonshot, qwen, zhipu, google → /v1/chat/completions
  *   - anthropic → /v1/messages
  *   - openai-responses → /v1/responses
+ * 
+ * Example: /proxies/anthropic-moonshot/v1/messages
  */
 
 import { randomUUID } from 'crypto'
@@ -15,32 +19,21 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 
 import {
   getBridgeProxyRepository,
-  getApiKeyRepository,
-  getModelMappingRepository,
-  getSettingsRepository
+  getProviderRepository,
+  getModelMappingRepository
 } from '../database/repositories'
 import { logRequest } from '../logger'
 import { recordRequest as recordMetrics } from '../metrics'
 
 import { getBridge, resolveProxyChain } from './bridge-manager'
 import { ProxyErrorCode } from './types'
-
-// Endpoint mapping by adapter type
-const ADAPTER_ENDPOINTS: Record<string, string> = {
-  openai: '/v1/chat/completions',
-  'openai-responses': '/v1/responses',
-  anthropic: '/v1/messages',
-  deepseek: '/v1/chat/completions',
-  moonshot: '/v1/chat/completions',
-  qwen: '/v1/chat/completions',
-  zhipu: '/v1/chat/completions',
-  google: '/v1/chat/completions'
-}
-
-// Get endpoint for adapter type
-function getEndpointForAdapter(adapterType: string): string {
-  return ADAPTER_ENDPOINTS[adapterType] || '/v1/chat/completions'
-}
+import { 
+  extractApiKey, 
+  validateApiKey, 
+  createErrorResponse, 
+  getEndpointForAdapter 
+} from './utils'
+import { handleProviderPassthrough } from './provider-passthrough'
 
 // Request body type
 interface ChatCompletionRequest {
@@ -51,154 +44,60 @@ interface ChatCompletionRequest {
 }
 
 /**
- * Create error response
- */
-function createErrorResponse(
-  code: ProxyErrorCode,
-  message: string,
-  statusCode: number = 500,
-  format: 'openai' | 'anthropic' = 'openai'
-): { statusCode: number; body: unknown } {
-  if (format === 'anthropic') {
-    return {
-      statusCode,
-      body: {
-        type: 'error',
-        error: {
-          type: code,
-          message
-        }
-      }
-    }
-  }
-  
-  return {
-    statusCode,
-    body: {
-      error: {
-        message,
-        type: 'api_error',
-        code
-      }
-    }
-  }
-}
-
-/**
- * Extract API key from request headers
- * Supports multiple formats:
- *   - Authorization: Bearer xxx (OpenAI style)
- *   - x-api-key: xxx (Anthropic style)
- *   - Authorization: xxx (raw)
- */
-function extractApiKey(request: FastifyRequest): string | null {
-  // Check Authorization header first (OpenAI style)
-  const auth = request.headers.authorization
-  if (auth) {
-    if (auth.startsWith('Bearer ')) {
-      return auth.slice(7)
-    }
-    return auth
-  }
-  
-  // Check x-api-key header (Anthropic style)
-  const xApiKey = request.headers['x-api-key']
-  if (xApiKey && typeof xApiKey === 'string') {
-    return xApiKey
-  }
-  
-  return null
-}
-
-// Platform key prefix - all platform keys start with sk-amux.
-const PLATFORM_KEY_PREFIX = 'sk-amux.'
-
-/**
- * Check if authentication is enabled
- */
-function isAuthEnabled(): boolean {
-  const settingsRepo = getSettingsRepository()
-  const enabled = settingsRepo.get('security.unifiedApiKey.enabled')
-  return enabled === true
-}
-
-/**
- * Check if a key is a platform key (starts with sk-amux.)
- */
-function isPlatformKey(apiKey: string): boolean {
-  return apiKey.startsWith(PLATFORM_KEY_PREFIX)
-}
-
-/**
- * Validate API key based on authentication mode
- * 
- * Auth disabled (default):
- *   - No key needed, use provider's configured key
- *   - Returns: { valid: true, usePlatformKey: false, usePassThrough: false }
- * 
- * Auth enabled:
- *   - Must provide a key
- *   - sk-amux.xxx → Platform key → validate and use provider's key
- *   - Other format → Pass-through key → use directly
- * 
- * Returns: { 
- *   valid: boolean,
- *   usePlatformKey: boolean,  // Use provider's configured key
- *   usePassThrough: boolean,  // Use the key from request directly
- *   error?: string 
- * }
- */
-function validateApiKey(apiKey: string | null): { 
-  valid: boolean
-  usePlatformKey: boolean
-  usePassThrough: boolean
-  error?: string 
-} {
-  const authEnabled = isAuthEnabled()
-  
-  // Auth disabled - no key needed, use provider's configured key
-  if (!authEnabled) {
-    return { valid: true, usePlatformKey: false, usePassThrough: false }
-  }
-  
-  // Auth enabled - key is required
-  if (!apiKey) {
-    return { 
-      valid: false, 
-      usePlatformKey: false, 
-      usePassThrough: false,
-      error: 'Authentication required. Provide an API key in Authorization header.'
-    }
-  }
-  
-  // Check if it's a platform key (sk-amux.xxx)
-  if (isPlatformKey(apiKey)) {
-    const apiKeyRepo = getApiKeyRepository()
-    const key = apiKeyRepo.validateKey(apiKey)
-    if (key) {
-      // Valid platform key - use provider's configured key
-      apiKeyRepo.updateLastUsed(key.id)
-      return { valid: true, usePlatformKey: true, usePassThrough: false }
-    }
-    // Invalid or disabled platform key
-    return { 
-      valid: false, 
-      usePlatformKey: true, 
-      usePassThrough: false,
-      error: 'Invalid or disabled platform API key.'
-    }
-  }
-  
-  // Other key format - pass-through mode, use the key directly
-  return { valid: true, usePlatformKey: false, usePassThrough: true }
-}
-
-/**
  * Register proxy routes
  */
 export function registerRoutes(app: FastifyInstance): void {
-  // Get all enabled proxies
   const proxyRepo = getBridgeProxyRepository()
+  const providerRepo = getProviderRepository()
+  
+  // ============================================================================
+  // 1. Provider Passthrough Proxy Routes
+  // ============================================================================
+  const passthroughProviders = providerRepo.findAllPassthrough()
+  
+  console.log(`[Routes] Registering ${passthroughProviders.length} passthrough providers`)
+  
+  for (const provider of passthroughProviders) {
+    const endpoint = getEndpointForAdapter(provider.adapter_type)
+    const routePath = `/providers/${provider.proxy_path}${endpoint}`
+    
+    console.log(`[Routes] Registering passthrough: ${routePath} (${provider.adapter_type})`)
+    
+    // Chat/Messages endpoint
+    app.post(routePath, async (request: FastifyRequest, reply: FastifyReply) => {
+      return handleProviderPassthrough(request, reply, provider)
+    })
+    
+    // Models endpoint
+    app.get(`/providers/${provider.proxy_path}/v1/models`, async (_request, reply) => {
+      try {
+        const models = JSON.parse(provider.models || '[]') as string[]
+        
+        const response = {
+          object: 'list',
+          data: models.map(model => ({
+            id: model,
+            object: 'model',
+            created: Math.floor(Date.now() / 1000),
+            owned_by: provider.name
+          }))
+        }
+        
+        return reply.send(response)
+      } catch (error) {
+        const err = createErrorResponse(
+          ProxyErrorCode.INTERNAL_ERROR,
+          error instanceof Error ? error.message : 'Internal server error',
+          500
+        )
+        return reply.status(err.statusCode).send(err.body)
+      }
+    })
+  }
+  
+  // ============================================================================
+  // 2. Conversion Proxy Routes (existing)
+  // ============================================================================
   const proxies = proxyRepo.findAllEnabled()
   
   console.log(`[Routes] Registering routes for ${proxies.length} enabled proxies`)
@@ -206,7 +105,7 @@ export function registerRoutes(app: FastifyInstance): void {
   // Register routes for each proxy
   for (const proxy of proxies) {
     const endpoint = getEndpointForAdapter(proxy.inbound_adapter)
-    const routePath = `/${proxy.proxy_path}${endpoint}`
+    const routePath = `/proxies/${proxy.proxy_path}${endpoint}`
     const errorFormat = proxy.inbound_adapter === 'anthropic' ? 'anthropic' : 'openai'
     
     console.log(`[Routes] Registering: ${routePath} (${proxy.inbound_adapter} -> ${proxy.outbound_type})`)
@@ -457,7 +356,7 @@ export function registerRoutes(app: FastifyInstance): void {
   
   // Models endpoint for each proxy
   for (const proxy of proxies) {
-    app.get(`/${proxy.proxy_path}/v1/models`, async (_request, reply) => {
+    app.get(`/proxies/${proxy.proxy_path}/v1/models`, async (_request, reply) => {
       try {
         // Resolve to provider
         const { provider } = resolveProxyChain(proxy.id)
@@ -497,6 +396,7 @@ export function registerRoutes(app: FastifyInstance): void {
       data: allProxies.map(p => ({
         id: p.id,
         path: p.proxy_path,
+        fullPath: `/proxies/${p.proxy_path}`,
         name: p.name,
         inbound: p.inbound_adapter,
         endpoint: getEndpointForAdapter(p.inbound_adapter),

@@ -1,1 +1,1 @@
-export { ProviderLogo, getProviderBgColor } from './ProviderLogo'
+export { ProviderLogo } from './ProviderLogo'

@@ -45,6 +45,8 @@ export interface ProviderRow extends BaseRow {
   sort_order: number
   logo: string | null // Base64 data URL for logo
   color: string | null // Brand color hex code
+  enable_as_proxy: number // 0 or 1 - enable provider as passthrough proxy
+  proxy_path: string | null // URL path identifier for passthrough proxy (e.g. "openai-personal")
   updated_at: number
 }
 

@@ -24,6 +24,10 @@ interface ProviderActions {
   toggle: (id: string, enabled: boolean) => Promise<boolean>
   test: (id: string, modelId?: string) => Promise<ProviderTestResult>
   fetchModels: (id: string) => Promise<string[]>
+  
+  // Passthrough proxy operations
+  validateProxyPath: (path: string, excludeId?: string) => Promise<boolean>
+  generateProxyPath: (name: string, adapterType: string) => Promise<string>
 }
 
 export const useProviderStore = create<ProviderState & ProviderActions>((set, get) => ({
@@ -103,5 +107,13 @@ export const useProviderStore = create<ProviderState & ProviderActions>((set, ge
 
   fetchModels: async (id) => {
     return ipc.invoke('provider:fetch-models', id)
+  },
+
+  validateProxyPath: async (path, excludeId) => {
+    return ipc.invoke('provider:validate-proxy-path', path, excludeId)
+  },
+
+  generateProxyPath: async (name, adapterType) => {
+    return ipc.invoke('provider:generate-proxy-path', name, adapterType)
   }
 }))

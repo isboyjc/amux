@@ -11,6 +11,7 @@ import {
   type UpdateProviderDTO
 } from '../services/database/repositories'
 import type { ProviderRow } from '../services/database/types'
+import { generateSlug, ensureUniqueSlug, validateSlug } from '../utils/slug'
 
 // Convert DB row to Provider object
 function toProvider(row: ProviderRow) {
@@ -28,6 +29,8 @@ function toProvider(row: ProviderRow) {
     sortOrder: row.sort_order,
     logo: row.logo ?? undefined,
     color: row.color ?? undefined,
+    enableAsProxy: row.enable_as_proxy === 1,
+    proxyPath: row.proxy_path ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   }
@@ -245,6 +248,46 @@ export function registerProviderHandlers(): void {
         error: error instanceof Error ? error.message : 'Failed to fetch models',
         models: []
       }
+    }
+  })
+
+  // Validate proxy path
+  ipcMain.handle('provider:validate-proxy-path', async (_event, path: string, excludeId?: string) => {
+    try {
+      // 1. Format validation
+      const validation = validateSlug(path)
+      if (!validation.valid) {
+        return false
+      }
+      
+      // 2. Check uniqueness (only among other providers)
+      const isTaken = repo.isProxyPathTaken(path, excludeId)
+      return !isTaken
+    } catch (error) {
+      console.error('[ValidateProxyPath] Error:', error)
+      return false
+    }
+  })
+
+  // Generate proxy path
+  ipcMain.handle('provider:generate-proxy-path', async (_event, name: string, adapterType: string) => {
+    try {
+      // Generate base slug
+      const baseSlug = generateSlug(name, adapterType)
+      
+      // Get existing proxy paths
+      const allProviders = repo.findAll()
+      const existingSlugs = allProviders
+        .map(p => p.proxy_path)
+        .filter((p): p is string => p !== null && p !== undefined)
+      
+      // Ensure uniqueness
+      const uniqueSlug = ensureUniqueSlug(baseSlug, existingSlugs)
+      
+      return uniqueSlug
+    } catch (error) {
+      console.error('[GenerateProxyPath] Error:', error)
+      throw error
     }
   })
 }

@@ -294,6 +294,59 @@ export class RequestLogRepository {
   }
 
   /**
+   * Get detailed time series data for dashboard chart
+   */
+  getTimeSeriesStats(hours: number = 24): Array<{
+    timestamp: number
+    proxyPath: string
+    sourceModel: string
+    targetModel: string
+    inputTokens: number
+    outputTokens: number
+    latency: number
+    success: boolean
+  }> {
+    const cutoff = Date.now() - (hours * 60 * 60 * 1000)
+    
+    const stmt = this.db.prepare(`
+      SELECT
+        created_at as timestamp,
+        proxy_path,
+        source_model,
+        target_model,
+        COALESCE(input_tokens, 0) as input_tokens,
+        COALESCE(output_tokens, 0) as output_tokens,
+        latency_ms,
+        status_code
+      FROM request_logs
+      WHERE created_at >= ?
+      ORDER BY created_at ASC
+    `)
+    
+    const rows = stmt.all(cutoff) as Array<{
+      timestamp: number
+      proxy_path: string
+      source_model: string
+      target_model: string
+      input_tokens: number
+      output_tokens: number
+      latency_ms: number
+      status_code: number
+    }>
+    
+    return rows.map(row => ({
+      timestamp: row.timestamp,
+      proxyPath: row.proxy_path,
+      sourceModel: row.source_model,
+      targetModel: row.target_model,
+      inputTokens: row.input_tokens,
+      outputTokens: row.output_tokens,
+      latency: row.latency_ms,
+      success: row.status_code >= 200 && row.status_code < 300
+    }))
+  }
+
+  /**
    * Export logs to JSON format
    */
   exportToJson(filter: LogFilter = {}): string {

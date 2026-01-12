@@ -45,7 +45,7 @@ const bridgeCache = new Map<string, BridgeCacheEntry>()
  * Get adapter instance by type
  * Adapters are singleton instances, not classes
  */
-function getAdapter(adapterType: string): LLMAdapter {
+export function getAdapter(adapterType: string): LLMAdapter {
   console.log(`[BridgeManager] getAdapter called with: "${adapterType}"`)
   
   const adapter = ADAPTER_MAP[adapterType]

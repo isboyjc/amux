@@ -2,9 +2,15 @@ import {
   Plus,
   Search,
   Loader2,
-  ArrowRight
+  ArrowRight,
+  ChevronDown,
+  ChevronRight,
+  Zap,
+  Copy,
+  CheckCircle2
 } from 'lucide-react'
 import { useEffect, useState, useMemo, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { 
@@ -305,6 +311,7 @@ export function Proxies() {
   const { proxies, loading, fetch, create, update, remove, toggle } = useBridgeProxyStore()
   const { providers, fetch: fetchProviders, fetchPresets, presets: providerPresets } = useProviderStore()
   const { t } = useI18n()
+  const location = useLocation()
   const [selectedProxyId, setSelectedProxyId] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [adapterPresets, setAdapterPresets] = useState<AdapterPreset[]>([])
@@ -317,12 +324,16 @@ export function Proxies() {
     ipc.invoke('presets:get-adapters').then(setAdapterPresets)
   }, [fetch, fetchProviders, fetchPresets])
 
-  // Auto-select first proxy when list changes
+  // Auto-select from location state or first proxy
   useEffect(() => {
-    if (proxies.length > 0 && !selectedProxyId) {
+    // Check if there's a selectedProxyId passed from navigation
+    const stateProxyId = (location.state as any)?.selectedProxyId
+    if (stateProxyId && proxies.find(p => p.id === stateProxyId)) {
+      setSelectedProxyId(stateProxyId)
+    } else if (proxies.length > 0 && !selectedProxyId) {
       setSelectedProxyId(proxies[0]?.id ?? null)
     }
-  }, [proxies, selectedProxyId])
+  }, [proxies, selectedProxyId, location.state])
 
   const selectedProxy = useMemo(() => {
     return proxies.find(p => p.id === selectedProxyId) || null
@@ -425,6 +436,8 @@ function ProxyListPanel({
   t
 }: ProxyListPanelProps) {
   const [search, setSearch] = useState('')
+  const [showPassthrough, setShowPassthrough] = useState(true)
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null)
 
   const filteredProxies = proxies.filter(p =>
     p.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -432,6 +445,11 @@ function ProxyListPanel({
   )
 
   const enabledCount = proxies.filter(p => p.enabled).length
+  
+  // Get passthrough providers
+  const passthroughProviders = useMemo(() => {
+    return providers.filter(p => p.enabled && p.enableAsProxy && p.proxyPath)
+  }, [providers])
 
   const getProviderName = (id: string) => {
     const provider = providers.find(p => p.id === id)
@@ -441,6 +459,14 @@ function ProxyListPanel({
   const getProxyName = (id: string) => {
     const proxy = proxies.find(p => p.id === id)
     return proxy?.name || proxy?.proxyPath || id
+  }
+  
+  const handleCopyPassthroughUrl = (provider: Provider) => {
+    const endpoint = provider.adapterType === 'anthropic' ? '/v1/messages' : '/v1/chat/completions'
+    const url = `http://127.0.0.1:9527/providers/${provider.proxyPath}${endpoint}`
+    navigator.clipboard.writeText(url)
+    setCopiedUrl(provider.id)
+    setTimeout(() => setCopiedUrl(null), 1500)
   }
 
   return (
@@ -476,8 +502,97 @@ function ProxyListPanel({
         </div>
       </div>
 
-      {/* List */}
-      <div className="flex-1 overflow-y-auto p-2">
+      {/* Unified Scrollable Area */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Passthrough Providers Section */}
+        {passthroughProviders.length > 0 && (
+          <div className="border-b">
+            <button
+              onClick={() => setShowPassthrough(!showPassthrough)}
+              className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-muted/50 transition-all group"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="p-1 rounded-md bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <Zap className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <span className="text-xs font-semibold">
+                  {t('proxies.passthroughProviders')}
+                </span>
+                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] font-semibold">
+                  {passthroughProviders.length}
+                </Badge>
+              </div>
+              {showPassthrough ? (
+                <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+              ) : (
+                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+              )}
+            </button>
+            
+            {showPassthrough && (
+              <div className="px-3 pb-3 pt-1 space-y-2 animate-in slide-in-from-top-1 duration-200">
+                {passthroughProviders.map((provider) => {
+                  const providerPreset = providerPresets.find(p => p.adapterType === provider.adapterType)
+                  const endpoint = provider.adapterType === 'anthropic' ? '/v1/messages' : '/v1/chat/completions'
+                  
+                  return (
+                    <div
+                      key={provider.id}
+                      className="group/item p-3 rounded-lg bg-card border border-border hover:border-primary/50 hover:shadow-sm transition-all"
+                    >
+                      <div className="flex items-center gap-2.5 mb-2">
+                        {providerPreset?.logo && (
+                          <div className="w-6 h-6 shrink-0 rounded-md overflow-hidden ring-1 ring-border/50">
+                            <ProviderLogo
+                              logo={providerPreset.logo}
+                              name={provider.name}
+                              size={24}
+                            />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold truncate">
+                            {provider.name}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground">
+                            {provider.adapterType}
+                          </div>
+                        </div>
+                        <TooltipProvider>
+                          <Tooltip delayDuration={200}>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 shrink-0 opacity-70 group-hover/item:opacity-100 hover:bg-muted"
+                                onClick={() => handleCopyPassthroughUrl(provider)}
+                              >
+                                {copiedUrl === provider.id ? (
+                                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                                ) : (
+                                  <Copy className="h-3.5 w-3.5" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left">
+                              {copiedUrl === provider.id ? t('common.copied') : t('common.copy')}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                      <code className="block text-[10px] font-mono text-muted-foreground truncate bg-muted/70 px-2 py-1.5 rounded border border-border/50">
+                        /providers/{provider.proxyPath}{endpoint}
+                      </code>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Conversion Proxies List */}
+        <div className="p-2">
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -510,6 +625,7 @@ function ProxyListPanel({
             ))}
           </div>
         )}
+        </div>
       </div>
     </>
   )
@@ -747,7 +863,7 @@ function ProxyConfigPanel({
 
   const handleCopyEndpoint = async () => {
     if (!proxy) return
-    const endpoint = `http://127.0.0.1:9527/${proxy.proxyPath}/v1/chat/completions`
+    const endpoint = `http://127.0.0.1:9527/proxies/${proxy.proxyPath}/v1/chat/completions`
     await navigator.clipboard.writeText(endpoint)
     setCopiedEndpoint(true)
     setTimeout(() => setCopiedEndpoint(false), 1500)
@@ -976,7 +1092,7 @@ function ProxyConfigPanel({
             <Label className="text-xs">{t('proxies.accessUrl')}</Label>
             <div className="flex items-center gap-2">
               <code className="flex-1 bg-muted px-3 py-2 rounded-md text-xs font-mono truncate">
-                http://127.0.0.1:9527/{formData.proxyPath || 'path'}/v1/chat/completions
+                http://127.0.0.1:9527/proxies/{formData.proxyPath || 'path'}/v1/chat/completions
               </code>
               <Button
                 variant="ghost"
@@ -1250,7 +1366,7 @@ function AddProxyModal({
 
           {/* Access URL Preview */}
           <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1.5 rounded">
-            {t('proxies.accessUrl')}: <code className="font-mono">http://127.0.0.1:9527/{formData.proxyPath || 'path'}/v1/chat/completions</code>
+            {t('proxies.accessUrl')}: <code className="font-mono">http://127.0.0.1:9527/proxies/{formData.proxyPath || 'path'}/v1/chat/completions</code>
           </div>
 
           {/* Inbound Adapter */}

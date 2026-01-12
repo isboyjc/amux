@@ -6,9 +6,14 @@ import {
   AlertCircle,
   ChevronRight,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  Copy,
+  RefreshCw,
+  Info,
+  Zap
 } from 'lucide-react'
 import { useEffect, useState, useMemo, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { CopyIcon, RefreshIcon, ResetIcon, EyeIcon, EyeOffIcon, TerminalIcon, CheckIcon, TrashIcon } from '@/components/icons'
@@ -38,8 +43,22 @@ function getProviderStatus(provider: Provider | undefined): ProviderStatus {
 }
 
 export function Providers() {
-  const { providers, presets, loading, fetch, fetchPresets, create, update, remove, toggle, test } = useProviderStore()
+  const { 
+    providers, 
+    presets, 
+    loading, 
+    fetch, 
+    fetchPresets, 
+    create, 
+    update, 
+    remove, 
+    toggle, 
+    test,
+    validateProxyPath,
+    generateProxyPath
+  } = useProviderStore()
   const { t } = useI18n()
+  const location = useLocation()
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [testingId, setTestingId] = useState<string | null>(null)
@@ -50,12 +69,16 @@ export function Providers() {
     fetchPresets()
   }, [fetch, fetchPresets])
 
-  // Auto-select first provider when list changes
+  // Auto-select from location state or first provider
   useEffect(() => {
-    if (providers.length > 0 && !selectedProviderId) {
+    // Check if there's a selectedProviderId passed from navigation
+    const stateProviderId = (location.state as any)?.selectedProviderId
+    if (stateProviderId && providers.find(p => p.id === stateProviderId)) {
+      setSelectedProviderId(stateProviderId)
+    } else if (providers.length > 0 && !selectedProviderId) {
       setSelectedProviderId(providers[0]?.id ?? null)
     }
-  }, [providers, selectedProviderId])
+  }, [providers, selectedProviderId, location.state])
 
   const selectedProvider = useMemo(() => {
     return providers.find(p => p.id === selectedProviderId) || null
@@ -148,6 +171,8 @@ export function Providers() {
             }
           }}
           testing={testingId === selectedProviderId}
+          validateProxyPath={validateProxyPath}
+          generateProxyPath={generateProxyPath}
           t={t}
         />
       </div>
@@ -334,6 +359,8 @@ interface ProviderConfigPanelProps {
   onTest: (modelId: string) => void
   onModelsUpdate: (models: string[]) => Promise<void>
   testing: boolean
+  validateProxyPath: (path: string, excludeId?: string) => Promise<boolean>
+  generateProxyPath: (name: string, adapterType: string) => Promise<string>
   t: (key: string) => string
 }
 
@@ -345,6 +372,8 @@ function ProviderConfigPanel({
   onTest,
   onModelsUpdate,
   testing,
+  validateProxyPath,
+  generateProxyPath,
   t
 }: ProviderConfigPanelProps) {
   const [apiKey, setApiKey] = useState('')
@@ -356,6 +385,13 @@ function ProviderConfigPanel({
   const [showPassword, setShowPassword] = useState(false)
   const [copied, setCopied] = useState(false)
   const [resetSuccess, setResetSuccess] = useState(false)
+  
+  // Passthrough proxy state
+  const [enableAsProxy, setEnableAsProxy] = useState(false)
+  const [proxyPath, setProxyPath] = useState('')
+  const [proxyPathError, setProxyPathError] = useState<string | null>(null)
+  const [proxyPathValidating, setProxyPathValidating] = useState(false)
+  const [copiedProxyUrl, setCopiedProxyUrl] = useState(false)
 
   // Icon refs for animations
   const copyIconRef = useRef<AnimatedIconHandle>(null)
@@ -372,6 +408,9 @@ function ProviderConfigPanel({
       setApiKey(provider.apiKey || '')
       setBaseUrl(provider.baseUrl || preset?.baseUrl || '')
       setSelectedModels(provider.models || [])
+      setEnableAsProxy(provider.enableAsProxy || false)
+      setProxyPath(provider.proxyPath || '')
+      setProxyPathError(null)
     }
   }, [provider?.id, preset])
 
@@ -391,7 +430,54 @@ function ProviderConfigPanel({
       apiKey,
       baseUrl,
       models: selectedModels,
+      enableAsProxy,
+      proxyPath: enableAsProxy ? proxyPath || null : null,
     })
+  }
+  
+  // Handle proxy path change with debounced validation
+  const handleProxyPathChange = async (newPath: string) => {
+    setProxyPath(newPath)
+    setProxyPathError(null)
+    
+    if (!newPath) {
+      setProxyPathError(null)
+      return
+    }
+    
+    setProxyPathValidating(true)
+    try {
+      const isValid = await validateProxyPath(newPath, provider?.id)
+      if (!isValid) {
+        setProxyPathError(t('providers.proxyPathTaken'))
+      }
+    } catch (error) {
+      setProxyPathError(t('providers.proxyPathInvalid'))
+    } finally {
+      setProxyPathValidating(false)
+    }
+  }
+  
+  // Generate proxy path from provider name
+  const handleGenerateProxyPath = async () => {
+    if (!provider) return
+    try {
+      const generated = await generateProxyPath(provider.name, provider.adapterType)
+      setProxyPath(generated)
+      setProxyPathError(null)
+    } catch (error) {
+      toast.error(t('providers.generateProxyPathFailed'))
+    }
+  }
+  
+  // Copy proxy URL
+  const handleCopyProxyUrl = () => {
+    if (!proxyPath) return
+    const endpoint = provider?.adapterType === 'anthropic' ? '/v1/messages' : '/v1/chat/completions'
+    const url = `http://127.0.0.1:9527/providers/${proxyPath}${endpoint}`
+    navigator.clipboard.writeText(url)
+    setCopiedProxyUrl(true)
+    setTimeout(() => setCopiedProxyUrl(false), 1500)
   }
 
   const handleAddCustomModel = () => {
@@ -712,6 +798,121 @@ function ProviderConfigPanel({
               </Button>
             </div>
           </div>
+        </div>
+
+        {/* Passthrough Proxy Configuration */}
+        <div className="space-y-3 p-4 bg-gradient-to-br from-primary/5 via-primary/3 to-transparent rounded-lg border border-primary/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-primary" />
+              <Label className="text-sm font-semibold text-primary">{t('providers.passthroughProxy')}</Label>
+              <TooltipProvider>
+                <Tooltip delayDuration={200}>
+                  <TooltipTrigger asChild>
+                    <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="max-w-xs">
+                    <p className="text-xs">{t('providers.passthroughProxyTooltip')}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <Switch
+              checked={enableAsProxy}
+              onCheckedChange={(checked) => {
+                setEnableAsProxy(checked)
+                if (checked && !proxyPath) {
+                  handleGenerateProxyPath()
+                }
+              }}
+              disabled={!provider?.enabled || !apiKey}
+            />
+          </div>
+
+          {enableAsProxy && (
+            <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
+              {/* Proxy Path Input */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">{t('providers.proxyPath')} *</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={proxyPath}
+                    onChange={(e) => handleProxyPathChange(e.target.value)}
+                    placeholder="openai-personal"
+                    className={cn(
+                      "h-8 text-sm font-mono flex-1",
+                      proxyPathError && "border-destructive focus-visible:ring-destructive"
+                    )}
+                    disabled={!enableAsProxy}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-2"
+                    onClick={handleGenerateProxyPath}
+                    disabled={!enableAsProxy}
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                {proxyPathValidating && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    {t('providers.validating')}
+                  </p>
+                )}
+                {proxyPathError && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {proxyPathError}
+                  </p>
+                )}
+                {!proxyPathError && !proxyPathValidating && proxyPath && (
+                  <p className="text-xs text-muted-foreground">
+                    {t('providers.proxyPathFormat')}
+                  </p>
+                )}
+              </div>
+
+              {/* Proxy URL Preview */}
+              {proxyPath && !proxyPathError && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">{t('providers.proxyUrl')}</Label>
+                  <div className="flex gap-2">
+                    <code className="flex-1 bg-muted px-2.5 py-1.5 rounded-md text-xs font-mono truncate border">
+                      http://127.0.0.1:9527/providers/{proxyPath}
+                      {provider?.adapterType === 'anthropic' ? '/v1/messages' : '/v1/chat/completions'}
+                    </code>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2"
+                      onClick={handleCopyProxyUrl}
+                    >
+                      {copiedProxyUrl ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {t('providers.proxyUrlHint')}
+                  </p>
+                </div>
+              )}
+
+              {/* Warning for disabled provider */}
+              {!provider?.enabled && (
+                <div className="flex items-start gap-2 p-2 bg-amber-500/10 border border-amber-500/20 rounded-md">
+                  <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    {t('providers.enableProviderFirst')}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
       </div>

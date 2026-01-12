@@ -41,6 +41,8 @@ export interface UpdateProviderDTO {
   sortOrder?: number
   logo?: string
   color?: string
+  enableAsProxy?: boolean
+  proxyPath?: string | null
 }
 
 export interface CreateProxyDTO {
@@ -140,6 +142,8 @@ export interface IPCHandlers {
   'provider:test': (id: string) => Promise<ProviderTestResult>
   'provider:fetch-models': (id: string) => Promise<string[]>
   'provider:toggle': (id: string, enabled: boolean) => Promise<boolean>
+  'provider:validate-proxy-path': (path: string, excludeId?: string) => Promise<boolean>
+  'provider:generate-proxy-path': (name: string, adapterType: AdapterType) => Promise<string>
 
   // Bridge Proxy operations
   'proxy:list': () => Promise<BridgeProxy[]>

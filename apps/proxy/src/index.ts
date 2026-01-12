@@ -5,21 +5,23 @@
  * It allows you to use any supported provider as a backend while using another provider's API format.
  *
  * Routes:
- *   /{inbound}-{outbound}/...  - Convert from inbound format to outbound provider
+ *   /proxies/{inbound}-{outbound}/...  - Convert from inbound format to outbound provider
  *
  * Available routes:
- *   /openai-anthropic/v1/chat/completions        - OpenAI API → Anthropic
- *   /openai-deepseek/v1/chat/completions         - OpenAI API → DeepSeek
- *   /openai-moonshot/v1/chat/completions         - OpenAI API → Moonshot
- *   /openai-zhipu/v1/chat/completions            - OpenAI API → Zhipu
- *   /openai-responses-anthropic/v1/responses    - OpenAI Responses API → Anthropic
- *   /openai-responses-deepseek/v1/responses     - OpenAI Responses API → DeepSeek
- *   /anthropic-openai/v1/messages                - Anthropic API → OpenAI
- *   /anthropic-deepseek/v1/messages              - Anthropic API → DeepSeek
- *   /deepseek-anthropic/v1/chat/completions      - DeepSeek API → Anthropic
- *   /deepseek-openai/v1/chat/completions         - DeepSeek API → OpenAI
- *   /moonshot-openai/v1/chat/completions         - Moonshot API → OpenAI
+ *   /proxies/openai-anthropic/v1/chat/completions        - OpenAI API → Anthropic
+ *   /proxies/openai-deepseek/v1/chat/completions         - OpenAI API → DeepSeek
+ *   /proxies/openai-moonshot/v1/chat/completions         - OpenAI API → Moonshot
+ *   /proxies/openai-zhipu/v1/chat/completions            - OpenAI API → Zhipu
+ *   /proxies/openai-responses-anthropic/v1/responses    - OpenAI Responses API → Anthropic
+ *   /proxies/openai-responses-deepseek/v1/responses     - OpenAI Responses API → DeepSeek
+ *   /proxies/anthropic-openai/v1/messages                - Anthropic API → OpenAI
+ *   /proxies/anthropic-deepseek/v1/messages              - Anthropic API → DeepSeek
+ *   /proxies/deepseek-anthropic/v1/chat/completions      - DeepSeek API → Anthropic
+ *   /proxies/deepseek-openai/v1/chat/completions         - DeepSeek API → OpenAI
+ *   /proxies/moonshot-openai/v1/chat/completions         - Moonshot API → OpenAI
  *   ... and more
+ *
+ * Legacy routes (without /proxies/ prefix) are still supported for backward compatibility.
  *
  * Environment variables:
  *   - PORT: Server port (default: 8000)
@@ -67,7 +69,8 @@ app.options('/{*path}', (_req, res) => {
 
 app.get(['/', '/health'], (_req, res) => {
   const availableRoutes = routes.map(r => ({
-    path: `/${r.inbound}-${r.outbound}${r.endpoint}`,
+    path: `/proxies/${r.inbound}-${r.outbound}${r.endpoint}`,
+    legacyPath: `/${r.inbound}-${r.outbound}${r.endpoint}`,
     inbound: r.inbound,
     outbound: r.outbound,
     modelMapping: r.modelMapping,
@@ -76,7 +79,7 @@ app.get(['/', '/health'], (_req, res) => {
   res.json({
     status: 'ok',
     service: 'amux-proxy',
-    version: '0.0.1',
+    version: '0.0.2',
     routes: availableRoutes,
     adapters: Object.keys(adapters),
   })
@@ -86,10 +89,16 @@ app.get(['/', '/health'], (_req, res) => {
 // Register Routes
 // ============================================================================
 
+// Register dynamic proxy routes with /proxies/ prefix
 for (const config of routes) {
-  const routePath = `/${config.inbound}-${config.outbound}`
+  const proxyName = `${config.inbound}-${config.outbound}`
   const router = createBridgeRouter(config)
-  app.use(routePath, router)
+  
+  // New path format: /proxies/{proxyName}
+  app.use(`/proxies/${proxyName}`, router)
+  
+  // Also support old path format for backward compatibility (temporary)
+  app.use(`/${proxyName}`, router)
 }
 
 // ============================================================================
@@ -98,7 +107,7 @@ for (const config of routes) {
 
 app.listen(PORT, () => {
   const routeList = routes
-    .map(r => `║    ${`/${r.inbound}-${r.outbound}${r.endpoint}`.padEnd(50)}║`)
+    .map(r => `║    ${`/proxies/${r.inbound}-${r.outbound}${r.endpoint}`.padEnd(50)}║`)
     .join('\n')
 
   const envVars = [
@@ -133,20 +142,18 @@ ${envVars}
 ║  Usage Examples:                                              ║
 ║                                                               ║
 ║  OpenAI -> DeepSeek:                                          ║
-║    BASE_URL=http://localhost:${PORT}/openai-deepseek${' '.repeat(Math.max(0, 11 - String(PORT).length))}║
+║    BASE_URL=http://localhost:${PORT}/proxies/openai-deepseek${' '.repeat(Math.max(0, 2 - String(PORT).length))}║
 ║    API_KEY=<your-deepseek-api-key>                            ║
 ║                                                               ║
 ║  OpenAI -> Anthropic:                                         ║
-║    BASE_URL=http://localhost:${PORT}/openai-anthropic${' '.repeat(Math.max(0, 9 - String(PORT).length))}║
+║    BASE_URL=http://localhost:${PORT}/proxies/openai-anthropic${' '.repeat(Math.max(0, 0 - String(PORT).length))}║
 ║    API_KEY=<your-anthropic-api-key>                           ║
 ║                                                               ║
-║  OpenAI Responses -> DeepSeek:                                ║
-║    BASE_URL=http://localhost:${PORT}/openai-responses-deepseek${' '.repeat(Math.max(0, 1 - String(PORT).length))}║
-║    API_KEY=<your-deepseek-api-key>                            ║
+║  Anthropic -> Moonshot:                                       ║
+║    BASE_URL=http://localhost:${PORT}/proxies/anthropic-moonshot${' '.repeat(Math.max(0, 0 - String(PORT).length))}║
+║    API_KEY=<your-moonshot-api-key>                            ║
 ║                                                               ║
-║  Anthropic -> OpenAI:                                         ║
-║    BASE_URL=http://localhost:${PORT}/anthropic-openai${' '.repeat(Math.max(0, 9 - String(PORT).length))}║
-║    API_KEY=<your-openai-api-key>                              ║
+║  Note: Old paths (/{name}) still supported for compatibility ║
 ╚═══════════════════════════════════════════════════════════════╝
   `)
 })
