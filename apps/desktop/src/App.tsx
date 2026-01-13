@@ -1,11 +1,6 @@
 import { HashRouter, Routes, Route } from 'react-router-dom'
 import { Layout } from '@/components/layout'
-import { Dashboard } from '@/pages/Dashboard'
-import { Providers } from '@/pages/Providers'
-import { Proxies } from '@/pages/Proxies'
-import Tunnel from '@/pages/Tunnel'
-import { Logs } from '@/pages/Logs'
-import { Settings } from '@/pages/Settings'
+import { Dashboard, Providers, Proxies, Tunnel, Logs, Settings } from '@/pages'
 
 export default function App() {
   return (

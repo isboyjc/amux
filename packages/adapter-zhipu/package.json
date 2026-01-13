@@ -1,8 +1,15 @@
 {
   "name": "@amux/adapter-zhipu",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Zhipu AI (GLM) adapter for Amux",
-  "keywords": ["amux", "llm", "zhipu", "glm", "bigmodel", "adapter"],
+  "keywords": [
+    "amux",
+    "llm",
+    "zhipu",
+    "glm",
+    "bigmodel",
+    "adapter"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/isboyjc/amux.git",
@@ -21,7 +28,9 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",

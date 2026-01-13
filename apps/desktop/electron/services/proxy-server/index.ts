@@ -2,10 +2,22 @@
  * Proxy server - Fastify-based HTTP proxy server
  */
 
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import Fastify, { FastifyInstance } from 'fastify'
 import cors from '@fastify/cors'
 import { getSettingsRepository } from '../database/repositories'
 import type { ProxyServerConfig, ProxyServerState, ProxyServerMetrics } from './types'
+
+// Read version from package.json
+let appVersion = '0.0.0'
+try {
+  const packageJsonPath = join(__dirname, '../../../../package.json')
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'))
+  appVersion = packageJson.version || '0.0.0'
+} catch (error) {
+  console.error('[ProxyServer] Failed to read version:', error)
+}
 
 // Singleton server instance
 let server: FastifyInstance | null = null
@@ -71,7 +83,179 @@ function createServer(config: ProxyServerConfig): FastifyInstance {
     })
   }
 
-  // Health check endpoint
+  // Root status page (HTML)
+  app.get('/', async (_request, reply) => {
+    const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Amux</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    /* Light theme */
+    :root {
+      --background: hsl(220, 14%, 96%);
+      --foreground: hsl(222.2, 84%, 4.9%);
+      --primary: hsl(222.2, 47.4%, 11.2%);
+      --muted-foreground: hsl(215.4, 16.3%, 46.9%);
+    }
+    
+    /* Dark theme */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --background: hsl(224, 28%, 8%);
+        --foreground: hsl(210, 40%, 98%);
+        --primary: hsl(210, 40%, 98%);
+        --muted-foreground: hsl(215, 20.2%, 65.1%);
+      }
+    }
+    
+    body {
+      font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--background);
+      color: var(--foreground);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+    }
+    
+    .logo-link {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      text-decoration: none;
+      color: inherit;
+      transition: opacity 0.2s ease;
+    }
+    
+    .logo-link:hover {
+      opacity: 0.8;
+    }
+    
+    .logo {
+      width: 64px;
+      height: 64px;
+      flex-shrink: 0;
+    }
+    
+    .logo-path {
+      fill: var(--primary);
+      transition: fill 0.2s ease;
+    }
+    
+    h1 {
+      font-size: 56px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--foreground);
+      transition: color 0.2s ease;
+    }
+    
+    .links {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .link {
+      color: var(--muted-foreground);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 400;
+    }
+    
+    .link:hover {
+      text-decoration: underline;
+    }
+    
+    .github-icon-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted-foreground);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 400;
+      transition: opacity 0.2s ease;
+      opacity: 0.6;
+    }
+    
+    .github-icon-link:hover {
+      opacity: 1;
+    }
+    
+    .github-icon {
+      width: 20px;
+      height: 20px;
+    }
+    
+    .version {
+      color: var(--muted-foreground);
+      font-size: 13px;
+      font-weight: 400;
+      opacity: 0.6;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="https://amux.ai" target="_blank" rel="noopener noreferrer" class="logo-link">
+      <svg class="logo" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path
+          class="logo-path"
+          d="M4 96 
+             C4 96, 24 12, 64 12
+             C104 12, 124 96, 124 96
+             Q124 102, 118 102
+             C94 102, 92 64, 64 64
+             C36 64, 34 102, 10 102
+             Q4 102, 4 96
+             Z"
+        />
+      </svg>
+      <h1>Amux.ai</h1>
+    </a>
+    
+    <div class="links">
+      <a href="https://github.com/isboyjc/amux" target="_blank" rel="noopener noreferrer" class="github-icon-link">
+        <svg class="github-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+        </svg>
+        <span>GitHub</span>
+      </a>
+      <div class="version">v${appVersion}</div>
+    </div>
+  </div>
+</body>
+</html>`
+    
+    return reply.type('text/html').send(html)
+  })
+
+  // Health check endpoint (JSON)
   app.get('/health', async () => {
     return {
       status: 'ok',

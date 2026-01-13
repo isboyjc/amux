@@ -1,8 +1,13 @@
 {
   "name": "@amux/adapter-openai",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "OpenAI adapter for Amux",
-  "keywords": ["amux", "llm", "openai", "adapter"],
+  "keywords": [
+    "amux",
+    "llm",
+    "openai",
+    "adapter"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/isboyjc/amux.git",
@@ -21,7 +26,9 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",

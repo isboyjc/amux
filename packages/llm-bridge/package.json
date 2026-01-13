@@ -1,6 +1,6 @@
 {
   "name": "@amux/llm-bridge",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Core IR and adapter interfaces for Amux",
   "keywords": [
     "amux",

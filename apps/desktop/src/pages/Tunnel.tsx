@@ -2,11 +2,10 @@
  * Tunnel Page - Internet Penetration Management
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Globe,
   Clock,
-  Copy,
   Play,
   Square,
   RefreshCw,
@@ -18,6 +17,8 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 
+import { CopyIcon, CheckIcon } from '@/components/icons'
+import type { AnimatedIconHandle } from '@/components/icons'
 import { PageContainer } from '@/components/layout'
 import { Button } from '@/components/ui/button'
 import { ipc } from '@/lib/ipc'
@@ -43,6 +44,8 @@ export default function TunnelPage() {
   const { t } = useI18n()
   const [status, setStatus] = useState<TunnelStatus>({ isRunning: false, status: 'inactive' })
   const [loading, setLoading] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const copyIconRef = useRef<AnimatedIconHandle>(null)
 
   // Load status on mount
   useEffect(() => {
@@ -108,9 +111,11 @@ export default function TunnelPage() {
     }
   }
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     if (status.config) {
-      navigator.clipboard.writeText(`https://${status.config.domain}`)
+      await navigator.clipboard.writeText(`https://${status.config.domain}`)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
       toast.success(t('common.copied'), {
         description: t('tunnel.messages.copySuccess'),
       })
@@ -196,7 +201,7 @@ export default function TunnelPage() {
                   {t('tunnel.info.publicUrl')}
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 flex items-center gap-3 px-4 py-2.5 bg-muted/50 rounded-md border">
+                  <div className="flex-1 flex items-center gap-3 px-4 h-9 bg-muted/50 rounded-md border">
                     <div className={cn(
                       "h-2 w-2 rounded-full shrink-0",
                       isRunning
@@ -211,16 +216,22 @@ export default function TunnelPage() {
                     variant="outline"
                     size="icon"
                     onClick={handleCopy}
-                    className="shrink-0"
+                    onMouseEnter={() => !copied && copyIconRef.current?.startAnimation()}
+                    onMouseLeave={() => !copied && copyIconRef.current?.stopAnimation()}
+                    className="h-9 w-9 shrink-0"
                   >
-                    <Copy className="h-4 w-4" />
+                    {copied ? (
+                      <CheckIcon size={16} success />
+                    ) : (
+                      <CopyIcon ref={copyIconRef} size={16} />
+                    )}
                   </Button>
                   {isRunning && (
                     <Button
                       variant="outline"
                       size="icon"
                       onClick={() => window.open(`https://${status.config?.domain}`, '_blank')}
-                      className="shrink-0"
+                      className="h-9 w-9 shrink-0"
                     >
                       <ExternalLink className="h-4 w-4" />
                     </Button>

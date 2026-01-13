@@ -1,5 +1,6 @@
 export { Dashboard } from './Dashboard'
 export { Providers } from './Providers'
 export { Proxies } from './Proxies'
+export { default as Tunnel } from './Tunnel'
 export { Logs } from './Logs'
 export { Settings } from './Settings'
