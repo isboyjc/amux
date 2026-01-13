@@ -7,6 +7,7 @@
     "dashboard": "Dashboard",
     "providers": "Providers",
     "proxies": "Proxies",
+    "tunnel": "Tunnel",
     "service": "Service",
     "logs": "Logs",
     "settings": "Settings"
@@ -300,5 +301,52 @@
     "create": "Create",
     "show": "Show",
     "hide": "Hide"
+  },
+  "tunnel": {
+    "title": "Tunnel",
+    "description": "Expose local proxy to internet for remote access and team collaboration",
+    "statusTitle": "Tunnel Status",
+    "usageTitle": "Usage Guide",
+    "status": {
+      "active": "Running",
+      "inactive": "Stopped",
+      "starting": "Starting",
+      "stopping": "Stopping",
+      "error": "Error"
+    },
+    "actions": {
+      "start": "Start Tunnel",
+      "stop": "Stop Tunnel",
+      "copy": "Copy URL",
+      "share": "Share Config"
+    },
+    "info": {
+      "publicUrl": "Public URL",
+      "subdomain": "Subdomain",
+      "uptime": "Uptime",
+      "requests": "Requests",
+      "traffic": "Traffic"
+    },
+    "messages": {
+      "starting": "Starting tunnel...",
+      "started": "Tunnel started",
+      "stopped": "Tunnel stopped",
+      "copySuccess": "URL copied to clipboard",
+      "error": "Operation failed"
+    },
+    "features": {
+      "instant": "One-Click Start",
+      "instantDesc": "No complex configuration needed, expose local services with a single click",
+      "subdomain": "Fixed Domain",
+      "subdomainDesc": "Each device gets a fixed subdomain, easy to remember and share",
+      "secure": "Secure & Reliable",
+      "secureDesc": "Built on Cloudflare Tunnel technology with HTTPS encryption"
+    },
+    "usage": {
+      "tip1": "Click \"Start Tunnel\" to expose local proxy (127.0.0.1:9527) to the internet",
+      "tip2": "Each device is automatically assigned a fixed subdomain",
+      "tip3": "Once enabled, access local proxy service via the public URL",
+      "tip4": "Enable API Key authentication for security"
+    }
   }
 }

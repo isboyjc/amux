@@ -108,11 +108,12 @@ export function registerProviderHandlers(): void {
     }
 
     const baseUrl = row.base_url || getDefaultBaseUrl(row.adapter_type)
+    const modelsPath = row.models_path || '/v1/models'
     const startTime = Date.now()
 
     try {
       // Try to fetch models list
-      const response = await fetch(`${baseUrl}/v1/models`, {
+      const response = await fetch(`${baseUrl}${modelsPath}`, {
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json'
@@ -165,8 +166,9 @@ export function registerProviderHandlers(): void {
     }
 
     const baseUrl = row.base_url || getDefaultBaseUrl(row.adapter_type)
+    const modelsPath = row.models_path || '/v1/models'
 
-    const response = await fetch(`${baseUrl}/v1/models`, {
+    const response = await fetch(`${baseUrl}${modelsPath}`, {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'

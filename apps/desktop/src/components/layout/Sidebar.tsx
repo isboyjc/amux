@@ -8,7 +8,8 @@ import {
   GearIcon,
   RocketIcon,
   KeyframesIcon,
-  TerminalIcon
+  TerminalIcon,
+  TunnelIcon
 } from '@/components/icons'
 import type { AnimatedIconHandle } from '@/components/icons'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
@@ -26,6 +27,7 @@ const navItems: NavItemData[] = [
   { to: '/', icon: GaugeIcon, labelKey: 'nav.dashboard' },
   { to: '/providers', icon: KeyframesIcon, labelKey: 'nav.providers' },
   { to: '/proxies', icon: RocketIcon, labelKey: 'nav.proxies' },
+  { to: '/tunnel', icon: TunnelIcon, labelKey: 'nav.tunnel' },
   { to: '/logs', icon: TerminalIcon, labelKey: 'nav.logs' },
 ]
 

@@ -1,0 +1,37 @@
+{
+  "name": "@amux/tunnel-api",
+  "version": "0.1.0",
+  "description": "Cloudflare Workers API for Amux Tunnel management",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit",
+    "login": "wrangler login",
+    "whoami": "wrangler whoami",
+    "kv:create": "wrangler kv:namespace create KV",
+    "kv:create:preview": "wrangler kv:namespace create KV --preview",
+    "d1:create": "wrangler d1 create amux_tunnels",
+    "d1:init": "wrangler d1 execute amux_tunnels --file=./schema.sql --remote",
+    "d1:init:local": "wrangler d1 execute amux_tunnels --file=./schema.sql --local",
+    "d1:query": "wrangler d1 execute amux_tunnels --command",
+    "secret:put": "wrangler secret put CF_API_TOKEN"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240129.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.1",
+    "wrangler": "^3.25.0"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "tunnel",
+    "amux"
+  ],
+  "author": "Amux Team",
+  "license": "MIT"
+}

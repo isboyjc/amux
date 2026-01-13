@@ -13,6 +13,11 @@
     {
       "from": "resources/presets",
       "to": "presets"
+    },
+    {
+      "from": "resources/bin/${platform}-${arch}",
+      "to": "bin",
+      "filter": ["**/*"]
     }
   ],
   "mac": {

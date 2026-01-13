@@ -7,6 +7,7 @@
     "dashboard": "仪表盘",
     "providers": "供应商",
     "proxies": "代理",
+    "tunnel": "隧道",
     "service": "服务",
     "logs": "日志",
     "settings": "设置"
@@ -300,5 +301,52 @@
     "create": "创建",
     "show": "显示",
     "hide": "隐藏"
+  },
+  "tunnel": {
+    "title": "隧道",
+    "description": "将本地代理暴露到公网，实现远程访问和团队协作",
+    "statusTitle": "隧道状态",
+    "usageTitle": "使用说明",
+    "status": {
+      "active": "运行中",
+      "inactive": "未运行",
+      "starting": "启动中",
+      "stopping": "停止中",
+      "error": "错误"
+    },
+    "actions": {
+      "start": "启动隧道",
+      "stop": "停止隧道",
+      "copy": "复制地址",
+      "share": "分享配置"
+    },
+    "info": {
+      "publicUrl": "公网地址",
+      "subdomain": "子域名",
+      "uptime": "运行时长",
+      "requests": "请求数",
+      "traffic": "流量"
+    },
+    "messages": {
+      "starting": "正在启动隧道...",
+      "started": "隧道已启动",
+      "stopped": "隧道已停止",
+      "copySuccess": "地址已复制到剪贴板",
+      "error": "操作失败"
+    },
+    "features": {
+      "instant": "一键启动",
+      "instantDesc": "无需复杂配置，点击即可将本地服务暴露到公网",
+      "subdomain": "固定域名",
+      "subdomainDesc": "每台设备自动分配固定子域名，方便记忆和分享",
+      "secure": "安全可靠",
+      "secureDesc": "基于 Cloudflare 隧道技术，支持 HTTPS 加密传输"
+    },
+    "usage": {
+      "tip1": "点击\"启动隧道\"即可将本地代理（127.0.0.1:9527）暴露到公网",
+      "tip2": "每台设备会自动分配一个固定的子域名",
+      "tip3": "隧道启用后，可通过公网地址访问本地代理服务",
+      "tip4": "建议开启 API Key 鉴权以保护服务安全"
+    }
   }
 }

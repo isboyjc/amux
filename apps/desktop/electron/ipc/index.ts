@@ -11,6 +11,7 @@ import { registerApiKeyHandlers } from './api-keys'
 import { registerLogHandlers } from './logs'
 import { registerAppHandlers } from './app'
 import { registerConfigHandlers } from './config'
+import { registerTunnelIpcHandlers } from './tunnel'
 
 /**
  * Register all IPC handlers
@@ -24,6 +25,7 @@ export function registerAllHandlers(): void {
   registerLogHandlers()
   registerAppHandlers()
   registerConfigHandlers()
+  registerTunnelIpcHandlers()
   
   console.log('[IPC] All handlers registered')
 }

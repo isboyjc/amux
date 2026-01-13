@@ -3,6 +3,7 @@ import { Layout } from '@/components/layout'
 import { Dashboard } from '@/pages/Dashboard'
 import { Providers } from '@/pages/Providers'
 import { Proxies } from '@/pages/Proxies'
+import Tunnel from '@/pages/Tunnel'
 import { Logs } from '@/pages/Logs'
 import { Settings } from '@/pages/Settings'
 
@@ -14,6 +15,7 @@ export default function App() {
           <Route index element={<Dashboard />} />
           <Route path="providers" element={<Providers />} />
           <Route path="proxies" element={<Proxies />} />
+          <Route path="tunnel" element={<Tunnel />} />
           <Route path="logs" element={<Logs />} />
           <Route path="settings" element={<Settings />} />
         </Route>

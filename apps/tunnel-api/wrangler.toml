@@ -1,0 +1,34 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "amux-tunnel-api"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# 环境变量（非敏感信息）
+[vars]
+CF_ZONE_ID = "1ccf3ef37f121cfe36bc3e07136c37d0"
+CF_ACCOUNT_ID = "125fa9ed84cf728a31bd360e52477e81"
+
+# KV 命名空间（用于速率限制和缓存）
+[[kv_namespaces]]
+binding = "KV"
+id = "f0c564f1c80e4a2b8373beff4d0695c0"
+preview_id = "798b1802da664ffeb368e0871e6cc2d9"
+
+# D1 数据库（用于存储 tunnel 信息）
+[[d1_databases]]
+binding = "DB"
+database_name = "amux_tunnels"
+database_id = "170022ee-550b-4d15-8394-572b985de857"
+
+# Secrets（敏感信息，通过 wrangler secret put 设置）
+# - CF_API_TOKEN: Cloudflare API Token（需要 Tunnel 和 DNS 权限）
+
+# 开发环境配置
+[env.development]
+name = "amux-tunnel-api-dev"
+
+# 生产环境配置
+[env.production]
+name = "amux-tunnel-api"
+# 注意：自定义域名通过 Dashboard 管理，不需要在这里配置 routes   -   tunnel-api.amux.ai
