@@ -18,6 +18,7 @@ export interface CreateLogDTO {
   requestBody?: string
   responseBody?: string
   error?: string
+  source?: 'local' | 'tunnel'
 }
 
 export interface LogFilter {
@@ -68,9 +69,9 @@ export class RequestLogRepository {
       INSERT INTO request_logs (
         id, proxy_id, proxy_path, source_model, target_model,
         status_code, input_tokens, output_tokens, latency_ms,
-        request_body, response_body, error, created_at
+        request_body, response_body, error, source, created_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
     
     stmt.run(
@@ -86,6 +87,7 @@ export class RequestLogRepository {
       data.requestBody ?? null,
       data.responseBody ?? null,
       data.error ?? null,
+      data.source ?? 'local',
       now
     )
     

@@ -7,22 +7,17 @@ import {
   Database,
   Boxes,
   Coins,
-  Copy,
-  Shield,
-  ShieldCheck,
-  Key,
   ArrowRight
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState, useCallback } from 'react'
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
-import { toast } from 'sonner'
 
 import { PageContainer } from '@/components/layout'
 import { ProviderLogo } from '@/components/providers'
-import { Switch } from '@/components/ui/switch'
+import { usePolling } from '@/hooks/usePolling'
 import { ipc } from '@/lib/ipc'
 import { cn } from '@/lib/utils'
+import { METRICS_REFRESH_INTERVAL, TIME_SERIES_HOURS, SUCCESS_RATE_EXCELLENT, SUCCESS_RATE_GOOD } from '@/lib/constants'
 import { useProxyStore, useProviderStore, useBridgeProxyStore } from '@/stores'
 import { useI18n } from '@/stores/i18n-store'
 import { useSettingsStore } from '@/stores/settings-store'
@@ -55,24 +50,14 @@ const PROXY_COLORS: ProxyColor[] = [
   { main: 'hsl(120, 60%, 45%)', light: 'hsl(120, 60%, 90%)' }  // 草绿
 ]
 
-interface ApiKey {
-  id: string
-  name: string
-  key: string
-  enabled: boolean
-  createdAt: number
-}
-
 export function Dashboard() {
-  const navigate = useNavigate()
   const { status, port, host, metrics, fetchMetrics } = useProxyStore()
   const { providers, fetch: fetchProviders } = useProviderStore()
   const { proxies, fetch: fetchProxies } = useBridgeProxyStore()
-  const { settings, fetch: fetchSettings, setMany: updateSettings } = useSettingsStore()
+  const { settings, fetch: fetchSettings } = useSettingsStore()
   const { t } = useI18n()
 
   const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesPoint[]>([])
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
   const [hoveredLogoIndex, setHoveredLogoIndex] = useState<number | null>(null)
 
   // Get configured and enabled providers for logo display
@@ -82,6 +67,16 @@ export function Dashboard() {
   const passthroughProviders = providers.filter(p => p.enabled && p.enableAsProxy)
   
 
+  const fetchTimeSeriesData = useCallback(async () => {
+    try {
+      const data = await ipc.invoke('logs:get-time-series-stats', TIME_SERIES_HOURS)
+      setTimeSeriesData(data as TimeSeriesPoint[])
+    } catch (error) {
+      console.error('Failed to fetch time series data:', error)
+    }
+  }, [])
+
+  // Initial data load
   useEffect(() => {
     const init = async () => {
       await fetchSettings()
@@ -91,61 +86,19 @@ export function Dashboard() {
       fetchTimeSeriesData()
     }
     init()
+  }, [fetchProviders, fetchProxies, fetchMetrics, fetchSettings, fetchTimeSeriesData])
 
-    const interval = setInterval(() => {
+  // Polling for metrics updates
+  usePolling(
+    () => {
       fetchMetrics()
       fetchTimeSeriesData()
-    }, 5000)
-
-    return () => clearInterval(interval)
-  }, [fetchProviders, fetchProxies, fetchMetrics, fetchSettings])
-
-  useEffect(() => {
-    const authEnabled = (settings['security.unifiedApiKey.enabled'] as boolean) ?? false
-    if (authEnabled) {
-      fetchApiKeys()
-    } else {
-      setApiKeys([])
+    },
+    {
+      interval: METRICS_REFRESH_INTERVAL,
+      immediate: false, // Already loaded in useEffect above
     }
-  }, [settings['security.unifiedApiKey.enabled']])
-
-  const fetchTimeSeriesData = async () => {
-    try {
-      const data = await ipc.invoke('logs:get-time-series-stats', 24)
-      setTimeSeriesData(data as TimeSeriesPoint[])
-    } catch (error) {
-      console.error('Failed to fetch time series data:', error)
-    }
-  }
-
-  const fetchApiKeys = async () => {
-    try {
-      const keys = await ipc.invoke('api-key:list')
-      setApiKeys(keys.filter((key: ApiKey) => key.enabled))
-    } catch (error) {
-      console.error('Failed to fetch API keys:', error)
-    }
-  }
-
-  const handleAuthToggle = async (enabled: boolean) => {
-    try {
-      await updateSettings({ 'security.unifiedApiKey.enabled': enabled })
-      if (enabled) {
-        await fetchApiKeys()
-      } else {
-        setApiKeys([])
-      }
-      toast.success(enabled ? t('settings.authEnabled') : t('settings.authDisabled'))
-    } catch (error) {
-      console.error('Failed to toggle auth:', error)
-      toast.error(t('settings.authToggleFailed'))
-    }
-  }
-
-  const handleCopyKey = (text: string, label: string) => {
-    navigator.clipboard.writeText(text)
-    toast.success(`${label} ${t('common.copied')}`)
-  }
+  )
 
   const enabledProviders = providers.filter((p) => p.enabled).length
   const successRate =
@@ -153,26 +106,16 @@ export function Dashboard() {
       ? Math.round((metrics.successRequests / metrics.totalRequests) * 100)
       : 100
 
-  // Get auth enabled state from settings
-  const unifiedKeyEnabled = (settings['security.unifiedApiKey.enabled'] as boolean) ?? false
-
   return (
     <PageContainer>
-      <div className="space-y-6 animate-fade-in max-w-[1800px] mx-auto">
-        {/* Header with Auth Toggle and Status */}
+      <div className="space-y-6 animate-fade-in">
+        {/* Header with Status */}
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{t('dashboard.title')}</h1>
-            <p className="text-muted-foreground text-sm mt-2">{t('dashboard.description')}</p>
+            <h1 className="text-2xl font-bold">{t('dashboard.title')}</h1>
+            <p className="text-muted-foreground text-sm mt-1">{t('dashboard.description')}</p>
           </div>
-          <div className="flex items-center gap-3">
-            <AuthToggle
-              enabled={unifiedKeyEnabled}
-              onChange={handleAuthToggle}
-              t={t}
-            />
-            <ServiceStatus status={status} host={host} port={port} t={t} />
-          </div>
+          <ServiceStatus status={status} host={host} port={port} t={t} />
         </div>
 
         {/* Statistics Grid */}
@@ -192,8 +135,8 @@ export function Dashboard() {
             title={t('dashboard.successRate')}
               value={`${successRate}%`}
               icon={TrendingUp}
-            iconColor={successRate >= 95 ? 'text-green-500' : successRate >= 80 ? 'text-yellow-500' : 'text-red-500'}
-            iconBg={successRate >= 95 ? 'bg-green-500/10' : successRate >= 80 ? 'bg-yellow-500/10' : 'bg-red-500/10'}
+            iconColor={successRate >= SUCCESS_RATE_EXCELLENT ? 'text-green-500' : successRate >= SUCCESS_RATE_GOOD ? 'text-yellow-500' : 'text-red-500'}
+            iconBg={successRate >= SUCCESS_RATE_EXCELLENT ? 'bg-green-500/10' : successRate >= SUCCESS_RATE_GOOD ? 'bg-yellow-500/10' : 'bg-red-500/10'}
           />
 
           {/* Average Latency */}
@@ -448,92 +391,6 @@ export function Dashboard() {
           </div>
         </div>
 
-          {/* API Keys (only when auth enabled) */}
-          {unifiedKeyEnabled && (
-          <div className="bg-card rounded-xl p-6 border border-border/50 shadow-sm">
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-md bg-blue-500/10">
-                  <Key className="h-5 w-5 text-blue-500" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold">{t('dashboard.availableKeys')}</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {apiKeys.length > 0 
-                      ? `${apiKeys.length} ${apiKeys.length === 1 ? 'key' : 'keys'} ${t('common.enabled')}`
-                      : t('dashboard.noKeysDesc')}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => navigate('/settings?section=security')}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border/50 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all text-sm font-medium group"
-              >
-                <Shield className="h-4 w-4 text-blue-500" />
-                <span className="text-muted-foreground group-hover:text-foreground transition-colors">
-                  {t('dashboard.manageKeys') || '管理密钥'}
-                </span>
-                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-blue-500 transition-colors" />
-              </button>
-            </div>
-
-            {apiKeys.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-500/10 mb-4">
-                  <Key className="h-8 w-8 text-blue-500" />
-                </div>
-                <p className="text-base font-medium text-foreground mb-2">
-                  {t('dashboard.noKeys')}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {t('dashboard.noKeysDesc') || '鉴权已开启，但还没有配置 API 密钥'}
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {apiKeys.slice(0, 6).map((key) => {
-                  const maskedKey = `${key.key.substring(0, 9)}${'•'.repeat(16)}${key.key.substring(key.key.length - 4)}`
-                  return (
-                    <div
-                      key={key.id}
-                      className="group relative p-4 rounded-lg border border-border/50 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all"
-                    >
-                      <div className="space-y-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm font-semibold text-foreground truncate">
-                            {key.name}
-                          </p>
-                          <button
-                            onClick={() => handleCopyKey(key.key, key.name)}
-                            className="flex-shrink-0 p-1.5 rounded-md hover:bg-blue-500/10 text-muted-foreground hover:text-blue-500 transition-all opacity-0 group-hover:opacity-100"
-                            title={t('common.copy')}
-                          >
-                            <Copy className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                        <p className="text-xs text-muted-foreground font-mono">
-                          {maskedKey}
-                        </p>
-                      </div>
-                    </div>
-                  )
-                })}
-                {apiKeys.length > 6 && (
-                  <button
-                    onClick={() => navigate('/settings?section=security')}
-                    className="p-4 rounded-lg border border-dashed border-border/50 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-blue-500"
-                  >
-                    <ArrowRight className="h-5 w-5" />
-                    <span className="text-xs font-medium">
-                      {t('dashboard.moreKeys') || `还有 ${apiKeys.length - 6} 个`}
-                    </span>
-                  </button>
-          )}
-        </div>
-            )}
-          </div>
-        )}
-
         {/* Model Usage Chart */}
         <div className="bg-card rounded-xl p-6 border border-border/50 shadow-sm">
           <div className="flex items-center justify-between mb-5">
@@ -546,41 +403,6 @@ export function Dashboard() {
         </div>
       </div>
     </PageContainer>
-  )
-}
-
-// ==================== Auth Toggle ====================
-function AuthToggle({
-  enabled,
-  onChange,
-  t
-}: {
-  enabled: boolean
-  onChange: (enabled: boolean) => void
-  t: (key: string) => string
-}) {
-  return (
-    <div className={cn(
-      "flex items-center gap-2.5 px-4 py-2.5 rounded-lg border bg-card shadow-sm transition-all",
-      enabled ? "border-blue-500/20 bg-blue-500/5" : "border-border/50"
-    )}>
-      {enabled ? (
-        <ShieldCheck className="h-4 w-4 text-blue-500" />
-      ) : (
-        <Shield className="h-4 w-4 text-muted-foreground" />
-      )}
-      <span className={cn(
-        "text-sm font-medium transition-colors",
-        enabled ? "text-foreground" : "text-muted-foreground"
-      )}>
-        {t('settings.enableAuth')}
-      </span>
-      <Switch
-        checked={enabled}
-        onCheckedChange={onChange}
-        className="data-[state=checked]:bg-blue-500"
-      />
-    </div>
   )
 }
 

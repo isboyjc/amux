@@ -26,6 +26,8 @@ import { Label } from '@/components/ui/label'
 import { Modal, ModalHeader, ModalContent, ModalFooter } from '@/components/ui/modal'
 import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useCopyToClipboard } from '@/hooks'
+import { COPY_FEEDBACK_DURATION, COPY_FEEDBACK_DURATION_SHORT, RESET_FEEDBACK_DURATION } from '@/lib/constants'
 import { getPresetByType, parseModelName } from '@/lib/provider-utils'
 import { cn } from '@/lib/utils'
 import { useProviderStore, useI18n } from '@/stores'
@@ -72,7 +74,8 @@ export function Providers() {
   // Auto-select from location state or first provider
   useEffect(() => {
     // Check if there's a selectedProviderId passed from navigation
-    const stateProviderId = (location.state as any)?.selectedProviderId
+    const state = location.state as { selectedProviderId?: string } | null
+    const stateProviderId = state?.selectedProviderId
     if (stateProviderId && providers.find(p => p.id === stateProviderId)) {
       setSelectedProviderId(stateProviderId)
     } else if (providers.length > 0 && !selectedProviderId) {
@@ -383,15 +386,15 @@ function ProviderConfigPanel({
   const [showTestModal, setShowTestModal] = useState(false)
   const [fetchingModels, setFetchingModels] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [copied, setCopied] = useState(false)
   const [resetSuccess, setResetSuccess] = useState(false)
+  const { copied, copy: copyEndpoint } = useCopyToClipboard({ duration: COPY_FEEDBACK_DURATION_SHORT })
   
   // Passthrough proxy state
   const [enableAsProxy, setEnableAsProxy] = useState(false)
   const [proxyPath, setProxyPath] = useState('')
   const [proxyPathError, setProxyPathError] = useState<string | null>(null)
   const [proxyPathValidating, setProxyPathValidating] = useState(false)
-  const [copiedProxyUrl, setCopiedProxyUrl] = useState(false)
+  const { copied: copiedProxyUrl, copy: copyProxyUrl } = useCopyToClipboard({ duration: COPY_FEEDBACK_DURATION })
 
   // Icon refs for animations
   const copyIconRef = useRef<AnimatedIconHandle>(null)
@@ -475,9 +478,7 @@ function ProviderConfigPanel({
     if (!proxyPath) return
     const endpoint = provider?.adapterType === 'anthropic' ? '/v1/messages' : '/v1/chat/completions'
     const url = `http://127.0.0.1:9527/providers/${proxyPath}${endpoint}`
-    navigator.clipboard.writeText(url)
-    setCopiedProxyUrl(true)
-    setTimeout(() => setCopiedProxyUrl(false), 1500)
+    copyProxyUrl(url)
   }
 
   const handleAddCustomModel = () => {
@@ -498,16 +499,12 @@ function ProviderConfigPanel({
       setResetSuccess(true)
       setTimeout(() => {
         setResetSuccess(false)
-      }, 600)
+      }, RESET_FEEDBACK_DURATION)
     }
   }
 
   const handleCopyEndpoint = () => {
-    navigator.clipboard.writeText(apiEndpoint)
-    setCopied(true)
-    setTimeout(() => {
-      setCopied(false)
-    }, 600)
+    copyEndpoint(apiEndpoint)
   }
 
   const handleFetchModels = async () => {

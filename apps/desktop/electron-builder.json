@@ -22,31 +22,61 @@
   ],
   "mac": {
     "target": [
-      "dmg",
-      "zip"
+      {
+        "target": "dmg",
+        "arch": ["universal", "x64", "arm64"]
+      },
+      {
+        "target": "zip",
+        "arch": ["universal"]
+      }
     ],
-    "artifactName": "${productName}-${version}-${arch}.${ext}",
-    "category": "public.app-category.developer-tools"
+    "artifactName": "${productName}-${version}-macos-${arch}.${ext}",
+    "category": "public.app-category.developer-tools",
+    "mergeASARs": false,
+    "x64ArchFiles": "Contents/Resources/bin/cloudflared"
+  },
+  "dmg": {
+    "artifactName": "${productName}-${version}-macos-${arch}.dmg"
   },
   "win": {
     "target": [
-      "nsis",
-      "zip"
+      {
+        "target": "nsis",
+        "arch": ["x64", "arm64"]
+      },
+      {
+        "target": "zip",
+        "arch": ["x64", "arm64"]
+      }
     ],
-    "artifactName": "${productName}-${version}-${arch}.${ext}"
-  },
-  "linux": {
-    "target": [
-      "AppImage",
-      "deb"
-    ],
-    "artifactName": "${productName}-${version}-${arch}.${ext}",
-    "category": "Development"
+    "artifactName": "${productName}-${version}-windows-${arch}.${ext}"
   },
   "nsis": {
     "oneClick": false,
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
-    "createStartMenuShortcut": true
+    "createStartMenuShortcut": true,
+    "artifactName": "${productName}-${version}-windows-${arch}-setup.exe"
+  },
+  "linux": {
+    "target": [
+      {
+        "target": "AppImage",
+        "arch": ["x64", "arm64"]
+      },
+      {
+        "target": "deb",
+        "arch": ["x64", "arm64"]
+      }
+    ],
+    "artifactName": "${productName}-${version}-linux-${arch}.${ext}",
+    "category": "Development"
+  },
+  "appImage": {
+    "artifactName": "${productName}-${version}-linux-${arch}.AppImage"
+  },
+  "deb": {
+    "artifactName": "${productName}-${version}-linux-${arch}.deb"
   }
 }

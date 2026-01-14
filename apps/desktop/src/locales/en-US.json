@@ -10,6 +10,7 @@
     "tunnel": "Tunnel",
     "service": "Service",
     "logs": "Logs",
+    "tokens": "Tokens",
     "settings": "Settings"
   },
   "dashboard": {
@@ -195,7 +196,9 @@
     "input": "In",
     "output": "Out",
     "requestBody": "Request Body",
-    "responseBody": "Response Body"
+    "responseBody": "Response Body",
+    "tunnel": "Tunnel",
+    "tunnelDesc": "Request from internet via tunnel"
   },
   "settings": {
     "title": "Settings",
@@ -214,8 +217,6 @@
     "proxyDesc": "Configure proxy server behavior",
     "logs": "Logs",
     "logsDesc": "Configure request logging",
-    "security": "Security",
-    "securityDesc": "API key encryption and access control",
     "data": "Data",
     "dataDesc": "Import/export configuration and data",
     "about": "About",
@@ -237,14 +238,6 @@
     "retentionDays": "Retention Days",
     "maxEntries": "Max Entries",
     "cleanupLogs": "Cleanup Old Logs",
-    "enableAuth": "Authentication",
-    "authEnabled": "Authentication enabled",
-    "authDisabled": "Authentication disabled",
-    "authToggleFailed": "Failed to toggle authentication",
-    "unifiedApiKey": "Enable Authentication",
-    "unifiedApiKeyDesc": "Disabled: No auth required, uses provider's configured key. Enabled: Key required.",
-    "apiKeys": "Platform Key Management",
-    "apiKeysDesc": "Platform keys start with sk-amux. and use provider's configured key after validation.",
     "apiKeyNamePlaceholder": "Key name (optional)",
     "apiKeyCreated": "Platform key created successfully",
     "apiKeyCreateFailed": "Failed to create platform key",
@@ -253,7 +246,6 @@
     "unnamedKey": "Unnamed key",
     "createdAt": "Created",
     "lastUsed": "Last used",
-    "apiKeyUsageHint": "Usage: sk-amux.xxx keys use provider's config; other keys are passed through directly.",
     "exportConfig": "Export Config",
     "importConfig": "Import Config",
     "refreshPresets": "Refresh Presets",
@@ -348,5 +340,30 @@
       "tip3": "Once enabled, access local proxy service via the public URL",
       "tip4": "Enable API Key authentication for security"
     }
+  },
+  "tokens": {
+    "title": "Token Management",
+    "description": "Manage platform API keys and control service access",
+    "authentication": "Authentication",
+    "totalKeys": "Total Keys",
+    "activeKeys": "Active Keys",
+    "inactiveKeys": "Inactive Keys",
+    "recentlyUsed": "Recently Used",
+    "authDisabled": "Authentication Disabled",
+    "authDisabledDesc": "Enable authentication to require valid API keys for proxy access. When disabled, provider's configured keys are used directly.",
+    "enableAuth": "Enable Authentication",
+    "createKey": "Create New Key",
+    "usageTitle": "Usage Guide",
+    "usageTip1": "Platform keys start with sk-amux. and use provider's configured key after validation",
+    "usageTip2": "Other key formats are passed through directly to providers (requires auth disabled)",
+    "keyList": "Key List",
+    "neverUsed": "Never used",
+    "createFirstKey": "Create your first API key to get started",
+    "fetchFailed": "Failed to fetch keys",
+    "deleteFailed": "Failed to delete key",
+    "deleteConfirm": "Are you sure you want to delete this API key? This action cannot be undone.",
+    "enableSuccess": "Key enabled",
+    "disableSuccess": "Key disabled",
+    "toggleFailed": "Failed to toggle key status"
   }
 }

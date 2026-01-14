@@ -10,6 +10,7 @@ import { migration002ProviderLogo } from './migrations/002_provider_logo'
 import { migration003ProviderPaths } from './migrations/003_provider_paths'
 import { migration004ProviderPassthrough } from './migrations/004_provider_passthrough'
 import { migration005Tunnel } from './migrations/005_tunnel'
+import { migration006RequestSource } from './migrations/006_request_source'
 
 // Register all migrations here
 const migrations: Migration[] = [
@@ -17,7 +18,8 @@ const migrations: Migration[] = [
   migration002ProviderLogo,
   migration003ProviderPaths,
   migration004ProviderPassthrough,
-  migration005Tunnel
+  migration005Tunnel,
+  migration006RequestSource
 ]
 
 /**

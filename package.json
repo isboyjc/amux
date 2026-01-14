@@ -53,6 +53,7 @@
     "package:desktop": "cd apps/desktop && pnpm package",
     "package:desktop:mac": "cd apps/desktop && pnpm package:mac",
     "package:desktop:win": "cd apps/desktop && pnpm package:win",
+    "package:desktop:win:arm64": "cd apps/desktop && pnpm package:win:arm64",
     "package:desktop:linux": "cd apps/desktop && pnpm package:linux",
     "clean:desktop:data": "bash ./clean-data.sh"
   },

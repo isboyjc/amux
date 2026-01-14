@@ -15,13 +15,15 @@ import {
   ExternalLink,
   Info
 } from 'lucide-react'
-import { toast } from 'sonner'
 
 import { CopyIcon, CheckIcon } from '@/components/icons'
 import type { AnimatedIconHandle } from '@/components/icons'
 import { PageContainer } from '@/components/layout'
 import { Button } from '@/components/ui/button'
+import { useCopyToClipboard, usePolling } from '@/hooks'
 import { ipc } from '@/lib/ipc'
+import { TUNNEL_STATUS_POLL_INTERVAL } from '@/lib/constants'
+import { showSuccess, showError } from '@/lib/notifications'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/stores/i18n-store'
 
@@ -44,21 +46,12 @@ export default function TunnelPage() {
   const { t } = useI18n()
   const [status, setStatus] = useState<TunnelStatus>({ isRunning: false, status: 'inactive' })
   const [loading, setLoading] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const { copied, copy: copyToClipboard } = useCopyToClipboard({
+    showToast: true,
+    toastMessage: t('common.copied'),
+    toastDescription: t('tunnel.messages.copySuccess'),
+  })
   const copyIconRef = useRef<AnimatedIconHandle>(null)
-
-  // Load status on mount
-  useEffect(() => {
-    loadStatus()
-  }, [])
-
-  // Auto-refresh status every 1 second when running
-  useEffect(() => {
-    if (!status.isRunning) return
-
-    const interval = setInterval(loadStatus, 1000)
-    return () => clearInterval(interval)
-  }, [status.isRunning])
 
   const loadStatus = async () => {
     try {
@@ -71,12 +64,24 @@ export default function TunnelPage() {
     }
   }
 
+  // Load status on mount
+  useEffect(() => {
+    loadStatus()
+  }, [])
+
+  // Auto-refresh status when running (for uptime counter)
+  usePolling(loadStatus, {
+    interval: TUNNEL_STATUS_POLL_INTERVAL,
+    enabled: status.isRunning,
+    immediate: false, // Already loaded in useEffect above
+  })
+
   const handleStart = async () => {
     setLoading(true)
     try {
       const result = await ipc.invoke('tunnel:start')
       if (result.success) {
-        toast.success(t('tunnel.messages.started'), {
+        showSuccess(t('tunnel.messages.started'), {
           description: `${t('tunnel.info.publicUrl')}: ${result.data.domain}`,
         })
         await loadStatus()
@@ -84,7 +89,7 @@ export default function TunnelPage() {
         throw new Error(result.error)
       }
     } catch (error: any) {
-      toast.error(t('tunnel.messages.error'), {
+      showError(t('tunnel.messages.error'), {
         description: error.message || t('common.error'),
       })
     } finally {
@@ -97,13 +102,13 @@ export default function TunnelPage() {
     try {
       const result = await ipc.invoke('tunnel:stop')
       if (result.success) {
-        toast.success(t('tunnel.messages.stopped'))
+        showSuccess(t('tunnel.messages.stopped'))
         await loadStatus()
       } else {
         throw new Error(result.error)
       }
     } catch (error: any) {
-      toast.error(t('tunnel.messages.error'), {
+      showError(t('tunnel.messages.error'), {
         description: error.message || t('common.error'),
       })
     } finally {
@@ -113,12 +118,7 @@ export default function TunnelPage() {
 
   const handleCopy = async () => {
     if (status.config) {
-      await navigator.clipboard.writeText(`https://${status.config.domain}`)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-      toast.success(t('common.copied'), {
-        description: t('tunnel.messages.copySuccess'),
-      })
+      copyToClipboard(`https://${status.config.domain}`)
     }
   }
 
@@ -140,7 +140,7 @@ export default function TunnelPage() {
 
   return (
     <PageContainer>
-      <div className="space-y-5 animate-fade-in max-w-4xl mx-auto">
+      <div className="space-y-5 animate-fade-in">
         {/* Header */}
         <div className="flex items-center justify-between gap-4">
           <div>

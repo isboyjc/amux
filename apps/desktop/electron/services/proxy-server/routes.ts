@@ -115,7 +115,16 @@ export function registerRoutes(app: FastifyInstance): void {
       const requestId = randomUUID()
       const startTime = Date.now()
       
-      console.log(`[Routes] Request received: ${routePath}`)
+      // Detect request source (local vs tunnel)
+      // Cloudflare adds specific headers when proxying through tunnel
+      const isTunnelRequest = !!(
+        request.headers['cf-ray'] || 
+        request.headers['cf-connecting-ip'] ||
+        request.headers['cf-visitor']
+      )
+      const requestSource: 'local' | 'tunnel' = isTunnelRequest ? 'tunnel' : 'local'
+      
+      console.log(`[Routes] Request received: ${routePath}, source: ${requestSource}`)
       
       try {
         const body = request.body as ChatCompletionRequest
@@ -259,7 +268,8 @@ export function registerRoutes(app: FastifyInstance): void {
             responseBody: streamSuccess && streamChunks.length > 0 
               ? JSON.stringify({ chunks: streamChunks, totalChunks: streamChunks.length })
               : undefined,
-            error: streamError
+            error: streamError,
+            source: requestSource
           })
           recordMetrics(
             proxy.id, 
@@ -300,7 +310,8 @@ export function registerRoutes(app: FastifyInstance): void {
             outputTokens,
             latencyMs,
             requestBody: JSON.stringify(body),
-            responseBody: JSON.stringify(response)
+            responseBody: JSON.stringify(response),
+            source: requestSource
           })
           recordMetrics(
             proxy.id, 
@@ -328,7 +339,8 @@ export function registerRoutes(app: FastifyInstance): void {
             outputTokens: undefined,
             latencyMs,
             requestBody: JSON.stringify(body),
-            error: errorMessage
+            error: errorMessage,
+            source: requestSource
           })
           recordMetrics(proxy.id, provider.id, false, latencyMs)
           

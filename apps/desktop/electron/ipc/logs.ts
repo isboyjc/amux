@@ -23,6 +23,7 @@ function toLog(row: RequestLogRow) {
     requestBody: row.request_body ?? undefined,
     responseBody: row.response_body ?? undefined,
     error: row.error ?? undefined,
+    source: row.source,
     createdAt: row.created_at
   }
 }

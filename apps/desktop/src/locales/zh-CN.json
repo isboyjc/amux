@@ -10,6 +10,7 @@
     "tunnel": "隧道",
     "service": "服务",
     "logs": "日志",
+    "tokens": "令牌",
     "settings": "设置"
   },
   "dashboard": {
@@ -195,7 +196,9 @@
     "input": "输入",
     "output": "输出",
     "requestBody": "请求体",
-    "responseBody": "响应体"
+    "responseBody": "响应体",
+    "tunnel": "隧道",
+    "tunnelDesc": "通过隧道的外网请求"
   },
   "settings": {
     "title": "设置",
@@ -214,8 +217,6 @@
     "proxyDesc": "配置代理服务器行为",
     "logs": "日志",
     "logsDesc": "配置请求日志记录",
-    "security": "安全",
-    "securityDesc": "API 密钥加密和访问控制",
     "data": "数据",
     "dataDesc": "导入导出配置和数据",
     "about": "关于",
@@ -237,14 +238,6 @@
     "retentionDays": "保留天数",
     "maxEntries": "最大条目数",
     "cleanupLogs": "清理旧日志",
-    "enableAuth": "鉴权",
-    "authEnabled": "鉴权已启用",
-    "authDisabled": "鉴权已关闭",
-    "authToggleFailed": "切换鉴权失败",
-    "unifiedApiKey": "启用鉴权",
-    "unifiedApiKeyDesc": "关闭时无需鉴权，直接使用供应商配置的 Key；开启后必须提供 Key",
-    "apiKeys": "平台密钥管理",
-    "apiKeysDesc": "平台密钥以 sk-amux. 开头，验证后使用供应商配置的 Key 进行请求",
     "apiKeyNamePlaceholder": "密钥名称（可选）",
     "apiKeyCreated": "平台密钥创建成功",
     "apiKeyCreateFailed": "创建平台密钥失败",
@@ -253,7 +246,6 @@
     "unnamedKey": "未命名密钥",
     "createdAt": "创建于",
     "lastUsed": "最后使用",
-    "apiKeyUsageHint": "使用说明：传入 sk-amux.xxx 格式的平台密钥；传入其他格式的 Key 将直接透传给底层供应商",
     "exportConfig": "导出配置",
     "importConfig": "导入配置",
     "refreshPresets": "刷新预设",
@@ -348,5 +340,30 @@
       "tip3": "隧道启用后，可通过公网地址访问本地代理服务",
       "tip4": "建议开启 API Key 鉴权以保护服务安全"
     }
+  },
+  "tokens": {
+    "title": "令牌管理",
+    "description": "管理平台 API 密钥，控制服务访问权限",
+    "authentication": "启用鉴权",
+    "totalKeys": "总密钥数",
+    "activeKeys": "启用密钥",
+    "inactiveKeys": "禁用密钥",
+    "recentlyUsed": "最近使用",
+    "authDisabled": "鉴权未启用",
+    "authDisabledDesc": "启用鉴权后，客户端需要提供有效的 API 密钥才能访问代理服务。关闭鉴权时，将直接使用供应商配置的密钥。",
+    "enableAuth": "启用鉴权",
+    "createKey": "创建新密钥",
+    "usageTitle": "使用说明",
+    "usageTip1": "平台密钥以 sk-amux. 开头，验证通过后使用供应商配置的密钥发起请求",
+    "usageTip2": "传入其他格式的密钥将直接透传给底层供应商（需关闭鉴权）",
+    "keyList": "密钥列表",
+    "neverUsed": "从未使用",
+    "createFirstKey": "创建你的第一个 API 密钥",
+    "fetchFailed": "获取密钥列表失败",
+    "deleteFailed": "删除密钥失败",
+    "deleteConfirm": "确定要删除这个 API 密钥吗？此操作不可撤销。",
+    "enableSuccess": "密钥已启用",
+    "disableSuccess": "密钥已禁用",
+    "toggleFailed": "切换密钥状态失败"
   }
 }

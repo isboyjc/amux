@@ -9,7 +9,8 @@ import {
   RocketIcon,
   KeyframesIcon,
   TerminalIcon,
-  TunnelIcon
+  TunnelIcon,
+  KeyIcon
 } from '@/components/icons'
 import type { AnimatedIconHandle } from '@/components/icons'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
@@ -28,6 +29,7 @@ const navItems: NavItemData[] = [
   { to: '/providers', icon: KeyframesIcon, labelKey: 'nav.providers' },
   { to: '/proxies', icon: RocketIcon, labelKey: 'nav.proxies' },
   { to: '/tunnel', icon: TunnelIcon, labelKey: 'nav.tunnel' },
+  { to: '/tokens', icon: KeyIcon, labelKey: 'nav.tokens' },
   { to: '/logs', icon: TerminalIcon, labelKey: 'nav.logs' },
 ]
 

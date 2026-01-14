@@ -73,6 +73,7 @@ export interface RequestLog {
   requestBody?: string
   responseBody?: string
   error?: string
+  source: 'local' | 'tunnel'
   createdAt: number
 }
 

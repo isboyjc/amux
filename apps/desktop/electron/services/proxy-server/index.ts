@@ -12,11 +12,19 @@ import type { ProxyServerConfig, ProxyServerState, ProxyServerMetrics } from './
 // Read version from package.json
 let appVersion = '0.0.0'
 try {
-  const packageJsonPath = join(__dirname, '../../../../package.json')
+  // Try desktop package.json first (apps/desktop/package.json)
+  const packageJsonPath = join(__dirname, '../../../package.json')
   const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'))
   appVersion = packageJson.version || '0.0.0'
 } catch (error) {
-  console.error('[ProxyServer] Failed to read version:', error)
+  // Fallback: try root package.json
+  try {
+    const rootPackageJsonPath = join(__dirname, '../../../../package.json')
+    const packageJson = JSON.parse(readFileSync(rootPackageJsonPath, 'utf-8'))
+    appVersion = packageJson.version || '0.0.0'
+  } catch {
+    console.warn('[ProxyServer] Failed to read version, using default:', appVersion)
+  }
 }
 
 // Singleton server instance

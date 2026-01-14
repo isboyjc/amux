@@ -30,6 +30,8 @@ import { Label } from '@/components/ui/label'
 import { Modal, ModalHeader, ModalContent, ModalFooter } from '@/components/ui/modal'
 import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useCopyToClipboard } from '@/hooks'
+import { COPY_FEEDBACK_DURATION } from '@/lib/constants'
 import { ipc } from '@/lib/ipc'
 import { cn } from '@/lib/utils'
 import { useBridgeProxyStore, useProviderStore, useI18n } from '@/stores'
@@ -327,7 +329,8 @@ export function Proxies() {
   // Auto-select from location state or first proxy
   useEffect(() => {
     // Check if there's a selectedProxyId passed from navigation
-    const stateProxyId = (location.state as any)?.selectedProxyId
+    const state = location.state as { selectedProxyId?: string } | null
+    const stateProxyId = state?.selectedProxyId
     if (stateProxyId && proxies.find(p => p.id === stateProxyId)) {
       setSelectedProxyId(stateProxyId)
     } else if (proxies.length > 0 && !selectedProxyId) {
@@ -438,6 +441,7 @@ function ProxyListPanel({
   const [search, setSearch] = useState('')
   const [showPassthrough, setShowPassthrough] = useState(true)
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null)
+  const { copy: copyUrl } = useCopyToClipboard({ duration: COPY_FEEDBACK_DURATION })
 
   const filteredProxies = proxies.filter(p =>
     p.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -464,9 +468,9 @@ function ProxyListPanel({
   const handleCopyPassthroughUrl = (provider: Provider) => {
     const endpoint = provider.adapterType === 'anthropic' ? '/v1/messages' : '/v1/chat/completions'
     const url = `http://127.0.0.1:9527/providers/${provider.proxyPath}${endpoint}`
-    navigator.clipboard.writeText(url)
+    copyUrl(url)
     setCopiedUrl(provider.id)
-    setTimeout(() => setCopiedUrl(null), 1500)
+    setTimeout(() => setCopiedUrl(null), COPY_FEEDBACK_DURATION)
   }
 
   return (
@@ -822,7 +826,7 @@ function ProxyConfigPanel({
   t
 }: ProxyConfigPanelProps) {
   const [formData, setFormData] = useState<Partial<CreateProxyDTO>>({})
-  const [copiedEndpoint, setCopiedEndpoint] = useState(false)
+  const { copied: copiedEndpoint, copy: copyEndpointUrl } = useCopyToClipboard({ duration: COPY_FEEDBACK_DURATION })
   const [modelMappings, setModelMappings] = useState<Array<{ source: string; target: string }>>([])
   const [originalMappings, setOriginalMappings] = useState<Array<{ source: string; target: string }>>([])
   const [testing, setTesting] = useState(false)
@@ -864,9 +868,7 @@ function ProxyConfigPanel({
   const handleCopyEndpoint = async () => {
     if (!proxy) return
     const endpoint = `http://127.0.0.1:9527/proxies/${proxy.proxyPath}/v1/chat/completions`
-    await navigator.clipboard.writeText(endpoint)
-    setCopiedEndpoint(true)
-    setTimeout(() => setCopiedEndpoint(false), 1500)
+    copyEndpointUrl(endpoint)
   }
 
   const handleSave = async () => {

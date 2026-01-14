@@ -11,7 +11,8 @@ import {
   Zap,
   Hash,
   ArrowRight,
-  AlertCircle
+  AlertCircle,
+  Globe
 } from 'lucide-react'
 
 import { TerminalIcon, TrashIcon, RefreshIcon } from '@/components/icons'
@@ -24,6 +25,7 @@ import { Modal, ModalHeader, ModalContent } from '@/components/ui/modal'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ipc } from '@/lib/ipc'
 import { cn } from '@/lib/utils'
+import { DEFAULT_PAGE_SIZE } from '@/lib/constants'
 import { useI18n } from '@/stores'
 import type { RequestLog } from '@/types'
 import type { LogFilter, PaginatedResult } from '@/types/ipc'
@@ -34,7 +36,7 @@ export function Logs() {
   const [loading, setLoading] = useState(false)
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
-  const [pageSize] = useState(20)
+  const [pageSize] = useState(DEFAULT_PAGE_SIZE)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'success' | 'error'>('all')
   const [selectedLog, setSelectedLog] = useState<RequestLog | null>(null)
@@ -114,14 +116,9 @@ export function Logs() {
       {/* Header Card */}
       <div className="content-card p-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <TerminalIcon size={20} className="text-primary" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold">{t('logs.title')}</h1>
-              <p className="text-xs text-muted-foreground">{t('logs.description')}</p>
-            </div>
+          <div>
+            <h1 className="text-2xl font-bold">{t('logs.title')}</h1>
+            <p className="text-muted-foreground text-sm mt-1">{t('logs.description')}</p>
           </div>
           <div className="flex items-center gap-2">
             {/* Export Dropdown */}
@@ -344,6 +341,24 @@ function LogItem({ log, onClick, formatTime, t }: LogItemProps) {
           >
             {log.statusCode}
           </Badge>
+          {log.source === 'tunnel' && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Badge 
+                    variant="outline" 
+                    className="text-[10px] px-1.5 py-0 bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400"
+                  >
+                    <Globe className="h-2.5 w-2.5 mr-1" />
+                    {t('logs.tunnel') || 'Tunnel'}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {t('logs.tunnelDesc') || 'Request from internet via tunnel'}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
           <span className="truncate max-w-[200px]">{log.sourceModel}</span>

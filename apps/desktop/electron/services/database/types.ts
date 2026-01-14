@@ -102,6 +102,7 @@ export interface RequestLogRow {
   request_body: string | null
   response_body: string | null
   error: string | null
+  source: 'local' | 'tunnel'
   created_at: number
 }
 

@@ -35,6 +35,13 @@ export async function handleProviderPassthrough(
   reply: FastifyReply,
   provider: ProviderRow
 ): Promise<void> {
+  // Detect request source (local vs tunnel)
+  const isTunnelRequest = !!(
+    request.headers['cf-ray'] || 
+    request.headers['cf-connecting-ip'] ||
+    request.headers['cf-visitor']
+  )
+  const requestSource: 'local' | 'tunnel' = isTunnelRequest ? 'tunnel' : 'local'
   const requestId = randomUUID()
   const startTime = Date.now()
   const errorFormat = provider.adapter_type === 'anthropic' ? 'anthropic' : 'openai'
@@ -204,7 +211,8 @@ export async function handleProviderPassthrough(
         responseBody: streamSuccess && streamChunks.length > 0 
           ? JSON.stringify({ chunks: streamChunks, totalChunks: streamChunks.length })
           : undefined,
-        error: streamError
+        error: streamError,
+        source: requestSource
       })
       recordMetrics(
         `provider-${provider.id}`,
@@ -238,7 +246,8 @@ export async function handleProviderPassthrough(
         outputTokens,
         latencyMs,
         requestBody: JSON.stringify(body),
-        responseBody: JSON.stringify(response)
+        responseBody: JSON.stringify(response),
+        source: requestSource
       })
       recordMetrics(
         `provider-${provider.id}`,
@@ -265,7 +274,8 @@ export async function handleProviderPassthrough(
         outputTokens: undefined,
         latencyMs,
         requestBody: JSON.stringify(body),
-        error: errorMessage
+        error: errorMessage,
+        source: requestSource
       })
       recordMetrics(`provider-${provider.id}`, provider.id, false, latencyMs)
       
