@@ -1,3 +1,4 @@
+export { Chat } from './Chat'
 export { Dashboard } from './Dashboard'
 export { Providers } from './Providers'
 export { Proxies } from './Proxies'

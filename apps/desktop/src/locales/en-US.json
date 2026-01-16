@@ -4,6 +4,7 @@
     "description": "LLM API Proxy Bridge Tool"
   },
   "nav": {
+    "chat": "Chat",
     "dashboard": "Dashboard",
     "providers": "Providers",
     "proxies": "Proxies",
@@ -365,5 +366,28 @@
     "enableSuccess": "Key enabled",
     "disableSuccess": "Key disabled",
     "toggleFailed": "Failed to toggle key status"
+  },
+  "chat": {
+    "title": "AI Chat",
+    "description": "Chat with AI and test proxy configurations",
+    "welcome": "Hello, I'm Amux!",
+    "welcomeDesc": "Select a proxy and model to start chatting. You can test your passthrough and bridge proxies here.",
+    "new": "New",
+    "newConversation": "New Conversation",
+    "history": "History",
+    "noHistory": "No conversation history",
+    "untitled": "Untitled",
+    "yesterday": "Yesterday",
+    "daysAgo": "days ago",
+    "inputPlaceholder": "Type a message...",
+    "selectProxy": "Select Proxy",
+    "selectModel": "Select Model",
+    "noProxyAvailable": "No proxy available",
+    "passthroughProxy": "Passthrough",
+    "bridgeProxy": "Bridge",
+    "thinking": "Reasoning",
+    "thinkingInProgress": "Thinking...",
+    "sendFailed": "Failed to send",
+    "streamError": "Stream error"
   }
 }

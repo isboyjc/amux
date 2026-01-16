@@ -12,6 +12,7 @@ import { registerLogHandlers } from './logs'
 import { registerAppHandlers } from './app'
 import { registerConfigHandlers } from './config'
 import { registerTunnelIpcHandlers } from './tunnel'
+import { registerChatHandlers } from './chat'
 
 /**
  * Register all IPC handlers
@@ -26,7 +27,8 @@ export function registerAllHandlers(): void {
   registerAppHandlers()
   registerConfigHandlers()
   registerTunnelIpcHandlers()
-  
+  registerChatHandlers()
+
   console.log('[IPC] All handlers registered')
 }
 

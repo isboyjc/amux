@@ -11,7 +11,9 @@ import type {
   SettingsSchema,
   ProxyServiceState,
   ProxyMetrics,
-  AdapterType
+  AdapterType,
+  Conversation,
+  ChatMessage
 } from './index'
 
 // ============ DTOs ============
@@ -130,6 +132,23 @@ export interface ImportResult {
   errors: string[]
 }
 
+// Chat DTOs
+export interface CreateConversationDTO {
+  title?: string
+  providerId?: string
+  proxyId?: string
+  model: string
+  systemPrompt?: string
+}
+
+export interface UpdateConversationDTO {
+  title?: string
+  providerId?: string
+  proxyId?: string
+  model?: string
+  systemPrompt?: string
+}
+
 // ============ IPC Handlers ============
 
 export interface IPCHandlers {
@@ -243,6 +262,19 @@ export interface IPCHandlers {
   'app:open-external': (url: string) => Promise<void>
   'app:show-item-in-folder': (path: string) => Promise<void>
   'app:get-path': (name: 'userData' | 'logs' | 'temp') => Promise<string>
+
+  // Chat operations
+  'chat:list-conversations': () => Promise<Conversation[]>
+  'chat:get-conversation': (id: string) => Promise<Conversation | null>
+  'chat:create-conversation': (data: CreateConversationDTO) => Promise<Conversation>
+  'chat:update-conversation': (id: string, data: UpdateConversationDTO) => Promise<Conversation | null>
+  'chat:delete-conversation': (id: string) => Promise<boolean>
+  'chat:get-messages': (conversationId: string) => Promise<ChatMessage[]>
+  'chat:send-message': (conversationId: string, content: string) => Promise<void>
+  'chat:stop-streaming': (conversationId: string) => Promise<void>
+  'chat:delete-message': (messageId: string) => Promise<boolean>
+  'chat:delete-message-pair': (userMessageId: string) => Promise<boolean>
+  'chat:regenerate': (conversationId: string, assistantMessageId: string) => Promise<void>
 }
 
 // ============ IPC Events (Main -> Renderer) ============
@@ -256,4 +288,11 @@ export interface IPCEvents {
   }) => void
   'settings:changed': (key: keyof SettingsSchema, value: unknown) => void
   'app:theme-changed': (theme: 'light' | 'dark') => void
+
+  // Chat streaming events
+  'chat:stream-start': () => void
+  'chat:stream-content': (content: string) => void
+  'chat:stream-reasoning': (reasoning: string) => void
+  'chat:stream-end': (message: ChatMessage) => void
+  'chat:stream-error': (error: string) => void
 }

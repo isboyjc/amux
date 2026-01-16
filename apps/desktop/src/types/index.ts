@@ -187,3 +187,27 @@ export interface AdapterPreset {
   description: string
   provider: string // corresponding provider type
 }
+
+// Chat conversation
+export interface Conversation {
+  id: string
+  title: string | null
+  providerId: string | null
+  proxyId: string | null
+  model: string
+  systemPrompt: string | null
+  createdAt: number
+  updatedAt: number
+}
+
+// Chat message
+export interface ChatMessage {
+  id: string
+  conversationId: string
+  role: 'user' | 'assistant' | 'system'
+  content: string | null
+  reasoning: string | null
+  toolCalls: string | null
+  usage: string | null
+  createdAt: number
+}

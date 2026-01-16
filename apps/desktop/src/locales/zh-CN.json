@@ -4,6 +4,7 @@
     "description": "LLM API 代理桥接工具"
   },
   "nav": {
+    "chat": "对话",
     "dashboard": "仪表盘",
     "providers": "供应商",
     "proxies": "代理",
@@ -365,5 +366,28 @@
     "enableSuccess": "密钥已启用",
     "disableSuccess": "密钥已禁用",
     "toggleFailed": "切换密钥状态失败"
+  },
+  "chat": {
+    "title": "AI 对话",
+    "description": "与 AI 进行对话，测试代理配置",
+    "welcome": "你好，我是 Amux！",
+    "welcomeDesc": "选择一个代理和模型开始对话，你可以在这里测试配置的直通代理和双向代理。",
+    "new": "新建",
+    "newConversation": "新对话",
+    "history": "历史",
+    "noHistory": "暂无历史对话",
+    "untitled": "未命名对话",
+    "yesterday": "昨天",
+    "daysAgo": "天前",
+    "inputPlaceholder": "输入消息...",
+    "selectProxy": "选择代理",
+    "selectModel": "选择模型",
+    "noProxyAvailable": "无可用代理",
+    "passthroughProxy": "直通代理",
+    "bridgeProxy": "双向代理",
+    "thinking": "思考过程",
+    "thinkingInProgress": "思考中...",
+    "sendFailed": "发送失败",
+    "streamError": "流式响应错误"
   }
 }

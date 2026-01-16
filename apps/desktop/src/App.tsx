@@ -1,7 +1,7 @@
 import { HashRouter, Routes, Route } from 'react-router-dom'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { Layout } from '@/components/layout'
-import { Dashboard, Providers, Proxies, Tunnel, Logs, Settings, Tokens } from '@/pages'
+import { Chat, Dashboard, Providers, Proxies, Tunnel, Logs, Settings, Tokens } from '@/pages'
 
 export default function App() {
   return (
@@ -9,7 +9,8 @@ export default function App() {
       <HashRouter>
         <Routes>
           <Route path="/" element={<Layout />}>
-            <Route index element={<Dashboard />} />
+            <Route index element={<Chat />} />
+            <Route path="dashboard" element={<Dashboard />} />
             <Route path="providers" element={<Providers />} />
             <Route path="proxies" element={<Proxies />} />
             <Route path="tunnel" element={<Tunnel />} />
