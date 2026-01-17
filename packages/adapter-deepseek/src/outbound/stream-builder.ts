@@ -61,10 +61,9 @@ export function createStreamBuilder(): StreamEventBuilder {
         })
       }
 
-      // Handle reasoning delta (for models like o1)
+      // Handle reasoning delta (for DeepSeek reasoner model)
       if (event.type === 'reasoning' && event.reasoning?.delta) {
-        // OpenAI doesn't have a standard reasoning format in streaming
-        // We'll include it as regular content for now
+        // DeepSeek uses reasoning_content field for thinking process
         events.push({
           event: 'data',
           data: {
@@ -74,7 +73,7 @@ export function createStreamBuilder(): StreamEventBuilder {
             model,
             choices: [{
               index: 0,
-              delta: { content: event.reasoning.delta },
+              delta: { reasoning_content: event.reasoning.delta },
               finish_reason: null,
             }],
           },

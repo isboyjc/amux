@@ -1,0 +1,440 @@
+---
+title: Tool Calling
+description: Use function calling to extend model capabilities across providers
+---
+
+## What is Tool Calling?
+
+Tool calling (also known as function calling) allows LLM models to invoke external functions and APIs. Instead of just returning text, models can request to call specific functions with structured arguments, enabling them to:
+
+- Fetch real-time data (weather, stock prices, etc.)
+- Perform calculations or database queries
+- Take actions (send emails, create calendar events, etc.)
+- Interact with external systems
+
+<Callout type="info">
+Amux normalizes tool calling formats across all providers, allowing you to use the same code with OpenAI, Anthropic, DeepSeek, and others.
+</Callout>
+
+## Defining Tools
+
+Define tools using the standard JSON Schema format:
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+})
+
+const tools = [
+  {
+    type: 'function',
+    function: {
+      name: 'get_weather',
+      description: 'Get the current weather for a location',
+      parameters: {
+        type: 'object',
+        properties: {
+          location: {
+            type: 'string',
+            description: 'City name, e.g. San Francisco'
+          },
+          unit: {
+            type: 'string',
+            enum: ['celsius', 'fahrenheit'],
+            description: 'Temperature unit'
+          }
+        },
+        required: ['location']
+      }
+    }
+  }
+]
+
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [
+    { role: 'user', content: 'What is the weather in Tokyo?' }
+  ],
+  tools
+})
+```
+
+## Tool Choice Options
+
+Control when and how the model uses tools:
+
+### Auto (Default)
+
+Let the model decide whether to use tools:
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hello!' }],
+  tools,
+  tool_choice: 'auto'  // Model decides
+})
+```
+
+### None
+
+Prevent the model from using any tools:
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'What is the weather?' }],
+  tools,
+  tool_choice: 'none'  // No tools allowed
+})
+```
+
+### Required
+
+Force the model to use at least one tool:
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Get weather data' }],
+  tools,
+  tool_choice: 'required'  // Must use a tool
+})
+```
+
+### Specific Tool
+
+Force the model to use a specific tool:
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Check Tokyo weather' }],
+  tools,
+  tool_choice: {
+    type: 'function',
+    function: { name: 'get_weather' }
+  }
+})
+```
+
+## Handling Tool Calls
+
+When the model wants to call a tool, it returns tool calls in the response:
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [
+    { role: 'user', content: 'What is the weather in Paris and London?' }
+  ],
+  tools
+})
+
+// Check if the model wants to call tools
+if (response.choices[0].message.tool_calls) {
+  const toolCalls = response.choices[0].message.tool_calls
+
+  for (const toolCall of toolCalls) {
+    console.log('Tool:', toolCall.function.name)
+    console.log('Arguments:', toolCall.function.arguments)
+
+    // Parse arguments
+    const args = JSON.parse(toolCall.function.arguments)
+
+    // Execute the function
+    let result
+    if (toolCall.function.name === 'get_weather') {
+      result = await getWeather(args.location, args.unit)
+    }
+
+    // Send result back to model
+    const finalResponse = await bridge.chat({
+      model: 'gpt-4',
+      messages: [
+        { role: 'user', content: 'What is the weather in Paris and London?' },
+        response.choices[0].message,  // Assistant's tool call
+        {
+          role: 'tool',
+          tool_call_id: toolCall.id,
+          content: JSON.stringify(result)
+        }
+      ],
+      tools
+    })
+
+    console.log(finalResponse.choices[0].message.content)
+  }
+}
+```
+
+## Complete Example
+
+Here's a full implementation with tool execution:
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+
+// Define tools
+const tools = [
+  {
+    type: 'function',
+    function: {
+      name: 'get_weather',
+      description: 'Get weather for a location',
+      parameters: {
+        type: 'object',
+        properties: {
+          location: { type: 'string' }
+        },
+        required: ['location']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'calculate',
+      description: 'Perform mathematical calculations',
+      parameters: {
+        type: 'object',
+        properties: {
+          expression: { type: 'string', description: 'Math expression' }
+        },
+        required: ['expression']
+      }
+    }
+  }
+]
+
+// Implement tool functions
+async function getWeather(location: string) {
+  // Call weather API
+  return { location, temperature: 22, condition: 'sunny' }
+}
+
+function calculate(expression: string) {
+  // Safely evaluate expression
+  return { result: eval(expression) }
+}
+
+// Create bridge
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+})
+
+// Chat with tools
+async function chatWithTools(userMessage: string) {
+  const messages = [{ role: 'user', content: userMessage }]
+
+  while (true) {
+    const response = await bridge.chat({
+      model: 'gpt-4',
+      messages,
+      tools
+    })
+
+    const message = response.choices[0].message
+    messages.push(message)
+
+    // Check if done
+    if (!message.tool_calls) {
+      return message.content
+    }
+
+    // Execute tool calls
+    for (const toolCall of message.tool_calls) {
+      const args = JSON.parse(toolCall.function.arguments)
+      let result
+
+      switch (toolCall.function.name) {
+        case 'get_weather':
+          result = await getWeather(args.location)
+          break
+        case 'calculate':
+          result = calculate(args.expression)
+          break
+      }
+
+      messages.push({
+        role: 'tool',
+        tool_call_id: toolCall.id,
+        content: JSON.stringify(result)
+      })
+    }
+  }
+}
+
+// Use it
+const answer = await chatWithTools('What is the weather in Tokyo? Also calculate 15 * 24.')
+console.log(answer)
+```
+
+## Tool Calls in Streaming
+
+Handle tool calls in streaming responses:
+
+```typescript
+const stream = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Get weather for NYC' }],
+  tools,
+  stream: true
+})
+
+let toolCalls = []
+
+for await (const event of stream) {
+  if (event.type === 'tool_call') {
+    // Accumulate tool call data
+    const index = event.toolCall.index ?? 0
+    if (!toolCalls[index]) {
+      toolCalls[index] = {
+        id: event.toolCall.id,
+        type: 'function',
+        function: { name: '', arguments: '' }
+      }
+    }
+
+    if (event.toolCall.name) {
+      toolCalls[index].function.name = event.toolCall.name
+    }
+    if (event.toolCall.arguments) {
+      toolCalls[index].function.arguments += event.toolCall.arguments
+    }
+  }
+
+  if (event.type === 'end') {
+    // Execute tools if any
+    if (toolCalls.length > 0) {
+      console.log('Tools to call:', toolCalls)
+    }
+  }
+}
+```
+
+## Provider Compatibility
+
+Tool calling support across providers:
+
+| Provider | Tool Calling | Tool Choice | Parallel Tools | Streaming Tools |
+|----------|-------------|-------------|----------------|-----------------|
+| OpenAI | ✅ | ✅ | ✅ | ✅ |
+| Anthropic | ✅ | ✅ | ✅ | ✅ |
+| DeepSeek | ✅ | ✅ | ✅ | ✅ |
+| Moonshot | ✅ | ✅ | ✅ | ✅ |
+| Zhipu | ✅ | ✅ | ✅ | ✅ |
+| Qwen | ✅ | ✅ | ✅ | ✅ |
+| Gemini | ✅ | ⚠️ | ✅ | ✅ |
+
+<Callout type="warn">
+Some providers may have limited tool choice options. Check adapter capabilities before using advanced features.
+</Callout>
+
+## Best Practices
+
+### 1. Clear Descriptions
+
+Provide clear, detailed descriptions for tools and parameters:
+
+```typescript
+{
+  name: 'search_products',
+  description: 'Search for products in the catalog. Returns up to 10 results.',
+  parameters: {
+    type: 'object',
+    properties: {
+      query: {
+        type: 'string',
+        description: 'Search query (e.g., "red shoes")'
+      },
+      category: {
+        type: 'string',
+        description: 'Filter by category (e.g., "electronics")',
+        enum: ['electronics', 'clothing', 'home']
+      }
+    }
+  }
+}
+```
+
+### 2. Validate Arguments
+
+Always validate tool arguments before execution:
+
+```typescript
+const args = JSON.parse(toolCall.function.arguments)
+
+if (!args.location || typeof args.location !== 'string') {
+  throw new Error('Invalid location parameter')
+}
+```
+
+### 3. Handle Errors
+
+Gracefully handle tool execution errors:
+
+```typescript
+try {
+  const result = await executeToolFunction(toolCall)
+  messages.push({
+    role: 'tool',
+    tool_call_id: toolCall.id,
+    content: JSON.stringify(result)
+  })
+} catch (error) {
+  messages.push({
+    role: 'tool',
+    tool_call_id: toolCall.id,
+    content: JSON.stringify({
+      error: error.message
+    })
+  })
+}
+```
+
+### 4. Limit Tool Iterations
+
+Prevent infinite loops by limiting tool call iterations:
+
+```typescript
+const MAX_ITERATIONS = 5
+let iterations = 0
+
+while (iterations < MAX_ITERATIONS) {
+  const response = await bridge.chat({ messages, tools })
+
+  if (!response.choices[0].message.tool_calls) {
+    return response.choices[0].message.content
+  }
+
+  // Execute tools...
+  iterations++
+}
+
+throw new Error('Max tool iterations reached')
+```
+
+## Next Steps
+
+<Cards>
+  <Card title="Multimodal" href="/en/docs/guides/multimodal">
+    Work with images and media
+  </Card>
+  <Card title="Streaming" href="/en/docs/guides/streaming">
+    Stream tool calls in real-time
+  </Card>
+  <Card title="Error Handling" href="/en/docs/guides/error-handling">
+    Handle errors gracefully
+  </Card>
+</Cards>

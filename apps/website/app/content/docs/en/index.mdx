@@ -1,20 +1,22 @@
 ---
 title: Introduction
-description: Welcome to Amux - a unified infrastructure for converting between different LLM provider APIs.
+description: A unified infrastructure for converting between different LLM provider APIs
 ---
 
 ## What is Amux?
 
-Amux is a bidirectional API adapter that allows you to:
+Amux is a bidirectional API adapter that enables seamless conversion between different LLM provider formats.
 
-- 🔄 **Convert between any LLM provider formats** - OpenAI, Anthropic, DeepSeek, Moonshot, Zhipu, Qwen, Gemini
-- 🎯 **Type-safe TypeScript** - Full type definitions for all adapters
-- 🔌 **Extensible** - Easy to add custom adapters
-- ⚡ **Zero dependencies** - Core package has no runtime dependencies
-- 📦 **Tree-shakable** - Optimized for modern bundlers
+**Key benefits:**
+
+- **Provider flexibility** - Switch between OpenAI, Anthropic, DeepSeek, and others without changing your code
+- **Bidirectional conversion** - Accept requests in any format, call any provider, return responses in any format
+- **Type-safe** - Full TypeScript support with comprehensive type definitions
+- **Zero dependencies** - Core package has no runtime dependencies
+- **Production-ready** - Used in production applications
 
 <Callout type="info">
-Amux enables **true bidirectional conversion** - accept requests in any format, call any provider API, and return responses in any format.
+Unlike other solutions that only provide a unified interface, Amux enables true bidirectional conversion - you control both the input and output formats.
 </Callout>
 
 ## Quick Example
@@ -39,227 +41,92 @@ const response = await bridge.chat({
   model: 'gpt-4',
   messages: [{ role: 'user', content: 'Hello!' }]
 })
+
+console.log(response.choices[0].message.content)
 ```
 
-## Architecture
+## How It Works
 
-```mermaid
-sequenceDiagram
-    participant App as Your App
-    participant IB as Inbound Adapter
-    participant IR as Intermediate Representation
-    participant OB as Outbound Adapter
-    participant API as Provider API
+Amux uses an **Intermediate Representation (IR)** pattern to convert between any provider formats:
 
-    App->>IB: Provider Format A
-    IB->>IR: Parse to IR
-    IR->>OB: Unified IR
-    OB->>API: Provider Format B
-    API->>OB: Response
-    OB->>IR: Parse to IR
-    IR->>IB: Unified IR
-    IB->>App: Provider Format A
+```
+Your App (OpenAI format)
+    ↓
+Inbound Adapter → Parse to IR
+    ↓
+Intermediate Representation (unified format)
+    ↓
+Outbound Adapter → Build Anthropic format
+    ↓
+Claude API
+    ↓
+Response flows back through IR
+    ↓
+Your App (OpenAI format)
 ```
 
-The **Intermediate Representation (IR)** is the key to bidirectional conversion:
-- Unified format for all LLM capabilities
-- Supports messages, tools, streaming, multimodal content
-- Extensible for provider-specific features
-
-## Key Features
-
-<Tabs items={['Bidirectional', 'Type Safety', 'Extensibility', 'Performance']}>
-  <Tab value="Bidirectional">
-    ### Bidirectional Conversion
-
-    Unlike other solutions that only provide a unified interface, Amux allows you to:
-
-    - **Accept requests** in any provider format
-    - **Send requests** to any provider API
-    - **Return responses** in any provider format
-
-    ```typescript
-    // Example: Accept OpenAI format, call Anthropic API
-    const bridge1 = createBridge({
-      inbound: openaiAdapter,
-      outbound: anthropicAdapter
-    })
-
-    // Example: Accept Anthropic format, call OpenAI API
-    const bridge2 = createBridge({
-      inbound: anthropicAdapter,
-      outbound: openaiAdapter
-    })
-    ```
-  </Tab>
-
-  <Tab value="Type Safety">
-    ### Type Safety
-
-    Full TypeScript support with comprehensive type definitions for:
-
-    - All provider request/response formats
-    - Intermediate Representation (IR)
-    - Adapter interfaces
-    - Bridge configuration
-
-    ```typescript
-    import type { LLMRequestIR, LLMResponseIR } from '@amux/llm-bridge'
-
-    // Fully typed IR
-    const request: LLMRequestIR = {
-      messages: [{ role: 'user', content: 'Hello!' }],
-      model: 'gpt-4',
-      generation: {
-        temperature: 0.7,
-        maxTokens: 1000
-      }
-    }
-    ```
-  </Tab>
-
-  <Tab value="Extensibility">
-    ### Extensibility
-
-    Easy to extend with custom adapters:
-
-    - Clear adapter interface
-    - Well-documented IR format
-    - Examples for common patterns
-
-    ```typescript
-    import type { LLMAdapter } from '@amux/llm-bridge'
-
-    export const myAdapter: LLMAdapter = {
-      name: 'my-provider',
-      version: '1.0.0',
-      capabilities: {
-        streaming: true,
-        tools: true,
-        vision: false,
-        multimodal: false,
-        systemPrompt: true,
-        toolChoice: true
-      },
-      inbound: {
-        parseRequest: (request) => { /* ... */ }
-      },
-      outbound: {
-        buildRequest: (ir) => { /* ... */ }
-      }
-    }
-    ```
-  </Tab>
-
-  <Tab value="Performance">
-    ### Performance
-
-    Optimized for production use:
-
-    - **Zero runtime dependencies** in core package
-    - **Tree-shakable** - Only bundle what you use
-    - **Minimal overhead** - Direct conversion without intermediate steps
-    - **Streaming support** - Efficient handling of large responses
-
-    ```typescript
-    // Only the adapters you use are bundled
-    import { createBridge } from '@amux/llm-bridge'
-    import { openaiAdapter } from '@amux/adapter-openai'
-    // Other adapters are not included in your bundle
-    ```
-  </Tab>
-</Tabs>
+The IR is a unified format that captures all LLM capabilities - messages, tools, streaming, multimodal content, and provider-specific extensions.
 
 ## Supported Providers
 
-<Tabs items={['OpenAI', 'Anthropic', 'DeepSeek', 'Others']}>
-  <Tab value="OpenAI">
-    ### OpenAI
+| Provider | Package | Features |
+|----------|---------|----------|
+| OpenAI | `@amux/adapter-openai` | Chat, streaming, tools, vision, JSON mode |
+| Anthropic | `@amux/adapter-anthropic` | Messages, streaming, tools, vision, reasoning |
+| DeepSeek | `@amux/adapter-deepseek` | Chat, streaming, tools, reasoning |
+| Moonshot | `@amux/adapter-moonshot` | Chat, streaming, tools |
+| Zhipu (GLM) | `@amux/adapter-zhipu` | Chat, streaming, tools |
+| Qwen | `@amux/adapter-qwen` | Chat, streaming, tools, vision |
+| Gemini | `@amux/adapter-google` | Chat, streaming, tools, vision |
 
-    Full support for OpenAI API format:
-    - Chat completions
-    - Streaming
-    - Function calling
-    - Vision (GPT-4V)
-    - JSON mode
+## Common Use Cases
 
-    ```typescript
-    import { openaiAdapter } from '@amux/adapter-openai'
-    ```
-  </Tab>
+**Multi-provider support** - Let users choose their preferred LLM provider:
+```typescript
+const providers = {
+  openai: createBridge({ inbound: openaiAdapter, outbound: openaiAdapter }),
+  anthropic: createBridge({ inbound: openaiAdapter, outbound: anthropicAdapter })
+}
 
-  <Tab value="Anthropic">
-    ### Anthropic
+const response = await providers[userChoice].chat(request)
+```
 
-    Full support for Anthropic API format:
-    - Messages API
-    - Streaming
-    - Tool use
-    - Vision
-    - System prompts
+**Provider migration** - Switch providers without code changes:
+```typescript
+// Old: Using OpenAI
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: openaiAdapter
+})
 
-    ```typescript
-    import { anthropicAdapter } from '@amux/adapter-anthropic'
-    ```
-  </Tab>
+// New: Switch to Anthropic (no other code changes needed)
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter
+})
+```
 
-  <Tab value="DeepSeek">
-    ### DeepSeek
+**Cost optimization** - Route to cheaper providers for simple requests:
+```typescript
+const isSimple = request.messages.length < 3
+const outbound = isSimple ? deepseekAdapter : anthropicAdapter
 
-    Full support for DeepSeek API format:
-    - Chat completions
-    - Streaming
-    - Function calling
-
-    ```typescript
-    import { deepseekAdapter } from '@amux/adapter-deepseek'
-    ```
-  </Tab>
-
-  <Tab value="Others">
-    ### Other Providers
-
-    Additional adapters available:
-
-    - **Moonshot** - Moonshot AI
-    - **Zhipu** - Zhipu AI (GLM)
-    - **Qwen** - Alibaba Cloud
-    - **Gemini** - Google AI
-
-    ```typescript
-    import { moonshotAdapter } from '@amux/adapter-moonshot'
-    import { zhipuAdapter } from '@amux/adapter-zhipu'
-    import { qwenAdapter } from '@amux/adapter-qwen'
-    import { geminiAdapter } from '@amux/adapter-google'
-    ```
-  </Tab>
-</Tabs>
-
-## Use Cases
-
-<Callout type="info">
-Amux is perfect for applications that need to support multiple LLM providers or migrate between providers without changing application code.
-</Callout>
-
-- **Multi-provider support** - Let users choose their preferred LLM provider
-- **Provider migration** - Switch providers without rewriting code
-- **Testing** - Test against multiple providers with the same code
-- **Cost optimization** - Route requests to different providers based on cost/performance
-- **Fallback handling** - Automatically fallback to alternative providers
+const bridge = createBridge({ inbound: openaiAdapter, outbound })
+```
 
 ## Next Steps
 
 <Cards>
-  <Card title="Installation" href="/docs/installation">
+  <Card title="Installation" href="/en/docs/installation">
     Get started with Amux
   </Card>
-  <Card title="Quick Start" href="/docs/quick-start">
+  <Card title="Quick Start" href="/en/docs/quick-start">
     Build your first bridge in 5 minutes
   </Card>
-  <Card title="Core Concepts" href="/docs/core-concepts">
+  <Card title="Core Concepts" href="/en/docs/core-concepts">
     Understand the architecture
   </Card>
-  <Card title="API Reference" href="/docs/api/bridge">
+  <Card title="API Reference" href="/en/docs/api/bridge">
     Explore the complete API
   </Card>
 </Cards>

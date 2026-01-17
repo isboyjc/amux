@@ -28,18 +28,21 @@ export class APIError extends LLMBridgeError {
   public status: number
   public provider: string
   public data?: unknown
+  public response?: { headers?: Record<string, string> }
 
   constructor(
     message: string,
     status: number,
     provider: string,
-    data?: unknown
+    data?: unknown,
+    response?: { headers?: Record<string, string> }
   ) {
     super(message, 'API_ERROR', status >= 500, data)
     this.name = 'APIError'
     this.status = status
     this.provider = provider
     this.data = data
+    this.response = response
   }
 }
 

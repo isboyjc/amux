@@ -1,0 +1,621 @@
+---
+title: Migration Guide
+description: Migrate from OpenAI or Anthropic SDKs to Amux
+---
+
+## Why Migrate to Amux?
+
+Amux provides several advantages over using provider-specific SDKs:
+
+- **Provider Flexibility** - Switch providers without changing code
+- **Unified API** - One interface for all providers
+- **Model Mapping** - Easily map and swap models
+- **Bidirectional Conversion** - Support any request/response format
+- **Type Safety** - Full TypeScript support across all adapters
+
+<Callout type="info">
+Migrating to Amux is straightforward. Most code changes are mechanical replacements.
+</Callout>
+
+## From OpenAI SDK
+
+### Before (OpenAI SDK)
+
+```typescript
+import OpenAI from 'openai'
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+})
+
+const response = await openai.chat.completions.create({
+  model: 'gpt-4',
+  messages: [
+    { role: 'system', content: 'You are a helpful assistant.' },
+    { role: 'user', content: 'Hello!' }
+  ],
+  temperature: 0.7,
+  max_tokens: 100
+})
+
+console.log(response.choices[0].message.content)
+```
+
+### After (Amux)
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: openaiAdapter,
+  config: {
+    apiKey: process.env.OPENAI_API_KEY
+  }
+})
+
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [
+    { role: 'system', content: 'You are a helpful assistant.' },
+    { role: 'user', content: 'Hello!' }
+  ],
+  temperature: 0.7,
+  max_tokens: 100
+})
+
+console.log(response.choices[0].message.content)
+```
+
+**Key Changes:**
+1. Replace `import OpenAI` with Amux imports
+2. Replace `new OpenAI()` with `createBridge()`
+3. Replace `openai.chat.completions.create()` with `bridge.chat()`
+4. Request/response format stays the same!
+
+### Streaming
+
+Before (OpenAI SDK):
+
+```typescript
+const stream = await openai.chat.completions.create({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Tell me a story' }],
+  stream: true
+})
+
+for await (const chunk of stream) {
+  const content = chunk.choices[0]?.delta?.content
+  if (content) {
+    process.stdout.write(content)
+  }
+}
+```
+
+After (Amux):
+
+```typescript
+const stream = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Tell me a story' }],
+  stream: true
+})
+
+for await (const event of stream) {
+  if (event.type === 'content') {
+    process.stdout.write(event.content.delta)
+  }
+}
+```
+
+**Key Changes:**
+- Use `bridge.chat()` with `stream: true`
+- Events are normalized with `type` field
+- Content is in `event.content.delta`
+
+### Function Calling
+
+Before (OpenAI SDK):
+
+```typescript
+const response = await openai.chat.completions.create({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'What is the weather?' }],
+  tools: [
+    {
+      type: 'function',
+      function: {
+        name: 'get_weather',
+        description: 'Get weather',
+        parameters: {
+          type: 'object',
+          properties: {
+            location: { type: 'string' }
+          }
+        }
+      }
+    }
+  ]
+})
+
+if (response.choices[0].message.tool_calls) {
+  // Handle tool calls
+}
+```
+
+After (Amux):
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'What is the weather?' }],
+  tools: [
+    {
+      type: 'function',
+      function: {
+        name: 'get_weather',
+        description: 'Get weather',
+        parameters: {
+          type: 'object',
+          properties: {
+            location: { type: 'string' }
+          }
+        }
+      }
+    }
+  ]
+})
+
+if (response.choices[0].message.tool_calls) {
+  // Handle tool calls - same as before!
+}
+```
+
+**No changes needed!** Tool calling API is identical.
+
+## From Anthropic SDK
+
+### Before (Anthropic SDK)
+
+```typescript
+import Anthropic from '@anthropic-ai/sdk'
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY
+})
+
+const response = await anthropic.messages.create({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  messages: [
+    { role: 'user', content: 'Hello!' }
+  ]
+})
+
+console.log(response.content[0].text)
+```
+
+### After (Amux)
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+
+const bridge = createBridge({
+  inbound: anthropicAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: process.env.ANTHROPIC_API_KEY
+  }
+})
+
+const response = await bridge.chat({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  messages: [
+    { role: 'user', content: 'Hello!' }
+  ]
+})
+
+console.log(response.content[0].text)
+```
+
+**Key Changes:**
+1. Replace `import Anthropic` with Amux imports
+2. Replace `new Anthropic()` with `createBridge()`
+3. Replace `anthropic.messages.create()` with `bridge.chat()`
+4. Request/response format stays the same!
+
+### Streaming
+
+Before (Anthropic SDK):
+
+```typescript
+const stream = await anthropic.messages.create({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: 'Tell me a story' }],
+  stream: true
+})
+
+for await (const event of stream) {
+  if (event.type === 'content_block_delta') {
+    process.stdout.write(event.delta.text)
+  }
+}
+```
+
+After (Amux):
+
+```typescript
+const stream = await bridge.chat({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: 'Tell me a story' }],
+  stream: true
+})
+
+for await (const event of stream) {
+  if (event.type === 'content') {
+    process.stdout.write(event.content.delta)
+  }
+}
+```
+
+**Key Changes:**
+- Events are normalized to `type: 'content'`
+- Text is in `event.content.delta` (not `event.delta.text`)
+
+### Tool Use
+
+Before (Anthropic SDK):
+
+```typescript
+const response = await anthropic.messages.create({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: 'What is the weather?' }],
+  tools: [
+    {
+      name: 'get_weather',
+      description: 'Get weather',
+      input_schema: {
+        type: 'object',
+        properties: {
+          location: { type: 'string' }
+        }
+      }
+    }
+  ]
+})
+```
+
+After (Amux):
+
+```typescript
+const response = await bridge.chat({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: 'What is the weather?' }],
+  tools: [
+    {
+      type: 'function',
+      function: {
+        name: 'get_weather',
+        description: 'Get weather',
+        parameters: {
+          type: 'object',
+          properties: {
+            location: { type: 'string' }
+          }
+        }
+      }
+    }
+  ]
+})
+```
+
+**Key Changes:**
+- Tools use OpenAI-style format (can be normalized by adapter)
+- `input_schema` becomes `parameters`
+- Wrapped in `function` object
+
+## Cross-Provider Migration
+
+One of Amux's key benefits is easy cross-provider migration.
+
+### OpenAI to Anthropic
+
+```typescript
+// Before: Using OpenAI SDK
+import OpenAI from 'openai'
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+const response = await openai.chat.completions.create({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hello!' }]
+})
+
+// After: Same code, different provider
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapping: {
+    'gpt-4': 'claude-3-5-sonnet-20241022'
+  }
+})
+
+// Same request format!
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hello!' }]
+})
+```
+
+### Anthropic to DeepSeek
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { deepseekAdapter } from '@amux/adapter-deepseek'
+
+const bridge = createBridge({
+  inbound: anthropicAdapter,
+  outbound: deepseekAdapter,
+  config: { apiKey: process.env.DEEPSEEK_API_KEY },
+  modelMapping: {
+    'claude-3-5-sonnet-20241022': 'deepseek-chat'
+  }
+})
+
+// Use Anthropic format, call DeepSeek
+const response = await bridge.chat({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: 'Hello!' }]
+})
+```
+
+## Common Migration Patterns
+
+### 1. Gradual Migration
+
+Migrate incrementally without breaking existing code:
+
+```typescript
+// Step 1: Keep using OpenAI SDK
+import OpenAI from 'openai'
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+// Step 2: Add Amux alongside
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: openaiAdapter,
+  config: { apiKey: process.env.OPENAI_API_KEY }
+})
+
+// Step 3: Migrate routes one by one
+async function chat(request) {
+  // Old code
+  // return await openai.chat.completions.create(request)
+
+  // New code
+  return await bridge.chat(request)
+}
+
+// Step 4: Remove OpenAI SDK when done
+```
+
+### 2. Feature Flag Migration
+
+Use feature flags to control rollout:
+
+```typescript
+const useAmux = process.env.USE_AMUX === 'true'
+
+async function chat(request) {
+  if (useAmux) {
+    return await bridge.chat(request)
+  } else {
+    return await openai.chat.completions.create(request)
+  }
+}
+```
+
+### 3. A/B Testing
+
+Compare providers side-by-side:
+
+```typescript
+async function chatWithComparison(request) {
+  const [openaiResponse, claudeResponse] = await Promise.all([
+    bridgeOpenAI.chat(request),
+    bridgeClaude.chat(request)
+  ])
+
+  // Log for comparison
+  console.log('OpenAI:', openaiResponse.choices[0].message.content)
+  console.log('Claude:', claudeResponse.content[0].text)
+
+  // Return preferred provider
+  return openaiResponse
+}
+```
+
+## Key Differences and Gotchas
+
+### System Messages
+
+**OpenAI SDK:**
+```typescript
+messages: [
+  { role: 'system', content: 'You are helpful.' },
+  { role: 'user', content: 'Hello!' }
+]
+```
+
+**Anthropic SDK:**
+```typescript
+system: 'You are helpful.',
+messages: [
+  { role: 'user', content: 'Hello!' }
+]
+```
+
+**Amux:** Both formats work! The adapter handles conversion.
+
+```typescript
+// OpenAI format works with Anthropic adapter
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+})
+
+await bridge.chat({
+  model: 'gpt-4',
+  messages: [
+    { role: 'system', content: 'You are helpful.' },  // Converted automatically
+    { role: 'user', content: 'Hello!' }
+  ]
+})
+```
+
+### Response Format
+
+**OpenAI SDK:**
+```typescript
+response.choices[0].message.content
+```
+
+**Anthropic SDK:**
+```typescript
+response.content[0].text
+```
+
+**Amux:** Format matches inbound adapter!
+
+```typescript
+// Using OpenAI inbound adapter
+const response = await bridge.chat({ ... })
+console.log(response.choices[0].message.content)  // OpenAI format
+
+// Using Anthropic inbound adapter
+const response = await bridge.chat({ ... })
+console.log(response.content[0].text)  // Anthropic format
+```
+
+### Error Handling
+
+Errors are normalized across providers:
+
+```typescript
+import { APIError, NetworkError } from '@amux/llm-bridge'
+
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof APIError) {
+    console.error('API Error:', error.status, error.provider)
+  } else if (error instanceof NetworkError) {
+    console.error('Network Error:', error.message)
+  }
+}
+```
+
+## Migration Checklist
+
+- [ ] Install Amux packages: `@amux/llm-bridge`, `@amux/adapter-*`
+- [ ] Replace SDK imports with Amux imports
+- [ ] Replace client initialization with `createBridge()`
+- [ ] Replace API calls with `bridge.chat()`
+- [ ] Update streaming event handling (if using streams)
+- [ ] Update error handling (use Amux error types)
+- [ ] Test with existing requests
+- [ ] Update TypeScript types (if using)
+- [ ] Remove old SDK dependencies
+- [ ] Update documentation
+
+## Best Practices
+
+### 1. Keep Request Format
+
+Don't change request format during migration:
+
+```typescript
+// ✅ Good: Keep existing format
+const bridge = createBridge({
+  inbound: openaiAdapter,  // Use your current format
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+})
+
+// Your existing requests work as-is
+await bridge.chat({ model: 'gpt-4', messages: [...] })
+```
+
+### 2. Test Thoroughly
+
+Create test cases for your migration:
+
+```typescript
+import { describe, it, expect } from 'vitest'
+
+describe('Migration Tests', () => {
+  it('should return same format', async () => {
+    const request = {
+      model: 'gpt-4',
+      messages: [{ role: 'user', content: 'Hello!' }]
+    }
+
+    const response = await bridge.chat(request)
+
+    expect(response.choices).toBeDefined()
+    expect(response.choices[0].message.content).toBeTruthy()
+  })
+})
+```
+
+### 3. Use Type Safety
+
+Leverage TypeScript for safer migration:
+
+```typescript
+import type { LLMBridge } from '@amux/llm-bridge'
+
+// Type your bridge
+const bridge: LLMBridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+})
+
+// TypeScript ensures correct usage
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hello!' }]
+})
+```
+
+## Next Steps
+
+<Cards>
+  <Card title="Basic Usage" href="/en/docs/guides/basic-usage">
+    Learn bridge fundamentals
+  </Card>
+  <Card title="Model Mapping" href="/en/docs/guides/model-mapping">
+    Map models across providers
+  </Card>
+  <Card title="Error Handling" href="/en/docs/guides/error-handling">
+    Handle errors gracefully
+  </Card>
+</Cards>

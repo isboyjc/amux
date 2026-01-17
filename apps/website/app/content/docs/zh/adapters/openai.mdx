@@ -40,6 +40,10 @@ yarn add @amux/llm-bridge @amux/adapter-openai
 **建议**：生产环境需要稳定性时使用 `openaiAdapter`。需要最新功能（如内置网络搜索、推理模型 o3/o4-mini 或状态化多轮对话）时使用 `openaiResponsesAdapter`。
 </Callout>
 
+<Callout type="warn">
+**重要**：标准的 `openaiAdapter` 不支持推理模型（o3、o4-mini）。推理能力仅通过 `openaiResponsesAdapter` 提供。
+</Callout>
+
 ## 基本使用
 
 ### 使用 Chat Completions API (openaiAdapter)
@@ -690,10 +694,10 @@ const bridge = createBridge({
 ## 下一步
 
 <Cards>
-  <Card title="Anthropic 适配器" href="/docs/zh/adapters/anthropic">
+  <Card title="Anthropic 适配器" href="/zh/docs/adapters/anthropic">
     了解如何使用 Claude 模型
   </Card>
-  <Card title="适配器 API" href="/docs/zh/api/adapters">
+  <Card title="适配器 API" href="/zh/docs/api/adapters">
     查看完整的适配器 API 参考
   </Card>
 </Cards>

@@ -48,28 +48,18 @@ export async function handleProviderPassthrough(
   
   try {
     const body = request.body as any
-    
-    // 1. Validate API key
+
+    // 1. Detect internal requests (from Chat IPC - localhost + no auth header)
     const apiKey = extractApiKey(request)
-    const keyValidation = validateApiKey(apiKey)
-    
-    if (!keyValidation.valid) {
-      const error = createErrorResponse(
-        keyValidation.error?.includes('required') ? ProxyErrorCode.MISSING_API_KEY : ProxyErrorCode.INVALID_API_KEY,
-        keyValidation.error || 'Invalid API key',
-        401,
-        errorFormat
-      )
-      return reply.status(error.statusCode).send(error.body)
-    }
-    
+    const isInternalRequest = requestSource === 'local' && !apiKey
+
     // 2. Determine which API key to use
     let targetApiKey: string
-    if (keyValidation.usePassThrough) {
-      // User provided their own key (pass-through mode)
-      targetApiKey = apiKey!
-    } else {
-      // Use provider's configured key (decrypt it first!)
+
+    if (isInternalRequest) {
+      // Internal request from Chat - always use provider's configured key
+      console.log(`[Passthrough] Internal request detected, using provider key`)
+
       if (!provider.api_key) {
         const error = createErrorResponse(
           ProxyErrorCode.MISSING_API_KEY,
@@ -79,8 +69,7 @@ export async function handleProviderPassthrough(
         )
         return reply.status(error.statusCode).send(error.body)
       }
-      
-      // ⭐ Decrypt the provider's API key (stored encrypted in database)
+
       const decryptedKey = decryptApiKey(provider.api_key)
       if (!decryptedKey) {
         const error = createErrorResponse(
@@ -92,6 +81,47 @@ export async function handleProviderPassthrough(
         return reply.status(error.statusCode).send(error.body)
       }
       targetApiKey = decryptedKey
+    } else {
+      // External request - validate API key based on auth settings
+      const keyValidation = validateApiKey(apiKey)
+
+      if (!keyValidation.valid) {
+        const error = createErrorResponse(
+          keyValidation.error?.includes('required') ? ProxyErrorCode.MISSING_API_KEY : ProxyErrorCode.INVALID_API_KEY,
+          keyValidation.error || 'Invalid API key',
+          401,
+          errorFormat
+        )
+        return reply.status(error.statusCode).send(error.body)
+      }
+
+      if (keyValidation.usePassThrough) {
+        // User provided their own key (pass-through mode)
+        targetApiKey = apiKey!
+      } else {
+        // Use provider's configured key
+        if (!provider.api_key) {
+          const error = createErrorResponse(
+            ProxyErrorCode.MISSING_API_KEY,
+            `Provider "${provider.name}" has no API key configured. Please configure the API key in Provider settings.`,
+            500,
+            errorFormat
+          )
+          return reply.status(error.statusCode).send(error.body)
+        }
+
+        const decryptedKey = decryptApiKey(provider.api_key)
+        if (!decryptedKey) {
+          const error = createErrorResponse(
+            ProxyErrorCode.INTERNAL_ERROR,
+            `Failed to decrypt API key for provider "${provider.name}".`,
+            500,
+            errorFormat
+          )
+          return reply.status(error.statusCode).send(error.body)
+        }
+        targetApiKey = decryptedKey
+      }
     }
     
     // 3. Get Adapter (Inbound = Outbound)
@@ -145,7 +175,7 @@ export async function handleProviderPassthrough(
           // Bridge returns SSE events in format: { event: "...", data: {...} }
           // Extract the actual data for passthrough
           const sseEvent = event as { event?: string; data?: unknown; type?: string }
-          
+
           // Collect chunks for logging
           streamChunks.push(sseEvent.data || sseEvent)
           

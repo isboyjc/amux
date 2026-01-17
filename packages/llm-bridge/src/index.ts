@@ -12,3 +12,6 @@ export * from './bridge'
 
 // Errors
 export * from './errors'
+
+// Utils
+export * from './utils'

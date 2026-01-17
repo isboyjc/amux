@@ -1,0 +1,177 @@
+---
+title: Basic Usage
+description: Learn the fundamentals of creating and using bridges
+---
+
+## Creating a Bridge
+
+A bridge connects two adapters: an **inbound** adapter (your format) and an **outbound** adapter (provider to call).
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,      // Your request format
+  outbound: anthropicAdapter,  // Provider to call
+  config: {
+    apiKey: process.env.ANTHROPIC_API_KEY
+  }
+})
+```
+
+<Callout type="info">
+The inbound adapter determines your **request/response format**. The outbound adapter determines which **provider API** is called.
+</Callout>
+
+## Making Requests
+
+Use the `chat()` method to send requests:
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [
+    { role: 'user', content: 'Hello!' }
+  ]
+})
+
+console.log(response.choices[0].message.content)
+```
+
+## Bidirectional Examples
+
+### OpenAI Format → Claude API
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+})
+
+// Send OpenAI format request
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hi!' }]
+})
+// Returns OpenAI format response
+```
+
+### Claude Format → OpenAI API
+
+```typescript
+const bridge = createBridge({
+  inbound: anthropicAdapter,
+  outbound: openaiAdapter,
+  config: { apiKey: process.env.OPENAI_API_KEY }
+})
+
+// Send Anthropic format request
+const response = await bridge.chat({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: 'Hi!' }]
+})
+// Returns Anthropic format response
+```
+
+## Configuration Options
+
+The `config` object supports common settings:
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: 'sk-...',              // Required: API key
+    baseURL: 'https://...',        // Optional: Custom base URL
+    timeout: 60000,                // Optional: Request timeout (ms)
+    headers: {                     // Optional: Custom headers
+      'X-Custom-Header': 'value'
+    }
+  }
+})
+```
+
+## Working with Messages
+
+All adapters support the standard message format:
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [
+    { role: 'system', content: 'You are a helpful assistant.' },
+    { role: 'user', content: 'What is TypeScript?' },
+    { role: 'assistant', content: 'TypeScript is...' },
+    { role: 'user', content: 'Tell me more' }
+  ]
+})
+```
+
+**Message roles:**
+- `system` - System instructions (not all providers support this)
+- `user` - User messages
+- `assistant` - Assistant responses
+
+<Callout type="warn">
+Some providers (like Anthropic) handle system messages differently. Amux automatically converts them to the correct format.
+</Callout>
+
+## Generation Parameters
+
+Control response generation with common parameters:
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [...],
+  temperature: 0.7,        // Randomness (0-2)
+  max_tokens: 1000,        // Maximum tokens to generate
+  top_p: 0.9,             // Nucleus sampling
+  stop: ['\n\n'],         // Stop sequences
+  presence_penalty: 0.0,  // Penalize new topics
+  frequency_penalty: 0.0  // Penalize repetition
+})
+```
+
+## Using the Same Provider
+
+You can use the same adapter for both inbound and outbound:
+
+```typescript
+// Use Claude API with Anthropic format
+const bridge = createBridge({
+  inbound: anthropicAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+})
+
+// Use OpenAI API with OpenAI format
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: openaiAdapter,
+  config: { apiKey: process.env.OPENAI_API_KEY }
+})
+```
+
+<Callout type="info">
+Using Amux with the same adapter provides benefits like unified error handling, model mapping, and consistent logging.
+</Callout>
+
+## Next Steps
+
+<Cards>
+  <Card title="Streaming" href="/en/docs/guides/streaming">
+    Handle streaming responses
+  </Card>
+  <Card title="Tool Calling" href="/en/docs/guides/tool-calling">
+    Use function calling
+  </Card>
+  <Card title="Error Handling" href="/en/docs/guides/error-handling">
+    Handle errors gracefully
+  </Card>
+</Cards>

@@ -1,0 +1,299 @@
+---
+title: FAQ
+description: Frequently asked questions about Amux
+---
+
+## General Questions
+
+### What is Amux?
+
+Amux is a bidirectional LLM API adapter that converts between different LLM provider formats. It allows you to accept requests in any format, call any provider API, and return responses in any format.
+
+### How is Amux different from other LLM libraries?
+
+Most LLM libraries provide a **unified interface** (one format for all providers). Amux provides **bidirectional conversion** - you can use any format as input and any provider as output:
+
+```typescript
+// Other libraries: One format → Any provider
+// Amux: Any format → Any provider → Any format
+
+// Accept OpenAI format, call Claude, return OpenAI format
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter
+})
+
+// Accept Claude format, call OpenAI, return Claude format
+const bridge = createBridge({
+  inbound: anthropicAdapter,
+  outbound: openaiAdapter
+})
+```
+
+### Is Amux production-ready?
+
+Yes! Amux is designed for production use with:
+- Zero runtime dependencies
+- Comprehensive error handling
+- Full TypeScript support
+- Extensive test coverage
+- Used in production by multiple teams
+
+### What's the performance overhead?
+
+Minimal. Amux adds ~1-5ms of overhead for format conversion. The actual API call time (100ms-10s) dominates. For most applications, this overhead is negligible.
+
+## Compatibility
+
+### Which providers are supported?
+
+Amux officially supports 7 providers:
+
+- **OpenAI** - GPT-4, GPT-3.5 Turbo, etc.
+- **Anthropic** - Claude 3.5 Sonnet, Claude 3 Opus, etc.
+- **DeepSeek** - DeepSeek Chat, DeepSeek Coder, DeepSeek Reasoner
+- **Moonshot** - Kimi series (200K context)
+- **Zhipu** - GLM-4 series
+- **Qwen** - Qwen series (with reasoning and multimodal support)
+- **Gemini** - Google Gemini Pro, Gemini Pro Vision
+
+### Can I use OpenAI-compatible providers?
+
+Yes! Many providers (like DeepSeek, Moonshot, Zhipu, Qwen) are OpenAI-compatible. You can often use the OpenAI adapter with minor adjustments:
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: deepseekAdapter,  // OpenAI-compatible
+  config: {
+    apiKey: process.env.DEEPSEEK_API_KEY
+  }
+})
+```
+
+### Does Amux support streaming?
+
+Yes! All adapters support streaming:
+
+```typescript
+const stream = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hello' }],
+  stream: true
+})
+
+for await (const event of stream) {
+  if (event.type === 'content') {
+    process.stdout.write(event.content.delta)
+  }
+}
+```
+
+### Does Amux support function calling?
+
+Yes! Tool/function calling is supported across all compatible providers:
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'What is the weather?' }],
+  tools: [{
+    type: 'function',
+    function: {
+      name: 'get_weather',
+      parameters: { type: 'object', properties: { location: { type: 'string' } } }
+    }
+  }]
+})
+```
+
+## Usage
+
+### Do I need to use both inbound and outbound adapters?
+
+Yes. The inbound adapter defines your request/response format, and the outbound adapter defines which provider to call:
+
+- **Inbound** = Your format
+- **Outbound** = Provider API to call
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,      // I want to use OpenAI format
+  outbound: anthropicAdapter   // But call Claude API
+})
+```
+
+### Can I use the same adapter for both inbound and outbound?
+
+Yes! This is useful if you just want Amux's error handling, logging, or model mapping:
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: openaiAdapter,  // Same adapter
+  config: { apiKey: process.env.OPENAI_API_KEY }
+})
+```
+
+### How do I handle errors?
+
+Use try/catch with `LLMBridgeError`:
+
+```typescript
+import { LLMBridgeError } from '@amux/llm-bridge'
+
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof LLMBridgeError) {
+    console.error(`${error.type}: ${error.message}`)
+
+    if (error.retryable) {
+      // Retry logic
+    }
+  }
+}
+```
+
+See the [Error Handling Guide](/docs/en/guides/error-handling) for details.
+
+### How do I map model names between providers?
+
+Use model mapping to automatically translate model names:
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapping: {
+    'gpt-4': 'claude-3-5-sonnet-20241022',
+    'gpt-3.5-turbo': 'claude-3-haiku-20240307'
+  }
+})
+
+// Request with 'gpt-4' will call Claude Sonnet
+```
+
+See the [Model Mapping Guide](/docs/en/guides/model-mapping) for details.
+
+## Development
+
+### How do I add a custom adapter?
+
+Create an adapter that implements the `LLMAdapter` interface:
+
+```typescript
+import type { LLMAdapter } from '@amux/llm-bridge'
+
+export const myAdapter: LLMAdapter = {
+  name: 'my-provider',
+  version: '1.0.0',
+  capabilities: {
+    streaming: true,
+    tools: true,
+    // ...
+  },
+  inbound: {
+    parseRequest: (request) => { /* Convert to IR */ },
+    parseResponse: (response) => { /* Convert to IR */ }
+  },
+  outbound: {
+    buildRequest: (ir) => { /* Convert from IR */ },
+    buildResponse: (ir) => { /* Convert from IR */ }
+  },
+  getInfo() { /* Return adapter metadata */ }
+}
+```
+
+See the [Custom Adapter Guide](/docs/en/adapters/custom-adapter) for a complete tutorial.
+
+### Can I contribute to Amux?
+
+Yes! We welcome contributions:
+
+- Report bugs via [GitHub Issues](https://github.com/isboyjc/amux/issues)
+- Submit PRs for bug fixes or new features
+- Add adapters for new providers
+- Improve documentation
+
+See [CONTRIBUTING.md](https://github.com/isboyjc/amux/blob/main/CONTRIBUTING.md) for guidelines.
+
+### Where can I get help?
+
+- **Documentation**: [https://amux.dev/docs](https://amux.dev/docs)
+- **GitHub Issues**: [https://github.com/isboyjc/amux/issues](https://github.com/isboyjc/amux/issues)
+- **GitHub Discussions**: [https://github.com/isboyjc/amux/discussions](https://github.com/isboyjc/amux/discussions)
+
+## Troubleshooting
+
+### I'm getting authentication errors
+
+Check that your API key is correct and has the right permissions:
+
+```typescript
+// Verify your API key is loaded
+console.log('API Key:', process.env.ANTHROPIC_API_KEY ? 'Set' : 'Not set')
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: process.env.ANTHROPIC_API_KEY
+  }
+})
+```
+
+### Streaming isn't working
+
+Make sure you:
+1. Set `stream: true` in your request
+2. Use `for await...of` to iterate
+3. Check that the adapter supports streaming
+
+```typescript
+const stream = await bridge.chat({
+  model: 'gpt-4',
+  messages: [...],
+  stream: true  // Must be true
+})
+
+for await (const event of stream) {  // Must use for await
+  // Handle events
+}
+```
+
+### Rate limit errors
+
+Implement exponential backoff retry:
+
+```typescript
+async function chatWithRetry(bridge, request, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await bridge.chat(request)
+    } catch (error) {
+      if (error.type === 'rate_limit' && i < maxRetries - 1) {
+        const delay = Math.min(1000 * Math.pow(2, i), 10000)
+        await new Promise(resolve => setTimeout(resolve, delay))
+        continue
+      }
+      throw error
+    }
+  }
+}
+```
+
+## Next Steps
+
+<Cards>
+  <Card title="Quick Start" href="/en/docs/quick-start">
+    Build your first bridge
+  </Card>
+  <Card title="Usage Guides" href="/en/docs/guides">
+    Learn common patterns
+  </Card>
+  <Card title="Best Practices" href="/en/docs/best-practices">
+    Production-ready tips
+  </Card>
+</Cards>

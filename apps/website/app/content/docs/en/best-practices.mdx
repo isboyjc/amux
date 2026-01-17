@@ -1,0 +1,376 @@
+---
+title: Best Practices
+description: Production-ready patterns and recommendations for using Amux
+---
+
+## API Key Management
+
+<Callout type="warn">
+Never hardcode API keys in your source code. Always use environment variables or secret management services.
+</Callout>
+
+### Use Environment Variables
+
+```typescript
+// ✅ Good
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: process.env.ANTHROPIC_API_KEY
+  }
+})
+
+// ❌ Bad
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: 'sk-ant-1234567890'  // Never do this!
+  }
+})
+```
+
+### Secret Management in Production
+
+For production deployments, use dedicated secret management:
+
+- **AWS**: AWS Secrets Manager, Parameter Store
+- **Google Cloud**: Secret Manager
+- **Azure**: Key Vault
+- **Kubernetes**: Kubernetes Secrets
+- **Vercel/Netlify**: Environment Variables in dashboard
+
+```typescript
+// Example with AWS Secrets Manager
+import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager'
+
+const client = new SecretsManagerClient({ region: 'us-east-1' })
+const response = await client.send(
+  new GetSecretValueCommand({ SecretId: 'amux/anthropic-key' })
+)
+const apiKey = response.SecretString
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey }
+})
+```
+
+## Error Handling
+
+### Always Handle Errors
+
+```typescript
+import { LLMBridgeError } from '@amux/llm-bridge'
+
+try {
+  const response = await bridge.chat({
+    model: 'gpt-4',
+    messages: [{ role: 'user', content: 'Hello' }]
+  })
+} catch (error) {
+  if (error instanceof LLMBridgeError) {
+    // Handle known bridge errors
+    console.error(`${error.type}: ${error.message}`)
+
+    if (error.retryable) {
+      // Implement retry logic
+    }
+  } else {
+    // Handle unexpected errors
+    console.error('Unexpected error:', error)
+  }
+}
+```
+
+### Implement Retry Logic
+
+```typescript
+async function chatWithRetry(bridge, request, maxRetries = 3) {
+  let lastError
+
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await bridge.chat(request)
+    } catch (error) {
+      lastError = error
+
+      if (error instanceof LLMBridgeError && error.retryable) {
+        // Exponential backoff
+        const delay = Math.min(1000 * Math.pow(2, i), 10000)
+        await new Promise(resolve => setTimeout(resolve, delay))
+        continue
+      }
+
+      // Non-retryable error, throw immediately
+      throw error
+    }
+  }
+
+  throw lastError
+}
+```
+
+## Performance Optimization
+
+### Reuse Bridge Instances
+
+Create bridge instances once and reuse them:
+
+```typescript
+// ✅ Good - Create once
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+})
+
+// Reuse for multiple requests
+app.post('/chat', async (req, res) => {
+  const response = await bridge.chat(req.body)
+  res.json(response)
+})
+
+// ❌ Bad - Creating on every request
+app.post('/chat', async (req, res) => {
+  const bridge = createBridge({...})  // Don't do this!
+  const response = await bridge.chat(req.body)
+  res.json(response)
+})
+```
+
+### Use Streaming for Long Responses
+
+Streaming reduces perceived latency:
+
+```typescript
+// For long-form content, always use streaming
+const stream = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Write a long essay' }],
+  stream: true  // Much better UX
+})
+```
+
+### Set Appropriate Timeouts
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    timeout: 30000  // 30 seconds (adjust based on use case)
+  }
+})
+```
+
+## Request Validation
+
+### Validate Input Before Sending
+
+```typescript
+function validateChatRequest(request) {
+  if (!request.messages || request.messages.length === 0) {
+    throw new Error('Messages array is required and cannot be empty')
+  }
+
+  if (!request.model) {
+    throw new Error('Model is required')
+  }
+
+  // Validate message format
+  for (const msg of request.messages) {
+    if (!msg.role || !['system', 'user', 'assistant'].includes(msg.role)) {
+      throw new Error(`Invalid message role: ${msg.role}`)
+    }
+    if (!msg.content) {
+      throw new Error('Message content is required')
+    }
+  }
+}
+
+// Usage
+try {
+  validateChatRequest(request)
+  const response = await bridge.chat(request)
+} catch (error) {
+  // Handle validation error
+}
+```
+
+## Logging and Monitoring
+
+### Log Important Events
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+})
+
+async function chat(request) {
+  const startTime = Date.now()
+
+  try {
+    console.log('Chat request:', {
+      model: request.model,
+      messageCount: request.messages.length,
+      stream: request.stream
+    })
+
+    const response = await bridge.chat(request)
+
+    const duration = Date.now() - startTime
+    console.log('Chat success:', {
+      duration,
+      tokens: response.usage?.totalTokens
+    })
+
+    return response
+  } catch (error) {
+    const duration = Date.now() - startTime
+    console.error('Chat failed:', {
+      duration,
+      error: error.message,
+      type: error.type
+    })
+    throw error
+  }
+}
+```
+
+### Monitor Usage and Costs
+
+Track token usage to monitor costs:
+
+```typescript
+let totalTokens = 0
+let totalRequests = 0
+
+async function chatWithTracking(bridge, request) {
+  totalRequests++
+
+  const response = await bridge.chat(request)
+
+  if (response.usage) {
+    totalTokens += response.usage.totalTokens
+    console.log(`Total tokens used: ${totalTokens} across ${totalRequests} requests`)
+  }
+
+  return response
+}
+```
+
+## Security
+
+### Sanitize User Input
+
+```typescript
+function sanitizeMessage(content: string): string {
+  // Remove potential injection attempts
+  return content
+    .replace(/<script>/gi, '')
+    .replace(/javascript:/gi, '')
+    .trim()
+}
+
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{
+    role: 'user',
+    content: sanitizeMessage(userInput)
+  }]
+})
+```
+
+### Rate Limiting
+
+Implement rate limiting to prevent abuse:
+
+```typescript
+import rateLimit from 'express-rate-limit'
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,  // 15 minutes
+  max: 100,  // Limit each IP to 100 requests per window
+  message: 'Too many requests, please try again later'
+})
+
+app.use('/api/chat', limiter)
+```
+
+## Testing
+
+### Mock Adapters for Testing
+
+```typescript
+// Create a mock adapter for testing
+const mockAdapter = {
+  name: 'mock',
+  version: '1.0.0',
+  capabilities: {
+    streaming: true,
+    tools: true,
+    vision: false
+  },
+  inbound: {
+    parseRequest: (req) => req,
+    parseResponse: (res) => res
+  },
+  outbound: {
+    buildRequest: (ir) => ir,
+    buildResponse: (ir) => ({
+      choices: [{
+        message: { role: 'assistant', content: 'Mock response' }
+      }]
+    })
+  },
+  getInfo: () => ({
+    name: 'mock',
+    version: '1.0.0',
+    capabilities: mockAdapter.capabilities,
+    endpoint: { baseURL: 'http://mock', chatPath: '/chat' }
+  })
+}
+
+// Use in tests
+const bridge = createBridge({
+  inbound: mockAdapter,
+  outbound: mockAdapter
+})
+```
+
+## Production Checklist
+
+Before deploying to production:
+
+- [ ] API keys stored securely (not in code)
+- [ ] Error handling implemented for all chat calls
+- [ ] Retry logic for transient failures
+- [ ] Request validation in place
+- [ ] Logging and monitoring configured
+- [ ] Rate limiting enabled
+- [ ] Timeout values set appropriately
+- [ ] User input sanitization
+- [ ] Token usage tracking
+- [ ] Tests cover critical paths
+
+## Next Steps
+
+<Cards>
+  <Card title="Error Handling Guide" href="/en/docs/guides/error-handling">
+    Deep dive into error handling
+  </Card>
+  <Card title="FAQ" href="/en/docs/faq">
+    Common questions and answers
+  </Card>
+  <Card title="Core Concepts" href="/en/docs/core-concepts">
+    Understand the architecture
+  </Card>
+</Cards>

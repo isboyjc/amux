@@ -40,6 +40,10 @@ yarn add @amux/llm-bridge @amux/adapter-openai
 **Recommendation**: Use `openaiAdapter` for production applications requiring stability. Use `openaiResponsesAdapter` when you need the latest features like built-in web search, reasoning models (o3, o4-mini), or stateful multi-turn conversations.
 </Callout>
 
+<Callout type="warn">
+**Important**: The standard `openaiAdapter` does NOT support reasoning models (o3, o4-mini). Reasoning capabilities are ONLY available through `openaiResponsesAdapter`.
+</Callout>
+
 ## Basic Usage
 
 ### Using Chat Completions API (openaiAdapter)
@@ -690,10 +694,10 @@ const bridge = createBridge({
 ## Next Steps
 
 <Cards>
-  <Card title="Anthropic Adapter" href="/docs/en/adapters/anthropic">
+  <Card title="Anthropic Adapter" href="/en/docs/adapters/anthropic">
     Learn how to use Claude models
   </Card>
-  <Card title="Adapter API" href="/docs/en/api/adapters">
+  <Card title="Adapter API" href="/en/docs/api/adapters">
     View the complete Adapter API reference
   </Card>
 </Cards>

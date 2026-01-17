@@ -1,0 +1,448 @@
+---
+title: 多模态
+description: 跨不同 LLM 提供商处理图像、音频和视频
+---
+
+## 什么是多模态？
+
+多模态功能允许 LLM 模型处理和理解文本以外的不同类型的内容，包括：
+
+- 图像（照片、图表、截图）
+- 音频（语音、音乐）
+- 视频（片段、录音）
+- 文档（PDF、电子表格）
+
+<Callout type="info">
+Amux 统一了跨提供商的多模态内容格式，允许你使用相同的代码调用不同的视觉和多模态模型。
+</Callout>
+
+## 使用图像
+
+### 来自 URL 的图像
+
+在消息内容中直接传递图像 URL：
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+})
+
+const response = await bridge.chat({
+  model: 'gpt-4o',
+  messages: [
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: '这张图片里有什么？'
+        },
+        {
+          type: 'image_url',
+          image_url: {
+            url: 'https://example.com/image.jpg'
+          }
+        }
+      ]
+    }
+  ]
+})
+
+console.log(response.choices[0].message.content)
+```
+
+<Callout type="warn">
+URL 必须是公开可访问的。对于私有图像，请改用 base64 编码。
+</Callout>
+
+### 来自 Base64 的图像
+
+对于本地图像或私有文件，编码为 base64：
+
+```typescript
+import fs from 'fs'
+
+// 读取并编码图像
+const imageBuffer = fs.readFileSync('./image.jpg')
+const base64Image = imageBuffer.toString('base64')
+
+const response = await bridge.chat({
+  model: 'gpt-4o',
+  messages: [
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: '详细描述这张图片'
+        },
+        {
+          type: 'image_url',
+          image_url: {
+            url: `data:image/jpeg;base64,${base64Image}`
+          }
+        }
+      ]
+    }
+  ]
+})
+```
+
+### 多张图像
+
+在单个请求中发送多张图像：
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4o',
+  messages: [
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: '比较这两张图片' },
+        {
+          type: 'image_url',
+          image_url: { url: 'https://example.com/image1.jpg' }
+        },
+        {
+          type: 'image_url',
+          image_url: { url: 'https://example.com/image2.jpg' }
+        }
+      ]
+    }
+  ]
+})
+```
+
+## 视觉用例
+
+### 图像分析
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4o',
+  messages: [
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: '这张图片中有哪些物体？' },
+        { type: 'image_url', image_url: { url: imageUrl } }
+      ]
+    }
+  ]
+})
+```
+
+### OCR（文本提取）
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4o',
+  messages: [
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: '提取这张图片中的所有文本' },
+        { type: 'image_url', image_url: { url: screenshotUrl } }
+      ]
+    }
+  ]
+})
+```
+
+### 视觉问答
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4o',
+  messages: [
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: '这张照片中有多少人？' },
+        { type: 'image_url', image_url: { url: photoUrl } }
+      ]
+    }
+  ]
+})
+```
+
+### 从截图生成代码
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4o',
+  messages: [
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: '将这个 UI 截图转换为 React 代码' },
+        { type: 'image_url', image_url: { url: uiScreenshotUrl } }
+      ]
+    }
+  ]
+})
+```
+
+## 音频和视频（Qwen、Gemini）
+
+某些提供商支持音频和视频输入：
+
+### 音频输入（Qwen）
+
+```typescript
+import { qwenAdapter } from '@amux/adapter-qwen'
+
+const bridge = createBridge({
+  inbound: qwenAdapter,
+  outbound: qwenAdapter,
+  config: { apiKey: process.env.QWEN_API_KEY }
+})
+
+const response = await bridge.chat({
+  model: 'qwen-audio-turbo',
+  messages: [
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: '转录这段音频' },
+        {
+          type: 'audio_url',
+          audio_url: { url: 'https://example.com/audio.mp3' }
+        }
+      ]
+    }
+  ]
+})
+```
+
+### 视频输入（Gemini、Qwen）
+
+```typescript
+import { geminiAdapter } from '@amux/adapter-gemini'
+
+const bridge = createBridge({
+  inbound: geminiAdapter,
+  outbound: geminiAdapter,
+  config: { apiKey: process.env.GEMINI_API_KEY }
+})
+
+const response = await bridge.chat({
+  model: 'gemini-1.5-pro',
+  messages: [
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: '总结这个视频中发生了什么' },
+        {
+          type: 'video_url',
+          video_url: { url: 'https://example.com/video.mp4' }
+        }
+      ]
+    }
+  ]
+})
+```
+
+## 多模态流式响应
+
+视觉和多模态请求支持流式传输：
+
+```typescript
+const stream = await bridge.chat({
+  model: 'gpt-4o',
+  messages: [
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: '详细描述这张图片' },
+        { type: 'image_url', image_url: { url: imageUrl } }
+      ]
+    }
+  ],
+  stream: true
+})
+
+for await (const event of stream) {
+  if (event.type === 'content') {
+    process.stdout.write(event.content.delta)
+  }
+}
+```
+
+## 提供商兼容性
+
+各提供商的多模态支持：
+
+| 提供商 | 视觉（图像） | 音频 | 视频 | 文档 |
+|----------|----------------|-------|-------|-----------|
+| OpenAI | ✅ GPT-4o, GPT-4 Turbo | ❌ | ❌ | ❌ |
+| Anthropic | ✅ Claude 3.5, Claude 3 | ❌ | ❌ | ✅ |
+| DeepSeek | ❌ | ❌ | ❌ | ❌ |
+| Moonshot | ❌ | ❌ | ❌ | ❌ |
+| Zhipu | ✅ GLM-4V | ❌ | ❌ | ❌ |
+| Qwen | ✅ Qwen-VL | ✅ Qwen-Audio | ✅ Qwen2-VL | ❌ |
+| Gemini | ✅ Gemini 1.5 | ✅ | ✅ | ✅ |
+
+<Callout type="warn">
+并非提供商的所有模型都支持多模态。使用前请检查特定模型的功能。
+</Callout>
+
+## 支持视觉的模型
+
+### OpenAI
+- `gpt-4o` - 最新的多模态模型
+- `gpt-4o-mini` - 更小、更快的视觉模型
+- `gpt-4-turbo` - 上一代视觉模型
+- `gpt-4-vision-preview` - 早期预览版
+
+### Anthropic
+- `claude-3-5-sonnet-20241022` - 最佳视觉能力
+- `claude-3-opus-20240229` - 高精度视觉
+- `claude-3-sonnet-20240229` - 平衡视觉
+- `claude-3-haiku-20240307` - 快速视觉
+
+### Zhipu
+- `glm-4v` - 视觉模型
+
+### Qwen
+- `qwen-vl-plus` - 视觉理解
+- `qwen-vl-max` - 高级视觉
+- `qwen2-vl-7b` - 开源视觉
+- `qwen-audio-turbo` - 音频理解
+
+### Gemini
+- `gemini-1.5-pro` - 多模态（视觉、音频、视频）
+- `gemini-1.5-flash` - 快速多模态
+
+## 最佳实践
+
+### 1. 图像大小和格式
+
+发送前优化图像：
+
+```typescript
+// 支持的格式：JPEG、PNG、WebP、GIF
+// 推荐：照片使用 JPEG，截图使用 PNG
+
+// 保持文件大小合理（< 20MB）
+const maxSize = 20 * 1024 * 1024  // 20MB
+```
+
+### 2. 图像质量与成本
+
+更高的分辨率消耗更多 token：
+
+```typescript
+// 对于基本分析，调整大图像的大小
+import sharp from 'sharp'
+
+const resized = await sharp(imageBuffer)
+  .resize(1024, 1024, { fit: 'inside' })
+  .toBuffer()
+```
+
+### 3. 清晰的指令
+
+具体说明你想从图像中获得什么：
+
+```typescript
+// ❌ 模糊
+{ type: 'text', text: '这是什么？' }
+
+// ✅ 具体
+{ type: 'text', text: '列出此截图中可见的所有文本，保持原始布局' }
+```
+
+### 4. 错误处理
+
+处理图像加载错误：
+
+```typescript
+try {
+  const response = await bridge.chat({
+    model: 'gpt-4o',
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: '描述这张图片' },
+          { type: 'image_url', image_url: { url: imageUrl } }
+        ]
+      }
+    ]
+  })
+} catch (error) {
+  if (error.message.includes('image')) {
+    console.error('处理图像失败:', error)
+    // 回退或重试逻辑
+  }
+}
+```
+
+### 5. 多轮视觉对话
+
+继续关于图像的对话：
+
+```typescript
+const messages = [
+  {
+    role: 'user',
+    content: [
+      { type: 'text', text: '这张图片里有什么？' },
+      { type: 'image_url', image_url: { url: imageUrl } }
+    ]
+  }
+]
+
+const response1 = await bridge.chat({ model: 'gpt-4o', messages })
+messages.push(response1.choices[0].message)
+
+// 提出后续问题
+messages.push({
+  role: 'user',
+  content: '图片中的汽车是什么颜色？'
+})
+
+const response2 = await bridge.chat({ model: 'gpt-4o', messages })
+```
+
+## 限制
+
+### Token 成本
+
+图像消耗大量 token：
+- 小图像（512x512）：约 85 token
+- 中等图像（1024x1024）：约 255 token
+- 大图像（2048x2048）：约 765 token
+
+### 速率限制
+
+视觉请求的速率限制可能低于纯文本请求。请查看提供商文档。
+
+### 内容政策
+
+所有提供商都有内容安全政策。避免发送：
+- 不适当或露骨的内容
+- 个人/敏感信息
+- 未经许可的受版权保护的材料
+
+## 下一步
+
+<Cards>
+  <Card title="工具调用" href="/zh/docs/guides/tool-calling">
+    将视觉与函数调用结合
+  </Card>
+  <Card title="流式响应" href="/zh/docs/guides/streaming">
+    流式传输多模态响应
+  </Card>
+  <Card title="错误处理" href="/zh/docs/guides/error-handling">
+    优雅地处理错误
+  </Card>
+</Cards>

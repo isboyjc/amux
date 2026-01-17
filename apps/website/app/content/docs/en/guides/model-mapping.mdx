@@ -1,0 +1,441 @@
+---
+title: Model Mapping
+description: Map model names across different LLM providers
+---
+
+## What is Model Mapping?
+
+Model mapping allows you to translate model names between providers. This is useful when:
+
+- Switching providers without changing your application code
+- Using different models for different environments (dev/prod)
+- Implementing fallback strategies across providers
+- Creating provider-agnostic abstractions
+
+<Callout type="info">
+Amux provides three ways to map models: `targetModel` (fixed), `modelMapper` (function), and `modelMapping` (object).
+</Callout>
+
+## Fixed Target Model
+
+Use `targetModel` to always call a specific model, ignoring the inbound model:
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  targetModel: 'claude-3-5-sonnet-20241022'  // Always use this model
+})
+
+// Request GPT-4, but calls Claude 3.5 Sonnet instead
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hello!' }]
+})
+```
+
+**Priority:** Highest - Ignores all other mapping configurations.
+
+**Use case:** Force a specific model for testing or production.
+
+## Model Mapper Function
+
+Use `modelMapper` for dynamic, programmatic mapping:
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapper: (inboundModel) => {
+    // Map OpenAI models to Claude equivalents
+    if (inboundModel.startsWith('gpt-4')) {
+      return 'claude-3-5-sonnet-20241022'
+    }
+    if (inboundModel.startsWith('gpt-3.5')) {
+      return 'claude-3-haiku-20240307'
+    }
+    // Default fallback
+    return 'claude-3-5-sonnet-20241022'
+  }
+})
+
+// Automatically maps to appropriate Claude model
+const response = await bridge.chat({
+  model: 'gpt-4-turbo',
+  messages: [{ role: 'user', content: 'Hello!' }]
+})
+```
+
+**Priority:** Second - Used if `targetModel` is not set.
+
+**Use case:** Complex mapping logic, conditional routing, dynamic selection.
+
+## Model Mapping Object
+
+Use `modelMapping` for simple, declarative mappings:
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapping: {
+    'gpt-4': 'claude-3-5-sonnet-20241022',
+    'gpt-4-turbo': 'claude-3-5-sonnet-20241022',
+    'gpt-3.5-turbo': 'claude-3-haiku-20240307'
+  }
+})
+
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hello!' }]
+})
+// Uses claude-3-5-sonnet-20241022
+```
+
+**Priority:** Third - Used if `targetModel` and `modelMapper` are not set.
+
+**Use case:** Simple 1-to-1 model mappings, easy to read and maintain.
+
+## Mapping Priority
+
+Amux applies model mapping in this order:
+
+1. **targetModel** - Fixed model (highest priority)
+2. **modelMapper** - Function-based mapping
+3. **modelMapping** - Object-based mapping
+4. **Original model** - No mapping applied (fallback)
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  targetModel: 'claude-3-opus-20240229',  // 1. Highest priority
+  modelMapper: (model) => 'claude-3-5-sonnet-20241022',  // 2. Ignored
+  modelMapping: { 'gpt-4': 'claude-3-haiku-20240307' }  // 3. Ignored
+})
+
+// Always uses claude-3-opus-20240229 (targetModel)
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hello!' }]
+})
+```
+
+## Common Mapping Patterns
+
+### OpenAI to Anthropic
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapping: {
+    'gpt-4': 'claude-3-5-sonnet-20241022',
+    'gpt-4-turbo': 'claude-3-5-sonnet-20241022',
+    'gpt-4o': 'claude-3-5-sonnet-20241022',
+    'gpt-3.5-turbo': 'claude-3-haiku-20240307'
+  }
+})
+```
+
+### OpenAI to DeepSeek
+
+```typescript
+import { deepseekAdapter } from '@amux/adapter-deepseek'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: deepseekAdapter,
+  config: { apiKey: process.env.DEEPSEEK_API_KEY },
+  modelMapping: {
+    'gpt-4': 'deepseek-chat',
+    'gpt-3.5-turbo': 'deepseek-chat',
+    'o1-preview': 'deepseek-reasoner'  // For reasoning tasks
+  }
+})
+```
+
+### Multi-Provider Routing
+
+Use `modelMapper` for intelligent routing:
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapper: (model) => {
+    // Use Opus for complex reasoning
+    if (model.includes('o1') || model.includes('reasoning')) {
+      return 'claude-3-opus-20240229'
+    }
+    // Use Sonnet for balanced tasks
+    if (model.includes('gpt-4')) {
+      return 'claude-3-5-sonnet-20241022'
+    }
+    // Use Haiku for simple/fast tasks
+    return 'claude-3-haiku-20240307'
+  }
+})
+```
+
+### Environment-Based Mapping
+
+Use different models for dev/staging/prod:
+
+```typescript
+const isProduction = process.env.NODE_ENV === 'production'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapper: (model) => {
+    if (isProduction) {
+      // Use best models in production
+      return 'claude-3-5-sonnet-20241022'
+    } else {
+      // Use cheaper models in dev
+      return 'claude-3-haiku-20240307'
+    }
+  }
+})
+```
+
+## Fallback Strategies
+
+### Default Model Fallback
+
+Provide a default when mapping doesn't exist:
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapper: (model) => {
+    const mapping = {
+      'gpt-4': 'claude-3-5-sonnet-20241022',
+      'gpt-3.5-turbo': 'claude-3-haiku-20240307'
+    }
+
+    // Return mapped model or default
+    return mapping[model] || 'claude-3-5-sonnet-20241022'
+  }
+})
+```
+
+### Multi-Provider Fallback
+
+Try multiple providers with fallback:
+
+```typescript
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { deepseekAdapter } from '@amux/adapter-deepseek'
+
+async function chatWithFallback(request) {
+  const providers = [
+    {
+      adapter: anthropicAdapter,
+      apiKey: process.env.ANTHROPIC_API_KEY,
+      modelMapping: {
+        'gpt-4': 'claude-3-5-sonnet-20241022'
+      }
+    },
+    {
+      adapter: deepseekAdapter,
+      apiKey: process.env.DEEPSEEK_API_KEY,
+      modelMapping: {
+        'gpt-4': 'deepseek-chat'
+      }
+    }
+  ]
+
+  for (const provider of providers) {
+    try {
+      const bridge = createBridge({
+        inbound: openaiAdapter,
+        outbound: provider.adapter,
+        config: { apiKey: provider.apiKey },
+        modelMapping: provider.modelMapping
+      })
+
+      return await bridge.chat(request)
+    } catch (error) {
+      console.warn(`Provider ${provider.adapter.name} failed, trying next...`)
+    }
+  }
+
+  throw new Error('All providers failed')
+}
+```
+
+### Cost-Based Routing
+
+Route to cheaper models when appropriate:
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapper: (model) => {
+    // Calculate expected complexity from model name
+    const isComplex = model.includes('o1') || model.includes('4')
+    const tokensExpected = 1000 // From request context
+
+    // Use cheaper model for simple, short tasks
+    if (!isComplex && tokensExpected < 500) {
+      return 'claude-3-haiku-20240307'
+    }
+
+    // Use balanced model for most tasks
+    return 'claude-3-5-sonnet-20241022'
+  }
+})
+```
+
+## Model Capabilities Matching
+
+Ensure target model supports required features:
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapper: (model) => {
+    // All Claude 3+ models support vision
+    return 'claude-3-5-sonnet-20241022'
+  }
+})
+
+// Check compatibility
+const compat = bridge.checkCompatibility()
+if (!compat.compatible) {
+  console.warn('Compatibility issues:', compat.issues)
+}
+```
+
+## Best Practices
+
+### 1. Document Your Mappings
+
+Make mappings clear and maintainable:
+
+```typescript
+// Model mapping strategy:
+// - GPT-4 variants -> Claude 3.5 Sonnet (best quality)
+// - GPT-3.5 variants -> Claude 3 Haiku (fast and cheap)
+const modelMapping = {
+  'gpt-4': 'claude-3-5-sonnet-20241022',
+  'gpt-4-turbo': 'claude-3-5-sonnet-20241022',
+  'gpt-3.5-turbo': 'claude-3-haiku-20240307'
+}
+```
+
+### 2. Test Mapped Models
+
+Verify that mapped models produce acceptable results:
+
+```typescript
+const testCases = [
+  { model: 'gpt-4', expected: 'claude-3-5-sonnet-20241022' },
+  { model: 'gpt-3.5-turbo', expected: 'claude-3-haiku-20240307' }
+]
+
+testCases.forEach(({ model, expected }) => {
+  const bridge = createBridge({
+    inbound: openaiAdapter,
+    outbound: anthropicAdapter,
+    config: { apiKey: process.env.ANTHROPIC_API_KEY },
+    modelMapping: { [model]: expected }
+  })
+
+  // Test with actual requests
+})
+```
+
+### 3. Handle Unknown Models
+
+Provide sensible defaults:
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapper: (model) => {
+    const mapping = {
+      'gpt-4': 'claude-3-5-sonnet-20241022',
+      'gpt-3.5-turbo': 'claude-3-haiku-20240307'
+    }
+
+    if (!mapping[model]) {
+      console.warn(`Unknown model "${model}", using default`)
+    }
+
+    return mapping[model] || 'claude-3-5-sonnet-20241022'
+  }
+})
+```
+
+### 4. Consider Model Versions
+
+Keep track of model versions:
+
+```typescript
+const modelMapping = {
+  // Always map to latest stable versions
+  'gpt-4': 'claude-3-5-sonnet-20241022',
+  'gpt-4-turbo': 'claude-3-5-sonnet-20241022',
+
+  // Explicit version mapping for reproducibility
+  'gpt-4-0613': 'claude-3-opus-20240229',
+  'gpt-3.5-turbo-0125': 'claude-3-haiku-20240307'
+}
+```
+
+### 5. Monitor Performance
+
+Track how mapped models perform:
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapper: (inboundModel) => {
+    const outboundModel = 'claude-3-5-sonnet-20241022'
+
+    // Log mapping for analytics
+    console.log(`Mapping ${inboundModel} -> ${outboundModel}`)
+
+    return outboundModel
+  }
+})
+```
+
+## Next Steps
+
+<Cards>
+  <Card title="Migration" href="/en/docs/guides/migration">
+    Migrate from OpenAI or Anthropic SDKs
+  </Card>
+  <Card title="Error Handling" href="/en/docs/guides/error-handling">
+    Handle provider-specific errors
+  </Card>
+  <Card title="Basic Usage" href="/en/docs/guides/basic-usage">
+    Learn bridge fundamentals
+  </Card>
+</Cards>

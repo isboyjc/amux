@@ -179,6 +179,7 @@ const bridge = createBridge({
 | Ultra-Long Context | ✅ | Up to 2M tokens |
 | Function Calling | ⚠️ | Partial support |
 | System Prompt | ✅ | Fully supported |
+| JSON Mode | ✅ | Structured output |
 
 <Callout type="warn">
 Gemini's function calling format differs from OpenAI and may require additional format conversion.
@@ -326,10 +327,10 @@ const response = await bridge.chat({
 ## Next Steps
 
 <Cards>
-  <Card title="OpenAI Adapter" href="/docs/en/adapters/openai">
+  <Card title="OpenAI Adapter" href="/en/docs/adapters/openai">
     Learn how to use GPT models
   </Card>
-  <Card title="Adapters Overview" href="/docs/en/adapters">
+  <Card title="Adapters Overview" href="/en/docs/adapters">
     View all available adapters
   </Card>
 </Cards>

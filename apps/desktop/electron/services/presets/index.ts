@@ -164,7 +164,11 @@ export async function fetchRemotePresets(url?: string): Promise<PresetsConfig | 
     console.log('[Presets] Remote presets fetched successfully')
     return data
   } catch (error) {
-    console.error('[Presets] Failed to fetch remote presets:', error)
+    // Silently fail - will use builtin presets as fallback
+    // Only log in development mode
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[Presets] Failed to fetch remote presets:', error)
+    }
     return null
   }
 }
@@ -257,7 +261,10 @@ async function refreshPresetsInBackground(): Promise<void> {
       console.log('[Presets] Background refresh completed')
     }
   } catch (error) {
-    console.error('[Presets] Background refresh failed:', error)
+    // Silently fail - will continue using cached/builtin presets
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[Presets] Background refresh failed:', error)
+    }
   }
 }
 

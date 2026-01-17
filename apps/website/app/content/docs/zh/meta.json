@@ -5,6 +5,17 @@
     "installation",
     "quick-start",
     "core-concepts",
+    "---使用指南---",
+    "guides/basic-usage",
+    "guides/streaming",
+    "guides/tool-calling",
+    "guides/multimodal",
+    "guides/error-handling",
+    "guides/model-mapping",
+    "guides/migration",
+    "---最佳实践---",
+    "best-practices",
+    "faq",
     "---API 参考---",
     "api/bridge",
     "api/adapters",
@@ -16,6 +27,7 @@
     "adapters/moonshot",
     "adapters/zhipu",
     "adapters/qwen",
-    "adapters/gemini"
+    "adapters/gemini",
+    "adapters/custom-adapter"
   ]
 }

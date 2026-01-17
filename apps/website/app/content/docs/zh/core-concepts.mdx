@@ -9,339 +9,123 @@ Amux 建立在三个核心概念之上：**适配器（Adapters）**、**IR（�
 
 ## 架构概览
 
-Amux 建立在三个核心概念之上：
+Amux 使用一个简单但强大的模式：
 
-1. **适配器（Adapters）** - 在提供商格式和 IR 之间转换
-2. **IR（中间表示）** - 所有 LLM 功能的统一格式
-3. **桥接（Bridge）** - 编排双向转换
-
-```mermaid
-graph TD
-    A[您的应用] -->|提供商格式 A| B[入站适配器]
-    B -->|解析为 IR| C[中间表示]
-    C -->|验证和路由| D[桥接]
-    D -->|统一 IR| E[出站适配器]
-    E -->|构建提供商格式 B| F[提供商 API]
-    F -->|响应| E
-    E -->|解析为 IR| D
-    D -->|统一 IR| B
-    B -->|构建提供商格式 A| A
-
-    style C fill:#f9f,stroke:#333,stroke-width:4px
-    style D fill:#bbf,stroke:#333,stroke-width:2px
+```
+您的应用（提供商格式 A）
+    ↓
+入站适配器 → 解析为 IR
+    ↓
+中间表示（统一）
+    ↓
+出站适配器 → 构建提供商格式 B
+    ↓
+提供商 API
+    ↓
+响应通过 IR 流回
+    ↓
+您的应用（提供商格式 A）
 ```
 
-## 适配器
+## 1. 适配器
 
-适配器是 Amux 的核心。每个适配器实现两个方向：
+适配器在提供商特定格式和统一的 IR 格式之间进行转换。每个适配器有两个方向：
 
-<Tabs items={['入站', '出站', '能力', '示例']}>
-  <Tab value="入站">
-    ### 入站（提供商 → IR）
+### 入站（提供商 → IR）
 
-    将提供商特定格式解析为 IR：
+将提供商特定的请求解析为 IR：
 
-    ```typescript
-    interface InboundAdapter {
-      parseRequest(request: unknown): LLMRequestIR
-      parseResponse?(response: unknown): LLMResponseIR
-      parseStream?(chunk: unknown): LLMStreamEvent | LLMStreamEvent[] | null
-      parseError?(error: unknown): LLMErrorIR
-    }
-    ```
+```typescript
+// OpenAI 格式 → IR
+const ir = openaiAdapter.inbound.parseRequest({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '你好！' }]
+})
+// 返回：LLMRequestIR
+```
 
-    **方法：**
-    - `parseRequest` - 将提供商请求转换为 IR（必需）
-    - `parseResponse` - 将提供商响应转换为 IR（可选）
-    - `parseStream` - 将流数据块转换为 IR 事件（可选）
-    - `parseError` - 将提供商错误转换为 IR（可选）
+### 出站（IR → 提供商）
 
-    **示例：**
-    ```typescript
-    const ir = adapter.inbound.parseRequest({
-      model: 'gpt-4',
-      messages: [{ role: 'user', content: '你好！' }]
-    })
-    // 返回：LLMRequestIR
-    ```
-  </Tab>
+从 IR 构建提供商特定的请求：
 
-  <Tab value="出站">
-    ### 出站（IR → 提供商）
+```typescript
+// IR → Anthropic 格式
+const anthropicRequest = anthropicAdapter.outbound.buildRequest(ir)
+// 返回：{ model: 'claude-...', messages: [...], ... }
+```
 
-    从 IR 构建提供商特定格式：
+### 适配器能力
 
-    ```typescript
-    interface OutboundAdapter {
-      buildRequest(ir: LLMRequestIR): unknown
-      buildResponse?(ir: LLMResponseIR): unknown
-      buildStreamHandler?(): StreamHandler
-      buildErrorHandler?(): ErrorHandler
-    }
-    ```
+每个适配器声明其支持的功能：
 
-    **方法：**
-    - `buildRequest` - 将 IR 转换为提供商请求（必需）
-    - `buildResponse` - 将 IR 转换为提供商响应（可选）
-    - `buildStreamHandler` - 创建流处理器（可选）
-    - `buildErrorHandler` - 创建错误处理器（可选）
+```typescript
+openaiAdapter.capabilities = {
+  streaming: true,
+  tools: true,
+  vision: true,
+  multimodal: true,
+  systemPrompt: true,
+  toolChoice: true,
+  jsonMode: true,
+  logprobs: true,
+  seed: true
+}
+```
 
-    **示例：**
-    ```typescript
-    const providerRequest = adapter.outbound.buildRequest(ir)
-    // 返回提供商特定格式
-    ```
-  </Tab>
+桥接使用这些能力声明来检查兼容性并警告不支持的功能。
 
-  <Tab value="能力">
-    ### 适配器能力
-
-    每个适配器声明其能力：
-
-    ```typescript
-    interface AdapterCapabilities {
-      streaming: boolean      // 支持流式响应
-      tools: boolean          // 支持函数/工具调用
-      vision: boolean         // 支持图像输入
-      multimodal: boolean     // 支持多种内容类型
-      systemPrompt: boolean   // 支持系统提示
-      toolChoice: boolean     // 支持工具选择控制
-      reasoning?: boolean     // 支持推理/思考模式（DeepSeek, Qwen, Anthropic）
-      webSearch?: boolean     // 支持网页搜索（Qwen）
-      jsonMode?: boolean      // 支持 JSON 模式/结构化输出
-      logprobs?: boolean      // 支持日志概率
-      seed?: boolean          // 支持种子（可复现性）
-    }
-    ```
-
-    **示例：**
-    ```typescript
-    console.log(openaiAdapter.capabilities)
-    // {
-    //   streaming: true,
-    //   tools: true,
-    //   vision: true,
-    //   multimodal: true,
-    //   systemPrompt: true,
-    //   toolChoice: true,
-    //   reasoning: false,
-    //   webSearch: false,
-    //   jsonMode: true,
-    //   logprobs: true,
-    //   seed: true
-    // }
-    ```
-
-    <Callout type="warn">
-    桥接使用能力声明来检查兼容性并警告不支持的功能。
-    </Callout>
-  </Tab>
-
-  <Tab value="示例">
-    ### 完整适配器示例
-
-    ```typescript
-    import type { LLMAdapter } from '@amux/llm-bridge'
-
-    export const myAdapter: LLMAdapter = {
-      name: 'my-provider',
-      version: '1.0.0',
-
-      capabilities: {
-        streaming: true,
-        tools: true,
-        vision: false,
-        multimodal: false,
-        systemPrompt: true,
-        toolChoice: true,
-        reasoning: false,
-        webSearch: false,
-        jsonMode: false,
-        logprobs: false,
-        seed: false,
-      },
-
-      inbound: {
-        parseRequest(request: unknown): LLMRequestIR {
-          // 转换提供商格式 → IR
-          return {
-            messages: request.messages,
-            model: request.model,
-            // ... 更多字段
-          }
-        },
-
-        parseResponse(response: unknown): LLMResponseIR {
-          // 转换提供商格式 → IR
-          return {
-            id: response.id,
-            model: response.model,
-            choices: response.choices
-          }
-        }
-      },
-
-      outbound: {
-        buildRequest(ir: LLMRequestIR): unknown {
-          // 转换 IR → 提供商格式
-          return {
-            model: ir.model,
-            messages: ir.messages,
-            // ... 更多字段
-          }
-        }
-      },
-
-      getInfo() {
-        return {
-          name: this.name,
-          version: this.version,
-          capabilities: this.capabilities,
-          endpoint: {
-            baseUrl: 'https://api.my-provider.com',
-            chatPath: '/v1/chat/completions',
-          }
-        }
-      }
-    }
-    ```
-  </Tab>
-</Tabs>
-
-## 中间表示（IR）
+## 2. 中间表示（IR）
 
 IR 是一种统一格式，捕获所有 LLM 功能：
 
 ```typescript
 interface LLMRequestIR {
-  messages: Message[]                    // 必需：对话消息
-  model?: string                         // 模型标识符
-  tools?: Tool[]                         // 可用的工具/函数
-  toolChoice?: ToolChoice                // 工具使用控制
-  stream?: boolean                       // 启用流式传输
-  generation?: GenerationConfig          // 生成参数
-  system?: string                        // 系统提示
-  metadata?: Record<string, unknown>     // 附加元数据
-  extensions?: Record<string, unknown>   // 提供商特定扩展
-  raw?: unknown                          // 原始请求（用于调试）
+  messages: Message[]              // 对话历史
+  model?: string                   // 模型标识符
+  tools?: Tool[]                   // 可用函数
+  toolChoice?: ToolChoice          // 工具使用控制
+  stream?: boolean                 // 启用流式传输
+  generation?: GenerationConfig    // 温度、最大令牌数等
+  system?: string                  // 系统提示
+  metadata?: Record<string, any>   // 附加元数据
+  extensions?: Record<string, any> // 提供商特定功能
 }
 ```
 
-### 关键特性
+### 为什么需要 IR？
 
-<Tabs items={['全面', '可扩展', '可调试', '类型安全']}>
-  <Tab value="全面">
-    ### 全面
+**统一格式** - 所有提供商在内部使用相同的语言：
+```typescript
+// OpenAI 和 Anthropic 都转换为相同的 IR
+const ir1 = openaiAdapter.inbound.parseRequest(openaiRequest)
+const ir2 = anthropicAdapter.inbound.parseRequest(anthropicRequest)
+// 两者都生成 LLMRequestIR
+```
 
-    IR 支持所有常见的 LLM 功能：
+**提供商无关** - 编写一次代码，适用于任何提供商：
+```typescript
+function processRequest(ir: LLMRequestIR) {
+  // 此函数适用于任何提供商的 IR
+  console.log(`处理 ${ir.messages.length} 条消息`)
+}
+```
 
-    - **消息** - 文本、图像、工具调用、工具结果
-    - **工具** - 带有 JSON 模式的函数定义
-    - **流式传输** - 实时响应生成
-    - **多模态** - 文本、图像等
-    - **生成** - 温度、top-p、最大令牌数等
+**可扩展** - 支持提供商特定功能：
+```typescript
+const ir: LLMRequestIR = {
+  messages: [{ role: 'user', content: '你好' }],
+  extensions: {
+    // OpenAI 特定
+    response_format: { type: 'json_object' },
+    // Anthropic 特定
+    thinking: { type: 'enabled', budget_tokens: 1000 }
+  }
+}
+```
 
-    ```typescript
-    const ir: LLMRequestIR = {
-      messages: [
-        { role: 'user', content: '你好！' }
-      ],
-      model: 'gpt-4',
-      tools: [{
-        type: 'function',
-        function: {
-          name: 'get_weather',
-          parameters: { /* ... */ }
-        }
-      }],
-      generation: {
-        temperature: 0.7,
-        maxTokens: 1000
-      }
-    }
-    ```
-  </Tab>
+## 3. 桥接
 
-  <Tab value="可扩展">
-    ### 可扩展
-
-    `extensions` 字段允许提供商特定功能：
-
-    ```typescript
-    const ir: LLMRequestIR = {
-      messages: [{ role: 'user', content: '你好！' }],
-      extensions: {
-        // OpenAI 特定
-        response_format: { type: 'json_object' },
-        // Anthropic 特定
-        thinking: { type: 'enabled', budget_tokens: 1000 }
-      }
-    }
-    ```
-
-    <Callout type="info">
-    扩展在转换过程中被保留，允许提供商特定功能在两个适配器都支持时工作。
-    </Callout>
-  </Tab>
-
-  <Tab value="可调试">
-    ### 可调试
-
-    `raw` 字段保留原始请求：
-
-    ```typescript
-    const ir: LLMRequestIR = {
-      messages: [{ role: 'user', content: '你好！' }],
-      raw: originalRequest  // 原始提供商格式
-    }
-    ```
-
-    这对以下场景很有用：
-    - 调试转换问题
-    - 记录原始请求
-    - 回退到原始格式
-  </Tab>
-
-  <Tab value="类型安全">
-    ### 类型安全
-
-    完整的 TypeScript 支持，包含全面的类型：
-
-    ```typescript
-    import type {
-      LLMRequestIR,
-      LLMResponseIR,
-      Message,
-      Tool,
-      GenerationConfig
-    } from '@amux/llm-bridge'
-
-    // 所有类型都完全定义
-    const message: Message = {
-      role: 'user',
-      content: '你好！'
-    }
-
-    const tool: Tool = {
-      type: 'function',
-      function: {
-        name: 'get_weather',
-        description: '获取某个位置的天气',
-        parameters: {
-          type: 'object',
-          properties: {
-            location: { type: 'string' }
-          }
-        }
-      }
-    }
-    ```
-  </Tab>
-</Tabs>
-
-## 桥接
-
-桥接编排转换过程：
+桥接编排转换流程：
 
 ```typescript
 const bridge = createBridge({
@@ -356,106 +140,28 @@ const bridge = createBridge({
 
 ### 桥接工作流
 
-```mermaid
-sequenceDiagram
-    participant App as 您的应用
-    participant Bridge as 桥接
-    participant IB as 入站适配器
-    participant OB as 出站适配器
-    participant API as 提供商 API
+当您调用 `bridge.chat()` 时：
 
-    App->>Bridge: chat(request)
-    Bridge->>IB: parseRequest(request)
-    IB->>Bridge: LLMRequestIR
-    Note over Bridge: 验证 IR
-    Note over Bridge: 检查能力
-    Bridge->>OB: buildRequest(ir)
-    OB->>Bridge: 提供商请求
-    Bridge->>API: HTTP 请求
-    API->>Bridge: 提供商响应
-    Bridge->>OB: parseResponse(response)
-    OB->>Bridge: LLMResponseIR
-    Bridge->>IB: buildResponse(ir)
-    IB->>Bridge: 提供商响应
-    Bridge->>App: 响应
+1. **解析** - 入站适配器解析请求 → IR
+2. **验证** - 桥接验证 IR 完整性
+3. **检查** - 桥接检查适配器兼容性
+4. **构建** - 出站适配器构建提供商请求
+5. **调用** - 桥接调用提供商 API
+6. **解析** - 出站适配器解析响应 → IR
+7. **构建** - 入站适配器构建响应格式
+8. **返回** - 桥接将响应返回给您
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '你好！' }]
+})
+// 幕后流程：
+// OpenAI 格式 → IR → Anthropic 格式 → Claude API
+// Claude 响应 → IR → OpenAI 格式 → 返回给您
 ```
 
-### 桥接步骤
-
-<Tabs items={['1-2: 解析和验证', '3-4: 构建和调用', '5-6: 解析和构建', '7-8: 返回']}>
-  <Tab value="1-2: 解析和验证">
-    ### 步骤 1-2：解析和验证
-
-    **1. 解析** - 入站适配器解析请求 → IR
-    ```typescript
-    const ir = inbound.parseRequest(request)
-    ```
-
-    **2. 验证** - 桥接验证 IR 完整性
-    ```typescript
-    if (!ir.messages || ir.messages.length === 0) {
-      throw new Error('消息是必需的')
-    }
-    ```
-
-    <Callout type="info">
-    桥接确保 IR 在继续之前具有所有必需字段。
-    </Callout>
-  </Tab>
-
-  <Tab value="3-4: 构建和调用">
-    ### 步骤 3-4：构建和调用
-
-    **3. 检查** - 桥接检查适配器兼容性
-    ```typescript
-    if (ir.tools && !outbound.capabilities.tools) {
-      console.warn('出站适配器不支持工具')
-    }
-    ```
-
-    **4. 构建** - 出站适配器构建提供商请求
-    ```typescript
-    const providerRequest = outbound.buildRequest(ir)
-    ```
-  </Tab>
-
-  <Tab value="5-6: 解析和构建">
-    ### 步骤 5-6：解析和构建
-
-    **5. 调用** - 桥接调用提供商 API
-    ```typescript
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      body: JSON.stringify(providerRequest)
-    })
-    ```
-
-    **6. 解析** - 出站适配器解析响应 → IR
-    ```typescript
-    const responseIR = outbound.parseResponse(response)
-    ```
-  </Tab>
-
-  <Tab value="7-8: 返回">
-    ### 步骤 7-8：构建和返回
-
-    **7. 构建** - 入站适配器构建响应格式
-    ```typescript
-    const finalResponse = inbound.buildResponse(responseIR)
-    ```
-
-    **8. 返回** - 桥接将响应返回给用户
-    ```typescript
-    return finalResponse
-    ```
-
-    <Callout type="info">
-    响应与原始请求的格式相同，确保应用程序的一致性。
-    </Callout>
-  </Tab>
-</Tabs>
-
-## 错误处理
+### 错误处理
 
 桥接提供统一的错误处理：
 
@@ -469,38 +175,81 @@ try {
     console.error('错误类型：', error.type)
     console.error('消息：', error.message)
     console.error('可重试：', error.retryable)
-    console.error('详情：', error.details)
+
+    // 处理特定错误类型
+    if (error.type === 'rate_limit') {
+      // 等待并重试
+    } else if (error.type === 'authentication') {
+      // 检查 API 密钥
+    }
   }
 }
 ```
 
-### 错误类型
+常见错误类型：
+- `network` - 连接问题（可重试）
+- `rate_limit` - 超出速率限制（可重试）
+- `authentication` - 无效的 API 密钥（不可重试）
+- `validation` - 无效的请求格式（不可重试）
+- `api` - 提供商 API 错误（可能可重试）
 
-| 类型 | 描述 | 可重试 |
-|------|------|--------|
-| `network` | 网络连接问题 | 是 |
-| `api` | 提供商 API 错误 | 可能 |
-| `validation` | 无效的请求格式 | 否 |
-| `rate_limit` | 超出速率限制 | 是 |
-| `authentication` | 无效的 API 密钥 | 否 |
-| `permission` | 权限不足 | 否 |
-| `not_found` | 资源未找到 | 否 |
-| `server` | 提供商服务器错误 | 是 |
-| `unknown` | 未知错误 | 可能 |
+## 综合应用
+
+以下是所有概念如何协同工作：
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+
+// 1. 使用适配器创建桥接
+const bridge = createBridge({
+  inbound: openaiAdapter,      // 处理 OpenAI 格式
+  outbound: anthropicAdapter,  // 处理 Anthropic 格式
+  config: {
+    apiKey: process.env.ANTHROPIC_API_KEY
+  }
+})
+
+// 2. 发送请求（OpenAI 格式）
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '你好！' }]
+})
+
+// 3. 获取响应（OpenAI 格式）
+console.log(response.choices[0].message.content)
+
+// 幕后流程：
+// - openaiAdapter.inbound 转换 OpenAI → IR
+// - anthropicAdapter.outbound 转换 IR → Anthropic
+// - 调用 Claude API
+// - anthropicAdapter.inbound 转换 Anthropic → IR
+// - openaiAdapter.outbound 转换 IR → OpenAI
+// - 您获得 OpenAI 格式的响应
+```
+
+## 关键要点
+
+1. **适配器** 处理提供商格式和 IR 之间的转换
+2. **IR** 是所有提供商都理解的通用格式
+3. **桥接** 编排转换和 API 调用
+4. 转换是双向的 - 您可以控制输入和输出格式
+5. 错误处理在所有提供商中统一
 
 ## 下一步
 
 <Cards>
-  <Card title="Bridge API" href="/docs/zh/api/bridge">
-    探索完整的 Bridge API
+  <Card title="基本用法" href="/zh/docs/basic-usage">
+    学习常见使用模式
   </Card>
-  <Card title="适配器 API" href="/docs/zh/api/adapters">
-    了解适配器实现
+  <Card title="流式传输" href="/zh/docs/streaming">
+    处理流式响应
   </Card>
-  <Card title="IR 格式" href="/docs/zh/api/ir">
-    深入了解 IR 格式
+  <Card title="API 参考" href="/zh/docs/api/bridge">
+    探索完整 API
   </Card>
-  <Card title="快速开始" href="/docs/zh/quick-start">
-    构建您的第一个桥接
+  <Card title="最佳实践" href="/zh/docs/best-practices">
+    生产就绪模式
   </Card>
 </Cards>

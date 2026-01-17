@@ -1,0 +1,574 @@
+---
+title: Error Handling
+description: Handle errors gracefully and build resilient LLM applications
+---
+
+## Error Types
+
+Amux provides a structured error hierarchy to help you handle different failure scenarios:
+
+```typescript
+import {
+  LLMBridgeError,
+  APIError,
+  NetworkError,
+  TimeoutError,
+  ValidationError,
+  AdapterError,
+  BridgeError
+} from '@amux/llm-bridge'
+```
+
+### LLMBridgeError
+
+Base error class for all Amux errors:
+
+```typescript
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof LLMBridgeError) {
+    console.error('Code:', error.code)
+    console.error('Message:', error.message)
+    console.error('Retryable:', error.retryable)
+    console.error('Details:', error.details)
+  }
+}
+```
+
+**Properties:**
+- `code` - Error code (e.g., 'API_ERROR', 'NETWORK_ERROR')
+- `message` - Human-readable error message
+- `retryable` - Whether the operation can be retried
+- `details` - Additional error context
+
+### APIError
+
+Errors from provider API calls:
+
+```typescript
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof APIError) {
+    console.error('Provider:', error.provider)
+    console.error('Status:', error.status)
+    console.error('Data:', error.data)
+
+    // Check specific status codes
+    if (error.status === 401) {
+      console.error('Invalid API key')
+    } else if (error.status === 429) {
+      console.error('Rate limit exceeded')
+    } else if (error.status === 500) {
+      console.error('Provider server error')
+    }
+  }
+}
+```
+
+**Properties:**
+- `status` - HTTP status code (401, 429, 500, etc.)
+- `provider` - Provider name ('openai', 'anthropic', etc.)
+- `data` - Raw error response from provider
+- `response` - Response headers (useful for rate limit info)
+
+<Callout type="info">
+APIError with status >= 500 is automatically marked as retryable.
+</Callout>
+
+### NetworkError
+
+Network-related failures (connection errors, DNS failures):
+
+```typescript
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof NetworkError) {
+    console.error('Network error:', error.message)
+    console.error('Cause:', error.cause)
+    // Retry with exponential backoff
+  }
+}
+```
+
+**Properties:**
+- `cause` - Underlying network error
+- `retryable` - Always `true`
+
+### TimeoutError
+
+Request timeout errors:
+
+```typescript
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof TimeoutError) {
+    console.error('Request timed out after', error.timeout, 'ms')
+    // Retry with longer timeout
+  }
+}
+```
+
+**Properties:**
+- `timeout` - Timeout duration in milliseconds
+- `retryable` - Always `true`
+
+### ValidationError
+
+Invalid request format or parameters:
+
+```typescript
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof ValidationError) {
+    console.error('Validation errors:')
+    error.errors.forEach(err => console.error('-', err))
+  }
+}
+```
+
+**Properties:**
+- `errors` - Array of validation error messages
+- `retryable` - Always `false`
+
+### AdapterError
+
+Adapter conversion or compatibility issues:
+
+```typescript
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof AdapterError) {
+    console.error('Adapter:', error.adapterName)
+    console.error('Details:', error.details)
+  }
+}
+```
+
+**Properties:**
+- `adapterName` - Name of the adapter that failed
+- `details` - Error details
+- `retryable` - Always `false`
+
+### BridgeError
+
+Bridge orchestration errors:
+
+```typescript
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof BridgeError) {
+    console.error('Bridge error:', error.message)
+    console.error('Details:', error.details)
+  }
+}
+```
+
+## Common Error Scenarios
+
+### Authentication Errors
+
+Invalid or missing API keys:
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { APIError } from '@amux/llm-bridge'
+
+try {
+  const bridge = createBridge({
+    inbound: openaiAdapter,
+    outbound: anthropicAdapter,
+    config: {
+      apiKey: process.env.ANTHROPIC_API_KEY
+    }
+  })
+
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof APIError && error.status === 401) {
+    console.error('Authentication failed. Please check your API key.')
+    // Notify user or refresh credentials
+  }
+}
+```
+
+### Rate Limiting
+
+Handle rate limit errors with exponential backoff:
+
+```typescript
+import { APIError } from '@amux/llm-bridge'
+
+async function chatWithRetry(bridge, request, maxRetries = 3) {
+  let lastError
+
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await bridge.chat(request)
+    } catch (error) {
+      lastError = error
+
+      if (error instanceof APIError && error.status === 429) {
+        // Rate limited - wait and retry
+        const retryAfter = error.response?.headers?.['retry-after']
+        const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, i) * 1000
+
+        console.log(`Rate limited. Retrying in ${waitTime}ms...`)
+        await new Promise(resolve => setTimeout(resolve, waitTime))
+        continue
+      }
+
+      // Other errors - don't retry
+      throw error
+    }
+  }
+
+  throw lastError
+}
+
+// Usage
+const response = await chatWithRetry(bridge, request)
+```
+
+### Network Errors
+
+Handle transient network failures:
+
+```typescript
+import { NetworkError, TimeoutError } from '@amux/llm-bridge'
+
+async function chatWithNetworkRetry(bridge, request) {
+  const maxRetries = 3
+  let attempt = 0
+
+  while (attempt < maxRetries) {
+    try {
+      return await bridge.chat(request)
+    } catch (error) {
+      if (error instanceof NetworkError || error instanceof TimeoutError) {
+        attempt++
+        if (attempt >= maxRetries) throw error
+
+        const delay = Math.min(1000 * Math.pow(2, attempt), 10000)
+        console.log(`Network error. Retry ${attempt}/${maxRetries} in ${delay}ms`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+      } else {
+        throw error
+      }
+    }
+  }
+}
+```
+
+### Content Filtering
+
+Handle content policy violations:
+
+```typescript
+import { APIError } from '@amux/llm-bridge'
+
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof APIError && error.data?.error?.code === 'content_filter') {
+    console.error('Content was filtered by provider policy')
+    // Return a safe default response or notify user
+    return {
+      choices: [{
+        message: {
+          role: 'assistant',
+          content: 'I cannot respond to that request due to content policy.'
+        }
+      }]
+    }
+  }
+}
+```
+
+### Streaming Errors
+
+Handle errors in streaming responses:
+
+```typescript
+try {
+  const stream = await bridge.chat({
+    ...request,
+    stream: true
+  })
+
+  for await (const event of stream) {
+    if (event.type === 'error') {
+      console.error('Stream error:', event.error.message)
+      break
+    }
+
+    if (event.type === 'content') {
+      process.stdout.write(event.content.delta)
+    }
+  }
+} catch (error) {
+  console.error('Failed to start stream:', error)
+}
+```
+
+## Retry Strategies
+
+### Simple Retry
+
+Retry only retryable errors:
+
+```typescript
+async function simpleRetry(fn, maxRetries = 3) {
+  let lastError
+
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error
+
+      if (error instanceof LLMBridgeError && error.retryable) {
+        console.log(`Retry ${i + 1}/${maxRetries}`)
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        continue
+      }
+
+      throw error
+    }
+  }
+
+  throw lastError
+}
+
+// Usage
+const response = await simpleRetry(() => bridge.chat(request))
+```
+
+### Exponential Backoff
+
+Increase wait time between retries:
+
+```typescript
+async function exponentialBackoff(fn, maxRetries = 5) {
+  let lastError
+
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error
+
+      if (error instanceof LLMBridgeError && error.retryable) {
+        const delay = Math.min(1000 * Math.pow(2, i), 30000) // Max 30s
+        console.log(`Retry ${i + 1}/${maxRetries} in ${delay}ms`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+        continue
+      }
+
+      throw error
+    }
+  }
+
+  throw lastError
+}
+```
+
+### Circuit Breaker
+
+Prevent cascading failures:
+
+```typescript
+class CircuitBreaker {
+  constructor(threshold = 5, timeout = 60000) {
+    this.failureCount = 0
+    this.threshold = threshold
+    this.timeout = timeout
+    this.state = 'CLOSED'
+    this.nextAttempt = Date.now()
+  }
+
+  async execute(fn) {
+    if (this.state === 'OPEN') {
+      if (Date.now() < this.nextAttempt) {
+        throw new Error('Circuit breaker is OPEN')
+      }
+      this.state = 'HALF_OPEN'
+    }
+
+    try {
+      const result = await fn()
+      this.onSuccess()
+      return result
+    } catch (error) {
+      this.onFailure()
+      throw error
+    }
+  }
+
+  onSuccess() {
+    this.failureCount = 0
+    this.state = 'CLOSED'
+  }
+
+  onFailure() {
+    this.failureCount++
+    if (this.failureCount >= this.threshold) {
+      this.state = 'OPEN'
+      this.nextAttempt = Date.now() + this.timeout
+    }
+  }
+}
+
+// Usage
+const breaker = new CircuitBreaker()
+const response = await breaker.execute(() => bridge.chat(request))
+```
+
+## Best Practices
+
+### 1. Always Handle Errors
+
+Never ignore errors in production:
+
+```typescript
+// ❌ Bad
+const response = await bridge.chat(request)
+
+// ✅ Good
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  console.error('Chat failed:', error)
+  // Handle appropriately
+}
+```
+
+### 2. Check Retryable Flag
+
+Only retry when it makes sense:
+
+```typescript
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof LLMBridgeError && error.retryable) {
+    // Safe to retry
+    return await retryWithBackoff(() => bridge.chat(request))
+  } else {
+    // Don't retry - fix the request
+    throw error
+  }
+}
+```
+
+### 3. Log Error Details
+
+Include context for debugging:
+
+```typescript
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  console.error('Chat failed:', {
+    code: error.code,
+    message: error.message,
+    retryable: error.retryable,
+    details: error.details,
+    request: {
+      model: request.model,
+      messageCount: request.messages.length
+    }
+  })
+}
+```
+
+### 4. Set Appropriate Timeouts
+
+Prevent hanging requests:
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    timeout: 30000  // 30 seconds
+  }
+})
+```
+
+### 5. Provide User-Friendly Messages
+
+Don't expose internal errors to users:
+
+```typescript
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  let userMessage = 'An error occurred. Please try again.'
+
+  if (error instanceof APIError) {
+    if (error.status === 429) {
+      userMessage = 'Too many requests. Please wait a moment.'
+    } else if (error.status === 401) {
+      userMessage = 'Authentication failed. Please check your settings.'
+    }
+  } else if (error instanceof NetworkError) {
+    userMessage = 'Network error. Please check your connection.'
+  }
+
+  // Log internal error
+  console.error('Internal error:', error)
+
+  // Show user-friendly message
+  return { error: userMessage }
+}
+```
+
+## Error Monitoring
+
+Integrate with monitoring services:
+
+```typescript
+import * as Sentry from '@sentry/node'
+
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  // Log to monitoring service
+  Sentry.captureException(error, {
+    tags: {
+      provider: error.provider,
+      retryable: error.retryable
+    },
+    extra: {
+      requestModel: request.model,
+      errorCode: error.code
+    }
+  })
+
+  throw error
+}
+```
+
+## Next Steps
+
+<Cards>
+  <Card title="Model Mapping" href="/en/docs/guides/model-mapping">
+    Map models across providers
+  </Card>
+  <Card title="Basic Usage" href="/en/docs/guides/basic-usage">
+    Get started with bridges
+  </Card>
+  <Card title="Streaming" href="/en/docs/guides/streaming">
+    Handle streaming responses
+  </Card>
+</Cards>

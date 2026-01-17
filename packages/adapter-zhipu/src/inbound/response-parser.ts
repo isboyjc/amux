@@ -1,20 +1,7 @@
-import type { LLMResponseIR, Choice, FinishReason, Role } from '@amux/llm-bridge'
+import type { LLMResponseIR, Choice, Role } from '@amux/llm-bridge'
+import { mapFinishReason, parseOpenAIUsage } from '@amux/llm-bridge'
 
 import type { ZhipuResponse } from '../types'
-
-/**
- * Map Zhipu finish reason to IR finish reason
- */
-function mapFinishReason(reason: string): FinishReason {
-  const reasonMap: Record<string, FinishReason> = {
-    stop: 'stop',
-    length: 'length',
-    tool_calls: 'tool_calls',
-    content_filter: 'content_filter',
-    sensitive: 'content_filter', // Zhipu-specific
-  }
-  return reasonMap[reason] ?? 'stop'
-}
 
 /**
  * Parse Zhipu response to IR
@@ -37,13 +24,7 @@ export function parseResponse(response: unknown): LLMResponseIR {
     model: res.model,
     choices,
     created: res.created,
-    usage: res.usage
-      ? {
-          promptTokens: res.usage.prompt_tokens,
-          completionTokens: res.usage.completion_tokens,
-          totalTokens: res.usage.total_tokens,
-        }
-      : undefined,
+    usage: parseOpenAIUsage(res.usage),
     raw: response,
   }
 }

@@ -1,0 +1,376 @@
+---
+title: 最佳实践
+description: 使用 Amux 的生产环境模式和建议
+---
+
+## API 密钥管理
+
+<Callout type="warn">
+永远不要在源代码中硬编码 API 密钥。始终使用环境变量或密钥管理服务。
+</Callout>
+
+### 使用环境变量
+
+```typescript
+// ✅ 正确
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: process.env.ANTHROPIC_API_KEY
+  }
+})
+
+// ❌ 错误
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: 'sk-ant-1234567890'  // 永远不要这样做！
+  }
+})
+```
+
+### 生产环境中的密钥管理
+
+在生产部署中，使用专门的密钥管理服务：
+
+- **AWS**: AWS Secrets Manager、Parameter Store
+- **Google Cloud**: Secret Manager
+- **Azure**: Key Vault
+- **Kubernetes**: Kubernetes Secrets
+- **Vercel/Netlify**: 控制面板中的环境变量
+
+```typescript
+// 使用 AWS Secrets Manager 的示例
+import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager'
+
+const client = new SecretsManagerClient({ region: 'us-east-1' })
+const response = await client.send(
+  new GetSecretValueCommand({ SecretId: 'amux/anthropic-key' })
+)
+const apiKey = response.SecretString
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey }
+})
+```
+
+## 错误处理
+
+### 始终处理错误
+
+```typescript
+import { LLMBridgeError } from '@amux/llm-bridge'
+
+try {
+  const response = await bridge.chat({
+    model: 'gpt-4',
+    messages: [{ role: 'user', content: '你好' }]
+  })
+} catch (error) {
+  if (error instanceof LLMBridgeError) {
+    // 处理已知的桥接错误
+    console.error(`${error.type}: ${error.message}`)
+
+    if (error.retryable) {
+      // 实现重试逻辑
+    }
+  } else {
+    // 处理意外错误
+    console.error('意外错误:', error)
+  }
+}
+```
+
+### 实现重试逻辑
+
+```typescript
+async function chatWithRetry(bridge, request, maxRetries = 3) {
+  let lastError
+
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await bridge.chat(request)
+    } catch (error) {
+      lastError = error
+
+      if (error instanceof LLMBridgeError && error.retryable) {
+        // 指数退避
+        const delay = Math.min(1000 * Math.pow(2, i), 10000)
+        await new Promise(resolve => setTimeout(resolve, delay))
+        continue
+      }
+
+      // 不可重试的错误，立即抛出
+      throw error
+    }
+  }
+
+  throw lastError
+}
+```
+
+## 性能优化
+
+### 重用桥接实例
+
+创建一次桥接实例并重复使用：
+
+```typescript
+// ✅ 正确 - 创建一次
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+})
+
+// 为多个请求重用
+app.post('/chat', async (req, res) => {
+  const response = await bridge.chat(req.body)
+  res.json(response)
+})
+
+// ❌ 错误 - 每次请求都创建
+app.post('/chat', async (req, res) => {
+  const bridge = createBridge({...})  // 不要这样做！
+  const response = await bridge.chat(req.body)
+  res.json(response)
+})
+```
+
+### 对长响应使用流式传输
+
+流式传输可减少感知延迟：
+
+```typescript
+// 对于长文本内容，始终使用流式传输
+const stream = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '写一篇长文章' }],
+  stream: true  // 更好的用户体验
+})
+```
+
+### 设置适当的超时时间
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    timeout: 30000  // 30 秒（根据用例调整）
+  }
+})
+```
+
+## 请求验证
+
+### 发送前验证输入
+
+```typescript
+function validateChatRequest(request) {
+  if (!request.messages || request.messages.length === 0) {
+    throw new Error('消息数组是必需的且不能为空')
+  }
+
+  if (!request.model) {
+    throw new Error('模型是必需的')
+  }
+
+  // 验证消息格式
+  for (const msg of request.messages) {
+    if (!msg.role || !['system', 'user', 'assistant'].includes(msg.role)) {
+      throw new Error(`无效的消息角色: ${msg.role}`)
+    }
+    if (!msg.content) {
+      throw new Error('消息内容是必需的')
+    }
+  }
+}
+
+// 使用
+try {
+  validateChatRequest(request)
+  const response = await bridge.chat(request)
+} catch (error) {
+  // 处理验证错误
+}
+```
+
+## 日志和监控
+
+### 记录重要事件
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+})
+
+async function chat(request) {
+  const startTime = Date.now()
+
+  try {
+    console.log('聊天请求:', {
+      model: request.model,
+      messageCount: request.messages.length,
+      stream: request.stream
+    })
+
+    const response = await bridge.chat(request)
+
+    const duration = Date.now() - startTime
+    console.log('聊天成功:', {
+      duration,
+      tokens: response.usage?.totalTokens
+    })
+
+    return response
+  } catch (error) {
+    const duration = Date.now() - startTime
+    console.error('聊天失败:', {
+      duration,
+      error: error.message,
+      type: error.type
+    })
+    throw error
+  }
+}
+```
+
+### 监控使用情况和成本
+
+跟踪 token 使用情况以监控成本：
+
+```typescript
+let totalTokens = 0
+let totalRequests = 0
+
+async function chatWithTracking(bridge, request) {
+  totalRequests++
+
+  const response = await bridge.chat(request)
+
+  if (response.usage) {
+    totalTokens += response.usage.totalTokens
+    console.log(`总共使用 token: ${totalTokens}，请求次数: ${totalRequests}`)
+  }
+
+  return response
+}
+```
+
+## 安全性
+
+### 清理用户输入
+
+```typescript
+function sanitizeMessage(content: string): string {
+  // 移除潜在的注入尝试
+  return content
+    .replace(/<script>/gi, '')
+    .replace(/javascript:/gi, '')
+    .trim()
+}
+
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{
+    role: 'user',
+    content: sanitizeMessage(userInput)
+  }]
+})
+```
+
+### 速率限制
+
+实施速率限制以防止滥用：
+
+```typescript
+import rateLimit from 'express-rate-limit'
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,  // 15 分钟
+  max: 100,  // 每个窗口期限制每个 IP 100 个请求
+  message: '请求过多，请稍后再试'
+})
+
+app.use('/api/chat', limiter)
+```
+
+## 测试
+
+### 模拟适配器进行测试
+
+```typescript
+// 创建用于测试的模拟适配器
+const mockAdapter = {
+  name: 'mock',
+  version: '1.0.0',
+  capabilities: {
+    streaming: true,
+    tools: true,
+    vision: false
+  },
+  inbound: {
+    parseRequest: (req) => req,
+    parseResponse: (res) => res
+  },
+  outbound: {
+    buildRequest: (ir) => ir,
+    buildResponse: (ir) => ({
+      choices: [{
+        message: { role: 'assistant', content: '模拟响应' }
+      }]
+    })
+  },
+  getInfo: () => ({
+    name: 'mock',
+    version: '1.0.0',
+    capabilities: mockAdapter.capabilities,
+    endpoint: { baseURL: 'http://mock', chatPath: '/chat' }
+  })
+}
+
+// 在测试中使用
+const bridge = createBridge({
+  inbound: mockAdapter,
+  outbound: mockAdapter
+})
+```
+
+## 生产环境检查清单
+
+部署到生产环境之前：
+
+- [ ] API 密钥安全存储（不在代码中）
+- [ ] 为所有聊天调用实现错误处理
+- [ ] 为暂时性故障实现重试逻辑
+- [ ] 实施请求验证
+- [ ] 配置日志和监控
+- [ ] 启用速率限制
+- [ ] 适当设置超时值
+- [ ] 用户输入清理
+- [ ] Token 使用跟踪
+- [ ] 测试覆盖关键路径
+
+## 下一步
+
+<Cards>
+  <Card title="错误处理指南" href="/zh/docs/guides/error-handling">
+    深入了解错误处理
+  </Card>
+  <Card title="常见问题" href="/zh/docs/faq">
+    常见问题与解答
+  </Card>
+  <Card title="核心概念" href="/zh/docs/core-concepts">
+    理解架构
+  </Card>
+</Cards>

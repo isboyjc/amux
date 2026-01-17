@@ -1,0 +1,451 @@
+---
+title: Custom Adapter
+description: Create your own adapter for any LLM provider
+---
+
+Learn how to create a custom adapter to integrate any LLM provider with Amux.
+
+## Why Create a Custom Adapter?
+
+Create a custom adapter when you need to:
+- Support a new LLM provider not officially supported
+- Integrate with an internal/proprietary LLM API
+- Customize behavior of an existing adapter
+- Add specialized features for your use case
+
+## Adapter Interface Overview
+
+Every adapter implements the `LLMAdapter` interface:
+
+```typescript
+interface LLMAdapter {
+  name: string
+  version: string
+  capabilities: AdapterCapabilities
+  inbound: InboundAdapter
+  outbound: OutboundAdapter
+  getInfo(): AdapterInfo
+}
+```
+
+**Key components:**
+- `inbound` - Converts provider format → IR
+- `outbound` - Converts IR → provider format
+- `capabilities` - Declares supported features
+- `getInfo()` - Returns adapter metadata
+
+## Step-by-Step Tutorial
+
+### Step 1: Set Up Your Adapter Package
+
+Create a new directory for your adapter:
+
+```bash
+mkdir my-adapter
+cd my-adapter
+npm init -y
+npm install --save-dev typescript @types/node
+npm install @amux/llm-bridge
+```
+
+### Step 2: Define Adapter Structure
+
+Create `src/adapter.ts`:
+
+```typescript
+import type { LLMAdapter, LLMRequestIR, LLMResponseIR } from '@amux/llm-bridge'
+
+export const myAdapter: LLMAdapter = {
+  name: 'my-provider',
+  version: '1.0.0',
+
+  capabilities: {
+    streaming: true,
+    tools: true,
+    vision: false,
+    multimodal: false,
+    systemPrompt: true,
+    toolChoice: true,
+    reasoning: false,
+    webSearch: false,
+    jsonMode: false,
+    logprobs: false,
+    seed: false
+  },
+
+  inbound: {
+    parseRequest(request: unknown): LLMRequestIR {
+      // TODO: Convert provider request to IR
+      return {} as LLMRequestIR
+    },
+
+    parseResponse(response: unknown): LLMResponseIR {
+      // TODO: Convert provider response to IR
+      return {} as LLMResponseIR
+    },
+
+    parseStream(chunk: unknown) {
+      // TODO: Convert stream chunk to IR events
+      return null
+    },
+
+    parseError(error: unknown) {
+      // TODO: Convert provider error to IR
+      return null
+    }
+  },
+
+  outbound: {
+    buildRequest(ir: LLMRequestIR): unknown {
+      // TODO: Convert IR to provider request
+      return {}
+    },
+
+    buildResponse(ir: LLMResponseIR): unknown {
+      // TODO: Convert IR to provider response
+      return {}
+    }
+  },
+
+  getInfo() {
+    return {
+      name: this.name,
+      version: this.version,
+      capabilities: this.capabilities,
+      endpoint: {
+        baseURL: 'https://api.myprovider.com',
+        chatPath: '/v1/chat'
+      }
+    }
+  }
+}
+```
+
+### Step 3: Implement Request Parsing
+
+Convert provider-specific request to IR:
+
+```typescript
+parseRequest(request: any): LLMRequestIR {
+  const ir: LLMRequestIR = {
+    messages: request.messages.map(msg => ({
+      role: msg.role,
+      content: msg.content
+    })),
+    model: request.model,
+    stream: request.stream || false
+  }
+
+  // Optional: generation parameters
+  if (request.temperature !== undefined) {
+    ir.generation = {
+      temperature: request.temperature,
+      maxTokens: request.max_tokens,
+      topP: request.top_p
+    }
+  }
+
+  // Optional: tools
+  if (request.tools) {
+    ir.tools = request.tools.map(tool => ({
+      type: 'function',
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters
+      }
+    }))
+  }
+
+  return ir
+}
+```
+
+### Step 4: Implement Response Building
+
+Convert IR to provider-specific response:
+
+```typescript
+buildResponse(ir: LLMResponseIR): any {
+  return {
+    id: ir.id || 'chatcmpl-' + Date.now(),
+    object: 'chat.completion',
+    created: Date.now(),
+    model: ir.model,
+    choices: ir.choices.map(choice => ({
+      index: choice.index,
+      message: {
+        role: choice.message.role,
+        content: choice.message.content
+      },
+      finish_reason: choice.finishReason
+    })),
+    usage: ir.usage
+  }
+}
+```
+
+### Step 5: Implement Streaming (Optional)
+
+Handle streaming responses:
+
+```typescript
+parseStream(chunk: string) {
+  try {
+    const data = JSON.parse(chunk)
+
+    // Map to IR stream events
+    if (data.type === 'content_delta') {
+      return {
+        type: 'content',
+        content: {
+          delta: data.delta.text
+        }
+      }
+    }
+
+    if (data.type === 'message_stop') {
+      return {
+        type: 'end',
+        finishReason: 'stop',
+        usage: data.usage
+      }
+    }
+
+    return null
+  } catch {
+    return null
+  }
+}
+```
+
+### Step 6: Test Your Adapter
+
+Create `test/adapter.test.ts`:
+
+```typescript
+import { describe, it, expect } from 'vitest'
+import { myAdapter } from '../src/adapter'
+
+describe('My Adapter', () => {
+  it('should parse request to IR', () => {
+    const request = {
+      model: 'my-model',
+      messages: [{ role: 'user', content: 'Hello' }]
+    }
+
+    const ir = myAdapter.inbound.parseRequest(request)
+
+    expect(ir.messages).toHaveLength(1)
+    expect(ir.messages[0].content).toBe('Hello')
+  })
+
+  it('should build response from IR', () => {
+    const ir = {
+      model: 'my-model',
+      choices: [{
+        index: 0,
+        message: { role: 'assistant', content: 'Hi!' },
+        finishReason: 'stop'
+      }]
+    }
+
+    const response = myAdapter.outbound.buildResponse(ir)
+
+    expect(response.choices[0].message.content).toBe('Hi!')
+  })
+})
+```
+
+### Step 7: Use Your Adapter
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { myAdapter } from './adapter'
+
+const bridge = createBridge({
+  inbound: myAdapter,
+  outbound: myAdapter,
+  config: {
+    apiKey: process.env.MY_PROVIDER_API_KEY
+  }
+})
+
+const response = await bridge.chat({
+  model: 'my-model',
+  messages: [{ role: 'user', content: 'Hello!' }]
+})
+```
+
+## Complete Example
+
+Here's a complete minimal adapter:
+
+```typescript
+import type { LLMAdapter } from '@amux/llm-bridge'
+
+export const simpleAdapter: LLMAdapter = {
+  name: 'simple-provider',
+  version: '1.0.0',
+
+  capabilities: {
+    streaming: false,
+    tools: false,
+    vision: false,
+    multimodal: false,
+    systemPrompt: true,
+    toolChoice: false,
+    reasoning: false,
+    webSearch: false,
+    jsonMode: false,
+    logprobs: false,
+    seed: false
+  },
+
+  inbound: {
+    parseRequest: (req: any) => ({
+      messages: req.messages,
+      model: req.model,
+      stream: false,
+      generation: {
+        temperature: req.temperature || 1.0,
+        maxTokens: req.max_tokens || 1000
+      }
+    }),
+
+    parseResponse: (res: any) => ({
+      id: res.id,
+      model: res.model,
+      choices: res.choices.map(c => ({
+        index: c.index,
+        message: c.message,
+        finishReason: c.finish_reason
+      })),
+      usage: res.usage
+    })
+  },
+
+  outbound: {
+    buildRequest: (ir) => ({
+      model: ir.model,
+      messages: ir.messages,
+      temperature: ir.generation?.temperature,
+      max_tokens: ir.generation?.maxTokens
+    }),
+
+    buildResponse: (ir) => ({
+      id: ir.id,
+      model: ir.model,
+      choices: ir.choices,
+      usage: ir.usage
+    })
+  },
+
+  getInfo: () => ({
+    name: 'simple-provider',
+    version: '1.0.0',
+    capabilities: simpleAdapter.capabilities,
+    endpoint: {
+      baseURL: 'https://api.example.com',
+      chatPath: '/chat'
+    }
+  })
+}
+```
+
+## Best Practices
+
+### Handle Edge Cases
+
+```typescript
+parseRequest(request: any): LLMRequestIR {
+  // Validate required fields
+  if (!request.messages || request.messages.length === 0) {
+    throw new Error('Messages are required')
+  }
+
+  // Provide defaults
+  const ir: LLMRequestIR = {
+    messages: request.messages,
+    model: request.model || 'default-model',
+    stream: request.stream || false
+  }
+
+  return ir
+}
+```
+
+### Use TypeScript Types
+
+```typescript
+// Define provider-specific types
+interface MyProviderRequest {
+  model: string
+  messages: Array<{ role: string; content: string }>
+  temperature?: number
+  max_tokens?: number
+}
+
+interface MyProviderResponse {
+  id: string
+  choices: Array<{
+    message: { role: string; content: string }
+    finish_reason: string
+  }>
+}
+
+// Use in adapter
+parseRequest(request: MyProviderRequest): LLMRequestIR {
+  // TypeScript will catch errors
+}
+```
+
+### Add Error Handling
+
+```typescript
+parseError(error: any) {
+  return {
+    type: error.type || 'api_error',
+    message: error.message || 'Unknown error',
+    code: error.code,
+    retryable: error.status >= 500 || error.status === 429
+  }
+}
+```
+
+## Publishing Your Adapter
+
+If you want to share your adapter:
+
+1. **Package it**:
+```json
+{
+  "name": "@myorg/amux-adapter-myprovider",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "peerDependencies": {
+    "@amux/llm-bridge": "^1.0.0"
+  }
+}
+```
+
+2. **Build**: `npm run build`
+
+3. **Publish**: `npm publish`
+
+4. **Document**: Add README with usage examples
+
+## Next Steps
+
+<Cards>
+  <Card title="Adapter API" href="/en/docs/api/adapters">
+    Complete adapter API reference
+  </Card>
+  <Card title="IR Format" href="/en/docs/api/ir">
+    Understand the IR format
+  </Card>
+  <Card title="Official Adapters" href="/en/docs/adapters">
+    Study official adapter implementations
+  </Card>
+</Cards>

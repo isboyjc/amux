@@ -1,8 +1,11 @@
 import type { LLMAdapter } from '../adapter'
+import type { LLMRequestIR } from '../ir/request'
 import type { LLMResponseIR } from '../ir/response'
 import type { LLMStreamEvent, SSEEvent } from '../ir/stream'
+import type { Message, ContentPart } from '../types/message'
 
 import { HTTPClient } from './http-client'
+import { SSELineParser } from '../utils/sse-parser'
 import type {
   BridgeConfig,
   BridgeHooks,
@@ -86,6 +89,41 @@ export class Bridge implements LLMBridge {
   }
 
   /**
+   * Validate that the IR request features are supported by outbound adapter
+   * @private
+   */
+  private validateCapabilities(ir: LLMRequestIR): void {
+    const cap = this.outboundAdapter.capabilities
+
+    // Check tools capability
+    if (ir.tools && ir.tools.length > 0 && !cap.tools) {
+      throw new Error(
+        `Outbound adapter '${this.outboundAdapter.name}' does not support tools`
+      )
+    }
+
+    // Check vision capability (check for image content in messages)
+    if (!cap.vision) {
+      const hasVisionContent = ir.messages.some((msg: Message) => {
+        if (typeof msg.content === 'string') return false
+        return msg.content.some((part: ContentPart) => part.type === 'image')
+      })
+      if (hasVisionContent) {
+        throw new Error(
+          `Outbound adapter '${this.outboundAdapter.name}' does not support vision`
+        )
+      }
+    }
+
+    // Check reasoning capability
+    if (ir.generation?.thinking && !cap.reasoning) {
+      throw new Error(
+        `Outbound adapter '${this.outboundAdapter.name}' does not support reasoning/thinking`
+      )
+    }
+  }
+
+  /**
    * Send a chat request
    */
   async chat(request: unknown): Promise<unknown> {
@@ -112,6 +150,9 @@ export class Bridge implements LLMBridge {
           )
         }
       }
+
+      // Step 4.5: Validate capabilities match
+      this.validateCapabilities(ir)
 
       // Step 5: Outbound adapter builds provider request from IR
       const providerRequest = this.outboundAdapter.outbound.buildRequest(ir)
@@ -151,14 +192,19 @@ export class Bridge implements LLMBridge {
 
       return finalResponse
     } catch (error) {
-      // Trigger onError hook
+      // Trigger onError hook (ensure hook errors don't mask the original error)
       if (this.hooks?.onError && error instanceof Error) {
-        const errorIR = this.outboundAdapter.inbound.parseError?.(error) ?? {
-          message: error.message,
-          code: 'UNKNOWN_ERROR',
-          type: 'unknown' as const,
+        try {
+          const errorIR = this.outboundAdapter.inbound.parseError?.(error) ?? {
+            message: error.message,
+            code: 'UNKNOWN_ERROR',
+            type: 'unknown' as const,
+          }
+          await this.hooks.onError(errorIR)
+        } catch (hookError) {
+          // Log hook error but don't let it mask the original error
+          console.warn('Error in onError hook:', hookError)
         }
-        await this.hooks.onError(errorIR)
       }
       throw error
     }
@@ -272,6 +318,16 @@ export class Bridge implements LLMBridge {
         await this.hooks.onRequest(ir)
       }
 
+      // Step 3.5: Validate streaming capability
+      if (!this.outboundAdapter.capabilities.streaming) {
+        throw new Error(
+          `Outbound adapter '${this.outboundAdapter.name}' does not support streaming`
+        )
+      }
+
+      // Step 3.6: Validate capabilities match
+      this.validateCapabilities(ir)
+
       // Step 4: Outbound adapter builds provider request from IR
       const providerRequest = this.outboundAdapter.outbound.buildRequest(ir)
 
@@ -284,8 +340,8 @@ export class Bridge implements LLMBridge {
         throw new Error('Outbound adapter does not support streaming')
       }
 
-      // SSE buffer for handling incomplete chunks
-      let sseBuffer = ''
+      // SSE line parser for efficient line extraction
+      const sseParser = new SSELineParser()
 
       // Step 6: Process stream chunks
       for await (const chunk of this.httpClient.requestStream({
@@ -293,81 +349,73 @@ export class Bridge implements LLMBridge {
         url: `${baseURL}${endpoint}`,
         body: providerRequest,
       })) {
-      // Add chunk to buffer
-      sseBuffer += chunk
-      const lines = sseBuffer.split('\n')
+        // Extract complete lines from chunk
+        const lines = sseParser.processChunk(chunk)
 
-      // Keep the last line (might be incomplete)
-      sseBuffer = lines.pop() ?? ''
-
-      // Process complete lines
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6).trim()
-          if (data === '[DONE]') continue
-
-          try {
-            const parsed = JSON.parse(data) as unknown
-            const events = streamHandler(parsed)
-
-            if (events) {
-              const eventArray = Array.isArray(events) ? events : [events]
-              for (const event of eventArray) {
-                // Trigger onStreamEvent hook
-                if (this.hooks?.onStreamEvent) {
-                  await this.hooks.onStreamEvent(event)
-                }
-                yield event
-              }
-            }
-          } catch {
-            // Skip invalid JSON
-            continue
-          }
+        // Process complete lines
+        for await (const event of this.processSSELines(lines, streamHandler)) {
+          yield event
         }
       }
-    }
 
-      // Process remaining buffer
-      if (sseBuffer.trim()) {
-        const lines = sseBuffer.split('\n')
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6).trim()
-            if (data === '[DONE]') continue
-
-            try {
-              const parsed = JSON.parse(data) as unknown
-              const events = streamHandler(parsed)
-
-              if (events) {
-                const eventArray = Array.isArray(events) ? events : [events]
-                for (const event of eventArray) {
-                  // Trigger onStreamEvent hook
-                  if (this.hooks?.onStreamEvent) {
-                    await this.hooks.onStreamEvent(event)
-                  }
-                  yield event
-                }
-              }
-            } catch {
-              // Skip invalid JSON
-              continue
-            }
-          }
+      // Process any remaining buffered data
+      if (sseParser.hasRemaining()) {
+        const lines = sseParser.flush()
+        for await (const event of this.processSSELines(lines, streamHandler)) {
+          yield event
         }
       }
     } catch (error) {
-      // Trigger onError hook
+      // Trigger onError hook (ensure hook errors don't mask the original error)
       if (this.hooks?.onError && error instanceof Error) {
-        const errorIR = this.outboundAdapter.inbound.parseError?.(error) ?? {
-          message: error.message,
-          code: 'UNKNOWN_ERROR',
-          type: 'unknown' as const,
+        try {
+          const errorIR = this.outboundAdapter.inbound.parseError?.(error) ?? {
+            message: error.message,
+            code: 'UNKNOWN_ERROR',
+            type: 'unknown' as const,
+          }
+          await this.hooks.onError(errorIR)
+        } catch (hookError) {
+          // Log hook error but don't let it mask the original error
+          console.warn('Error in onError hook:', hookError)
         }
-        await this.hooks.onError(errorIR)
       }
       throw error
+    }
+  }
+
+  /**
+   * Process SSE lines and yield stream events
+   * @private
+   */
+  private async *processSSELines(
+    lines: string[],
+    streamHandler: (chunk: unknown) => LLMStreamEvent | LLMStreamEvent[] | null
+  ): AsyncIterable<LLMStreamEvent> {
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        const data = line.slice(6).trim()
+        if (data === '[DONE]') continue
+
+        try {
+          const parsed = JSON.parse(data) as unknown
+          const events = streamHandler(parsed)
+
+          if (events) {
+            const eventArray = Array.isArray(events) ? events : [events]
+            for (const event of eventArray) {
+              // Trigger onStreamEvent hook
+              if (this.hooks?.onStreamEvent) {
+                await this.hooks.onStreamEvent(event)
+              }
+              yield event
+            }
+          }
+        } catch {
+          // Skip invalid JSON
+          continue
+        }
+      }
     }
   }
 

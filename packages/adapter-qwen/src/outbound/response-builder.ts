@@ -1,24 +1,7 @@
-import type { LLMResponseIR, ContentPart } from '@amux/llm-bridge'
+import type { LLMResponseIR } from '@amux/llm-bridge'
+import { contentToString } from '@amux/llm-bridge'
 
 import type { QwenResponse } from '../types'
-
-/**
- * Convert content to string for Qwen response
- */
-function contentToString(content: string | ContentPart[]): string | null {
-  if (typeof content === 'string') {
-    return content || null
-  }
-
-  if (!content || content.length === 0) {
-    return null
-  }
-
-  return content
-    .filter((part) => part.type === 'text')
-    .map((part) => (part.type === 'text' ? part.text : ''))
-    .join('')
-}
 
 /**
  * Build Qwen response from IR

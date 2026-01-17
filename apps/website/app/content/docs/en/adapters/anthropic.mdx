@@ -152,6 +152,35 @@ The Anthropic API requires the `max_tokens` parameter to be specified.
     }
     ```
   </Tab>
+
+  <Tab value="Extended Thinking">
+    ### Extended Thinking (Reasoning)
+
+    Claude supports extended thinking for complex reasoning tasks:
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'claude-3-7-sonnet-20250219',
+      max_tokens: 4096,
+      messages: [
+        { role: 'user', content: 'Solve this complex problem step by step...' }
+      ],
+      thinking: {
+        type: 'enabled',
+        budget_tokens: 2000
+      }
+    })
+
+    // Access reasoning content
+    for (const block of response.content) {
+      if (block.type === 'thinking') {
+        console.log('Reasoning:', block.thinking)
+      } else if (block.type === 'text') {
+        console.log('Answer:', block.text)
+      }
+    }
+    ```
+  </Tab>
 </Tabs>
 
 ## Supported Models
@@ -234,6 +263,7 @@ const response = await bridge.chat({
 | Vision | ✅ | Claude 3 series |
 | System Prompt | ✅ | Separate system parameter |
 | Long Context | ✅ | 200K tokens |
+| Extended Thinking | ✅ | Reasoning support |
 
 ## Best Practices
 
@@ -294,13 +324,13 @@ const response = await bridge.chat({
 ## Next Steps
 
 <Cards>
-  <Card title="OpenAI Adapter" href="/docs/en/adapters/openai">
+  <Card title="OpenAI Adapter" href="/en/docs/adapters/openai">
     Learn how to use GPT models
   </Card>
-  <Card title="DeepSeek Adapter" href="/docs/en/adapters/deepseek">
+  <Card title="DeepSeek Adapter" href="/en/docs/adapters/deepseek">
     Learn how to use DeepSeek models
   </Card>
-  <Card title="Adapter API" href="/docs/en/api/adapters">
+  <Card title="Adapter API" href="/en/docs/api/adapters">
     View the complete Adapter API reference
   </Card>
 </Cards>

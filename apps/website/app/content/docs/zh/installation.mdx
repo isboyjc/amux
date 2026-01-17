@@ -6,243 +6,67 @@ description: 安装 Amux 并开始使用
 ## 前置要求
 
 - Node.js 18 或更高版本
-- pnpm、npm、yarn 或 bun
+- 包管理器：pnpm、npm、yarn 或 bun
 
 <Callout type="warn">
-确保您已安装 Node.js 18+。您可以使用 `node --version` 检查版本。
+使用 `node --version` 检查您的 Node.js 版本。Amux 需要 Node.js 18+。
 </Callout>
 
-## 安装核心包
+## 安装包
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab value="pnpm">
-    ```bash
-    pnpm add @amux/llm-bridge
-    ```
-  </Tab>
+安装核心包和您需要的适配器：
 
-  <Tab value="npm">
-    ```bash
-    npm install @amux/llm-bridge
-    ```
-  </Tab>
-
-  <Tab value="yarn">
-    ```bash
-    yarn add @amux/llm-bridge
-    ```
-  </Tab>
-
-  <Tab value="bun">
-    ```bash
-    bun add @amux/llm-bridge
-    ```
-  </Tab>
-</Tabs>
-
-## 安装适配器
-
-根据您的使用场景安装所需的适配器。
-
-<Tabs items={['OpenAI', 'Anthropic', 'DeepSeek', '其他', '全部']}>
-  <Tab value="OpenAI">
-    ### OpenAI 适配器
-
-    ```bash tab="pnpm"
-    pnpm add @amux/adapter-openai
-    ```
-
-    ```bash tab="npm"
-    npm install @amux/adapter-openai
-    ```
-
-    ```bash tab="yarn"
-    yarn add @amux/adapter-openai
-    ```
-
-    ```bash tab="bun"
-    bun add @amux/adapter-openai
-    ```
-
-    **支持：**
-    - 聊天补全
-    - 流式传输
-    - 函数调用
-    - 视觉（GPT-4V）
-    - JSON 模式
-  </Tab>
-
-  <Tab value="Anthropic">
-    ### Anthropic 适配器
-
-    ```bash tab="pnpm"
-    pnpm add @amux/adapter-anthropic
-    ```
-
-    ```bash tab="npm"
-    npm install @amux/adapter-anthropic
-    ```
-
-    ```bash tab="yarn"
-    yarn add @amux/adapter-anthropic
-    ```
-
-    ```bash tab="bun"
-    bun add @amux/adapter-anthropic
-    ```
-
-    **支持：**
-    - Messages API
-    - 流式传输
-    - 工具使用
-    - 视觉
-    - 系统提示
-  </Tab>
-
-  <Tab value="DeepSeek">
-    ### DeepSeek 适配器
-
-    ```bash tab="pnpm"
-    pnpm add @amux/adapter-deepseek
-    ```
-
-    ```bash tab="npm"
-    npm install @amux/adapter-deepseek
-    ```
-
-    ```bash tab="yarn"
-    yarn add @amux/adapter-deepseek
-    ```
-
-    ```bash tab="bun"
-    bun add @amux/adapter-deepseek
-    ```
-
-    **支持：**
-    - 聊天补全
-    - 流式传输
-    - 函数调用
-  </Tab>
-
-  <Tab value="其他">
-    ### 其他适配器
-
-    **Moonshot（月之暗面）：**
-    ```bash tab="pnpm"
-    pnpm add @amux/adapter-moonshot
-    ```
-
-    **Zhipu（智谱 AI）：**
-    ```bash tab="pnpm"
-    pnpm add @amux/adapter-zhipu
-    ```
-
-    **Qwen（阿里云）：**
-    ```bash tab="pnpm"
-    pnpm add @amux/adapter-qwen
-    ```
-
-    **Gemini（Google AI）：**
-    ```bash tab="pnpm"
-    pnpm add @amux/adapter-google
-    ```
-  </Tab>
-
-  <Tab value="全部">
-    ### 安装所有适配器
-
-    ```bash tab="pnpm"
-    pnpm add @amux/llm-bridge \
-      @amux/adapter-openai \
-      @amux/adapter-anthropic \
-      @amux/adapter-deepseek \
-      @amux/adapter-moonshot \
-      @amux/adapter-zhipu \
-      @amux/adapter-qwen \
-      @amux/adapter-google
-    ```
-
-    ```bash tab="npm"
-    npm install @amux/llm-bridge \
-      @amux/adapter-openai \
-      @amux/adapter-anthropic \
-      @amux/adapter-deepseek \
-      @amux/adapter-moonshot \
-      @amux/adapter-zhipu \
-      @amux/adapter-qwen \
-      @amux/adapter-google
-    ```
-
-    ```bash tab="yarn"
-    yarn add @amux/llm-bridge \
-      @amux/adapter-openai \
-      @amux/adapter-anthropic \
-      @amux/adapter-deepseek \
-      @amux/adapter-moonshot \
-      @amux/adapter-zhipu \
-      @amux/adapter-qwen \
-      @amux/adapter-google
-    ```
-
-    ```bash tab="bun"
-    bun add @amux/llm-bridge \
-      @amux/adapter-openai \
-      @amux/adapter-anthropic \
-      @amux/adapter-deepseek \
-      @amux/adapter-moonshot \
-      @amux/adapter-zhipu \
-      @amux/adapter-qwen \
-      @amux/adapter-google
-    ```
-
-    <Callout type="info">
-    只安装您需要的适配器。核心包支持 tree-shaking，因此未使用的适配器不会包含在您的打包文件中。
-    </Callout>
-  </Tab>
-</Tabs>
-
-## 验证安装
-
-创建一个简单的测试文件来验证安装：
-
-```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
-
-console.log('✓ Amux 安装成功！')
-console.log('✓ OpenAI 适配器：', openaiAdapter.name, 'v' + openaiAdapter.version)
-console.log('✓ 能力：', openaiAdapter.capabilities)
+```bash tab="pnpm"
+pnpm add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
 ```
 
-运行它：
-
-```bash tab="tsx"
-tsx test.ts
+```bash tab="npm"
+npm install @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
 ```
 
-```bash tab="node"
-node --loader tsx test.ts
+```bash tab="yarn"
+yarn add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
 ```
 
 ```bash tab="bun"
-bun test.ts
+bun add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
 ```
 
-您应该看到类似以下的输出：
+## 可用包
 
+| 包名 | 大小 | 描述 |
+|------|------|------|
+| `@amux/llm-bridge` | ~15KB | 核心包（必需）|
+| `@amux/adapter-openai` | ~8KB | OpenAI 适配器 |
+| `@amux/adapter-anthropic` | ~8KB | Anthropic 适配器 |
+| `@amux/adapter-deepseek` | ~6KB | DeepSeek 适配器 |
+| `@amux/adapter-moonshot` | ~6KB | Moonshot 适配器 |
+| `@amux/adapter-zhipu` | ~6KB | 智谱适配器 |
+| `@amux/adapter-qwen` | ~6KB | Qwen 适配器 |
+| `@amux/adapter-google` | ~7KB | Google Gemini 适配器 |
+
+<Callout type="info">
+只安装您需要的适配器。这些包支持 tree-shaking，因此未使用的代码不会包含在您的打包文件中。
+</Callout>
+
+## 环境设置
+
+为您的 API 密钥创建一个 `.env` 文件：
+
+```bash
+# .env
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+DEEPSEEK_API_KEY=sk-...
 ```
-✓ Amux 安装成功！
-✓ OpenAI 适配器： openai v1.0.0
-✓ 能力： { streaming: true, tools: true, ... }
-```
+
+<Callout type="warn">
+永远不要将 `.env` 文件提交到版本控制。将 `.env` 添加到您的 `.gitignore`。
+</Callout>
 
 ## TypeScript 配置
 
-<Callout type="info">
-Amux 使用 TypeScript 编写，包含完整的类型定义。不需要额外的 `@types` 包。
-</Callout>
-
-确保您的 `tsconfig.json` 包含：
+Amux 包含完整的 TypeScript 定义。确保您的 `tsconfig.json` 包含：
 
 ```json
 {
@@ -257,16 +81,45 @@ Amux 使用 TypeScript 编写，包含完整的类型定义。不需要额外的
 }
 ```
 
+## 验证安装
+
+创建一个测试文件来验证一切正常：
+
+```typescript
+// test.ts
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+
+console.log('✓ Amux 安装成功！')
+console.log('✓ OpenAI 适配器：', openaiAdapter.name, 'v' + openaiAdapter.version)
+```
+
+运行它：
+
+```bash tab="tsx"
+tsx test.ts
+```
+
+```bash tab="bun"
+bun test.ts
+```
+
+您应该看到：
+```
+✓ Amux 安装成功！
+✓ OpenAI 适配器： openai v1.0.0
+```
+
 ## 下一步
 
 <Cards>
-  <Card title="快速开始" href="/docs/zh/quick-start">
+  <Card title="快速开始" href="/zh/docs/quick-start">
     5 分钟构建您的第一个桥接
   </Card>
-  <Card title="核心概念" href="/docs/zh/core-concepts">
-    理解架构
+  <Card title="核心概念" href="/zh/docs/core-concepts">
+    了解 Amux 的工作原理
   </Card>
-  <Card title="API 参考" href="/docs/zh/api/bridge">
+  <Card title="API 参考" href="/zh/docs/api/bridge">
     探索完整 API
   </Card>
 </Cards>

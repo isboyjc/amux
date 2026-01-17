@@ -1,0 +1,621 @@
+---
+title: 迁移指南
+description: 从 OpenAI 或 Anthropic SDK 迁移到 Amux
+---
+
+## 为什么要迁移到 Amux？
+
+Amux 相比使用特定提供商的 SDK 具有以下几个优势：
+
+- **提供商灵活性** - 无需更改代码即可切换提供商
+- **统一 API** - 所有提供商的单一接口
+- **模型映射** - 轻松映射和交换模型
+- **双向转换** - 支持任何请求/响应格式
+- **类型安全** - 所有适配器的完整 TypeScript 支持
+
+<Callout type="info">
+迁移到 Amux 非常简单。大多数代码更改都是机械替换。
+</Callout>
+
+## 从 OpenAI SDK 迁移
+
+### 之前（OpenAI SDK）
+
+```typescript
+import OpenAI from 'openai'
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+})
+
+const response = await openai.chat.completions.create({
+  model: 'gpt-4',
+  messages: [
+    { role: 'system', content: '你是一个有帮助的助手。' },
+    { role: 'user', content: '你好！' }
+  ],
+  temperature: 0.7,
+  max_tokens: 100
+})
+
+console.log(response.choices[0].message.content)
+```
+
+### 之后（Amux）
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: openaiAdapter,
+  config: {
+    apiKey: process.env.OPENAI_API_KEY
+  }
+})
+
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [
+    { role: 'system', content: '你是一个有帮助的助手。' },
+    { role: 'user', content: '你好！' }
+  ],
+  temperature: 0.7,
+  max_tokens: 100
+})
+
+console.log(response.choices[0].message.content)
+```
+
+**关键变化：**
+1. 用 Amux 导入替换 `import OpenAI`
+2. 用 `createBridge()` 替换 `new OpenAI()`
+3. 用 `bridge.chat()` 替换 `openai.chat.completions.create()`
+4. 请求/响应格式保持不变！
+
+### 流式响应
+
+之前（OpenAI SDK）：
+
+```typescript
+const stream = await openai.chat.completions.create({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '给我讲个故事' }],
+  stream: true
+})
+
+for await (const chunk of stream) {
+  const content = chunk.choices[0]?.delta?.content
+  if (content) {
+    process.stdout.write(content)
+  }
+}
+```
+
+之后（Amux）：
+
+```typescript
+const stream = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '给我讲个故事' }],
+  stream: true
+})
+
+for await (const event of stream) {
+  if (event.type === 'content') {
+    process.stdout.write(event.content.delta)
+  }
+}
+```
+
+**关键变化：**
+- 使用 `bridge.chat()` 并设置 `stream: true`
+- 事件通过 `type` 字段规范化
+- 内容在 `event.content.delta` 中
+
+### 函数调用
+
+之前（OpenAI SDK）：
+
+```typescript
+const response = await openai.chat.completions.create({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '天气怎么样？' }],
+  tools: [
+    {
+      type: 'function',
+      function: {
+        name: 'get_weather',
+        description: '获取天气',
+        parameters: {
+          type: 'object',
+          properties: {
+            location: { type: 'string' }
+          }
+        }
+      }
+    }
+  ]
+})
+
+if (response.choices[0].message.tool_calls) {
+  // 处理工具调用
+}
+```
+
+之后（Amux）：
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '天气怎么样？' }],
+  tools: [
+    {
+      type: 'function',
+      function: {
+        name: 'get_weather',
+        description: '获取天气',
+        parameters: {
+          type: 'object',
+          properties: {
+            location: { type: 'string' }
+          }
+        }
+      }
+    }
+  ]
+})
+
+if (response.choices[0].message.tool_calls) {
+  // 处理工具调用 - 与之前相同！
+}
+```
+
+**无需更改！** 工具调用 API 完全相同。
+
+## 从 Anthropic SDK 迁移
+
+### 之前（Anthropic SDK）
+
+```typescript
+import Anthropic from '@anthropic-ai/sdk'
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY
+})
+
+const response = await anthropic.messages.create({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  messages: [
+    { role: 'user', content: '你好！' }
+  ]
+})
+
+console.log(response.content[0].text)
+```
+
+### 之后（Amux）
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+
+const bridge = createBridge({
+  inbound: anthropicAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: process.env.ANTHROPIC_API_KEY
+  }
+})
+
+const response = await bridge.chat({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  messages: [
+    { role: 'user', content: '你好！' }
+  ]
+})
+
+console.log(response.content[0].text)
+```
+
+**关键变化：**
+1. 用 Amux 导入替换 `import Anthropic`
+2. 用 `createBridge()` 替换 `new Anthropic()`
+3. 用 `bridge.chat()` 替换 `anthropic.messages.create()`
+4. 请求/响应格式保持不变！
+
+### 流式响应
+
+之前（Anthropic SDK）：
+
+```typescript
+const stream = await anthropic.messages.create({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: '给我讲个故事' }],
+  stream: true
+})
+
+for await (const event of stream) {
+  if (event.type === 'content_block_delta') {
+    process.stdout.write(event.delta.text)
+  }
+}
+```
+
+之后（Amux）：
+
+```typescript
+const stream = await bridge.chat({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: '给我讲个故事' }],
+  stream: true
+})
+
+for await (const event of stream) {
+  if (event.type === 'content') {
+    process.stdout.write(event.content.delta)
+  }
+}
+```
+
+**关键变化：**
+- 事件规范化为 `type: 'content'`
+- 文本在 `event.content.delta` 中（而不是 `event.delta.text`）
+
+### 工具使用
+
+之前（Anthropic SDK）：
+
+```typescript
+const response = await anthropic.messages.create({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: '天气怎么样？' }],
+  tools: [
+    {
+      name: 'get_weather',
+      description: '获取天气',
+      input_schema: {
+        type: 'object',
+        properties: {
+          location: { type: 'string' }
+        }
+      }
+    }
+  ]
+})
+```
+
+之后（Amux）：
+
+```typescript
+const response = await bridge.chat({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: '天气怎么样？' }],
+  tools: [
+    {
+      type: 'function',
+      function: {
+        name: 'get_weather',
+        description: '获取天气',
+        parameters: {
+          type: 'object',
+          properties: {
+            location: { type: 'string' }
+          }
+        }
+      }
+    }
+  ]
+})
+```
+
+**关键变化：**
+- 工具使用 OpenAI 风格格式（可由适配器规范化）
+- `input_schema` 变为 `parameters`
+- 包装在 `function` 对象中
+
+## 跨提供商迁移
+
+Amux 的关键优势之一是轻松实现跨提供商迁移。
+
+### OpenAI 到 Anthropic
+
+```typescript
+// 之前：使用 OpenAI SDK
+import OpenAI from 'openai'
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+const response = await openai.chat.completions.create({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '你好！' }]
+})
+
+// 之后：相同代码，不同提供商
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapping: {
+    'gpt-4': 'claude-3-5-sonnet-20241022'
+  }
+})
+
+// 相同的请求格式！
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '你好！' }]
+})
+```
+
+### Anthropic 到 DeepSeek
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { deepseekAdapter } from '@amux/adapter-deepseek'
+
+const bridge = createBridge({
+  inbound: anthropicAdapter,
+  outbound: deepseekAdapter,
+  config: { apiKey: process.env.DEEPSEEK_API_KEY },
+  modelMapping: {
+    'claude-3-5-sonnet-20241022': 'deepseek-chat'
+  }
+})
+
+// 使用 Anthropic 格式，调用 DeepSeek
+const response = await bridge.chat({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: '你好！' }]
+})
+```
+
+## 常见迁移模式
+
+### 1. 渐进式迁移
+
+逐步迁移而不破坏现有代码：
+
+```typescript
+// 步骤 1：继续使用 OpenAI SDK
+import OpenAI from 'openai'
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+// 步骤 2：同时添加 Amux
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: openaiAdapter,
+  config: { apiKey: process.env.OPENAI_API_KEY }
+})
+
+// 步骤 3：逐个迁移路由
+async function chat(request) {
+  // 旧代码
+  // return await openai.chat.completions.create(request)
+
+  // 新代码
+  return await bridge.chat(request)
+}
+
+// 步骤 4：完成后删除 OpenAI SDK
+```
+
+### 2. 功能标志迁移
+
+使用功能标志控制发布：
+
+```typescript
+const useAmux = process.env.USE_AMUX === 'true'
+
+async function chat(request) {
+  if (useAmux) {
+    return await bridge.chat(request)
+  } else {
+    return await openai.chat.completions.create(request)
+  }
+}
+```
+
+### 3. A/B 测试
+
+并排比较提供商：
+
+```typescript
+async function chatWithComparison(request) {
+  const [openaiResponse, claudeResponse] = await Promise.all([
+    bridgeOpenAI.chat(request),
+    bridgeClaude.chat(request)
+  ])
+
+  // 记录以进行比较
+  console.log('OpenAI:', openaiResponse.choices[0].message.content)
+  console.log('Claude:', claudeResponse.content[0].text)
+
+  // 返回首选提供商
+  return openaiResponse
+}
+```
+
+## 关键差异和注意事项
+
+### 系统消息
+
+**OpenAI SDK：**
+```typescript
+messages: [
+  { role: 'system', content: '你很有帮助。' },
+  { role: 'user', content: '你好！' }
+]
+```
+
+**Anthropic SDK：**
+```typescript
+system: '你很有帮助。',
+messages: [
+  { role: 'user', content: '你好！' }
+]
+```
+
+**Amux：** 两种格式都可以！适配器处理转换。
+
+```typescript
+// OpenAI 格式适用于 Anthropic 适配器
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+})
+
+await bridge.chat({
+  model: 'gpt-4',
+  messages: [
+    { role: 'system', content: '你很有帮助。' },  // 自动转换
+    { role: 'user', content: '你好！' }
+  ]
+})
+```
+
+### 响应格式
+
+**OpenAI SDK：**
+```typescript
+response.choices[0].message.content
+```
+
+**Anthropic SDK：**
+```typescript
+response.content[0].text
+```
+
+**Amux：** 格式匹配入站适配器！
+
+```typescript
+// 使用 OpenAI 入站适配器
+const response = await bridge.chat({ ... })
+console.log(response.choices[0].message.content)  // OpenAI 格式
+
+// 使用 Anthropic 入站适配器
+const response = await bridge.chat({ ... })
+console.log(response.content[0].text)  // Anthropic 格式
+```
+
+### 错误处理
+
+错误在提供商之间规范化：
+
+```typescript
+import { APIError, NetworkError } from '@amux/llm-bridge'
+
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof APIError) {
+    console.error('API 错误:', error.status, error.provider)
+  } else if (error instanceof NetworkError) {
+    console.error('网络错误:', error.message)
+  }
+}
+```
+
+## 迁移检查清单
+
+- [ ] 安装 Amux 包：`@amux/llm-bridge`、`@amux/adapter-*`
+- [ ] 用 Amux 导入替换 SDK 导入
+- [ ] 用 `createBridge()` 替换客户端初始化
+- [ ] 用 `bridge.chat()` 替换 API 调用
+- [ ] 更新流式事件处理（如果使用流）
+- [ ] 更新错误处理（使用 Amux 错误类型）
+- [ ] 使用现有请求进行测试
+- [ ] 更新 TypeScript 类型（如果使用）
+- [ ] 删除旧的 SDK 依赖项
+- [ ] 更新文档
+
+## 最佳实践
+
+### 1. 保持请求格式
+
+迁移期间不要更改请求格式：
+
+```typescript
+// ✅ 好：保持现有格式
+const bridge = createBridge({
+  inbound: openaiAdapter,  // 使用你当前的格式
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+})
+
+// 你现有的请求按原样工作
+await bridge.chat({ model: 'gpt-4', messages: [...] })
+```
+
+### 2. 彻底测试
+
+为你的迁移创建测试用例：
+
+```typescript
+import { describe, it, expect } from 'vitest'
+
+describe('迁移测试', () => {
+  it('应返回相同格式', async () => {
+    const request = {
+      model: 'gpt-4',
+      messages: [{ role: 'user', content: '你好！' }]
+    }
+
+    const response = await bridge.chat(request)
+
+    expect(response.choices).toBeDefined()
+    expect(response.choices[0].message.content).toBeTruthy()
+  })
+})
+```
+
+### 3. 使用类型安全
+
+利用 TypeScript 实现更安全的迁移：
+
+```typescript
+import type { LLMBridge } from '@amux/llm-bridge'
+
+// 为你的桥接添加类型
+const bridge: LLMBridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+})
+
+// TypeScript 确保正确使用
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '你好！' }]
+})
+```
+
+## 下一步
+
+<Cards>
+  <Card title="基础用法" href="/zh/docs/guides/basic-usage">
+    学习桥接基础
+  </Card>
+  <Card title="模型映射" href="/zh/docs/guides/model-mapping">
+    跨提供商映射模型
+  </Card>
+  <Card title="错误处理" href="/zh/docs/guides/error-handling">
+    优雅地处理错误
+  </Card>
+</Cards>

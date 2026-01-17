@@ -61,26 +61,6 @@ export function createStreamBuilder(): StreamEventBuilder {
         })
       }
 
-      // Handle reasoning delta (for models like o1)
-      if (event.type === 'reasoning' && event.reasoning?.delta) {
-        // OpenAI doesn't have a standard reasoning format in streaming
-        // We'll include it as regular content for now
-        events.push({
-          event: 'data',
-          data: {
-            id: chunkId,
-            object: 'chat.completion.chunk',
-            created,
-            model,
-            choices: [{
-              index: 0,
-              delta: { content: event.reasoning.delta },
-              finish_reason: null,
-            }],
-          },
-        })
-      }
-
       // Handle tool call
       if (event.type === 'tool_call' && event.toolCall) {
         const toolIndex = event.toolCall.index ?? 0

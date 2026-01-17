@@ -128,46 +128,61 @@ export function registerRoutes(app: FastifyInstance): void {
       
       try {
         const body = request.body as ChatCompletionRequest
-        
+
         console.log(`[Routes] proxyPath: ${proxy.proxy_path}, model: ${body?.model}`)
-        
-        // Validate API key
+
+        // Detect internal requests (from Chat IPC - localhost + no auth header)
         const apiKey = extractApiKey(request)
-        console.log(`[Routes] API key: ${apiKey ? '***' + apiKey.slice(-4) : 'missing'}`)
-        
-        // Validate API key based on authentication mode
-        const keyValidation = validateApiKey(apiKey)
-        console.log(`[Routes] Key validation: valid=${keyValidation.valid}, usePlatformKey=${keyValidation.usePlatformKey}, usePassThrough=${keyValidation.usePassThrough}`)
-        
-        if (!keyValidation.valid) {
-          console.log(`[Routes] Key validation failed: ${keyValidation.error}`)
-          const error = createErrorResponse(
-            keyValidation.error?.includes('required') ? ProxyErrorCode.MISSING_API_KEY : ProxyErrorCode.INVALID_API_KEY,
-            keyValidation.error || 'Invalid API key',
-            401,
-            errorFormat
-          )
-          return reply.status(error.statusCode).send(error.body)
-        }
-        
-        // Get bridge with appropriate API key handling:
-        // - Auth disabled or Platform key: use provider's configured key (passThruKey = undefined)
-        // - Pass-through mode: use the request key directly (passThruKey = apiKey)
-        console.log(`[Routes] Getting bridge for proxy: ${proxy.id}`)
+        const isInternalRequest = requestSource === 'local' && !apiKey
+        console.log(`[Routes] API key: ${apiKey ? '***' + apiKey.slice(-4) : 'missing'}, internal: ${isInternalRequest}`)
+
+        // Variables for bridge and provider
         let bridge, provider
-        try {
-          const passThruKey = keyValidation.usePassThrough ? apiKey : undefined
-          const result = getBridge(proxy.id, passThruKey ?? undefined)
-          bridge = result.bridge
-          provider = result.provider
-          
-          const mode = keyValidation.usePassThrough 
-            ? 'pass-through' 
-            : (keyValidation.usePlatformKey ? 'platform-key' : 'no-auth')
-          console.log(`[Routes] Bridge created, provider: ${provider.name}, mode: ${mode}`)
-        } catch (error) {
-          console.error(`[Routes] Failed to get bridge:`, error)
-          throw error
+
+        // Validate API key (skip for internal requests)
+        if (!isInternalRequest) {
+          const keyValidation = validateApiKey(apiKey)
+          console.log(`[Routes] Key validation: valid=${keyValidation.valid}, usePlatformKey=${keyValidation.usePlatformKey}, usePassThrough=${keyValidation.usePassThrough}`)
+
+          if (!keyValidation.valid) {
+            console.log(`[Routes] Key validation failed: ${keyValidation.error}`)
+            const error = createErrorResponse(
+              keyValidation.error?.includes('required') ? ProxyErrorCode.MISSING_API_KEY : ProxyErrorCode.INVALID_API_KEY,
+              keyValidation.error || 'Invalid API key',
+              401,
+              errorFormat
+            )
+            return reply.status(error.statusCode).send(error.body)
+          }
+
+          // Get bridge with appropriate API key handling
+          console.log(`[Routes] Getting bridge for proxy: ${proxy.id}`)
+          try {
+            const passThruKey = keyValidation.usePassThrough ? apiKey : undefined
+            const result = getBridge(proxy.id, passThruKey ?? undefined)
+            bridge = result.bridge
+            provider = result.provider
+
+            const mode = keyValidation.usePassThrough
+              ? 'pass-through'
+              : (keyValidation.usePlatformKey ? 'platform-key' : 'no-auth')
+            console.log(`[Routes] Bridge created, provider: ${provider.name}, mode: ${mode}`)
+          } catch (error) {
+            console.error(`[Routes] Failed to get bridge:`, error)
+            throw error
+          }
+        } else {
+          // Internal request from Chat - use provider's configured key
+          console.log(`[Routes] Internal request detected, getting bridge with provider key`)
+          try {
+            const result = getBridge(proxy.id, undefined)
+            bridge = result.bridge
+            provider = result.provider
+            console.log(`[Routes] Bridge created for internal request, provider: ${provider.name}`)
+          } catch (error) {
+            console.error(`[Routes] Failed to get bridge:`, error)
+            throw error
+          }
         }
         
         // Resolve model mapping

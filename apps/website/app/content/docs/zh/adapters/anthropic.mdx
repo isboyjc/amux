@@ -152,6 +152,35 @@ Anthropic API 要求必须指定 `max_tokens` 参数。
     }
     ```
   </Tab>
+
+  <Tab value="扩展思考">
+    ### 扩展思考（推理）
+
+    Claude 支持扩展思考功能，用于复杂推理任务：
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'claude-3-7-sonnet-20250219',
+      max_tokens: 4096,
+      messages: [
+        { role: 'user', content: '逐步解决这个复杂问题...' }
+      ],
+      thinking: {
+        type: 'enabled',
+        budget_tokens: 2000
+      }
+    })
+
+    // 访问推理内容
+    for (const block of response.content) {
+      if (block.type === 'thinking') {
+        console.log('推理过程:', block.thinking)
+      } else if (block.type === 'text') {
+        console.log('答案:', block.text)
+      }
+    }
+    ```
+  </Tab>
 </Tabs>
 
 ## 支持的模型
@@ -234,6 +263,7 @@ const response = await bridge.chat({
 | 视觉 | ✅ | Claude 3 系列 |
 | 系统提示 | ✅ | 单独的 system 参数 |
 | 长上下文 | ✅ | 200K tokens |
+| 扩展思考 | ✅ | 推理支持 |
 
 ## 最佳实践
 
@@ -294,13 +324,13 @@ const response = await bridge.chat({
 ## 下一步
 
 <Cards>
-  <Card title="OpenAI 适配器" href="/docs/zh/adapters/openai">
+  <Card title="OpenAI 适配器" href="/zh/docs/adapters/openai">
     了解如何使用 GPT 模型
   </Card>
-  <Card title="DeepSeek 适配器" href="/docs/zh/adapters/deepseek">
+  <Card title="DeepSeek 适配器" href="/zh/docs/adapters/deepseek">
     了解如何使用 DeepSeek 模型
   </Card>
-  <Card title="适配器 API" href="/docs/zh/api/adapters">
+  <Card title="适配器 API" href="/zh/docs/api/adapters">
     查看完整的适配器 API 参考
   </Card>
 </Cards>

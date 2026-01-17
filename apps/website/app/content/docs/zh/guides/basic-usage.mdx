@@ -1,0 +1,177 @@
+---
+title: 基础用法
+description: 学习创建和使用桥接的基础知识
+---
+
+## 创建桥接
+
+桥接连接两个适配器：**入站**适配器（你的格式）和**出站**适配器（要调用的提供商）。
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,      // 你的请求格式
+  outbound: anthropicAdapter,  // 要调用的提供商
+  config: {
+    apiKey: process.env.ANTHROPIC_API_KEY
+  }
+})
+```
+
+<Callout type="info">
+入站适配器决定你的**请求/响应格式**。出站适配器决定调用哪个**提供商 API**。
+</Callout>
+
+## 发送请求
+
+使用 `chat()` 方法发送请求：
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [
+    { role: 'user', content: '你好！' }
+  ]
+})
+
+console.log(response.choices[0].message.content)
+```
+
+## 双向转换示例
+
+### OpenAI 格式 → Claude API
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+})
+
+// 发送 OpenAI 格式请求
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '你好！' }]
+})
+// 返回 OpenAI 格式响应
+```
+
+### Claude 格式 → OpenAI API
+
+```typescript
+const bridge = createBridge({
+  inbound: anthropicAdapter,
+  outbound: openaiAdapter,
+  config: { apiKey: process.env.OPENAI_API_KEY }
+})
+
+// 发送 Anthropic 格式请求
+const response = await bridge.chat({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: '你好！' }]
+})
+// 返回 Anthropic 格式响应
+```
+
+## 配置选项
+
+`config` 对象支持常见设置：
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: 'sk-...',              // 必需：API 密钥
+    baseURL: 'https://...',        // 可选：自定义基础 URL
+    timeout: 60000,                // 可选：请求超时（毫秒）
+    headers: {                     // 可选：自定义请求头
+      'X-Custom-Header': 'value'
+    }
+  }
+})
+```
+
+## 使用消息
+
+所有适配器都支持标准消息格式：
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [
+    { role: 'system', content: '你是一个有帮助的助手。' },
+    { role: 'user', content: '什么是 TypeScript？' },
+    { role: 'assistant', content: 'TypeScript 是...' },
+    { role: 'user', content: '告诉我更多' }
+  ]
+})
+```
+
+**消息角色：**
+- `system` - 系统指令（并非所有提供商都支持）
+- `user` - 用户消息
+- `assistant` - 助手响应
+
+<Callout type="warn">
+某些提供商（如 Anthropic）对系统消息的处理方式不同。Amux 会自动将它们转换为正确的格式。
+</Callout>
+
+## 生成参数
+
+使用常见参数控制响应生成：
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [...],
+  temperature: 0.7,        // 随机性（0-2）
+  max_tokens: 1000,        // 生成的最大 token 数
+  top_p: 0.9,             // 核采样
+  stop: ['\n\n'],         // 停止序列
+  presence_penalty: 0.0,  // 惩罚新主题
+  frequency_penalty: 0.0  // 惩罚重复
+})
+```
+
+## 使用相同的提供商
+
+你可以为入站和出站使用相同的适配器：
+
+```typescript
+// 使用 Anthropic 格式调用 Claude API
+const bridge = createBridge({
+  inbound: anthropicAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+})
+
+// 使用 OpenAI 格式调用 OpenAI API
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: openaiAdapter,
+  config: { apiKey: process.env.OPENAI_API_KEY }
+})
+```
+
+<Callout type="info">
+即使使用相同的适配器，Amux 也能提供统一的错误处理、模型映射和一致的日志记录等好处。
+</Callout>
+
+## 下一步
+
+<Cards>
+  <Card title="流式响应" href="/zh/docs/guides/streaming">
+    处理流式响应
+  </Card>
+  <Card title="工具调用" href="/zh/docs/guides/tool-calling">
+    使用函数调用
+  </Card>
+  <Card title="错误处理" href="/zh/docs/guides/error-handling">
+    优雅地处理错误
+  </Card>
+</Cards>

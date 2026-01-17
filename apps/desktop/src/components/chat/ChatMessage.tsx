@@ -2,14 +2,13 @@
  * Chat message component with reasoning support
  */
 
-import { useState, useRef } from 'react'
-import { ChevronDown, ChevronRight, Brain, Check, Loader2 } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Loader2, ChevronDown, ChevronRight } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/stores/i18n-store'
-import { useCopyToClipboard } from '@/hooks/useCopyToClipboard'
-import { CopyIcon, RefreshIcon, TrashIcon } from '@/components/icons'
+import { CopyIcon, RefreshIcon, TrashIcon, CheckIcon } from '@/components/icons'
 import type { AnimatedIconHandle } from '@/components/icons/types'
 import type { ChatMessage as ChatMessageType } from '@/types'
 
@@ -32,11 +31,14 @@ export function ChatMessage({
 }: ChatMessageProps) {
   const { t } = useI18n()
   const [reasoningExpanded, setReasoningExpanded] = useState(false)
-  const [isHovered, setIsHovered] = useState(false)
-  const { copied, copy } = useCopyToClipboard({ duration: 1500 })
+  const [copiedUser, setCopiedUser] = useState(false)
+  const [copiedAssistant, setCopiedAssistant] = useState(false)
   const copyIconRef = useRef<AnimatedIconHandle>(null)
+  const copyIconRefUser = useRef<AnimatedIconHandle>(null)
   const refreshIconRef = useRef<AnimatedIconHandle>(null)
   const trashIconRef = useRef<AnimatedIconHandle>(null)
+  const trashIconRefUser = useRef<AnimatedIconHandle>(null)
+  const reasoningPreviewRef = useRef<HTMLDivElement>(null)
 
   const isUser = message.role === 'user'
   const isAssistant = message.role === 'assistant'
@@ -51,11 +53,35 @@ export function ChatMessage({
     : message.reasoning || ''
 
   const hasReasoning = reasoning.length > 0
-  const isReasoningStreaming = isStreaming && streamingReasoning !== undefined && !content
+  // Reasoning is streaming ONLY when we're streaming reasoning and NOT yet streaming content
+  // Once content starts streaming, reasoning is complete
+  const isReasoningStreaming = isStreaming &&
+    streamingReasoning !== undefined &&
+    streamingReasoning.length > 0 &&
+    (!streamingContent || streamingContent.length === 0)
+  // Reasoning is complete when we have reasoning but it's not streaming
+  const isReasoningComplete = hasReasoning && !isReasoningStreaming
 
-  const handleCopy = () => {
-    copyIconRef.current?.startAnimation()
-    copy(content)
+  // Auto-scroll to bottom when reasoning is streaming and collapsed
+  useEffect(() => {
+    if (isReasoningStreaming && !reasoningExpanded && reasoningPreviewRef.current) {
+      reasoningPreviewRef.current.scrollTop = reasoningPreviewRef.current.scrollHeight
+    }
+  }, [reasoning, isReasoningStreaming, reasoningExpanded])
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(content)
+      if (isUser) {
+        setCopiedUser(true)
+        setTimeout(() => setCopiedUser(false), 2000)
+      } else {
+        setCopiedAssistant(true)
+        setTimeout(() => setCopiedAssistant(false), 2000)
+      }
+    } catch (error) {
+      console.error('Failed to copy:', error)
+    }
   }
 
   const handleRegenerate = () => {
@@ -67,16 +93,12 @@ export function ChatMessage({
     onDelete?.()
   }
 
-  const showActions = isHovered && content && !isStreaming
-
   return (
     <div
       className={cn(
         'py-4 group',
         isUser ? 'flex justify-end' : ''
       )}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
       {/* User message - bubble style, max 80% width, larger radius */}
       {isUser && (
@@ -96,35 +118,27 @@ export function ChatMessage({
               {content}
             </ReactMarkdown>
           </div>
-          {/* Action buttons placeholder - always reserve space */}
-          <div className="h-8 flex items-center justify-end gap-0.5">
+          {/* Action buttons - show on hover */}
+          <div className="mt-1 flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
             <button
               onClick={handleCopy}
-              className={cn(
-                'p-1.5 rounded-md',
-                'text-muted-foreground hover:text-foreground hover:bg-muted/50',
-                'transition-all duration-200',
-                showActions ? 'opacity-100' : 'opacity-0 pointer-events-none'
-              )}
+              onMouseEnter={() => !copiedUser && copyIconRefUser.current?.startAnimation()}
+              onMouseLeave={() => !copiedUser && copyIconRefUser.current?.stopAnimation()}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
             >
-              {copied ? (
-                <Check className="h-3.5 w-3.5 text-green-500" />
+              {copiedUser ? (
+                <CheckIcon size={14} success />
               ) : (
-                <CopyIcon ref={copyIconRef} size={14} />
+                <CopyIcon ref={copyIconRefUser} size={14} />
               )}
             </button>
             <button
               onClick={handleDelete}
-              onMouseEnter={() => trashIconRef.current?.startAnimation()}
-              onMouseLeave={() => trashIconRef.current?.stopAnimation()}
-              className={cn(
-                'p-1.5 rounded-md',
-                'text-muted-foreground hover:text-red-500 hover:bg-red-500/10',
-                'transition-all duration-200',
-                showActions ? 'opacity-100' : 'opacity-0 pointer-events-none'
-              )}
+              onMouseEnter={() => trashIconRefUser.current?.startAnimation()}
+              onMouseLeave={() => trashIconRefUser.current?.stopAnimation()}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
             >
-              <TrashIcon ref={trashIconRef} size={14} dangerHover />
+              <TrashIcon ref={trashIconRefUser} size={14} dangerHover />
             </button>
           </div>
         </div>
@@ -132,54 +146,83 @@ export function ChatMessage({
 
       {/* Assistant message - no bubble, full width */}
       {isAssistant && (
-        <div className="relative mt-2">
-          {/* Reasoning block (collapsible) - darker color, collapsed by default */}
+        <div className="relative">
+          {/* Reasoning block - collapsible, default collapsed */}
           {(hasReasoning || isReasoningStreaming) && (
-            <div className="mb-3">
+            <div className="mb-4">
+              {/* Thinking indicator - clickable to toggle */}
               <button
                 onClick={() => setReasoningExpanded(!reasoningExpanded)}
-                className={cn(
-                  'flex items-center gap-2 text-xs',
-                  'text-muted-foreground/50 hover:text-muted-foreground/70',
-                  'transition-colors',
-                  'px-3 py-1.5 rounded-lg bg-muted/20 border border-border/20'
-                )}
+                className="flex items-center gap-1.5 mb-2 text-muted-foreground/50 hover:text-muted-foreground/70 transition-colors"
               >
                 {isReasoningStreaming ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
-                  <Brain className="h-3 w-3" />
+                  <div className="h-3 w-3 rounded-full bg-muted-foreground/30" />
                 )}
-                <span>{isReasoningStreaming ? t('chat.thinkingInProgress') : t('chat.thinking')}</span>
-                {!isReasoningStreaming && (
-                  reasoningExpanded ? (
-                    <ChevronDown className="h-3 w-3" />
-                  ) : (
-                    <ChevronRight className="h-3 w-3" />
-                  )
+                <span className="text-xs font-medium">
+                  {isReasoningStreaming ? t('chat.thinkingInProgress') : t('chat.thinking')}
+                </span>
+                {reasoningExpanded ? (
+                  <ChevronDown className="h-3 w-3" />
+                ) : (
+                  <ChevronRight className="h-3 w-3" />
                 )}
               </button>
 
-              {reasoningExpanded && !isReasoningStreaming && (
-                <div className={cn(
-                  'mt-2 px-3 py-2 rounded-lg',
-                  'bg-muted/10 border border-border/10',
-                  'text-xs text-muted-foreground/40 leading-relaxed'
-                )}>
-                  <ReactMarkdown
-                    components={{
-                      p: ({ children }) => <p className="my-1">{children}</p>,
-                      pre: ({ children }) => <pre className="my-2 overflow-x-auto">{children}</pre>
-                    }}
-                  >
-                    {reasoning}
-                  </ReactMarkdown>
-                </div>
+              {/* Reasoning content */}
+              {reasoning && (
+                <>
+                  {/* Collapsed state - show last 2 lines when streaming, hide when complete */}
+                  {!reasoningExpanded && isReasoningStreaming && (
+                    <div
+                      ref={reasoningPreviewRef}
+                      className="h-[2.8rem] overflow-hidden text-[13px] text-muted-foreground/60 leading-[1.4rem]"
+                    >
+                      <ReactMarkdown
+                        components={{
+                          p: ({ children }) => <p className="my-0 leading-[1.4rem]">{children}</p>,
+                          pre: ({ children }) => <pre className="my-0 overflow-x-auto text-xs">{children}</pre>,
+                          code: ({ children }) => <code className="text-xs bg-muted/30 px-1 py-0.5 rounded">{children}</code>,
+                          ul: ({ children }) => <ul className="my-0 pl-4 list-disc">{children}</ul>,
+                          ol: ({ children }) => <ol className="my-0 pl-4 list-decimal">{children}</ol>,
+                          li: ({ children }) => <li className="my-0 leading-[1.4rem]">{children}</li>
+                        }}
+                      >
+                        {reasoning}
+                      </ReactMarkdown>
+                      {/* Streaming cursor */}
+                      <span className="inline-block w-1.5 h-3.5 bg-muted-foreground/30 animate-pulse ml-0.5 align-middle" />
+                    </div>
+                  )}
+
+                  {/* Expanded state - show full content */}
+                  {reasoningExpanded && (
+                    <div className="text-sm text-muted-foreground/60 leading-relaxed">
+                      <ReactMarkdown
+                        components={{
+                          p: ({ children }) => <p className="my-1.5 first:mt-0">{children}</p>,
+                          pre: ({ children }) => <pre className="my-2 overflow-x-auto text-xs">{children}</pre>,
+                          code: ({ children }) => <code className="text-xs bg-muted/30 px-1 py-0.5 rounded">{children}</code>,
+                          ul: ({ children }) => <ul className="my-1.5 pl-4 list-disc">{children}</ul>,
+                          ol: ({ children }) => <ol className="my-1.5 pl-4 list-decimal">{children}</ol>,
+                          li: ({ children }) => <li className="my-0.5">{children}</li>
+                        }}
+                      >
+                        {reasoning}
+                      </ReactMarkdown>
+                      {/* Streaming cursor - only show when reasoning is actively streaming */}
+                      {isReasoningStreaming && (
+                        <span className="inline-block w-1.5 h-3.5 bg-muted-foreground/30 animate-pulse ml-0.5 align-middle" />
+                      )}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
 
-          {/* Main content - no background */}
+          {/* Main content - normal text color */}
           <div className="text-sm leading-relaxed text-foreground">
             {content ? (
               <ReactMarkdown
@@ -220,10 +263,9 @@ export function ChatMessage({
               </ReactMarkdown>
             ) : isStreaming && !isReasoningStreaming ? (
               // Breathing animation while waiting for response
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-primary/60 rounded-full animate-pulse" style={{ animationDuration: '1.5s' }} />
+                <span className="text-sm text-muted-foreground/60">{t('chat.waiting')}</span>
               </div>
             ) : null}
             {isStreaming && streamingContent !== undefined && content && (
@@ -231,19 +273,16 @@ export function ChatMessage({
             )}
           </div>
 
-          {/* Action buttons placeholder - always reserve space */}
-          <div className="h-8 mt-2 flex items-center gap-0.5">
+          {/* Action buttons - show on hover */}
+          <div className="mt-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
             <button
               onClick={handleCopy}
-              className={cn(
-                'p-1.5 rounded-md',
-                'text-muted-foreground hover:text-foreground hover:bg-muted/50',
-                'transition-all duration-200',
-                showActions ? 'opacity-100' : 'opacity-0 pointer-events-none'
-              )}
+              onMouseEnter={() => !copiedAssistant && copyIconRef.current?.startAnimation()}
+              onMouseLeave={() => !copiedAssistant && copyIconRef.current?.stopAnimation()}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
             >
-              {copied ? (
-                <Check className="h-3.5 w-3.5 text-green-500" />
+              {copiedAssistant ? (
+                <CheckIcon size={14} success />
               ) : (
                 <CopyIcon ref={copyIconRef} size={14} />
               )}
@@ -252,12 +291,7 @@ export function ChatMessage({
               onClick={handleRegenerate}
               onMouseEnter={() => refreshIconRef.current?.startAnimation()}
               onMouseLeave={() => refreshIconRef.current?.stopAnimation()}
-              className={cn(
-                'p-1.5 rounded-md',
-                'text-muted-foreground hover:text-foreground hover:bg-muted/50',
-                'transition-all duration-200',
-                showActions ? 'opacity-100' : 'opacity-0 pointer-events-none'
-              )}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
             >
               <RefreshIcon ref={refreshIconRef} size={14} />
             </button>
@@ -265,12 +299,7 @@ export function ChatMessage({
               onClick={handleDelete}
               onMouseEnter={() => trashIconRef.current?.startAnimation()}
               onMouseLeave={() => trashIconRef.current?.stopAnimation()}
-              className={cn(
-                'p-1.5 rounded-md',
-                'text-muted-foreground hover:text-red-500 hover:bg-red-500/10',
-                'transition-all duration-200',
-                showActions ? 'opacity-100' : 'opacity-0 pointer-events-none'
-              )}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
             >
               <TrashIcon ref={trashIconRef} size={14} dangerHover />
             </button>

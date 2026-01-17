@@ -6,243 +6,67 @@ description: Install Amux and get started
 ## Prerequisites
 
 - Node.js 18 or higher
-- pnpm, npm, yarn, or bun
+- Package manager: pnpm, npm, yarn, or bun
 
 <Callout type="warn">
-Make sure you have Node.js 18+ installed. You can check your version with `node --version`.
+Check your Node.js version with `node --version`. Amux requires Node.js 18+.
 </Callout>
 
-## Install Core Package
+## Install Packages
 
-<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
-  <Tab value="pnpm">
-    ```bash
-    pnpm add @amux/llm-bridge
-    ```
-  </Tab>
+Install the core package and the adapters you need:
 
-  <Tab value="npm">
-    ```bash
-    npm install @amux/llm-bridge
-    ```
-  </Tab>
-
-  <Tab value="yarn">
-    ```bash
-    yarn add @amux/llm-bridge
-    ```
-  </Tab>
-
-  <Tab value="bun">
-    ```bash
-    bun add @amux/llm-bridge
-    ```
-  </Tab>
-</Tabs>
-
-## Install Adapters
-
-Install the adapters you need for your use case.
-
-<Tabs items={['OpenAI', 'Anthropic', 'DeepSeek', 'Others', 'All']}>
-  <Tab value="OpenAI">
-    ### OpenAI Adapter
-
-    ```bash tab="pnpm"
-    pnpm add @amux/adapter-openai
-    ```
-
-    ```bash tab="npm"
-    npm install @amux/adapter-openai
-    ```
-
-    ```bash tab="yarn"
-    yarn add @amux/adapter-openai
-    ```
-
-    ```bash tab="bun"
-    bun add @amux/adapter-openai
-    ```
-
-    **Supports:**
-    - Chat completions
-    - Streaming
-    - Function calling
-    - Vision (GPT-4V)
-    - JSON mode
-  </Tab>
-
-  <Tab value="Anthropic">
-    ### Anthropic Adapter
-
-    ```bash tab="pnpm"
-    pnpm add @amux/adapter-anthropic
-    ```
-
-    ```bash tab="npm"
-    npm install @amux/adapter-anthropic
-    ```
-
-    ```bash tab="yarn"
-    yarn add @amux/adapter-anthropic
-    ```
-
-    ```bash tab="bun"
-    bun add @amux/adapter-anthropic
-    ```
-
-    **Supports:**
-    - Messages API
-    - Streaming
-    - Tool use
-    - Vision
-    - System prompts
-  </Tab>
-
-  <Tab value="DeepSeek">
-    ### DeepSeek Adapter
-
-    ```bash tab="pnpm"
-    pnpm add @amux/adapter-deepseek
-    ```
-
-    ```bash tab="npm"
-    npm install @amux/adapter-deepseek
-    ```
-
-    ```bash tab="yarn"
-    yarn add @amux/adapter-deepseek
-    ```
-
-    ```bash tab="bun"
-    bun add @amux/adapter-deepseek
-    ```
-
-    **Supports:**
-    - Chat completions
-    - Streaming
-    - Function calling
-  </Tab>
-
-  <Tab value="Others">
-    ### Other Adapters
-
-    **Moonshot (Moonshot AI):**
-    ```bash tab="pnpm"
-    pnpm add @amux/adapter-moonshot
-    ```
-
-    **Zhipu (Zhipu AI):**
-    ```bash tab="pnpm"
-    pnpm add @amux/adapter-zhipu
-    ```
-
-    **Qwen (Alibaba Cloud):**
-    ```bash tab="pnpm"
-    pnpm add @amux/adapter-qwen
-    ```
-
-    **Gemini (Google AI):**
-    ```bash tab="pnpm"
-    pnpm add @amux/adapter-google
-    ```
-  </Tab>
-
-  <Tab value="All">
-    ### Install All Adapters
-
-    ```bash tab="pnpm"
-    pnpm add @amux/llm-bridge \
-      @amux/adapter-openai \
-      @amux/adapter-anthropic \
-      @amux/adapter-deepseek \
-      @amux/adapter-moonshot \
-      @amux/adapter-zhipu \
-      @amux/adapter-qwen \
-      @amux/adapter-google
-    ```
-
-    ```bash tab="npm"
-    npm install @amux/llm-bridge \
-      @amux/adapter-openai \
-      @amux/adapter-anthropic \
-      @amux/adapter-deepseek \
-      @amux/adapter-moonshot \
-      @amux/adapter-zhipu \
-      @amux/adapter-qwen \
-      @amux/adapter-google
-    ```
-
-    ```bash tab="yarn"
-    yarn add @amux/llm-bridge \
-      @amux/adapter-openai \
-      @amux/adapter-anthropic \
-      @amux/adapter-deepseek \
-      @amux/adapter-moonshot \
-      @amux/adapter-zhipu \
-      @amux/adapter-qwen \
-      @amux/adapter-google
-    ```
-
-    ```bash tab="bun"
-    bun add @amux/llm-bridge \
-      @amux/adapter-openai \
-      @amux/adapter-anthropic \
-      @amux/adapter-deepseek \
-      @amux/adapter-moonshot \
-      @amux/adapter-zhipu \
-      @amux/adapter-qwen \
-      @amux/adapter-google
-    ```
-
-    <Callout type="info">
-    Only install the adapters you need. The core package is tree-shakable, so unused adapters won't be included in your bundle.
-    </Callout>
-  </Tab>
-</Tabs>
-
-## Verify Installation
-
-Create a simple test file to verify the installation:
-
-```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
-
-console.log('✓ Amux installed successfully!')
-console.log('✓ OpenAI adapter:', openaiAdapter.name, 'v' + openaiAdapter.version)
-console.log('✓ Capabilities:', openaiAdapter.capabilities)
+```bash tab="pnpm"
+pnpm add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
 ```
 
-Run it:
-
-```bash tab="tsx"
-tsx test.ts
+```bash tab="npm"
+npm install @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
 ```
 
-```bash tab="node"
-node --loader tsx test.ts
+```bash tab="yarn"
+yarn add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
 ```
 
 ```bash tab="bun"
-bun test.ts
+bun add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
 ```
 
-You should see output like:
+## Available Packages
 
+| Package | Size | Description |
+|---------|------|-------------|
+| `@amux/llm-bridge` | ~15KB | Core package (required) |
+| `@amux/adapter-openai` | ~8KB | OpenAI adapter |
+| `@amux/adapter-anthropic` | ~8KB | Anthropic adapter |
+| `@amux/adapter-deepseek` | ~6KB | DeepSeek adapter |
+| `@amux/adapter-moonshot` | ~6KB | Moonshot adapter |
+| `@amux/adapter-zhipu` | ~6KB | Zhipu adapter |
+| `@amux/adapter-qwen` | ~6KB | Qwen adapter |
+| `@amux/adapter-google` | ~7KB | Google Gemini adapter |
+
+<Callout type="info">
+Only install the adapters you need. The packages are tree-shakable, so unused code won't be included in your bundle.
+</Callout>
+
+## Environment Setup
+
+Create a `.env` file for your API keys:
+
+```bash
+# .env
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+DEEPSEEK_API_KEY=sk-...
 ```
-✓ Amux installed successfully!
-✓ OpenAI adapter: openai v1.0.0
-✓ Capabilities: { streaming: true, tools: true, ... }
-```
+
+<Callout type="warn">
+Never commit `.env` files to version control. Add `.env` to your `.gitignore`.
+</Callout>
 
 ## TypeScript Configuration
 
-<Callout type="info">
-Amux is written in TypeScript and includes full type definitions. No additional `@types` packages are needed.
-</Callout>
-
-Make sure your `tsconfig.json` includes:
+Amux includes full TypeScript definitions. Ensure your `tsconfig.json` includes:
 
 ```json
 {
@@ -257,16 +81,45 @@ Make sure your `tsconfig.json` includes:
 }
 ```
 
+## Verify Installation
+
+Create a test file to verify everything works:
+
+```typescript
+// test.ts
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+
+console.log('✓ Amux installed successfully!')
+console.log('✓ OpenAI adapter:', openaiAdapter.name, 'v' + openaiAdapter.version)
+```
+
+Run it:
+
+```bash tab="tsx"
+tsx test.ts
+```
+
+```bash tab="bun"
+bun test.ts
+```
+
+You should see:
+```
+✓ Amux installed successfully!
+✓ OpenAI adapter: openai v1.0.0
+```
+
 ## Next Steps
 
 <Cards>
-  <Card title="Quick Start" href="/docs/quick-start">
+  <Card title="Quick Start" href="/en/docs/quick-start">
     Build your first bridge in 5 minutes
   </Card>
-  <Card title="Core Concepts" href="/docs/core-concepts">
-    Understand the architecture
+  <Card title="Core Concepts" href="/en/docs/core-concepts">
+    Understand how Amux works
   </Card>
-  <Card title="API Reference" href="/docs/api/bridge">
+  <Card title="API Reference" href="/en/docs/api/bridge">
     Explore the complete API
   </Card>
 </Cards>

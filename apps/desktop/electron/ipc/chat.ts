@@ -1,22 +1,23 @@
 /**
  * Chat IPC handlers
- * Handles chat conversations and messages with streaming support
+ * Handles chat conversations and messages with streaming support via local proxy service
  */
 
 import { ipcMain, type IpcMainInvokeEvent } from 'electron'
-import { Bridge } from '@amux/llm-bridge'
 
-import { decryptApiKey } from '../services/crypto'
 import {
   getConversationRepository,
   getMessageRepository,
   getProviderRepository,
+  getBridgeProxyRepository,
   type Conversation,
   type Message,
   type CreateConversationDTO,
   type UpdateConversationDTO
 } from '../services/database/repositories'
-import { getAdapter, getBridge } from '../services/proxy-server/bridge-manager'
+import { getServerState } from '../services/proxy-server'
+import { getEndpointForAdapter } from '../services/proxy-server/utils'
+import { getAdapter } from '../services/proxy-server/bridge-manager'
 
 /**
  * Register chat IPC handlers
@@ -61,16 +62,50 @@ export function registerChatHandlers(): void {
   ipcMain.handle('chat:send-message', async (
     event: IpcMainInvokeEvent,
     conversationId: string,
-    content: string
+    content: string,
+    selectedModel?: string,
+    selectedProxy?: { type: 'provider' | 'proxy'; id: string }
   ): Promise<void> => {
     const sender = event.sender
 
     try {
+      // Check if proxy service is running
+      const serverState = getServerState()
+      if (!serverState.running) {
+        sender.send('chat:stream-error', 'Proxy service is not running. Please start the service first.')
+        return
+      }
+
       // Get conversation
       const conversation = conversationRepo.findById(conversationId)
       if (!conversation) {
         sender.send('chat:stream-error', 'Conversation not found')
         return
+      }
+
+      // Use selectedModel if provided, otherwise use conversation's model
+      const model = selectedModel || conversation.model
+
+      // Update conversation if model or proxy changed
+      const updates: UpdateConversationDTO = {}
+      if (selectedModel && selectedModel !== conversation.model) {
+        updates.model = selectedModel
+      }
+      if (selectedProxy) {
+        const newProviderId = selectedProxy.type === 'provider' ? selectedProxy.id : undefined
+        const newProxyId = selectedProxy.type === 'proxy' ? selectedProxy.id : undefined
+        if (newProviderId !== conversation.providerId || newProxyId !== conversation.proxyId) {
+          updates.providerId = newProviderId
+          updates.proxyId = newProxyId
+        }
+      }
+      if (Object.keys(updates).length > 0) {
+        conversationRepo.update(conversationId, updates)
+        // Refresh conversation object
+        const updatedConversation = conversationRepo.findById(conversationId)
+        if (updatedConversation) {
+          Object.assign(conversation, updatedConversation)
+        }
       }
 
       // Save user message
@@ -84,21 +119,35 @@ export function registerChatHandlers(): void {
       const messages = messageRepo.findByConversationId(conversationId)
 
       // Build messages array for LLM
+      // IMPORTANT: Do NOT include reasoning field in message history
+      // According to provider docs (e.g., DeepSeek), including reasoning_content
+      // in subsequent requests will cause 400 errors
       const llmMessages = messages.map(msg => ({
         role: msg.role,
         content: msg.content || ''
       }))
 
-      // Determine which proxy/provider to use
-      let bridge: Bridge
-      const model = conversation.model
+      // Determine proxy URL and adapter type
+      let proxyUrl: string
+      let adapterType: string
 
       if (conversation.proxyId) {
-        // Use bridge proxy
-        const result = getBridge(conversation.proxyId)
-        bridge = result.bridge
+        // Use bridge proxy: /proxies/{proxy_path}/v1/chat/completions
+        const proxy = getBridgeProxyRepository().findById(conversation.proxyId)
+        if (!proxy) {
+          sender.send('chat:stream-error', 'Proxy not found')
+          return
+        }
+        if (!proxy.enabled) {
+          sender.send('chat:stream-error', 'Proxy is disabled')
+          return
+        }
+
+        adapterType = proxy.inbound_adapter
+        const endpoint = getEndpointForAdapter(adapterType)
+        proxyUrl = `http://${serverState.host}:${serverState.port}/proxies/${proxy.proxy_path}${endpoint}`
       } else if (conversation.providerId) {
-        // Use provider directly (passthrough)
+        // Use provider passthrough: /providers/{proxy_path}/v1/chat/completions
         const provider = providerRepo.findById(conversation.providerId)
         if (!provider) {
           sender.send('chat:stream-error', 'Provider not found')
@@ -109,90 +158,174 @@ export function registerChatHandlers(): void {
           return
         }
 
-        const adapter = getAdapter(provider.adapter_type)
-        const apiKey = provider.api_key ? decryptApiKey(provider.api_key) : ''
-
-        bridge = new Bridge({
-          inbound: adapter,
-          outbound: adapter,
-          config: {
-            apiKey: apiKey || '',
-            baseURL: provider.base_url || undefined
-          }
-        })
+        adapterType = provider.adapter_type
+        const endpoint = getEndpointForAdapter(adapterType)
+        proxyUrl = `http://${serverState.host}:${serverState.port}/providers/${provider.proxy_path}${endpoint}`
       } else {
         sender.send('chat:stream-error', 'No proxy or provider configured')
+        return
+      }
+
+      console.log(`[Chat] Sending request to: ${proxyUrl}`)
+
+      // Get adapter for parsing stream events
+      const adapter = getAdapter(adapterType)
+      if (!adapter?.inbound?.parseStream) {
+        sender.send('chat:stream-error', `Adapter ${adapterType} does not support streaming`)
         return
       }
 
       // Send stream start event
       sender.send('chat:stream-start')
 
-      // Stream the response
+      // Stream the response via HTTP
       let fullContent = ''
       let fullReasoning = ''
-      let usage: { promptTokens?: number; completionTokens?: number } | undefined
+      let usage: { promptTokens?: number; completionTokens?: number} | undefined
+      let hasError = false
 
       try {
-        const stream = bridge.chatStream({
-          model,
-          messages: llmMessages,
-          stream: true
+        const response = await fetch(proxyUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+            // No Authorization header - let proxy service use configured keys
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: llmMessages,
+            stream: true
+          })
         })
 
-        for await (const event of stream) {
-          const sseEvent = event as { event?: string; data?: any; type?: string }
-          const eventData = sseEvent.data || sseEvent
+        if (!response.ok) {
+          const errorText = await response.text()
+          throw new Error(`HTTP ${response.status}: ${errorText}`)
+        }
 
-          // Handle different event types
-          if (eventData.type === 'content' || eventData.delta?.content) {
-            const contentDelta = eventData.delta?.content || eventData.content || ''
-            fullContent += contentDelta
-            sender.send('chat:stream-content', contentDelta)
-          } else if (eventData.type === 'reasoning' || eventData.delta?.reasoning) {
-            const reasoningDelta = eventData.delta?.reasoning || eventData.reasoning || ''
-            fullReasoning += reasoningDelta
-            sender.send('chat:stream-reasoning', reasoningDelta)
-          } else if (eventData.type === 'end' || eventData.usage) {
-            if (eventData.usage) {
-              usage = eventData.usage
+        if (!response.body) {
+          throw new Error('No response body')
+        }
+
+        // Parse SSE stream
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || ''
+
+          for (const line of lines) {
+            if (!line.trim() || line.startsWith(':')) continue
+
+            // Parse SSE line
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6).trim()
+
+              // Skip [DONE] marker
+              if (data === '[DONE]') continue
+
+              try {
+                const rawChunk = JSON.parse(data)
+
+                // Check for error in response
+                if (rawChunk.error) {
+                  const errorMsg = rawChunk.error.message || rawChunk.error.code || 'API Error'
+                  console.error('[Chat] API error in stream:', rawChunk.error)
+                  sender.send('chat:stream-error', errorMsg)
+                  hasError = true
+                  break
+                }
+
+                // Use adapter to parse the chunk into IR format
+                const events = adapter.inbound.parseStream!(rawChunk)
+                if (!events) continue
+
+                // Handle single event or array of events
+                const eventArray = Array.isArray(events) ? events : [events]
+
+                for (const event of eventArray) {
+                  // Unified IR event handling - works for all adapters
+                  switch (event.type) {
+                    case 'reasoning':
+                      if (event.reasoning?.delta) {
+                        fullReasoning += event.reasoning.delta
+                        sender.send('chat:stream-reasoning', event.reasoning.delta)
+                      }
+                      break
+
+                    case 'content':
+                      if (event.content?.delta) {
+                        fullContent += event.content.delta
+                        sender.send('chat:stream-content', event.content.delta)
+                      }
+                      break
+
+                    case 'end':
+                      if (event.usage) {
+                        usage = {
+                          promptTokens: event.usage.promptTokens,
+                          completionTokens: event.usage.completionTokens
+                        }
+                      }
+                      break
+
+                    case 'error':
+                      const errorMsg = 'Stream error'
+                      console.error('[Chat] Stream error event:', event)
+                      sender.send('chat:stream-error', errorMsg)
+                      hasError = true
+                      break
+
+                    // Ignore other event types (start, tool_call, etc.)
+                  }
+                }
+              } catch (parseError) {
+                console.warn('[Chat] Failed to parse SSE data:', data, parseError)
+              }
             }
           }
 
-          // Handle OpenAI format
-          if (eventData.choices?.[0]?.delta?.content) {
-            const contentDelta = eventData.choices[0].delta.content
-            fullContent += contentDelta
-            sender.send('chat:stream-content', contentDelta)
-          }
-          if (eventData.choices?.[0]?.delta?.reasoning_content) {
-            const reasoningDelta = eventData.choices[0].delta.reasoning_content
-            fullReasoning += reasoningDelta
-            sender.send('chat:stream-reasoning', reasoningDelta)
-          }
+          // If error detected, stop reading stream
+          if (hasError) break
         }
 
-        // Save assistant message
-        const assistantMessage = messageRepo.create({
-          conversationId,
-          role: 'assistant',
-          content: fullContent || undefined,
-          reasoning: fullReasoning || undefined,
-          usage: usage ? JSON.stringify(usage) : undefined
-        })
+        // Only save message if no error occurred and we have content or reasoning
+        if (!hasError && (fullContent || fullReasoning)) {
+          // Save assistant message
+          const assistantMessage = messageRepo.create({
+            conversationId,
+            role: 'assistant',
+            content: fullContent || undefined,
+            reasoning: fullReasoning || undefined,
+            usage: usage ? JSON.stringify(usage) : undefined
+          })
 
-        // Update conversation timestamp
-        conversationRepo.touch(conversationId)
+          // Update conversation timestamp
+          conversationRepo.touch(conversationId)
 
-        // Update conversation title if it's the first message
-        if (messages.length === 1) {
-          // First user message, generate title
-          const title = content.slice(0, 20) + (content.length > 20 ? '...' : '')
-          conversationRepo.update(conversationId, { title })
+          // Update conversation title if it's the first message
+          if (messages.length === 1) {
+            // First user message, generate title
+            const title = content.slice(0, 20) + (content.length > 20 ? '...' : '')
+            conversationRepo.update(conversationId, { title })
+          }
+
+          // Send stream end event
+          sender.send('chat:stream-end', assistantMessage)
+        } else if (hasError) {
+          // Error already sent via chat:stream-error
+          console.log('[Chat] Stream ended with error, not saving message')
+        } else {
+          // No content and no reasoning - empty response
+          console.log('[Chat] Empty response from API (no content or reasoning)')
+          sender.send('chat:stream-error', 'Empty response from API')
         }
-
-        // Send stream end event
-        sender.send('chat:stream-end', assistantMessage)
 
       } catch (streamError) {
         console.error('[Chat] Stream error:', streamError)
@@ -245,16 +378,50 @@ export function registerChatHandlers(): void {
   ipcMain.handle('chat:regenerate', async (
     event: IpcMainInvokeEvent,
     conversationId: string,
-    assistantMessageId: string
+    assistantMessageId: string,
+    selectedModel?: string,
+    selectedProxy?: { type: 'provider' | 'proxy'; id: string }
   ): Promise<void> => {
     const sender = event.sender
 
     try {
+      // Check if proxy service is running
+      const serverState = getServerState()
+      if (!serverState.running) {
+        sender.send('chat:stream-error', 'Proxy service is not running. Please start the service first.')
+        return
+      }
+
       // Get conversation
       const conversation = conversationRepo.findById(conversationId)
       if (!conversation) {
         sender.send('chat:stream-error', 'Conversation not found')
         return
+      }
+
+      // Use selectedModel if provided, otherwise use conversation's model
+      const model = selectedModel || conversation.model
+
+      // Update conversation if model or proxy changed
+      const updates: UpdateConversationDTO = {}
+      if (selectedModel && selectedModel !== conversation.model) {
+        updates.model = selectedModel
+      }
+      if (selectedProxy) {
+        const newProviderId = selectedProxy.type === 'provider' ? selectedProxy.id : undefined
+        const newProxyId = selectedProxy.type === 'proxy' ? selectedProxy.id : undefined
+        if (newProviderId !== conversation.providerId || newProxyId !== conversation.proxyId) {
+          updates.providerId = newProviderId
+          updates.proxyId = newProxyId
+        }
+      }
+      if (Object.keys(updates).length > 0) {
+        conversationRepo.update(conversationId, updates)
+        // Refresh conversation object
+        const updatedConversation = conversationRepo.findById(conversationId)
+        if (updatedConversation) {
+          Object.assign(conversation, updatedConversation)
+        }
       }
 
       // Delete the assistant message to regenerate
@@ -264,19 +431,35 @@ export function registerChatHandlers(): void {
       const messages = messageRepo.findByConversationId(conversationId)
 
       // Build messages array for LLM
+      // IMPORTANT: Do NOT include reasoning field in message history
+      // According to provider docs (e.g., DeepSeek), including reasoning_content
+      // in subsequent requests will cause 400 errors
       const llmMessages = messages.map(msg => ({
         role: msg.role,
         content: msg.content || ''
       }))
 
-      // Determine which proxy/provider to use
-      let bridge: Bridge
-      const model = conversation.model
+      // Determine proxy URL and adapter type
+      let proxyUrl: string
+      let adapterType: string
 
       if (conversation.proxyId) {
-        const result = getBridge(conversation.proxyId)
-        bridge = result.bridge
+        // Use bridge proxy
+        const proxy = getBridgeProxyRepository().findById(conversation.proxyId)
+        if (!proxy) {
+          sender.send('chat:stream-error', 'Proxy not found')
+          return
+        }
+        if (!proxy.enabled) {
+          sender.send('chat:stream-error', 'Proxy is disabled')
+          return
+        }
+
+        adapterType = proxy.inbound_adapter
+        const endpoint = getEndpointForAdapter(adapterType)
+        proxyUrl = `http://${serverState.host}:${serverState.port}/proxies/${proxy.proxy_path}${endpoint}`
       } else if (conversation.providerId) {
+        // Use provider passthrough
         const provider = providerRepo.findById(conversation.providerId)
         if (!provider) {
           sender.send('chat:stream-error', 'Provider not found')
@@ -287,83 +470,167 @@ export function registerChatHandlers(): void {
           return
         }
 
-        const adapter = getAdapter(provider.adapter_type)
-        const apiKey = provider.api_key ? decryptApiKey(provider.api_key) : ''
-
-        bridge = new Bridge({
-          inbound: adapter,
-          outbound: adapter,
-          config: {
-            apiKey: apiKey || '',
-            baseURL: provider.base_url || undefined
-          }
-        })
+        adapterType = provider.adapter_type
+        const endpoint = getEndpointForAdapter(adapterType)
+        proxyUrl = `http://${serverState.host}:${serverState.port}/providers/${provider.proxy_path}${endpoint}`
       } else {
         sender.send('chat:stream-error', 'No proxy or provider configured')
+        return
+      }
+
+      console.log(`[Chat] Regenerating request to: ${proxyUrl}`)
+
+      // Get adapter for parsing stream events
+      const adapter = getAdapter(adapterType)
+      if (!adapter?.inbound?.parseStream) {
+        sender.send('chat:stream-error', `Adapter ${adapterType} does not support streaming`)
         return
       }
 
       // Send stream start event
       sender.send('chat:stream-start')
 
-      // Stream the response
+      // Stream the response via HTTP
       let fullContent = ''
       let fullReasoning = ''
-      let usage: { promptTokens?: number; completionTokens?: number } | undefined
+      let usage: { promptTokens?: number; completionTokens?: number} | undefined
+      let hasError = false
 
       try {
-        const stream = bridge.chatStream({
-          model,
-          messages: llmMessages,
-          stream: true
+        const response = await fetch(proxyUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+            // No Authorization header - let proxy service use configured keys
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: llmMessages,
+            stream: true
+          })
         })
 
-        for await (const streamEvent of stream) {
-          const sseEvent = streamEvent as { event?: string; data?: any; type?: string }
-          const eventData = sseEvent.data || sseEvent
+        if (!response.ok) {
+          const errorText = await response.text()
+          throw new Error(`HTTP ${response.status}: ${errorText}`)
+        }
 
-          // Handle different event types
-          if (eventData.type === 'content' || eventData.delta?.content) {
-            const contentDelta = eventData.delta?.content || eventData.content || ''
-            fullContent += contentDelta
-            sender.send('chat:stream-content', contentDelta)
-          } else if (eventData.type === 'reasoning' || eventData.delta?.reasoning) {
-            const reasoningDelta = eventData.delta?.reasoning || eventData.reasoning || ''
-            fullReasoning += reasoningDelta
-            sender.send('chat:stream-reasoning', reasoningDelta)
-          } else if (eventData.type === 'end' || eventData.usage) {
-            if (eventData.usage) {
-              usage = eventData.usage
+        if (!response.body) {
+          throw new Error('No response body')
+        }
+
+        // Parse SSE stream
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || ''
+
+          for (const line of lines) {
+            if (!line.trim() || line.startsWith(':')) continue
+
+            // Parse SSE line
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6).trim()
+
+              // Skip [DONE] marker
+              if (data === '[DONE]') continue
+
+              try {
+                const rawChunk = JSON.parse(data)
+
+                // Check for error in response
+                if (rawChunk.error) {
+                  const errorMsg = rawChunk.error.message || rawChunk.error.code || 'API Error'
+                  console.error('[Chat] API error in stream:', rawChunk.error)
+                  sender.send('chat:stream-error', errorMsg)
+                  hasError = true
+                  break
+                }
+
+                // Use adapter to parse the chunk into IR format
+                const events = adapter.inbound.parseStream!(rawChunk)
+                if (!events) continue
+
+                // Handle single event or array of events
+                const eventArray = Array.isArray(events) ? events : [events]
+
+                for (const event of eventArray) {
+                  // Unified IR event handling - works for all adapters
+                  switch (event.type) {
+                    case 'reasoning':
+                      if (event.reasoning?.delta) {
+                        fullReasoning += event.reasoning.delta
+                        sender.send('chat:stream-reasoning', event.reasoning.delta)
+                      }
+                      break
+
+                    case 'content':
+                      if (event.content?.delta) {
+                        fullContent += event.content.delta
+                        sender.send('chat:stream-content', event.content.delta)
+                      }
+                      break
+
+                    case 'end':
+                      if (event.usage) {
+                        usage = {
+                          promptTokens: event.usage.promptTokens,
+                          completionTokens: event.usage.completionTokens
+                        }
+                      }
+                      break
+
+                    case 'error':
+                      const errorMsg = 'Stream error'
+                      console.error('[Chat] Stream error event:', event)
+                      sender.send('chat:stream-error', errorMsg)
+                      hasError = true
+                      break
+
+                    // Ignore other event types (start, tool_call, etc.)
+                  }
+                }
+              } catch (parseError) {
+                console.warn('[Chat] Failed to parse SSE data:', data, parseError)
+              }
             }
           }
 
-          // Handle OpenAI format
-          if (eventData.choices?.[0]?.delta?.content) {
-            const contentDelta = eventData.choices[0].delta.content
-            fullContent += contentDelta
-            sender.send('chat:stream-content', contentDelta)
-          }
-          if (eventData.choices?.[0]?.delta?.reasoning_content) {
-            const reasoningDelta = eventData.choices[0].delta.reasoning_content
-            fullReasoning += reasoningDelta
-            sender.send('chat:stream-reasoning', reasoningDelta)
-          }
+          // If error detected, stop reading stream
+          if (hasError) break
         }
 
-        // Save assistant message
-        const assistantMessage = messageRepo.create({
-          conversationId,
-          role: 'assistant',
-          content: fullContent || undefined,
-          reasoning: fullReasoning || undefined,
-          usage: usage ? JSON.stringify(usage) : undefined
-        })
+        // Only save message if no error occurred and we have content
+        if (!hasError && fullContent) {
+          // Save assistant message
+          const assistantMessage = messageRepo.create({
+            conversationId,
+            role: 'assistant',
+            content: fullContent || undefined,
+            reasoning: fullReasoning || undefined,
+            usage: usage ? JSON.stringify(usage) : undefined
+          })
 
-        // Update conversation timestamp
-        conversationRepo.touch(conversationId)
+          // Update conversation timestamp
+          conversationRepo.touch(conversationId)
 
-        // Send stream end event
-        sender.send('chat:stream-end', assistantMessage)
+          // Send stream end event
+          sender.send('chat:stream-end', assistantMessage)
+        } else if (hasError) {
+          // Error already sent via chat:stream-error
+          console.log('[Chat] Regenerate stream ended with error, not saving message')
+        } else {
+          // No content and no error - empty response
+          console.log('[Chat] Regenerate empty response from API')
+          sender.send('chat:stream-error', 'Empty response from API')
+        }
 
       } catch (streamError) {
         console.error('[Chat] Regenerate stream error:', streamError)

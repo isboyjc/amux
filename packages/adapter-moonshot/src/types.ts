@@ -9,6 +9,11 @@ export interface KimiMessage {
   name?: string
   tool_calls?: ToolCall[]
   tool_call_id?: string
+  /**
+   * Moonshot-specific: reasoning content (for kimi-k2-thinking model)
+   * Contains the model's chain-of-thought reasoning process
+   */
+  reasoning_content?: string
 }
 
 /**
@@ -81,6 +86,10 @@ export interface KimiResponse {
       role: string
       content: string | null
       tool_calls?: ToolCall[]
+      /**
+       * Moonshot-specific: reasoning content
+       */
+      reasoning_content?: string
     }
     finish_reason: string
   }>
@@ -109,6 +118,10 @@ export interface KimiStreamChunk {
           arguments?: string
         }
       }>
+      /**
+       * Moonshot-specific: reasoning content delta
+       */
+      reasoning_content?: string
     }
     finish_reason?: string | null
   }>

@@ -1,0 +1,263 @@
+---
+title: Streaming
+description: Handle streaming responses from any LLM provider
+---
+
+## Enable Streaming
+
+Set `stream: true` to receive responses as they're generated:
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+})
+
+const stream = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Tell me a story' }],
+  stream: true  // Enable streaming
+})
+```
+
+## Processing Stream Events
+
+Iterate through the stream using `for await...of`:
+
+```typescript
+for await (const event of stream) {
+  if (event.type === 'content') {
+    // Text content delta
+    process.stdout.write(event.content.delta)
+  }
+}
+```
+
+<Callout type="info">
+Amux normalizes streaming events across all providers. The same code works with OpenAI, Claude, DeepSeek, etc.
+</Callout>
+
+## Stream Event Types
+
+### Content Events
+
+Text content being generated:
+
+```typescript
+for await (const event of stream) {
+  if (event.type === 'content') {
+    console.log(event.content.delta)  // "Hello", " world", "!"
+  }
+}
+```
+
+### Start Events
+
+Stream initialization:
+
+```typescript
+for await (const event of stream) {
+  if (event.type === 'start') {
+    console.log('Stream started')
+    console.log('Model:', event.model)
+  }
+}
+```
+
+### End Events
+
+Stream completion with finish reason:
+
+```typescript
+for await (const event of stream) {
+  if (event.type === 'end') {
+    console.log('Finish reason:', event.finishReason)  // 'stop', 'length', 'tool_calls'
+    console.log('Usage:', event.usage)
+  }
+}
+```
+
+### Reasoning Events
+
+For models with thinking/reasoning modes (DeepSeek, Qwen, Claude Extended Thinking):
+
+```typescript
+for await (const event of stream) {
+  if (event.type === 'reasoning') {
+    console.log('Thinking:', event.reasoning.delta)
+  }
+}
+```
+
+### Tool Call Events
+
+When the model wants to call a function:
+
+```typescript
+for await (const event of stream) {
+  if (event.type === 'tool_call') {
+    console.log('Tool:', event.toolCall.name)
+    console.log('Arguments:', event.toolCall.arguments)
+  }
+}
+```
+
+## Complete Example
+
+Building a complete streaming response:
+
+```typescript
+const stream = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Explain TypeScript' }],
+  stream: true
+})
+
+let fullContent = ''
+let thinkingContent = ''
+
+for await (const event of stream) {
+  switch (event.type) {
+    case 'start':
+      console.log('Starting stream...')
+      break
+
+    case 'content':
+      fullContent += event.content.delta
+      process.stdout.write(event.content.delta)
+      break
+
+    case 'reasoning':
+      thinkingContent += event.reasoning.delta
+      break
+
+    case 'end':
+      console.log('\n\nStream completed')
+      console.log('Finish reason:', event.finishReason)
+      console.log('Total tokens:', event.usage?.totalTokens)
+      break
+
+    case 'error':
+      console.error('Stream error:', event.error)
+      break
+  }
+}
+
+console.log('Full response:', fullContent)
+```
+
+## Error Handling in Streams
+
+Handle errors that occur during streaming:
+
+```typescript
+try {
+  for await (const event of stream) {
+    if (event.type === 'error') {
+      console.error('Stream error:', event.error.message)
+      break
+    }
+
+    if (event.type === 'content') {
+      process.stdout.write(event.content.delta)
+    }
+  }
+} catch (error) {
+  console.error('Stream failed:', error)
+}
+```
+
+## Web Applications
+
+For web applications, stream to the client:
+
+### Node.js/Express
+
+```typescript
+app.post('/api/chat', async (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache')
+  res.setHeader('Connection', 'keep-alive')
+
+  const stream = await bridge.chat({
+    ...req.body,
+    stream: true
+  })
+
+  for await (const event of stream) {
+    if (event.type === 'content') {
+      res.write(`data: ${JSON.stringify(event)}\n\n`)
+    }
+  }
+
+  res.end()
+})
+```
+
+### Next.js App Router
+
+```typescript
+// app/api/chat/route.ts
+export async function POST(req: Request) {
+  const body = await req.json()
+
+  const stream = await bridge.chat({
+    ...body,
+    stream: true
+  })
+
+  const encoder = new TextEncoder()
+  const readable = new ReadableStream({
+    async start(controller) {
+      for await (const event of stream) {
+        if (event.type === 'content') {
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify(event)}\n\n`)
+          )
+        }
+      }
+      controller.close()
+    }
+  })
+
+  return new Response(readable, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache'
+    }
+  })
+}
+```
+
+## Provider Compatibility
+
+All adapters support streaming:
+
+| Provider | Streaming | Reasoning Events | Tool Call Events |
+|----------|-----------|------------------|------------------|
+| OpenAI | ✅ | ❌ | ✅ |
+| Anthropic | ✅ | ✅ | ✅ |
+| DeepSeek | ✅ | ✅ | ✅ |
+| Moonshot | ✅ | ❌ | ✅ |
+| Zhipu | ✅ | ❌ | ✅ |
+| Qwen | ✅ | ✅ | ✅ |
+| Gemini | ✅ | ❌ | ✅ |
+
+## Next Steps
+
+<Cards>
+  <Card title="Tool Calling" href="/en/docs/guides/tool-calling">
+    Use function calling in streams
+  </Card>
+  <Card title="Error Handling" href="/en/docs/guides/error-handling">
+    Handle errors gracefully
+  </Card>
+  <Card title="Best Practices" href="/en/docs/best-practices">
+    Production streaming patterns
+  </Card>
+</Cards>

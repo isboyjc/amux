@@ -339,6 +339,18 @@ export function ProxySelector({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Auto-select first available proxy if none selected
+  useEffect(() => {
+    if (!selectedProxy) {
+      // Priority: passthrough providers first, then bridge proxies
+      if (availableProviders.length > 0) {
+        onProxyChange({ type: 'provider', id: availableProviders[0].id })
+      } else if (availableProxies.length > 0) {
+        onProxyChange({ type: 'proxy', id: availableProxies[0].id })
+      }
+    }
+  }, [selectedProxy, availableProviders, availableProxies, onProxyChange])
+
   // Auto-select first model when proxy changes
   useEffect(() => {
     if (selectedProxy && availableModels.length > 0 && !selectedModel) {

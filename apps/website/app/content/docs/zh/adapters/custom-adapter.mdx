@@ -1,0 +1,451 @@
+---
+title: 自定义适配器
+description: 为任何 LLM 提供商创建自己的适配器
+---
+
+学习如何创建自定义适配器以将任何 LLM 提供商集成到 Amux 中。
+
+## 为什么要创建自定义适配器？
+
+在以下情况下创建自定义适配器：
+- 支持官方尚未支持的新 LLM 提供商
+- 集成内部/专有 LLM API
+- 自定义现有适配器的行为
+- 为您的用例添加专门功能
+
+## 适配器接口概述
+
+每个适配器都实现 `LLMAdapter` 接口：
+
+```typescript
+interface LLMAdapter {
+  name: string
+  version: string
+  capabilities: AdapterCapabilities
+  inbound: InboundAdapter
+  outbound: OutboundAdapter
+  getInfo(): AdapterInfo
+}
+```
+
+**关键组件：**
+- `inbound` - 转换提供商格式 → IR
+- `outbound` - 转换 IR → 提供商格式
+- `capabilities` - 声明支持的功能
+- `getInfo()` - 返回适配器元数据
+
+## 分步教程
+
+### 步骤 1：设置适配器包
+
+创建适配器的新目录：
+
+```bash
+mkdir my-adapter
+cd my-adapter
+npm init -y
+npm install --save-dev typescript @types/node
+npm install @amux/llm-bridge
+```
+
+### 步骤 2：定义适配器结构
+
+创建 `src/adapter.ts`：
+
+```typescript
+import type { LLMAdapter, LLMRequestIR, LLMResponseIR } from '@amux/llm-bridge'
+
+export const myAdapter: LLMAdapter = {
+  name: 'my-provider',
+  version: '1.0.0',
+
+  capabilities: {
+    streaming: true,
+    tools: true,
+    vision: false,
+    multimodal: false,
+    systemPrompt: true,
+    toolChoice: true,
+    reasoning: false,
+    webSearch: false,
+    jsonMode: false,
+    logprobs: false,
+    seed: false
+  },
+
+  inbound: {
+    parseRequest(request: unknown): LLMRequestIR {
+      // TODO: 将提供商请求转换为 IR
+      return {} as LLMRequestIR
+    },
+
+    parseResponse(response: unknown): LLMResponseIR {
+      // TODO: 将提供商响应转换为 IR
+      return {} as LLMResponseIR
+    },
+
+    parseStream(chunk: unknown) {
+      // TODO: 将流块转换为 IR 事件
+      return null
+    },
+
+    parseError(error: unknown) {
+      // TODO: 将提供商错误转换为 IR
+      return null
+    }
+  },
+
+  outbound: {
+    buildRequest(ir: LLMRequestIR): unknown {
+      // TODO: 将 IR 转换为提供商请求
+      return {}
+    },
+
+    buildResponse(ir: LLMResponseIR): unknown {
+      // TODO: 将 IR 转换为提供商响应
+      return {}
+    }
+  },
+
+  getInfo() {
+    return {
+      name: this.name,
+      version: this.version,
+      capabilities: this.capabilities,
+      endpoint: {
+        baseURL: 'https://api.myprovider.com',
+        chatPath: '/v1/chat'
+      }
+    }
+  }
+}
+```
+
+### 步骤 3：实现请求解析
+
+将提供商特定请求转换为 IR：
+
+```typescript
+parseRequest(request: any): LLMRequestIR {
+  const ir: LLMRequestIR = {
+    messages: request.messages.map(msg => ({
+      role: msg.role,
+      content: msg.content
+    })),
+    model: request.model,
+    stream: request.stream || false
+  }
+
+  // 可选：生成参数
+  if (request.temperature !== undefined) {
+    ir.generation = {
+      temperature: request.temperature,
+      maxTokens: request.max_tokens,
+      topP: request.top_p
+    }
+  }
+
+  // 可选：工具
+  if (request.tools) {
+    ir.tools = request.tools.map(tool => ({
+      type: 'function',
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters
+      }
+    }))
+  }
+
+  return ir
+}
+```
+
+### 步骤 4：实现响应构建
+
+将 IR 转换为提供商特定响应：
+
+```typescript
+buildResponse(ir: LLMResponseIR): any {
+  return {
+    id: ir.id || 'chatcmpl-' + Date.now(),
+    object: 'chat.completion',
+    created: Date.now(),
+    model: ir.model,
+    choices: ir.choices.map(choice => ({
+      index: choice.index,
+      message: {
+        role: choice.message.role,
+        content: choice.message.content
+      },
+      finish_reason: choice.finishReason
+    })),
+    usage: ir.usage
+  }
+}
+```
+
+### 步骤 5：实现流式传输（可选）
+
+处理流式响应：
+
+```typescript
+parseStream(chunk: string) {
+  try {
+    const data = JSON.parse(chunk)
+
+    // 映射到 IR 流事件
+    if (data.type === 'content_delta') {
+      return {
+        type: 'content',
+        content: {
+          delta: data.delta.text
+        }
+      }
+    }
+
+    if (data.type === 'message_stop') {
+      return {
+        type: 'end',
+        finishReason: 'stop',
+        usage: data.usage
+      }
+    }
+
+    return null
+  } catch {
+    return null
+  }
+}
+```
+
+### 步骤 6：测试您的适配器
+
+创建 `test/adapter.test.ts`：
+
+```typescript
+import { describe, it, expect } from 'vitest'
+import { myAdapter } from '../src/adapter'
+
+describe('My Adapter', () => {
+  it('应该将请求解析为 IR', () => {
+    const request = {
+      model: 'my-model',
+      messages: [{ role: 'user', content: '你好' }]
+    }
+
+    const ir = myAdapter.inbound.parseRequest(request)
+
+    expect(ir.messages).toHaveLength(1)
+    expect(ir.messages[0].content).toBe('你好')
+  })
+
+  it('应该从 IR 构建响应', () => {
+    const ir = {
+      model: 'my-model',
+      choices: [{
+        index: 0,
+        message: { role: 'assistant', content: '你好！' },
+        finishReason: 'stop'
+      }]
+    }
+
+    const response = myAdapter.outbound.buildResponse(ir)
+
+    expect(response.choices[0].message.content).toBe('你好！')
+  })
+})
+```
+
+### 步骤 7：使用您的适配器
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { myAdapter } from './adapter'
+
+const bridge = createBridge({
+  inbound: myAdapter,
+  outbound: myAdapter,
+  config: {
+    apiKey: process.env.MY_PROVIDER_API_KEY
+  }
+})
+
+const response = await bridge.chat({
+  model: 'my-model',
+  messages: [{ role: 'user', content: '你好！' }]
+})
+```
+
+## 完整示例
+
+这是一个完整的最小适配器：
+
+```typescript
+import type { LLMAdapter } from '@amux/llm-bridge'
+
+export const simpleAdapter: LLMAdapter = {
+  name: 'simple-provider',
+  version: '1.0.0',
+
+  capabilities: {
+    streaming: false,
+    tools: false,
+    vision: false,
+    multimodal: false,
+    systemPrompt: true,
+    toolChoice: false,
+    reasoning: false,
+    webSearch: false,
+    jsonMode: false,
+    logprobs: false,
+    seed: false
+  },
+
+  inbound: {
+    parseRequest: (req: any) => ({
+      messages: req.messages,
+      model: req.model,
+      stream: false,
+      generation: {
+        temperature: req.temperature || 1.0,
+        maxTokens: req.max_tokens || 1000
+      }
+    }),
+
+    parseResponse: (res: any) => ({
+      id: res.id,
+      model: res.model,
+      choices: res.choices.map(c => ({
+        index: c.index,
+        message: c.message,
+        finishReason: c.finish_reason
+      })),
+      usage: res.usage
+    })
+  },
+
+  outbound: {
+    buildRequest: (ir) => ({
+      model: ir.model,
+      messages: ir.messages,
+      temperature: ir.generation?.temperature,
+      max_tokens: ir.generation?.maxTokens
+    }),
+
+    buildResponse: (ir) => ({
+      id: ir.id,
+      model: ir.model,
+      choices: ir.choices,
+      usage: ir.usage
+    })
+  },
+
+  getInfo: () => ({
+    name: 'simple-provider',
+    version: '1.0.0',
+    capabilities: simpleAdapter.capabilities,
+    endpoint: {
+      baseURL: 'https://api.example.com',
+      chatPath: '/chat'
+    }
+  })
+}
+```
+
+## 最佳实践
+
+### 处理边界情况
+
+```typescript
+parseRequest(request: any): LLMRequestIR {
+  // 验证必需字段
+  if (!request.messages || request.messages.length === 0) {
+    throw new Error('消息是必需的')
+  }
+
+  // 提供默认值
+  const ir: LLMRequestIR = {
+    messages: request.messages,
+    model: request.model || 'default-model',
+    stream: request.stream || false
+  }
+
+  return ir
+}
+```
+
+### 使用 TypeScript 类型
+
+```typescript
+// 定义提供商特定类型
+interface MyProviderRequest {
+  model: string
+  messages: Array<{ role: string; content: string }>
+  temperature?: number
+  max_tokens?: number
+}
+
+interface MyProviderResponse {
+  id: string
+  choices: Array<{
+    message: { role: string; content: string }
+    finish_reason: string
+  }>
+}
+
+// 在适配器中使用
+parseRequest(request: MyProviderRequest): LLMRequestIR {
+  // TypeScript 会捕获错误
+}
+```
+
+### 添加错误处理
+
+```typescript
+parseError(error: any) {
+  return {
+    type: error.type || 'api_error',
+    message: error.message || '未知错误',
+    code: error.code,
+    retryable: error.status >= 500 || error.status === 429
+  }
+}
+```
+
+## 发布您的适配器
+
+如果您想分享您的适配器：
+
+1. **打包**：
+```json
+{
+  "name": "@myorg/amux-adapter-myprovider",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "peerDependencies": {
+    "@amux/llm-bridge": "^1.0.0"
+  }
+}
+```
+
+2. **构建**：`npm run build`
+
+3. **发布**：`npm publish`
+
+4. **文档**：添加包含使用示例的 README
+
+## 下一步
+
+<Cards>
+  <Card title="适配器 API" href="/zh/docs/api/adapters">
+    完整的适配器 API 参考
+  </Card>
+  <Card title="IR 格式" href="/zh/docs/api/ir">
+    理解 IR 格式
+  </Card>
+  <Card title="官方适配器" href="/zh/docs/adapters">
+    学习官方适配器实现
+  </Card>
+</Cards>

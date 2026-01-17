@@ -29,7 +29,7 @@ export const moonshotAdapter: LLMAdapter = {
     multimodal: false,
     systemPrompt: true,
     toolChoice: true,
-    reasoning: false,
+    reasoning: true, // kimi-k2-thinking supports reasoning
     webSearch: false,
     jsonMode: true,
     logprobs: false,

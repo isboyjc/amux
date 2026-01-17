@@ -3,75 +3,101 @@ title: Adapters Overview
 description: All official adapters supported by Amux
 ---
 
-Amux provides 7 official adapters supporting mainstream LLM providers. Each adapter is carefully designed to ensure perfect compatibility with provider APIs.
+Amux provides 7 official adapters supporting mainstream LLM providers. Each adapter handles bidirectional conversion between provider-specific formats and a unified intermediate representation (IR).
 
 ## Official Adapters
 
 <Cards>
-  <Card title="OpenAI" href="/docs/en/adapters/openai">
-    Supports GPT-4, GPT-3.5 and more with full function calling and vision capabilities
+  <Card title="OpenAI" href="/en/docs/adapters/openai">
+    GPT-4, GPT-3.5, function calling, vision
   </Card>
-  <Card title="Anthropic" href="/docs/en/adapters/anthropic">
-    Supports Claude 3.5 Sonnet, Claude 3 Opus and more
+  <Card title="Anthropic" href="/en/docs/adapters/anthropic">
+    Claude 3.5 Sonnet, Claude 3 Opus, 200K context
   </Card>
-  <Card title="DeepSeek" href="/docs/en/adapters/deepseek">
-    Supports DeepSeek Chat and DeepSeek Coder models
+  <Card title="DeepSeek" href="/en/docs/adapters/deepseek">
+    DeepSeek Chat, DeepSeek Coder, high value
   </Card>
-  <Card title="Moonshot" href="/docs/en/adapters/moonshot">
-    Supports Moonshot AI's Kimi series models
+  <Card title="Moonshot" href="/en/docs/adapters/moonshot">
+    Kimi models, 200K ultra-long context
   </Card>
-  <Card title="Zhipu" href="/docs/en/adapters/zhipu">
-    Supports Zhipu AI's GLM series models
+  <Card title="Zhipu" href="/en/docs/adapters/zhipu">
+    GLM-4 series, web search support
   </Card>
-  <Card title="Qwen" href="/docs/en/adapters/qwen">
-    Supports Alibaba Cloud's Qwen series models
+  <Card title="Qwen" href="/en/docs/adapters/qwen">
+    Qwen series, vision and multimodal
   </Card>
-  <Card title="Gemini" href="/docs/en/adapters/gemini">
-    Supports Google Gemini Pro and Gemini Pro Vision
+  <Card title="Google Gemini" href="/en/docs/adapters/gemini">
+    Gemini Pro, 1M+ tokens context
   </Card>
 </Cards>
 
 ## Feature Comparison
 
-| Adapter | Streaming | Tools | Vision | Multimodal | System Prompt | Tool Choice |
-|---------|-----------|-------|--------|------------|---------------|-------------|
-| OpenAI | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Anthropic | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Adapter | Streaming | Tools | Vision | Multimodal | Reasoning | JSON Mode |
+|---------|-----------|-------|--------|------------|-----------|-----------|
+| OpenAI | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Anthropic | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | DeepSeek | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
 | Moonshot | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
-| Zhipu | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Zhipu | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
 | Qwen | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Gemini | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ |
+| Gemini | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
 
-<Callout type="info">
-⚠️ indicates partial support or limitations
-</Callout>
+## Choosing an Adapter
+
+### By Feature
+
+**Vision & Multimodal**
+- OpenAI (GPT-4o), Anthropic (Claude 3), Qwen (Qwen-VL), Gemini (Gemini Pro Vision), Zhipu (GLM-4V)
+
+**Long Context**
+- Gemini (1M+ tokens), Anthropic (200K), Moonshot (200K)
+
+**Coding**
+- DeepSeek (DeepSeek Coder), OpenAI (GPT-4), Anthropic (Claude 3.5 Sonnet)
+
+**Reasoning**
+- OpenAI (o3, o4-mini), DeepSeek (DeepSeek Reasoner), Moonshot (Kimi K2 Thinking)
+
+### By Price
+
+**Most Economical:** DeepSeek, Qwen
+
+**Mid-range:** OpenAI GPT-3.5, Moonshot
+
+**Premium:** OpenAI GPT-4, Anthropic Claude, Gemini Pro
+
+### By OpenAI Compatibility
+
+These adapters are OpenAI-compatible and can be seamlessly swapped:
+- DeepSeek (fully compatible)
+- Moonshot (fully compatible)
+- Zhipu (fully compatible)
+- Qwen (mostly compatible, minor differences)
+- Gemini (requires format conversion)
 
 ## Quick Start
 
-### Installation
-
 ```bash tab="pnpm"
-# Install core package and required adapter
-pnpm add @amux/llm-bridge @amux/adapter-openai
+pnpm add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
 ```
 
 ```bash tab="npm"
-npm install @amux/llm-bridge @amux/adapter-openai
+npm install @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
 ```
 
 ```bash tab="yarn"
-yarn add @amux/llm-bridge @amux/adapter-openai
+yarn add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
 ```
 
-### Usage
+### Basic Usage
 
 ```typescript
 import { createBridge } from '@amux/llm-bridge'
 import { openaiAdapter } from '@amux/adapter-openai'
 import { anthropicAdapter } from '@amux/adapter-anthropic'
 
-// Create bridge
+// Accept OpenAI format, call Claude API
 const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
@@ -80,65 +106,15 @@ const bridge = createBridge({
   }
 })
 
-// Send request
 const response = await bridge.chat({
   model: 'gpt-4',
   messages: [{ role: 'user', content: 'Hello!' }]
 })
 ```
 
-## Choosing an Adapter
-
-### By Feature
-
-**Need vision capabilities?**
-- OpenAI (GPT-4V)
-- Anthropic (Claude 3)
-- Qwen (Qwen-VL)
-- Gemini (Gemini Pro Vision)
-
-**Need strong coding capabilities?**
-- DeepSeek (DeepSeek Coder)
-- OpenAI (GPT-4)
-- Anthropic (Claude 3.5 Sonnet)
-
-**Need long context?**
-- Moonshot (Kimi - 200K tokens)
-- Anthropic (Claude - 200K tokens)
-- Gemini (Gemini Pro - 1M tokens)
-
-### By Price
-
-**Most Economical:**
-- DeepSeek - Excellent value
-- Qwen - Alibaba Cloud pricing
-
-**Mid-range:**
-- OpenAI GPT-3.5
-- Moonshot
-
-**Premium Models:**
-- OpenAI GPT-4
-- Anthropic Claude 3.5 Sonnet
-- Gemini Pro
-
-## OpenAI Compatibility
-
-The following adapters are based on OpenAI format and can be seamlessly swapped:
-
-- **DeepSeek** - Fully compatible with OpenAI API
-- **Moonshot** - Fully compatible with OpenAI API
-- **Zhipu** - Fully compatible with OpenAI API
-- **Qwen** - Partially compatible (minor differences)
-- **Gemini** - Partially compatible (requires format conversion)
-
-<Callout type="warn">
-While these adapters claim OpenAI compatibility, there may be differences in certain details (such as system message handling, streaming format, etc.). Please refer to each adapter's documentation.
-</Callout>
-
 ## Creating Custom Adapters
 
-If you need to support other LLM providers, you can create a custom adapter:
+Need to support other LLM providers? Create a custom adapter:
 
 ```typescript
 import type { LLMAdapter } from '@amux/llm-bridge'
@@ -156,7 +132,9 @@ export const myAdapter: LLMAdapter = {
   },
   inbound: {
     parseRequest: (request) => { /* ... */ },
-    parseResponse: (response) => { /* ... */ }
+    parseResponse: (response) => { /* ... */ },
+    parseStream: (stream) => { /* ... */ },
+    parseError: (error) => { /* ... */ }
   },
   outbound: {
     buildRequest: (ir) => { /* ... */ },
@@ -166,24 +144,28 @@ export const myAdapter: LLMAdapter = {
     return {
       name: this.name,
       version: this.version,
-      capabilities: this.capabilities
+      capabilities: this.capabilities,
+      endpoint: {
+        baseURL: 'https://api.my-provider.com',
+        chatPath: '/v1/chat'
+      }
     }
   }
 }
 ```
 
-See the [Adapter API documentation](/docs/en/api/adapters) for more details.
+See the [Custom Adapter Guide](/docs/en/adapters/custom-adapter) for a complete tutorial.
 
 ## Next Steps
 
 <Cards>
-  <Card title="OpenAI Adapter" href="/docs/en/adapters/openai">
+  <Card title="OpenAI Adapter" href="/en/docs/adapters/openai">
     Learn how to use the OpenAI adapter
   </Card>
-  <Card title="Anthropic Adapter" href="/docs/en/adapters/anthropic">
-    Learn how to use the Anthropic adapter
+  <Card title="Custom Adapter Guide" href="/en/docs/adapters/custom-adapter">
+    Create your own adapter
   </Card>
-  <Card title="Adapter API" href="/docs/en/api/adapters">
+  <Card title="Adapter API" href="/en/docs/api/adapters">
     View the complete Adapter API reference
   </Card>
 </Cards>

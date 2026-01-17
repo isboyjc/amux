@@ -19,11 +19,11 @@ npm install @amux/llm-bridge @amux/adapter-google
 
 ```typescript
 import { createBridge } from '@amux/llm-bridge'
-import { geminiAdapter } from '@amux/adapter-google'
+import { googleAdapter } from '@amux/adapter-google'
 
 const bridge = createBridge({
-  inbound: geminiAdapter,
-  outbound: geminiAdapter,
+  inbound: googleAdapter,
+  outbound: googleAdapter,
   config: {
     apiKey: process.env.GEMINI_API_KEY
   }
@@ -159,8 +159,8 @@ Gemini 的最大特点是超长上下文（最长 2M tokens），远超其他模
 
 ```typescript
 const bridge = createBridge({
-  inbound: geminiAdapter,
-  outbound: geminiAdapter,
+  inbound: googleAdapter,
+  outbound: googleAdapter,
   config: {
     apiKey: process.env.GEMINI_API_KEY,
     baseURL: 'https://generativelanguage.googleapis.com', // 默认值
@@ -179,6 +179,7 @@ const bridge = createBridge({
 | 超长上下文 | ✅ | 最长 2M tokens |
 | 函数调用 | ⚠️ | 部分支持 |
 | 系统提示 | ✅ | 完全支持 |
+| JSON 模式 | ✅ | 结构化输出 |
 
 <Callout type="warn">
 Gemini 的函数调用格式与 OpenAI 不同，可能需要额外的格式转换。
@@ -275,11 +276,11 @@ const bookAnalysis = await bridge.chat({
 
 ```typescript
 import { openaiAdapter } from '@amux/adapter-openai'
-import { geminiAdapter } from '@amux/adapter-google'
+import { googleAdapter } from '@amux/adapter-google'
 
 const bridge = createBridge({
   inbound: openaiAdapter,
-  outbound: geminiAdapter,
+  outbound: googleAdapter,
   config: {
     apiKey: process.env.GEMINI_API_KEY
   }
@@ -326,10 +327,10 @@ const response = await bridge.chat({
 ## 下一步
 
 <Cards>
-  <Card title="OpenAI 适配器" href="/docs/zh/adapters/openai">
+  <Card title="OpenAI 适配器" href="/zh/docs/adapters/openai">
     了解如何使用 GPT 模型
   </Card>
-  <Card title="适配器概览" href="/docs/zh/adapters">
+  <Card title="适配器概览" href="/zh/docs/adapters">
     查看所有可用的适配器
   </Card>
 </Cards>

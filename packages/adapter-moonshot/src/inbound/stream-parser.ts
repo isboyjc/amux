@@ -45,9 +45,10 @@ export function parseStream(
   if (!choice) return null
 
   const delta = choice.delta
+  const events: LLMStreamEvent[] = []
 
   // Start event (first chunk with role or empty delta at index 0)
-  if (choice.index === 0 && !delta.content && !delta.tool_calls && !choice.finish_reason) {
+  if (choice.index === 0 && !delta.content && !delta.tool_calls && !delta.reasoning_content && !choice.finish_reason) {
     return {
       type: 'start',
       id: data.id,
@@ -56,9 +57,24 @@ export function parseStream(
     }
   }
 
+  // Moonshot-specific: Reasoning content delta
+  if (delta.reasoning_content) {
+    events.push({
+      type: 'reasoning',
+      id: data.id,
+      model: data.model,
+      reasoning: {
+        type: 'reasoning',
+        delta: delta.reasoning_content,
+        index: choice.index,
+      },
+      raw: chunk,
+    })
+  }
+
   // Content delta
   if (delta.content) {
-    return {
+    events.push({
       type: 'content',
       id: data.id,
       model: data.model,
@@ -68,7 +84,7 @@ export function parseStream(
         index: choice.index,
       },
       raw: chunk,
-    }
+    })
   }
 
   // Tool call delta
@@ -93,7 +109,7 @@ export function parseStream(
 
   // End event
   if (choice.finish_reason) {
-    return {
+    events.push({
       type: 'end',
       id: data.id,
       model: data.model,
@@ -106,8 +122,13 @@ export function parseStream(
           }
         : undefined,
       raw: chunk,
-    }
+    })
   }
 
-  return null
+  if (events.length === 0) {
+    return null
+  }
+
+  const firstEvent = events[0]
+  return events.length === 1 && firstEvent ? firstEvent : events
 }

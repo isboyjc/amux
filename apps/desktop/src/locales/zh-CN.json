@@ -387,7 +387,11 @@
     "bridgeProxy": "双向代理",
     "thinking": "思考过程",
     "thinkingInProgress": "思考中...",
+    "waiting": "等待响应...",
     "sendFailed": "发送失败",
-    "streamError": "流式响应错误"
+    "streamError": "流式响应错误",
+    "serviceStarting": "正在启动代理服务...",
+    "serviceStopped": "代理服务已停止，正在启动...",
+    "serviceError": "代理服务错误，请检查设置。"
   }
 }

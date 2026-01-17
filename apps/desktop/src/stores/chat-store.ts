@@ -193,7 +193,7 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
 
     // Send message via IPC
     try {
-      await ipc.invoke('chat:send-message', conversationId, content)
+      await ipc.invoke('chat:send-message', conversationId, content, selectedModel, selectedProxy)
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to send message' })
     }
@@ -237,7 +237,7 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
 
   // Regenerate response
   regenerate: async (assistantMessageId) => {
-    const { currentConversation } = get()
+    const { currentConversation, selectedModel, selectedProxy } = get()
     if (!currentConversation) return
 
     // Remove the assistant message from local state
@@ -245,7 +245,7 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
 
     // Call regenerate IPC
     try {
-      await ipc.invoke('chat:regenerate', currentConversation.id, assistantMessageId)
+      await ipc.invoke('chat:regenerate', currentConversation.id, assistantMessageId, selectedModel, selectedProxy)
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to regenerate' })
     }

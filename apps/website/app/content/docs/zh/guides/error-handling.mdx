@@ -1,0 +1,574 @@
+---
+title: 错误处理
+description: 优雅地处理错误并构建弹性 LLM 应用程序
+---
+
+## 错误类型
+
+Amux 提供了结构化的错误层次结构，帮助你处理不同的失败场景：
+
+```typescript
+import {
+  LLMBridgeError,
+  APIError,
+  NetworkError,
+  TimeoutError,
+  ValidationError,
+  AdapterError,
+  BridgeError
+} from '@amux/llm-bridge'
+```
+
+### LLMBridgeError
+
+所有 Amux 错误的基类：
+
+```typescript
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof LLMBridgeError) {
+    console.error('代码:', error.code)
+    console.error('消息:', error.message)
+    console.error('可重试:', error.retryable)
+    console.error('详情:', error.details)
+  }
+}
+```
+
+**属性：**
+- `code` - 错误代码（例如 'API_ERROR'、'NETWORK_ERROR'）
+- `message` - 人类可读的错误消息
+- `retryable` - 操作是否可以重试
+- `details` - 附加的错误上下文
+
+### APIError
+
+来自提供商 API 调用的错误：
+
+```typescript
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof APIError) {
+    console.error('提供商:', error.provider)
+    console.error('状态:', error.status)
+    console.error('数据:', error.data)
+
+    // 检查特定状态码
+    if (error.status === 401) {
+      console.error('无效的 API 密钥')
+    } else if (error.status === 429) {
+      console.error('超过速率限制')
+    } else if (error.status === 500) {
+      console.error('提供商服务器错误')
+    }
+  }
+}
+```
+
+**属性：**
+- `status` - HTTP 状态码（401、429、500 等）
+- `provider` - 提供商名称（'openai'、'anthropic' 等）
+- `data` - 来自提供商的原始错误响应
+- `response` - 响应头（对速率限制信息有用）
+
+<Callout type="info">
+状态码 >= 500 的 APIError 会自动标记为可重试。
+</Callout>
+
+### NetworkError
+
+网络相关的故障（连接错误、DNS 故障）：
+
+```typescript
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof NetworkError) {
+    console.error('网络错误:', error.message)
+    console.error('原因:', error.cause)
+    // 使用指数退避重试
+  }
+}
+```
+
+**属性：**
+- `cause` - 底层网络错误
+- `retryable` - 始终为 `true`
+
+### TimeoutError
+
+请求超时错误：
+
+```typescript
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof TimeoutError) {
+    console.error('请求在', error.timeout, 'ms 后超时')
+    // 使用更长的超时时间重试
+  }
+}
+```
+
+**属性：**
+- `timeout` - 超时持续时间（毫秒）
+- `retryable` - 始终为 `true`
+
+### ValidationError
+
+无效的请求格式或参数：
+
+```typescript
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof ValidationError) {
+    console.error('验证错误:')
+    error.errors.forEach(err => console.error('-', err))
+  }
+}
+```
+
+**属性：**
+- `errors` - 验证错误消息数组
+- `retryable` - 始终为 `false`
+
+### AdapterError
+
+适配器转换或兼容性问题：
+
+```typescript
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof AdapterError) {
+    console.error('适配器:', error.adapterName)
+    console.error('详情:', error.details)
+  }
+}
+```
+
+**属性：**
+- `adapterName` - 失败的适配器名称
+- `details` - 错误详情
+- `retryable` - 始终为 `false`
+
+### BridgeError
+
+桥接编排错误：
+
+```typescript
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof BridgeError) {
+    console.error('桥接错误:', error.message)
+    console.error('详情:', error.details)
+  }
+}
+```
+
+## 常见错误场景
+
+### 认证错误
+
+无效或缺失的 API 密钥：
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { APIError } from '@amux/llm-bridge'
+
+try {
+  const bridge = createBridge({
+    inbound: openaiAdapter,
+    outbound: anthropicAdapter,
+    config: {
+      apiKey: process.env.ANTHROPIC_API_KEY
+    }
+  })
+
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof APIError && error.status === 401) {
+    console.error('认证失败。请检查你的 API 密钥。')
+    // 通知用户或刷新凭据
+  }
+}
+```
+
+### 速率限制
+
+使用指数退避处理速率限制错误：
+
+```typescript
+import { APIError } from '@amux/llm-bridge'
+
+async function chatWithRetry(bridge, request, maxRetries = 3) {
+  let lastError
+
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await bridge.chat(request)
+    } catch (error) {
+      lastError = error
+
+      if (error instanceof APIError && error.status === 429) {
+        // 速率受限 - 等待并重试
+        const retryAfter = error.response?.headers?.['retry-after']
+        const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, i) * 1000
+
+        console.log(`速率受限。${waitTime}ms 后重试...`)
+        await new Promise(resolve => setTimeout(resolve, waitTime))
+        continue
+      }
+
+      // 其他错误 - 不重试
+      throw error
+    }
+  }
+
+  throw lastError
+}
+
+// 使用
+const response = await chatWithRetry(bridge, request)
+```
+
+### 网络错误
+
+处理瞬时网络故障：
+
+```typescript
+import { NetworkError, TimeoutError } from '@amux/llm-bridge'
+
+async function chatWithNetworkRetry(bridge, request) {
+  const maxRetries = 3
+  let attempt = 0
+
+  while (attempt < maxRetries) {
+    try {
+      return await bridge.chat(request)
+    } catch (error) {
+      if (error instanceof NetworkError || error instanceof TimeoutError) {
+        attempt++
+        if (attempt >= maxRetries) throw error
+
+        const delay = Math.min(1000 * Math.pow(2, attempt), 10000)
+        console.log(`网络错误。重试 ${attempt}/${maxRetries}，${delay}ms 后`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+      } else {
+        throw error
+      }
+    }
+  }
+}
+```
+
+### 内容过滤
+
+处理内容政策违规：
+
+```typescript
+import { APIError } from '@amux/llm-bridge'
+
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof APIError && error.data?.error?.code === 'content_filter') {
+    console.error('内容被提供商政策过滤')
+    // 返回安全的默认响应或通知用户
+    return {
+      choices: [{
+        message: {
+          role: 'assistant',
+          content: '由于内容政策，我无法回应该请求。'
+        }
+      }]
+    }
+  }
+}
+```
+
+### 流式错误
+
+处理流式响应中的错误：
+
+```typescript
+try {
+  const stream = await bridge.chat({
+    ...request,
+    stream: true
+  })
+
+  for await (const event of stream) {
+    if (event.type === 'error') {
+      console.error('流错误:', event.error.message)
+      break
+    }
+
+    if (event.type === 'content') {
+      process.stdout.write(event.content.delta)
+    }
+  }
+} catch (error) {
+  console.error('启动流失败:', error)
+}
+```
+
+## 重试策略
+
+### 简单重试
+
+仅重试可重试的错误：
+
+```typescript
+async function simpleRetry(fn, maxRetries = 3) {
+  let lastError
+
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error
+
+      if (error instanceof LLMBridgeError && error.retryable) {
+        console.log(`重试 ${i + 1}/${maxRetries}`)
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        continue
+      }
+
+      throw error
+    }
+  }
+
+  throw lastError
+}
+
+// 使用
+const response = await simpleRetry(() => bridge.chat(request))
+```
+
+### 指数退避
+
+增加重试之间的等待时间：
+
+```typescript
+async function exponentialBackoff(fn, maxRetries = 5) {
+  let lastError
+
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error
+
+      if (error instanceof LLMBridgeError && error.retryable) {
+        const delay = Math.min(1000 * Math.pow(2, i), 30000) // 最多 30 秒
+        console.log(`重试 ${i + 1}/${maxRetries}，${delay}ms 后`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+        continue
+      }
+
+      throw error
+    }
+  }
+
+  throw lastError
+}
+```
+
+### 断路器
+
+防止级联故障：
+
+```typescript
+class CircuitBreaker {
+  constructor(threshold = 5, timeout = 60000) {
+    this.failureCount = 0
+    this.threshold = threshold
+    this.timeout = timeout
+    this.state = 'CLOSED'
+    this.nextAttempt = Date.now()
+  }
+
+  async execute(fn) {
+    if (this.state === 'OPEN') {
+      if (Date.now() < this.nextAttempt) {
+        throw new Error('断路器处于 OPEN 状态')
+      }
+      this.state = 'HALF_OPEN'
+    }
+
+    try {
+      const result = await fn()
+      this.onSuccess()
+      return result
+    } catch (error) {
+      this.onFailure()
+      throw error
+    }
+  }
+
+  onSuccess() {
+    this.failureCount = 0
+    this.state = 'CLOSED'
+  }
+
+  onFailure() {
+    this.failureCount++
+    if (this.failureCount >= this.threshold) {
+      this.state = 'OPEN'
+      this.nextAttempt = Date.now() + this.timeout
+    }
+  }
+}
+
+// 使用
+const breaker = new CircuitBreaker()
+const response = await breaker.execute(() => bridge.chat(request))
+```
+
+## 最佳实践
+
+### 1. 始终处理错误
+
+在生产环境中永远不要忽略错误：
+
+```typescript
+// ❌ 不好
+const response = await bridge.chat(request)
+
+// ✅ 好
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  console.error('聊天失败:', error)
+  // 适当处理
+}
+```
+
+### 2. 检查可重试标志
+
+仅在有意义时重试：
+
+```typescript
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof LLMBridgeError && error.retryable) {
+    // 可以安全重试
+    return await retryWithBackoff(() => bridge.chat(request))
+  } else {
+    // 不要重试 - 修复请求
+    throw error
+  }
+}
+```
+
+### 3. 记录错误详情
+
+包含用于调试的上下文：
+
+```typescript
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  console.error('聊天失败:', {
+    code: error.code,
+    message: error.message,
+    retryable: error.retryable,
+    details: error.details,
+    request: {
+      model: request.model,
+      messageCount: request.messages.length
+    }
+  })
+}
+```
+
+### 4. 设置适当的超时
+
+防止挂起的请求：
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    timeout: 30000  // 30 秒
+  }
+})
+```
+
+### 5. 提供用户友好的消息
+
+不要向用户暴露内部错误：
+
+```typescript
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  let userMessage = '发生错误。请重试。'
+
+  if (error instanceof APIError) {
+    if (error.status === 429) {
+      userMessage = '请求过多。请稍候。'
+    } else if (error.status === 401) {
+      userMessage = '认证失败。请检查你的设置。'
+    }
+  } else if (error instanceof NetworkError) {
+    userMessage = '网络错误。请检查你的连接。'
+  }
+
+  // 记录内部错误
+  console.error('内部错误:', error)
+
+  // 显示用户友好的消息
+  return { error: userMessage }
+}
+```
+
+## 错误监控
+
+与监控服务集成：
+
+```typescript
+import * as Sentry from '@sentry/node'
+
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  // 记录到监控服务
+  Sentry.captureException(error, {
+    tags: {
+      provider: error.provider,
+      retryable: error.retryable
+    },
+    extra: {
+      requestModel: request.model,
+      errorCode: error.code
+    }
+  })
+
+  throw error
+}
+```
+
+## 下一步
+
+<Cards>
+  <Card title="模型映射" href="/zh/docs/guides/model-mapping">
+    跨提供商映射模型
+  </Card>
+  <Card title="基础用法" href="/zh/docs/guides/basic-usage">
+    开始使用桥接
+  </Card>
+  <Card title="流式响应" href="/zh/docs/guides/streaming">
+    处理流式响应
+  </Card>
+</Cards>

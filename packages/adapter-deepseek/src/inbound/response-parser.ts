@@ -1,20 +1,7 @@
-import type { LLMResponseIR, Choice, FinishReason, Role } from '@amux/llm-bridge'
+import type { LLMResponseIR, Choice, Role } from '@amux/llm-bridge'
+import { mapFinishReason } from '@amux/llm-bridge'
 
 import type { DeepSeekResponse } from '../types'
-
-/**
- * Map DeepSeek finish reason to IR finish reason
- */
-function mapFinishReason(reason: string): FinishReason {
-  const reasonMap: Record<string, FinishReason> = {
-    stop: 'stop',
-    length: 'length',
-    tool_calls: 'tool_calls',
-    content_filter: 'content_filter',
-    insufficient_system_resource: 'error',
-  }
-  return reasonMap[reason] ?? 'stop'
-}
 
 /**
  * Parse DeepSeek response to IR

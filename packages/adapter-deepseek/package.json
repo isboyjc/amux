@@ -39,8 +39,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@amux/llm-bridge": "workspace:*",
-    "@amux/adapter-openai": "workspace:*"
+    "@amux/llm-bridge": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.11.5",

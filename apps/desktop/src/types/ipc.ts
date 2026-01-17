@@ -270,11 +270,21 @@ export interface IPCHandlers {
   'chat:update-conversation': (id: string, data: UpdateConversationDTO) => Promise<Conversation | null>
   'chat:delete-conversation': (id: string) => Promise<boolean>
   'chat:get-messages': (conversationId: string) => Promise<ChatMessage[]>
-  'chat:send-message': (conversationId: string, content: string) => Promise<void>
+  'chat:send-message': (
+    conversationId: string,
+    content: string,
+    selectedModel?: string,
+    selectedProxy?: { type: 'provider' | 'proxy'; id: string }
+  ) => Promise<void>
   'chat:stop-streaming': (conversationId: string) => Promise<void>
   'chat:delete-message': (messageId: string) => Promise<boolean>
   'chat:delete-message-pair': (userMessageId: string) => Promise<boolean>
-  'chat:regenerate': (conversationId: string, assistantMessageId: string) => Promise<void>
+  'chat:regenerate': (
+    conversationId: string,
+    assistantMessageId: string,
+    selectedModel?: string,
+    selectedProxy?: { type: 'provider' | 'proxy'; id: string }
+  ) => Promise<void>
 }
 
 // ============ IPC Events (Main -> Renderer) ============

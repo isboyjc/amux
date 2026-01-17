@@ -2,11 +2,12 @@
  * Main chat card component
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
 
 import { Logo } from '@/components/icons'
 import { Button } from '@/components/ui/button'
+import { ipc } from '@/lib/ipc'
 import { useI18n } from '@/stores/i18n-store'
 import { useChatStore, useProviderStore, useBridgeProxyStore } from '@/stores'
 
@@ -18,6 +19,8 @@ import { ProxySelector } from './ProxySelector'
 export function ChatCard() {
   const { t } = useI18n()
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [serviceStatus, setServiceStatus] = useState<'running' | 'stopped' | 'error'>('stopped')
+  const [isStartingService, setIsStartingService] = useState(false)
 
   // Chat store
   const {
@@ -57,7 +60,45 @@ export function ChatCard() {
     fetchProviders()
     fetchProxies()
     fetchPresets()
+
+    // Check proxy service status
+    checkServiceStatus()
   }, [fetchConversations, fetchProviders, fetchProxies, fetchPresets])
+
+  // Check and auto-start proxy service
+  const checkServiceStatus = async () => {
+    try {
+      const status = await ipc.invoke('proxy-service:status')
+      setServiceStatus(status.status)
+
+      // Auto-start service only if explicitly stopped
+      if (status.status === 'stopped' && !isStartingService) {
+        await startProxyService()
+      }
+    } catch (error) {
+      console.error('[ChatCard] Failed to check service status:', error)
+      setServiceStatus('error')
+    }
+  }
+
+  // Start proxy service
+  const startProxyService = async () => {
+    setIsStartingService(true)
+    try {
+      await ipc.invoke('proxy-service:start')
+      setServiceStatus('running')
+    } catch (error) {
+      console.error('[ChatCard] Failed to start service:', error)
+      // If error is "already running", treat as success
+      if (error instanceof Error && error.message.includes('already running')) {
+        setServiceStatus('running')
+      } else {
+        setServiceStatus('error')
+      }
+    } finally {
+      setIsStartingService(false)
+    }
+  }
 
   // Setup IPC event listeners for streaming
   useEffect(() => {
@@ -89,6 +130,18 @@ export function ChatCard() {
   }
 
   const handleSend = async (content: string) => {
+    // Check service status before sending
+    if (serviceStatus !== 'running') {
+      if (isStartingService) {
+        return // Wait for service to start
+      }
+      // Try to start service
+      await startProxyService()
+      if (serviceStatus !== 'running') {
+        return // Service failed to start
+      }
+    }
+
     await sendMessage(content)
   }
 
@@ -181,6 +234,14 @@ export function ChatCard() {
                 />
               )}
 
+              {/* Error message display */}
+              {error && !isStreaming && (
+                <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                  <p className="text-sm text-destructive font-medium mb-1">{t('chat.streamError')}</p>
+                  <p className="text-xs text-destructive/80">{error}</p>
+                </div>
+              )}
+
               <div ref={messagesEndRef} className="h-4" />
             </div>
           </div>
@@ -191,7 +252,7 @@ export function ChatCard() {
               <ChatInput
                 onSend={handleSend}
                 onStop={stopStreaming}
-                disabled={!selectedProxy || !selectedModel}
+                disabled={!selectedProxy || !selectedModel || serviceStatus !== 'running'}
                 isStreaming={isStreaming}
                 proxySelector={
                   <ProxySelector
@@ -206,8 +267,14 @@ export function ChatCard() {
                   />
                 }
               />
-              {error && (
-                <p className="text-xs text-destructive mt-2">{error}</p>
+              {serviceStatus !== 'running' && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  {isStartingService
+                    ? t('chat.serviceStarting') || 'Starting proxy service...'
+                    : serviceStatus === 'error'
+                    ? t('chat.serviceError') || 'Proxy service error. Please check settings.'
+                    : t('chat.serviceStopped') || 'Proxy service stopped. Starting...'}
+                </p>
               )}
             </div>
           </div>
@@ -251,7 +318,7 @@ export function ChatCard() {
               <ChatInput
                 onSend={handleSend}
                 onStop={stopStreaming}
-                disabled={!selectedProxy || !selectedModel}
+                disabled={!selectedProxy || !selectedModel || serviceStatus !== 'running'}
                 isStreaming={isStreaming}
                 proxySelector={
                   <ProxySelector
@@ -266,8 +333,14 @@ export function ChatCard() {
                   />
                 }
               />
-              {error && (
-                <p className="text-xs text-destructive text-center mt-2">{error}</p>
+              {serviceStatus !== 'running' && (
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  {isStartingService
+                    ? t('chat.serviceStarting') || 'Starting proxy service...'
+                    : serviceStatus === 'error'
+                    ? t('chat.serviceError') || 'Proxy service error. Please check settings.'
+                    : t('chat.serviceStopped') || 'Proxy service stopped. Starting...'}
+                </p>
               )}
             </div>
           </div>

@@ -387,7 +387,11 @@
     "bridgeProxy": "Bridge",
     "thinking": "Reasoning",
     "thinkingInProgress": "Thinking...",
+    "waiting": "Waiting for response...",
     "sendFailed": "Failed to send",
-    "streamError": "Stream error"
+    "streamError": "Stream error",
+    "serviceStarting": "Starting proxy service...",
+    "serviceStopped": "Proxy service stopped. Starting...",
+    "serviceError": "Proxy service error. Please check settings."
   }
 }

@@ -1,0 +1,299 @@
+---
+title: 常见问题
+description: 关于 Amux 的常见问题解答
+---
+
+## 一般问题
+
+### 什么是 Amux？
+
+Amux 是一个双向 LLM API 适配器，可以在不同的 LLM 提供商格式之间进行转换。它允许你接受任何格式的请求，调用任何提供商 API，并返回任何格式的响应。
+
+### Amux 与其他 LLM 库有何不同？
+
+大多数 LLM 库提供**统一接口**（一种格式适用于所有提供商）。Amux 提供**双向转换** - 你可以使用任何格式作为输入，任何提供商作为输出：
+
+```typescript
+// 其他库：一种格式 → 任意提供商
+// Amux：任意格式 → 任意提供商 → 任意格式
+
+// 接受 OpenAI 格式，调用 Claude，返回 OpenAI 格式
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter
+})
+
+// 接受 Claude 格式，调用 OpenAI，返回 Claude 格式
+const bridge = createBridge({
+  inbound: anthropicAdapter,
+  outbound: openaiAdapter
+})
+```
+
+### Amux 是否适合生产环境？
+
+是的！Amux 专为生产环境设计，具有：
+- 零运行时依赖
+- 全面的错误处理
+- 完整的 TypeScript 支持
+- 广泛的测试覆盖
+- 已被多个团队用于生产环境
+
+### 性能开销如何？
+
+最小。Amux 的格式转换增加了约 1-5ms 的开销。实际的 API 调用时间（100ms-10s）占主导地位。对于大多数应用程序，这种开销可以忽略不计。
+
+## 兼容性
+
+### 支持哪些提供商？
+
+Amux 官方支持 7 个提供商：
+
+- **OpenAI** - GPT-4、GPT-3.5 Turbo 等
+- **Anthropic** - Claude 3.5 Sonnet、Claude 3 Opus 等
+- **DeepSeek** - DeepSeek Chat、DeepSeek Coder、DeepSeek Reasoner
+- **Moonshot** - Kimi 系列（200K 上下文）
+- **Zhipu** - GLM-4 系列
+- **Qwen** - Qwen 系列（支持推理和多模态）
+- **Gemini** - Google Gemini Pro、Gemini Pro Vision
+
+### 我可以使用 OpenAI 兼容的提供商吗？
+
+可以！许多提供商（如 DeepSeek、Moonshot、Zhipu、Qwen）都兼容 OpenAI。你通常可以使用 OpenAI 适配器，只需进行少量调整：
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: deepseekAdapter,  // OpenAI 兼容
+  config: {
+    apiKey: process.env.DEEPSEEK_API_KEY
+  }
+})
+```
+
+### Amux 支持流式传输吗？
+
+支持！所有适配器都支持流式传输：
+
+```typescript
+const stream = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '你好' }],
+  stream: true
+})
+
+for await (const event of stream) {
+  if (event.type === 'content') {
+    process.stdout.write(event.content.delta)
+  }
+}
+```
+
+### Amux 支持函数调用吗？
+
+支持！所有兼容的提供商都支持工具/函数调用：
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '天气如何？' }],
+  tools: [{
+    type: 'function',
+    function: {
+      name: 'get_weather',
+      parameters: { type: 'object', properties: { location: { type: 'string' } } }
+    }
+  }]
+})
+```
+
+## 使用
+
+### 我需要同时使用入站和出站适配器吗？
+
+是的。入站适配器定义你的请求/响应格式，出站适配器定义要调用的提供商：
+
+- **入站** = 你的格式
+- **出站** = 要调用的提供商 API
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,      // 我想使用 OpenAI 格式
+  outbound: anthropicAdapter   // 但调用 Claude API
+})
+```
+
+### 我可以为入站和出站使用相同的适配器吗？
+
+可以！如果你只是想要 Amux 的错误处理、日志记录或模型映射功能，这很有用：
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: openaiAdapter,  // 相同的适配器
+  config: { apiKey: process.env.OPENAI_API_KEY }
+})
+```
+
+### 如何处理错误？
+
+使用 `LLMBridgeError` 配合 try/catch：
+
+```typescript
+import { LLMBridgeError } from '@amux/llm-bridge'
+
+try {
+  const response = await bridge.chat(request)
+} catch (error) {
+  if (error instanceof LLMBridgeError) {
+    console.error(`${error.type}: ${error.message}`)
+
+    if (error.retryable) {
+      // 重试逻辑
+    }
+  }
+}
+```
+
+详情请参阅[错误处理指南](/docs/zh/guides/error-handling)。
+
+### 如何在提供商之间映射模型名称？
+
+使用模型映射自动转换模型名称：
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapping: {
+    'gpt-4': 'claude-3-5-sonnet-20241022',
+    'gpt-3.5-turbo': 'claude-3-haiku-20240307'
+  }
+})
+
+// 使用 'gpt-4' 的请求将调用 Claude Sonnet
+```
+
+详情请参阅[模型映射指南](/docs/zh/guides/model-mapping)。
+
+## 开发
+
+### 如何添加自定义适配器？
+
+创建一个实现 `LLMAdapter` 接口的适配器：
+
+```typescript
+import type { LLMAdapter } from '@amux/llm-bridge'
+
+export const myAdapter: LLMAdapter = {
+  name: 'my-provider',
+  version: '1.0.0',
+  capabilities: {
+    streaming: true,
+    tools: true,
+    // ...
+  },
+  inbound: {
+    parseRequest: (request) => { /* 转换为 IR */ },
+    parseResponse: (response) => { /* 转换为 IR */ }
+  },
+  outbound: {
+    buildRequest: (ir) => { /* 从 IR 转换 */ },
+    buildResponse: (ir) => { /* 从 IR 转换 */ }
+  },
+  getInfo() { /* 返回适配器元数据 */ }
+}
+```
+
+完整教程请参阅[自定义适配器指南](/docs/zh/adapters/custom-adapter)。
+
+### 我可以为 Amux 做贡献吗？
+
+可以！我们欢迎贡献：
+
+- 通过 [GitHub Issues](https://github.com/isboyjc/amux/issues) 报告错误
+- 提交 PR 修复错误或添加新功能
+- 为新提供商添加适配器
+- 改进文档
+
+详情请参阅 [CONTRIBUTING.md](https://github.com/isboyjc/amux/blob/main/CONTRIBUTING.md)。
+
+### 在哪里可以获得帮助？
+
+- **文档**: [https://amux.dev/docs](https://amux.dev/docs)
+- **GitHub Issues**: [https://github.com/isboyjc/amux/issues](https://github.com/isboyjc/amux/issues)
+- **GitHub Discussions**: [https://github.com/isboyjc/amux/discussions](https://github.com/isboyjc/amux/discussions)
+
+## 故障排除
+
+### 我收到身份验证错误
+
+检查你的 API 密钥是否正确并具有适当的权限：
+
+```typescript
+// 验证你的 API 密钥是否已加载
+console.log('API 密钥:', process.env.ANTHROPIC_API_KEY ? '已设置' : '未设置')
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: {
+    apiKey: process.env.ANTHROPIC_API_KEY
+  }
+})
+```
+
+### 流式传输不工作
+
+确保你：
+1. 在请求中设置 `stream: true`
+2. 使用 `for await...of` 进行迭代
+3. 检查适配器是否支持流式传输
+
+```typescript
+const stream = await bridge.chat({
+  model: 'gpt-4',
+  messages: [...],
+  stream: true  // 必须为 true
+})
+
+for await (const event of stream) {  // 必须使用 for await
+  // 处理事件
+}
+```
+
+### 速率限制错误
+
+实现指数退避重试：
+
+```typescript
+async function chatWithRetry(bridge, request, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await bridge.chat(request)
+    } catch (error) {
+      if (error.type === 'rate_limit' && i < maxRetries - 1) {
+        const delay = Math.min(1000 * Math.pow(2, i), 10000)
+        await new Promise(resolve => setTimeout(resolve, delay))
+        continue
+      }
+      throw error
+    }
+  }
+}
+```
+
+## 下一步
+
+<Cards>
+  <Card title="快速开始" href="/zh/docs/quick-start">
+    构建你的第一个桥接
+  </Card>
+  <Card title="使用指南" href="/zh/docs/guides">
+    学习常见模式
+  </Card>
+  <Card title="最佳实践" href="/zh/docs/best-practices">
+    生产环境技巧
+  </Card>
+</Cards>

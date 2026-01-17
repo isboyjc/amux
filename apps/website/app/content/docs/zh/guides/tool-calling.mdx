@@ -1,0 +1,440 @@
+---
+title: 工具调用
+description: 使用函数调用跨提供商扩展模型能力
+---
+
+## 什么是工具调用？
+
+工具调用（也称为函数调用）允许 LLM 模型调用外部函数和 API。模型不仅可以返回文本，还可以请求调用特定函数并传递结构化参数，使其能够：
+
+- 获取实时数据（天气、股票价格等）
+- 执行计算或数据库查询
+- 执行操作（发送邮件、创建日历事件等）
+- 与外部系统交互
+
+<Callout type="info">
+Amux 统一了所有提供商的工具调用格式，允许你使用相同的代码调用 OpenAI、Anthropic、DeepSeek 等不同提供商。
+</Callout>
+
+## 定义工具
+
+使用标准的 JSON Schema 格式定义工具：
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+})
+
+const tools = [
+  {
+    type: 'function',
+    function: {
+      name: 'get_weather',
+      description: '获取某个地点的当前天气',
+      parameters: {
+        type: 'object',
+        properties: {
+          location: {
+            type: 'string',
+            description: '城市名称，例如：北京'
+          },
+          unit: {
+            type: 'string',
+            enum: ['celsius', 'fahrenheit'],
+            description: '温度单位'
+          }
+        },
+        required: ['location']
+      }
+    }
+  }
+]
+
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [
+    { role: 'user', content: '东京现在的天气怎么样？' }
+  ],
+  tools
+})
+```
+
+## 工具选择选项
+
+控制模型何时以及如何使用工具：
+
+### Auto（默认）
+
+让模型决定是否使用工具：
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '你好！' }],
+  tools,
+  tool_choice: 'auto'  // 模型自行决定
+})
+```
+
+### None
+
+阻止模型使用任何工具：
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '天气怎么样？' }],
+  tools,
+  tool_choice: 'none'  // 不允许使用工具
+})
+```
+
+### Required
+
+强制模型至少使用一个工具：
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '获取天气数据' }],
+  tools,
+  tool_choice: 'required'  // 必须使用工具
+})
+```
+
+### 指定工具
+
+强制模型使用特定工具：
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '查看东京天气' }],
+  tools,
+  tool_choice: {
+    type: 'function',
+    function: { name: 'get_weather' }
+  }
+})
+```
+
+## 处理工具调用
+
+当模型想要调用工具时，它会在响应中返回工具调用：
+
+```typescript
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [
+    { role: 'user', content: '巴黎和伦敦的天气怎么样？' }
+  ],
+  tools
+})
+
+// 检查模型是否想要调用工具
+if (response.choices[0].message.tool_calls) {
+  const toolCalls = response.choices[0].message.tool_calls
+
+  for (const toolCall of toolCalls) {
+    console.log('工具:', toolCall.function.name)
+    console.log('参数:', toolCall.function.arguments)
+
+    // 解析参数
+    const args = JSON.parse(toolCall.function.arguments)
+
+    // 执行函数
+    let result
+    if (toolCall.function.name === 'get_weather') {
+      result = await getWeather(args.location, args.unit)
+    }
+
+    // 将结果发送回模型
+    const finalResponse = await bridge.chat({
+      model: 'gpt-4',
+      messages: [
+        { role: 'user', content: '巴黎和伦敦的天气怎么样？' },
+        response.choices[0].message,  // 助手的工具调用
+        {
+          role: 'tool',
+          tool_call_id: toolCall.id,
+          content: JSON.stringify(result)
+        }
+      ],
+      tools
+    })
+
+    console.log(finalResponse.choices[0].message.content)
+  }
+}
+```
+
+## 完整示例
+
+这是一个包含工具执行的完整实现：
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+
+// 定义工具
+const tools = [
+  {
+    type: 'function',
+    function: {
+      name: 'get_weather',
+      description: '获取某个地点的天气',
+      parameters: {
+        type: 'object',
+        properties: {
+          location: { type: 'string' }
+        },
+        required: ['location']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'calculate',
+      description: '执行数学计算',
+      parameters: {
+        type: 'object',
+        properties: {
+          expression: { type: 'string', description: '数学表达式' }
+        },
+        required: ['expression']
+      }
+    }
+  }
+]
+
+// 实现工具函数
+async function getWeather(location: string) {
+  // 调用天气 API
+  return { location, temperature: 22, condition: 'sunny' }
+}
+
+function calculate(expression: string) {
+  // 安全地计算表达式
+  return { result: eval(expression) }
+}
+
+// 创建桥接
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+})
+
+// 使用工具聊天
+async function chatWithTools(userMessage: string) {
+  const messages = [{ role: 'user', content: userMessage }]
+
+  while (true) {
+    const response = await bridge.chat({
+      model: 'gpt-4',
+      messages,
+      tools
+    })
+
+    const message = response.choices[0].message
+    messages.push(message)
+
+    // 检查是否完成
+    if (!message.tool_calls) {
+      return message.content
+    }
+
+    // 执行工具调用
+    for (const toolCall of message.tool_calls) {
+      const args = JSON.parse(toolCall.function.arguments)
+      let result
+
+      switch (toolCall.function.name) {
+        case 'get_weather':
+          result = await getWeather(args.location)
+          break
+        case 'calculate':
+          result = calculate(args.expression)
+          break
+      }
+
+      messages.push({
+        role: 'tool',
+        tool_call_id: toolCall.id,
+        content: JSON.stringify(result)
+      })
+    }
+  }
+}
+
+// 使用
+const answer = await chatWithTools('东京的天气如何？另外计算 15 * 24。')
+console.log(answer)
+```
+
+## 流式响应中的工具调用
+
+在流式响应中处理工具调用：
+
+```typescript
+const stream = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '获取纽约的天气' }],
+  tools,
+  stream: true
+})
+
+let toolCalls = []
+
+for await (const event of stream) {
+  if (event.type === 'tool_call') {
+    // 累积工具调用数据
+    const index = event.toolCall.index ?? 0
+    if (!toolCalls[index]) {
+      toolCalls[index] = {
+        id: event.toolCall.id,
+        type: 'function',
+        function: { name: '', arguments: '' }
+      }
+    }
+
+    if (event.toolCall.name) {
+      toolCalls[index].function.name = event.toolCall.name
+    }
+    if (event.toolCall.arguments) {
+      toolCalls[index].function.arguments += event.toolCall.arguments
+    }
+  }
+
+  if (event.type === 'end') {
+    // 如果有工具，则执行
+    if (toolCalls.length > 0) {
+      console.log('要调用的工具:', toolCalls)
+    }
+  }
+}
+```
+
+## 提供商兼容性
+
+各提供商的工具调用支持：
+
+| 提供商 | 工具调用 | 工具选择 | 并行工具 | 流式工具 |
+|----------|-------------|-------------|----------------|-----------------|
+| OpenAI | ✅ | ✅ | ✅ | ✅ |
+| Anthropic | ✅ | ✅ | ✅ | ✅ |
+| DeepSeek | ✅ | ✅ | ✅ | ✅ |
+| Moonshot | ✅ | ✅ | ✅ | ✅ |
+| Zhipu | ✅ | ✅ | ✅ | ✅ |
+| Qwen | ✅ | ✅ | ✅ | ✅ |
+| Gemini | ✅ | ⚠️ | ✅ | ✅ |
+
+<Callout type="warn">
+某些提供商可能对工具选择选项的支持有限。使用高级功能前请检查适配器功能。
+</Callout>
+
+## 最佳实践
+
+### 1. 清晰的描述
+
+为工具和参数提供清晰、详细的描述：
+
+```typescript
+{
+  name: 'search_products',
+  description: '在目录中搜索产品。最多返回 10 个结果。',
+  parameters: {
+    type: 'object',
+    properties: {
+      query: {
+        type: 'string',
+        description: '搜索查询（例如："红色鞋子"）'
+      },
+      category: {
+        type: 'string',
+        description: '按类别过滤（例如："电子产品"）',
+        enum: ['电子产品', '服装', '家居']
+      }
+    }
+  }
+}
+```
+
+### 2. 验证参数
+
+在执行前始终验证工具参数：
+
+```typescript
+const args = JSON.parse(toolCall.function.arguments)
+
+if (!args.location || typeof args.location !== 'string') {
+  throw new Error('无效的位置参数')
+}
+```
+
+### 3. 处理错误
+
+优雅地处理工具执行错误：
+
+```typescript
+try {
+  const result = await executeToolFunction(toolCall)
+  messages.push({
+    role: 'tool',
+    tool_call_id: toolCall.id,
+    content: JSON.stringify(result)
+  })
+} catch (error) {
+  messages.push({
+    role: 'tool',
+    tool_call_id: toolCall.id,
+    content: JSON.stringify({
+      error: error.message
+    })
+  })
+}
+```
+
+### 4. 限制工具迭代
+
+通过限制工具调用迭代来防止无限循环：
+
+```typescript
+const MAX_ITERATIONS = 5
+let iterations = 0
+
+while (iterations < MAX_ITERATIONS) {
+  const response = await bridge.chat({ messages, tools })
+
+  if (!response.choices[0].message.tool_calls) {
+    return response.choices[0].message.content
+  }
+
+  // 执行工具...
+  iterations++
+}
+
+throw new Error('达到最大工具迭代次数')
+```
+
+## 下一步
+
+<Cards>
+  <Card title="多模态" href="/zh/docs/guides/multimodal">
+    使用图像和媒体
+  </Card>
+  <Card title="流式响应" href="/zh/docs/guides/streaming">
+    实时流式传输工具调用
+  </Card>
+  <Card title="错误处理" href="/zh/docs/guides/error-handling">
+    优雅地处理错误
+  </Card>
+</Cards>

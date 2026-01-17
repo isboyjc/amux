@@ -1,0 +1,441 @@
+---
+title: 模型映射
+description: 在不同 LLM 提供商之间映射模型名称
+---
+
+## 什么是模型映射？
+
+模型映射允许你在提供商之间转换模型名称。这在以下情况下很有用：
+
+- 切换提供商而无需更改应用程序代码
+- 为不同环境（开发/生产）使用不同的模型
+- 实现跨提供商的回退策略
+- 创建与提供商无关的抽象
+
+<Callout type="info">
+Amux 提供三种映射模型的方式：`targetModel`（固定）、`modelMapper`（函数）和 `modelMapping`（对象）。
+</Callout>
+
+## 固定目标模型
+
+使用 `targetModel` 始终调用特定模型，忽略入站模型：
+
+```typescript
+import { createBridge } from '@amux/llm-bridge'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  targetModel: 'claude-3-5-sonnet-20241022'  // 始终使用此模型
+})
+
+// 请求 GPT-4，但实际调用 Claude 3.5 Sonnet
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '你好！' }]
+})
+```
+
+**优先级：** 最高 - 忽略所有其他映射配置。
+
+**用例：** 强制使用特定模型进行测试或生产。
+
+## 模型映射函数
+
+使用 `modelMapper` 进行动态、程序化映射：
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapper: (inboundModel) => {
+    // 将 OpenAI 模型映射到 Claude 等效模型
+    if (inboundModel.startsWith('gpt-4')) {
+      return 'claude-3-5-sonnet-20241022'
+    }
+    if (inboundModel.startsWith('gpt-3.5')) {
+      return 'claude-3-haiku-20240307'
+    }
+    // 默认回退
+    return 'claude-3-5-sonnet-20241022'
+  }
+})
+
+// 自动映射到适当的 Claude 模型
+const response = await bridge.chat({
+  model: 'gpt-4-turbo',
+  messages: [{ role: 'user', content: '你好！' }]
+})
+```
+
+**优先级：** 第二 - 如果未设置 `targetModel` 则使用。
+
+**用例：** 复杂的映射逻辑、条件路由、动态选择。
+
+## 模型映射对象
+
+使用 `modelMapping` 进行简单的声明式映射：
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapping: {
+    'gpt-4': 'claude-3-5-sonnet-20241022',
+    'gpt-4-turbo': 'claude-3-5-sonnet-20241022',
+    'gpt-3.5-turbo': 'claude-3-haiku-20240307'
+  }
+})
+
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '你好！' }]
+})
+// 使用 claude-3-5-sonnet-20241022
+```
+
+**优先级：** 第三 - 如果未设置 `targetModel` 和 `modelMapper` 则使用。
+
+**用例：** 简单的一对一模型映射，易于阅读和维护。
+
+## 映射优先级
+
+Amux 按以下顺序应用模型映射：
+
+1. **targetModel** - 固定模型（最高优先级）
+2. **modelMapper** - 基于函数的映射
+3. **modelMapping** - 基于对象的映射
+4. **原始模型** - 不应用映射（回退）
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  targetModel: 'claude-3-opus-20240229',  // 1. 最高优先级
+  modelMapper: (model) => 'claude-3-5-sonnet-20241022',  // 2. 被忽略
+  modelMapping: { 'gpt-4': 'claude-3-haiku-20240307' }  // 3. 被忽略
+})
+
+// 始终使用 claude-3-opus-20240229（targetModel）
+const response = await bridge.chat({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: '你好！' }]
+})
+```
+
+## 常见映射模式
+
+### OpenAI 到 Anthropic
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapping: {
+    'gpt-4': 'claude-3-5-sonnet-20241022',
+    'gpt-4-turbo': 'claude-3-5-sonnet-20241022',
+    'gpt-4o': 'claude-3-5-sonnet-20241022',
+    'gpt-3.5-turbo': 'claude-3-haiku-20240307'
+  }
+})
+```
+
+### OpenAI 到 DeepSeek
+
+```typescript
+import { deepseekAdapter } from '@amux/adapter-deepseek'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: deepseekAdapter,
+  config: { apiKey: process.env.DEEPSEEK_API_KEY },
+  modelMapping: {
+    'gpt-4': 'deepseek-chat',
+    'gpt-3.5-turbo': 'deepseek-chat',
+    'o1-preview': 'deepseek-reasoner'  // 用于推理任务
+  }
+})
+```
+
+### 多提供商路由
+
+使用 `modelMapper` 进行智能路由：
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapper: (model) => {
+    // 对于复杂推理使用 Opus
+    if (model.includes('o1') || model.includes('reasoning')) {
+      return 'claude-3-opus-20240229'
+    }
+    // 对于平衡任务使用 Sonnet
+    if (model.includes('gpt-4')) {
+      return 'claude-3-5-sonnet-20241022'
+    }
+    // 对于简单/快速任务使用 Haiku
+    return 'claude-3-haiku-20240307'
+  }
+})
+```
+
+### 基于环境的映射
+
+为开发/测试/生产使用不同的模型：
+
+```typescript
+const isProduction = process.env.NODE_ENV === 'production'
+
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapper: (model) => {
+    if (isProduction) {
+      // 生产环境使用最佳模型
+      return 'claude-3-5-sonnet-20241022'
+    } else {
+      // 开发环境使用更便宜的模型
+      return 'claude-3-haiku-20240307'
+    }
+  }
+})
+```
+
+## 回退策略
+
+### 默认模型回退
+
+当映射不存在时提供默认值：
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapper: (model) => {
+    const mapping = {
+      'gpt-4': 'claude-3-5-sonnet-20241022',
+      'gpt-3.5-turbo': 'claude-3-haiku-20240307'
+    }
+
+    // 返回映射的模型或默认值
+    return mapping[model] || 'claude-3-5-sonnet-20241022'
+  }
+})
+```
+
+### 多提供商回退
+
+尝试多个提供商并回退：
+
+```typescript
+import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { openaiAdapter } from '@amux/adapter-openai'
+import { deepseekAdapter } from '@amux/adapter-deepseek'
+
+async function chatWithFallback(request) {
+  const providers = [
+    {
+      adapter: anthropicAdapter,
+      apiKey: process.env.ANTHROPIC_API_KEY,
+      modelMapping: {
+        'gpt-4': 'claude-3-5-sonnet-20241022'
+      }
+    },
+    {
+      adapter: deepseekAdapter,
+      apiKey: process.env.DEEPSEEK_API_KEY,
+      modelMapping: {
+        'gpt-4': 'deepseek-chat'
+      }
+    }
+  ]
+
+  for (const provider of providers) {
+    try {
+      const bridge = createBridge({
+        inbound: openaiAdapter,
+        outbound: provider.adapter,
+        config: { apiKey: provider.apiKey },
+        modelMapping: provider.modelMapping
+      })
+
+      return await bridge.chat(request)
+    } catch (error) {
+      console.warn(`提供商 ${provider.adapter.name} 失败，尝试下一个...`)
+    }
+  }
+
+  throw new Error('所有提供商都失败了')
+}
+```
+
+### 基于成本的路由
+
+在适当时路由到更便宜的模型：
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapper: (model) => {
+    // 从模型名称计算预期复杂度
+    const isComplex = model.includes('o1') || model.includes('4')
+    const tokensExpected = 1000 // 从请求上下文获取
+
+    // 对于简单、短任务使用更便宜的模型
+    if (!isComplex && tokensExpected < 500) {
+      return 'claude-3-haiku-20240307'
+    }
+
+    // 对于大多数任务使用平衡模型
+    return 'claude-3-5-sonnet-20241022'
+  }
+})
+```
+
+## 模型能力匹配
+
+确保目标模型支持所需功能：
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapper: (model) => {
+    // 所有 Claude 3+ 模型都支持视觉
+    return 'claude-3-5-sonnet-20241022'
+  }
+})
+
+// 检查兼容性
+const compat = bridge.checkCompatibility()
+if (!compat.compatible) {
+  console.warn('兼容性问题:', compat.issues)
+}
+```
+
+## 最佳实践
+
+### 1. 记录你的映射
+
+使映射清晰且易于维护：
+
+```typescript
+// 模型映射策略：
+// - GPT-4 变体 -> Claude 3.5 Sonnet（最佳质量）
+// - GPT-3.5 变体 -> Claude 3 Haiku（快速且便宜）
+const modelMapping = {
+  'gpt-4': 'claude-3-5-sonnet-20241022',
+  'gpt-4-turbo': 'claude-3-5-sonnet-20241022',
+  'gpt-3.5-turbo': 'claude-3-haiku-20240307'
+}
+```
+
+### 2. 测试映射的模型
+
+验证映射的模型是否产生可接受的结果：
+
+```typescript
+const testCases = [
+  { model: 'gpt-4', expected: 'claude-3-5-sonnet-20241022' },
+  { model: 'gpt-3.5-turbo', expected: 'claude-3-haiku-20240307' }
+]
+
+testCases.forEach(({ model, expected }) => {
+  const bridge = createBridge({
+    inbound: openaiAdapter,
+    outbound: anthropicAdapter,
+    config: { apiKey: process.env.ANTHROPIC_API_KEY },
+    modelMapping: { [model]: expected }
+  })
+
+  // 使用实际请求进行测试
+})
+```
+
+### 3. 处理未知模型
+
+提供合理的默认值：
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapper: (model) => {
+    const mapping = {
+      'gpt-4': 'claude-3-5-sonnet-20241022',
+      'gpt-3.5-turbo': 'claude-3-haiku-20240307'
+    }
+
+    if (!mapping[model]) {
+      console.warn(`未知模型 "${model}"，使用默认值`)
+    }
+
+    return mapping[model] || 'claude-3-5-sonnet-20241022'
+  }
+})
+```
+
+### 4. 考虑模型版本
+
+跟踪模型版本：
+
+```typescript
+const modelMapping = {
+  // 始终映射到最新稳定版本
+  'gpt-4': 'claude-3-5-sonnet-20241022',
+  'gpt-4-turbo': 'claude-3-5-sonnet-20241022',
+
+  // 用于可重现性的显式版本映射
+  'gpt-4-0613': 'claude-3-opus-20240229',
+  'gpt-3.5-turbo-0125': 'claude-3-haiku-20240307'
+}
+```
+
+### 5. 监控性能
+
+跟踪映射的模型如何执行：
+
+```typescript
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: anthropicAdapter,
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
+  modelMapper: (inboundModel) => {
+    const outboundModel = 'claude-3-5-sonnet-20241022'
+
+    // 记录映射以进行分析
+    console.log(`映射 ${inboundModel} -> ${outboundModel}`)
+
+    return outboundModel
+  }
+})
+```
+
+## 下一步
+
+<Cards>
+  <Card title="迁移指南" href="/zh/docs/guides/migration">
+    从 OpenAI 或 Anthropic SDK 迁移
+  </Card>
+  <Card title="错误处理" href="/zh/docs/guides/error-handling">
+    处理特定于提供商的错误
+  </Card>
+  <Card title="基础用法" href="/zh/docs/guides/basic-usage">
+    学习桥接基础
+  </Card>
+</Cards>
