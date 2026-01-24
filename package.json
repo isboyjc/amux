@@ -51,11 +51,15 @@
     "dev:desktop": "cd apps/desktop && pnpm dev",
     "build:desktop": "cd apps/desktop && pnpm build",
     "package:desktop": "cd apps/desktop && pnpm package",
+    "package:desktop:all": "cd apps/desktop && pnpm package:all",
     "package:desktop:mac": "cd apps/desktop && pnpm package:mac",
+    "package:desktop:mac:arm64": "cd apps/desktop && pnpm package:mac:arm64",
+    "package:desktop:mac:x64": "cd apps/desktop && pnpm package:mac:x64",
     "package:desktop:win": "cd apps/desktop && pnpm package:win",
     "package:desktop:win:arm64": "cd apps/desktop && pnpm package:win:arm64",
     "package:desktop:linux": "cd apps/desktop && pnpm package:linux",
-    "clean:desktop:data": "bash ./clean-data.sh"
+    "clean:desktop:data": "bash ./clean-data.sh",
+    "clean:desktop:release": "cd apps/desktop && pnpm clean:release"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.1",
