@@ -4,6 +4,5 @@
   "devCommand": "pnpm dev:website",
   "installCommand": "pnpm install --no-frozen-lockfile",
   "framework": null,
-  "outputDirectory": "apps/website/.next",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD ./apps/website"
+  "outputDirectory": "apps/website/.next"
 }
