@@ -1,5 +1,14 @@
 # @amux/adapter-qwen
 
+## 0.1.2
+
+### Patch Changes
+
+- Add README documentation
+- Updated dependencies
+- Updated dependencies
+  - @amux.ai/llm-bridge@0.3.0
+
 ## 0.1.1
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@amux.ai/llm-bridge",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Core IR and adapter interfaces for Amux",
   "keywords": [
     "amux",
@@ -14,6 +14,10 @@
     "type": "git",
     "url": "https://github.com/isboyjc/amux.git",
     "directory": "packages/llm-bridge"
+  },
+  "homepage": "https://github.com/isboyjc/amux#readme",
+  "bugs": {
+    "url": "https://github.com/isboyjc/amux/issues"
   },
   "license": "MIT",
   "author": "isboyjc",
@@ -29,7 +33,8 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
     "build": "tsup",

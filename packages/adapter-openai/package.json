@@ -1,6 +1,6 @@
 {
   "name": "@amux.ai/adapter-openai",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "OpenAI adapter for Amux",
   "keywords": [
     "amux",
@@ -12,6 +12,10 @@
     "type": "git",
     "url": "https://github.com/isboyjc/amux.git",
     "directory": "packages/adapter-openai"
+  },
+  "homepage": "https://github.com/isboyjc/amux#readme",
+  "bugs": {
+    "url": "https://github.com/isboyjc/amux/issues"
   },
   "license": "MIT",
   "author": "isboyjc",
@@ -27,7 +31,8 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
     "build": "tsup",

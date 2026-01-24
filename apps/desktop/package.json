@@ -1,6 +1,6 @@
 {
   "name": "@amux.ai/desktop",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "description": "Amux Desktop Client - LLM API Proxy Bridge",
   "author": {
