@@ -13,6 +13,8 @@ import { registerAppHandlers } from './app'
 import { registerConfigHandlers } from './config'
 import { registerTunnelIpcHandlers } from './tunnel'
 import { registerChatHandlers } from './chat'
+import { registerOAuthHandlers } from './oauth-handlers'
+import { registerNavigationHandlers } from './navigation-handlers'  // ✅ 添加导航 handlers
 
 /**
  * Register all IPC handlers
@@ -28,6 +30,8 @@ export function registerAllHandlers(): void {
   registerConfigHandlers()
   registerTunnelIpcHandlers()
   registerChatHandlers()
+  registerOAuthHandlers()
+  registerNavigationHandlers()  // ✅ 注册导航 handlers
 
   console.log('[IPC] All handlers registered')
 }

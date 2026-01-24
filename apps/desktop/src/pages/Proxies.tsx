@@ -41,31 +41,47 @@ import type { CreateProxyDTO } from '@/types/ipc'
 // ==================== Helper Functions ====================
 
 /**
+ * Get endpoint for adapter type
+ * @param adapterType - The adapter type (e.g., 'openai', 'anthropic', 'google')
+ * @param providerPresets - Provider presets to look up chatPath
+ * @returns The endpoint path (with {model} placeholder preserved for display)
+ */
+function getEndpointForAdapterType(
+  adapterType: string,
+  providerPresets: ProviderPreset[]
+): string {
+  // Find preset by adapter type
+  const preset = providerPresets.find(p => p.adapterType === adapterType)
+  return preset?.chatPath || '/v1/chat/completions'
+}
+
+/**
  * Get logo and color for an adapter type
- * Priority: user configured providers > provider presets
+ * Priority: provider presets > user configured providers
+ * (Changed to fix issue with multiple providers of same type having different logos)
  */
 function getAdapterLogoInfo(
   adapterType: string,
   providers: Provider[],
   providerPresets: ProviderPreset[]
 ): { logo?: string; color?: string; name?: string } {
-  // First, try to find from user configured providers
-  const userProvider = providers.find(p => p.adapterType === adapterType)
-  if (userProvider?.logo) {
-    return {
-      logo: userProvider.logo,
-      color: userProvider.color || '#ffffff',
-      name: userProvider.name
-    }
-  }
-  
-  // Then, try to find from provider presets
+  // First, try to find from provider presets (official logos)
   const preset = providerPresets.find(p => p.adapterType === adapterType)
   if (preset) {
     return {
       logo: preset.logo,
       color: preset.color || '#ffffff',
       name: preset.name
+    }
+  }
+  
+  // Then, try to find from user configured providers (custom providers)
+  const userProvider = providers.find(p => p.adapterType === adapterType)
+  if (userProvider?.logo) {
+    return {
+      logo: userProvider.logo,
+      color: userProvider.color || '#ffffff',
+      name: userProvider.name
     }
   }
   
@@ -537,7 +553,8 @@ function ProxyListPanel({
               <div className="px-3 pb-3 pt-1 space-y-2 animate-in slide-in-from-top-1 duration-200">
                 {passthroughProviders.map((provider) => {
                   const providerPreset = providerPresets.find(p => p.adapterType === provider.adapterType)
-                  const endpoint = provider.adapterType === 'anthropic' ? '/v1/messages' : '/v1/chat/completions'
+                  // 使用 Provider 自己的 chatPath，如果没有则从预设获取
+                  const endpoint = provider.chatPath || getEndpointForAdapterType(provider.adapterType, providerPresets)
                   
                   return (
                     <div
@@ -865,9 +882,20 @@ function ProxyConfigPanel({
     }
   }, [proxy])
 
+  // 获取代理的访问端点（保留 {model} 占位符用于展示）
+  const getProxyEndpointPath = () => {
+    const inboundAdapter = formData.inboundAdapter || (proxy?.inboundAdapter)
+    if (!inboundAdapter) return '/v1/chat/completions'
+    
+    const adapterInfo = adapterPresets.find(a => a.id === inboundAdapter)
+    const adapterType = adapterInfo?.provider || inboundAdapter
+    return getEndpointForAdapterType(adapterType, providerPresets)
+  }
+
   const handleCopyEndpoint = async () => {
     if (!proxy) return
-    const endpoint = `http://127.0.0.1:9527/proxies/${proxy.proxyPath}/v1/chat/completions`
+    const chatPath = getProxyEndpointPath()
+    const endpoint = `http://127.0.0.1:9527/proxies/${proxy.proxyPath}${chatPath}`
     copyEndpointUrl(endpoint)
   }
 
@@ -1094,7 +1122,7 @@ function ProxyConfigPanel({
             <Label className="text-xs">{t('proxies.accessUrl')}</Label>
             <div className="flex items-center gap-2">
               <code className="flex-1 bg-muted px-3 py-2 rounded-md text-xs font-mono truncate">
-                http://127.0.0.1:9527/proxies/{formData.proxyPath || 'path'}/v1/chat/completions
+                http://127.0.0.1:9527/proxies/{formData.proxyPath || 'path'}{getProxyEndpointPath()}
               </code>
               <Button
                 variant="ghost"
@@ -1285,7 +1313,7 @@ interface AddProxyModalProps {
 function AddProxyModal({
   open,
   providers,
-  providerPresets: _providerPresets,
+  providerPresets,
   proxies,
   adapterPresets,
   onSave,
@@ -1300,6 +1328,13 @@ function AddProxyModal({
     proxyPath: '',
     enabled: true
   })
+  
+  // 获取当前 inbound adapter 的端点（保留 {model} 占位符用于展示）
+  const getModalEndpointPath = () => {
+    const adapterInfo = adapterPresets.find(a => a.id === formData.inboundAdapter)
+    const adapterType = adapterInfo?.provider || formData.inboundAdapter
+    return getEndpointForAdapterType(adapterType, providerPresets)
+  }
 
   // Reset form when modal opens
   useEffect(() => {
@@ -1368,7 +1403,7 @@ function AddProxyModal({
 
           {/* Access URL Preview */}
           <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1.5 rounded">
-            {t('proxies.accessUrl')}: <code className="font-mono">http://127.0.0.1:9527/proxies/{formData.proxyPath || 'path'}/v1/chat/completions</code>
+            {t('proxies.accessUrl')}: <code className="font-mono">http://127.0.0.1:9527/proxies/{formData.proxyPath || 'path'}{getModalEndpointPath()}</code>
           </div>
 
           {/* Inbound Adapter */}

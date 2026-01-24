@@ -1,6 +1,7 @@
 {
   "name": "@amux/tunnel-api",
   "version": "0.1.0",
+  "private": true,
   "description": "Cloudflare Workers API for Amux Tunnel management",
   "main": "src/index.ts",
   "scripts": {

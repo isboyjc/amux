@@ -9,6 +9,7 @@
     "providers": "供应商",
     "proxies": "代理",
     "tunnel": "隧道",
+    "oauth": "2API",
     "service": "服务",
     "logs": "日志",
     "tokens": "令牌",
@@ -393,5 +394,126 @@
     "serviceStarting": "正在启动代理服务...",
     "serviceStopped": "代理服务已停止，正在启动...",
     "serviceError": "代理服务错误，请检查设置。"
+  },
+  "oauth": {
+    "title": "2API OAuth",
+    "description": "授权并管理 OAuth 账号",
+    "antigravity": "Antigravity",
+    "codex": "Codex",
+    "google": "Google",
+    "openai": "OpenAI",
+    "addAccount": "添加账号",
+    "noAccounts": "暂无账号",
+    "noAccountsDesc": "点击 \"添加账号\" 授权您的第一个 {provider} 账号",
+    "accountCard": {
+      "poolEnabled": "池启用",
+      "inactive": "未激活",
+      "lastUsed": "最后使用",
+      "refreshToken": "刷新令牌",
+      "refreshAll": "刷新统计和配额",
+      "delete": "删除",
+      "deleteConfirm": "确定删除账号吗？",
+      "deleteConfirmDesc": "确定要删除 {email} 吗？此操作不可撤销，所有关联的供应商配置也将被删除。",
+      "healthStatus": {
+        "active": "活跃",
+        "rate_limited": "限流",
+        "expired": "已过期",
+        "forbidden": "禁止访问",
+        "error": "错误"
+      }
+    },
+    "pool": {
+      "title": "池配置",
+      "accountStatus": "账号状态",
+      "stats": {
+        "totalAccounts": "总账号数",
+        "enabledAccounts": "启用账号",
+        "totalRequests": "总请求数",
+        "avgLatency": "平均延迟"
+      }
+    },
+    "authorization": {
+      "title": "授权 {name} 账号",
+      "codexDesc": "授权您的 OpenAI 账号访问 Codex",
+      "antigravityDesc": "授权您的 Google 账号访问 Antigravity",
+      "authUrl": "授权链接",
+      "authUrlHint": "您可以复制此链接并在浏览器中手动打开",
+      "startAuth": "开始授权",
+      "authorizing": "授权中...",
+      "steps": "授权步骤：",
+      "step1": "点击下方的\"开始授权\"按钮",
+      "step2": "在弹出窗口中登录您的 {provider} 账号",
+      "step3": "授予请求的权限",
+      "step4": "授权完成后窗口将自动关闭"
+    },
+    "quota": {
+      "codex": {
+        "todayUsage": "今日使用",
+        "todayRequests": "今日请求",
+        "todayTokens": "今日令牌",
+        "totalRequests": "总请求数",
+        "cumulative": "累计统计",
+        "requests": "请求",
+        "tokens": "令牌",
+        "noOfficialQuota": "OpenAI 未提供公开配额 API，仅显示本地统计",
+        "freeAccountWarning": "免费账号无 Codex API 权限，已默认禁用。如需使用，请升级为 Plus 账号"
+      },
+      "antigravity": {
+        "modelQuotas": "模型配额",
+        "forbidden": "访问被禁止 - 配额不可用",
+        "noQuota": "无配额信息",
+        "load": "加载",
+        "updated": "更新时间",
+        "showAll": "查看全部",
+        "showLess": "收起",
+        "more": "个",
+        "models": "个模型",
+        "resetIn": "重置倒计时",
+        "resetting": "即将重置"
+      }
+    },
+    "stats": {
+      "localCalls": "本地调用",
+      "noData": "暂无调用记录",
+      "tryOtherRange": "尝试切换其他时间范围",
+      "requests": "请求",
+      "successRate": "成功率",
+      "tokens": "Token",
+      "lastUsed": "最后使用",
+      "today": "今日",
+      "week": "本周",
+      "month": "本月",
+      "total": "累计",
+      "thisWeek": "本周",
+      "thisMonth": "本月",
+      "cumulative": "累计"
+    },
+    "messages": {
+      "loadFailed": "加载账号失败",
+      "authUrlFailed": "获取授权链接失败",
+      "authSuccess": "账号授权成功",
+      "authFailed": "账号授权失败",
+      "deleteFailed": "删除账号失败",
+      "refreshSuccess": "令牌刷新成功",
+      "refreshFailed": "刷新令牌失败",
+      "poolToggleSuccess": "池状态已更新",
+      "poolToggleFailed": "更新池状态失败",
+      "quotaUpdateSuccess": "配额已更新",
+      "quotaUpdateFailed": "更新配额失败",
+      "poolProviderExists": "Pool Provider 已存在",
+      "poolProviderStatus": "活跃账号: {active}, 健康账号: {healthy}",
+      "poolProviderCreated": "Pool Provider 已创建",
+      "poolProviderAccountsAdded": "已将 {count} 个账号加入 Pool",
+      "poolProviderCheckFailed": "检测 Pool Provider 失败",
+      "providerCreated": "代理配置已生成",
+      "providerCreateFailed": "生成代理配置失败",
+      "checkPoolSuccess": "供应商池检查/创建成功",
+      "checkPoolFailed": "供应商池检查/创建失败",
+      "createIndividualSuccess": "代理配置创建/更新成功",
+      "createIndividualFailed": "代理配置创建/更新失败"
+    },
+    "checkPoolProvider": "检测供应商池",
+    "createIndividualProvider": "生成代理配置",
+    "createProvider": "生成配置"
   }
 }

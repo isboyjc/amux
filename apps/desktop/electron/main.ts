@@ -125,6 +125,10 @@ export function showMainWindow(): void {
   }
 }
 
+// Set app name to control userData directory location
+// This must be called before app.whenReady()
+app.name = 'Amux'
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 app.whenReady().then(async () => {
@@ -136,6 +140,20 @@ app.whenReady().then(async () => {
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
+
+  // Migrate user data from old directory (@amux) to new directory (Amux)
+  console.log('[App] Checking for data migration...')
+  try {
+    const { migrateUserData } = await import('./services/migration')
+    const migrationResult = await migrateUserData()
+    if (migrationResult.migrated) {
+      console.log('[App] Data migration completed:', migrationResult.message)
+    } else if (!migrationResult.success) {
+      console.error('[App] Data migration failed:', migrationResult.message)
+    }
+  } catch (error) {
+    console.error('[App] Error during migration:', error)
+  }
 
   // Initialize crypto service (must be before database for API key encryption)
   console.log('[App] Initializing crypto service...')
@@ -161,6 +179,17 @@ app.whenReady().then(async () => {
   
   // Initialize default providers if database is empty
   initializeDefaultProviders()
+
+  // Initialize OAuth Manager
+  console.log('[App] Initializing OAuth manager...')
+  try {
+    const { getOAuthManager } = await import('./services/oauth/oauth-manager')
+    const oauthManager = getOAuthManager()
+    await oauthManager.initialize()
+    console.log('[App] OAuth manager initialized')
+  } catch (error) {
+    console.error('[App] Failed to initialize OAuth manager:', error)
+  }
 
   // Initialize logger service
   import('./services/logger').then(({ initLogger }) => {
@@ -189,6 +218,18 @@ app.on('window-all-closed', () => {
 
 // Handle app before quit
 app.on('before-quit', async () => {
+  // Cleanup OAuth Manager
+  try {
+    const { getOAuthManager } = await import('./services/oauth/oauth-manager')
+    const { getCallbackServer } = await import('./services/oauth/callback-server')
+    const oauthManager = getOAuthManager()
+    const callbackServer = getCallbackServer()
+    await oauthManager.cleanup()
+    await callbackServer.cleanup()
+  } catch (e) {
+    // Ignore errors during shutdown
+  }
+
   // Shutdown logger (flush remaining logs)
   try {
     const { shutdownLogger } = await import('./services/logger')

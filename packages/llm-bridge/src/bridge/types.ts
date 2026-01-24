@@ -15,8 +15,23 @@ export interface BridgeConfig {
 
   /**
    * Base URL for the target provider API
+   * Overrides adapter's default baseUrl
    */
   baseURL?: string
+
+  /**
+   * Custom chat endpoint path
+   * Overrides adapter's default chatPath
+   * Example: '/v1/chat/completions', '/responses'
+   */
+  chatPath?: string
+
+  /**
+   * Custom models endpoint path
+   * Overrides adapter's default modelsPath
+   * Example: '/v1/models', '/models'
+   */
+  modelsPath?: string
 
   /**
    * Request timeout in milliseconds
@@ -242,6 +257,12 @@ export interface LLMBridge {
    * Use this when you need to customize the stream handling
    */
   chatStreamRaw(request: unknown): AsyncIterable<LLMStreamEvent>
+
+  /**
+   * List available models from the provider
+   * Returns the raw model list response from the provider
+   */
+  listModels(): Promise<unknown>
 
   /**
    * Check compatibility between inbound and outbound adapters

@@ -1,4 +1,5 @@
-import { forwardRef, useImperativeHandle, useRef, useCallback } from "react";
+import { motion, useAnimate } from "motion/react";
+import { forwardRef, useImperativeHandle } from "react";
 
 import type { AnimatedIconHandle, AnimatedIconProps } from "./types";
 
@@ -7,64 +8,74 @@ const ChatIcon = forwardRef<AnimatedIconHandle, AnimatedIconProps>(
     { size = 24, color = "currentColor", strokeWidth = 2, className = "" },
     ref,
   ) => {
-    const chatRef = useRef<SVGGElement>(null);
+    const [scope, animate] = useAnimate();
 
-    const start = useCallback(() => {
-      if (chatRef.current) {
-        chatRef.current.style.animation = "chat-bounce-anim 0.6s ease-in-out";
-      }
-    }, []);
+    const start = async () => {
+      // reset first
+      animate(".message-path", { pathLength: 0, opacity: 0 }, { duration: 0 });
 
-    const stop = useCallback(() => {
-      if (chatRef.current) {
-        chatRef.current.style.animation = "";
-      }
-    }, []);
+      await animate(
+        ".message-path",
+        { pathLength: [0, 1], opacity: [0, 1] },
+        { duration: 0.6, ease: "easeInOut" },
+      );
+
+      animate(
+        ".message-path",
+        { scale: [1, 1.05, 1] },
+        { duration: 0.3, ease: "easeOut" },
+      );
+    };
+
+    const stop = () => {
+      animate(
+        ".message-path",
+        { pathLength: 1, opacity: 1, scale: 1 },
+        { duration: 0.2 },
+      );
+    };
 
     useImperativeHandle(ref, () => ({
       startAnimation: start,
       stopAnimation: stop,
     }));
 
+    const handleHoverStart = () => {
+      start();
+    };
+
+    const handleHoverEnd = () => {
+      stop();
+    };
+
     return (
-      <>
-        <style>
-          {`
-            @keyframes chat-bounce-anim {
-              0%, 100% { transform: translateY(0); }
-              25% { transform: translateY(-2px); }
-              50% { transform: translateY(0); }
-              75% { transform: translateY(-1px); }
-            }
-          `}
-        </style>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width={size}
-          height={size}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke={color}
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className={className}
-          style={{ overflow: "visible" }}
-        >
-          <g
-            ref={chatRef}
-            style={{ transformOrigin: "12px 12px" }}
-          >
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            <path d="M8 10h.01" />
-            <path d="M12 10h.01" />
-            <path d="M16 10h.01" />
-          </g>
-        </svg>
-      </>
+      <motion.svg
+        ref={scope}
+        onHoverStart={handleHoverStart}
+        onHoverEnd={handleHoverEnd}
+        xmlns="http://www.w3.org/2000/svg"
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={`cursor-pointer ${className}`}
+        style={{ overflow: "visible" }}
+      >
+        <motion.path
+          className="message-path"
+          d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"
+          initial={{ pathLength: 1, opacity: 1 }}
+          style={{ transformOrigin: "center" }}
+        />
+      </motion.svg>
     );
   },
 );
 
 ChatIcon.displayName = "ChatIcon";
+
 export default ChatIcon;

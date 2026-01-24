@@ -46,7 +46,6 @@ const bridgeCache = new Map<string, BridgeCacheEntry>()
  * Adapters are singleton instances, not classes
  */
 export function getAdapter(adapterType: string): LLMAdapter {
-  console.log(`[BridgeManager] getAdapter called with: "${adapterType}"`)
   
   const adapter = ADAPTER_MAP[adapterType]
   if (!adapter) {
@@ -54,7 +53,6 @@ export function getAdapter(adapterType: string): LLMAdapter {
     throw new Error(`Unknown adapter type: ${adapterType}`)
   }
   
-  console.log(`[BridgeManager] Got adapter: ${adapter.name}`)
   return adapter
 }
 
@@ -86,7 +84,6 @@ function evictLRU(): void {
 
   if (oldestKey) {
     bridgeCache.delete(oldestKey)
-    console.log(`[BridgeManager] Evicted LRU entry: ${oldestKey}`)
   }
 }
 
@@ -169,13 +166,11 @@ export function getBridge(proxyId: string, requestApiKey?: string): {
     // Pass-through mode: use the API key from request directly
     apiKey = requestApiKey
     isPassThrough = true
-    console.log(`[BridgeManager] Using pass-through API key`)
   } else {
     // Use provider's stored API key
     if (provider.api_key) {
       apiKey = decryptApiKey(provider.api_key)
       if (apiKey) {
-        console.log(`[BridgeManager] Using provider API key`)
       } else {
         console.warn(`[BridgeManager] Provider has encrypted API key but decryption failed - using empty key`)
       }
@@ -204,7 +199,6 @@ export function getBridge(proxyId: string, requestApiKey?: string): {
         onResponse: async (ir: LLMResponseIR) => {
           // Token 已经是统一格式，无需区分 Provider！
           if (ir.usage) {
-            console.log(`[Bridge:Hook] Tokens extracted: input=${ir.usage.promptTokens}, output=${ir.usage.completionTokens}`)
             // 可以在这里记录到全局变量或直接传递给日志系统
             // 这里先存储起来，让 routes.ts 可以访问
             ;(bridge as any)._lastUsage = ir.usage
@@ -213,14 +207,12 @@ export function getBridge(proxyId: string, requestApiKey?: string): {
         onStreamEvent: async (event: LLMStreamEvent) => {
           // 流式响应中的 Token 也是统一格式
           if (event.type === 'end' && event.usage) {
-            console.log(`[Bridge:Hook:Stream] Tokens extracted: input=${event.usage.promptTokens}, output=${event.usage.completionTokens}`)
             ;(bridge as any)._lastUsage = event.usage
           }
         }
       }
     })
     
-    console.log(`[BridgeManager] Created bridge (pass-through) with hooks for proxy ${proxy.proxy_path}`)
     
     return { bridge, proxy, provider }
   }
@@ -259,7 +251,6 @@ export function getBridge(proxyId: string, requestApiKey?: string): {
       onResponse: async (ir: LLMResponseIR) => {
         // Token 已经是统一格式，无需区分 Provider！
         if (ir.usage) {
-          console.log(`[Bridge:Hook] Tokens extracted: input=${ir.usage.promptTokens}, output=${ir.usage.completionTokens}`)
           // 存储到 bridge 实例上，供 routes.ts 访问
           ;(bridge as any)._lastUsage = ir.usage
         }
@@ -267,7 +258,6 @@ export function getBridge(proxyId: string, requestApiKey?: string): {
       onStreamEvent: async (event: LLMStreamEvent) => {
         // 流式响应中的 Token 也是统一格式
         if (event.type === 'end' && event.usage) {
-          console.log(`[Bridge:Hook:Stream] Tokens extracted: input=${event.usage.promptTokens}, output=${event.usage.completionTokens}`)
           ;(bridge as any)._lastUsage = event.usage
         }
       }
@@ -282,7 +272,6 @@ export function getBridge(proxyId: string, requestApiKey?: string): {
     providerId: provider.id
   })
   
-  console.log(`[BridgeManager] Created bridge with hooks for proxy ${proxy.proxy_path}`)
   
   return { bridge, proxy, provider }
 }
@@ -298,11 +287,9 @@ export function invalidateCache(proxyId?: string): void {
         bridgeCache.delete(key)
       }
     }
-    console.log(`[BridgeManager] Invalidated cache for proxy: ${proxyId}`)
   } else {
     // Invalidate all
     bridgeCache.clear()
-    console.log('[BridgeManager] Cache cleared')
   }
 }
 
@@ -315,7 +302,6 @@ export function invalidateProviderCache(providerId: string): void {
       bridgeCache.delete(key)
     }
   }
-  console.log(`[BridgeManager] Invalidated cache for provider: ${providerId}`)
 }
 
 /**

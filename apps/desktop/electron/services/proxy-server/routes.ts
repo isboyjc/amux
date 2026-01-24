@@ -26,14 +26,14 @@ import { logRequest } from '../logger'
 import { recordRequest as recordMetrics } from '../metrics'
 
 import { getBridge, resolveProxyChain } from './bridge-manager'
+import { handleProviderPassthrough } from './provider-passthrough'
 import { ProxyErrorCode } from './types'
 import { 
   extractApiKey, 
   validateApiKey, 
-  createErrorResponse, 
-  getEndpointForAdapter 
+  createErrorResponse,
+  getEndpointForAdapter  // 仍然需要用于 Conversion Proxy
 } from './utils'
-import { handleProviderPassthrough } from './provider-passthrough'
 
 // Request body type
 interface ChatCompletionRequest {
@@ -55,16 +55,43 @@ export function registerRoutes(app: FastifyInstance): void {
   // ============================================================================
   const passthroughProviders = providerRepo.findAllPassthrough()
   
-  console.log(`[Routes] Registering ${passthroughProviders.length} passthrough providers`)
-  
   for (const provider of passthroughProviders) {
-    const endpoint = getEndpointForAdapter(provider.adapter_type)
-    const routePath = `/providers/${provider.proxy_path}${endpoint}`
+    // 使用 Provider 的 chat_path，如果没有则根据 adapter_type 从预设获取
+    const chatPath = provider.chat_path || getEndpointForAdapter(provider.adapter_type)
     
-    console.log(`[Routes] Registering passthrough: ${routePath} (${provider.adapter_type})`)
+    console.log(`\n[Routes] 📋 Registering passthrough provider: ${provider.name}`)
+    console.log(`[Routes]   - ID: ${provider.id}`)
+    console.log(`[Routes]   - proxy_path: ${provider.proxy_path}`)
+    console.log(`[Routes]   - provider.chat_path: ${provider.chat_path}`)
+    console.log(`[Routes]   - adapter_type: ${provider.adapter_type}`)
+    console.log(`[Routes]   - resolved chatPath: ${chatPath}`)
+    
+    let routePath: string
+    
+    // Google 格式：/v1beta/models/{model}:action -> 使用通配符匹配整个 "model:action" 部分
+    if (chatPath.includes('{model}:')) {
+      // 提取 {model}: 之前的部分，使用 * 匹配后续内容
+      const beforeModel = chatPath.substring(0, chatPath.indexOf('{model}:'))
+      routePath = `/providers/${provider.proxy_path}${beforeModel}*`
+      console.log(`[Routes]   - Route type: Google wildcard`)
+      console.log(`[Routes]   - beforeModel: ${beforeModel}`)
+    } else if (chatPath.includes('{model}')) {
+      // 普通格式：/{model} -> 使用 :model 路由参数
+      routePath = `/providers/${provider.proxy_path}${chatPath.replace('{model}', ':model')}`
+      console.log(`[Routes]   - Route type: Standard with :model param`)
+    } else {
+      // 无占位符：直接使用
+      routePath = `/providers/${provider.proxy_path}${chatPath}`
+      console.log(`[Routes]   - Route type: Fixed path`)
+    }
+    
+    console.log(`[Routes]   ✅ Registered route: POST ${routePath}\n`)
     
     // Chat/Messages endpoint
     app.post(routePath, async (request: FastifyRequest, reply: FastifyReply) => {
+      console.log(`[Routes] 🎯 Route matched for provider: ${provider.name}`)
+      console.log(`[Routes]   - Request URL: ${request.url}`)
+      console.log(`[Routes]   - Request path: ${request.routeOptions.url}`)
       return handleProviderPassthrough(request, reply, provider)
     })
     
@@ -100,15 +127,11 @@ export function registerRoutes(app: FastifyInstance): void {
   // ============================================================================
   const proxies = proxyRepo.findAllEnabled()
   
-  console.log(`[Routes] Registering routes for ${proxies.length} enabled proxies`)
-  
   // Register routes for each proxy
   for (const proxy of proxies) {
     const endpoint = getEndpointForAdapter(proxy.inbound_adapter)
     const routePath = `/proxies/${proxy.proxy_path}${endpoint}`
     const errorFormat = proxy.inbound_adapter === 'anthropic' ? 'anthropic' : 'openai'
-    
-    console.log(`[Routes] Registering: ${routePath} (${proxy.inbound_adapter} -> ${proxy.outbound_type})`)
     
     // Chat/Messages endpoint
     app.post(routePath, async (request: FastifyRequest, reply: FastifyReply) => {
@@ -124,17 +147,12 @@ export function registerRoutes(app: FastifyInstance): void {
       )
       const requestSource: 'local' | 'tunnel' = isTunnelRequest ? 'tunnel' : 'local'
       
-      console.log(`[Routes] Request received: ${routePath}, source: ${requestSource}`)
-      
       try {
         const body = request.body as ChatCompletionRequest
-
-        console.log(`[Routes] proxyPath: ${proxy.proxy_path}, model: ${body?.model}`)
 
         // Detect internal requests (from Chat IPC - localhost + no auth header)
         const apiKey = extractApiKey(request)
         const isInternalRequest = requestSource === 'local' && !apiKey
-        console.log(`[Routes] API key: ${apiKey ? '***' + apiKey.slice(-4) : 'missing'}, internal: ${isInternalRequest}`)
 
         // Variables for bridge and provider
         let bridge, provider
@@ -142,10 +160,8 @@ export function registerRoutes(app: FastifyInstance): void {
         // Validate API key (skip for internal requests)
         if (!isInternalRequest) {
           const keyValidation = validateApiKey(apiKey)
-          console.log(`[Routes] Key validation: valid=${keyValidation.valid}, usePlatformKey=${keyValidation.usePlatformKey}, usePassThrough=${keyValidation.usePassThrough}`)
 
           if (!keyValidation.valid) {
-            console.log(`[Routes] Key validation failed: ${keyValidation.error}`)
             const error = createErrorResponse(
               keyValidation.error?.includes('required') ? ProxyErrorCode.MISSING_API_KEY : ProxyErrorCode.INVALID_API_KEY,
               keyValidation.error || 'Invalid API key',
@@ -156,29 +172,21 @@ export function registerRoutes(app: FastifyInstance): void {
           }
 
           // Get bridge with appropriate API key handling
-          console.log(`[Routes] Getting bridge for proxy: ${proxy.id}`)
           try {
             const passThruKey = keyValidation.usePassThrough ? apiKey : undefined
             const result = getBridge(proxy.id, passThruKey ?? undefined)
             bridge = result.bridge
             provider = result.provider
-
-            const mode = keyValidation.usePassThrough
-              ? 'pass-through'
-              : (keyValidation.usePlatformKey ? 'platform-key' : 'no-auth')
-            console.log(`[Routes] Bridge created, provider: ${provider.name}, mode: ${mode}`)
           } catch (error) {
             console.error(`[Routes] Failed to get bridge:`, error)
             throw error
           }
         } else {
           // Internal request from Chat - use provider's configured key
-          console.log(`[Routes] Internal request detected, getting bridge with provider key`)
           try {
             const result = getBridge(proxy.id, undefined)
             bridge = result.bridge
             provider = result.provider
-            console.log(`[Routes] Bridge created for internal request, provider: ${provider.name}`)
           } catch (error) {
             console.error(`[Routes] Failed to get bridge:`, error)
             throw error
@@ -190,8 +198,6 @@ export function registerRoutes(app: FastifyInstance): void {
         const sourceModel = body.model || ''
         const targetModel = mappingRepo.resolveTargetModel(proxy.id, sourceModel) ?? sourceModel
         
-        console.log(`[Routes] Model: ${sourceModel} -> ${targetModel}`)
-        
         // Update request with mapped model
         const mappedRequest = {
           ...body,
@@ -199,11 +205,8 @@ export function registerRoutes(app: FastifyInstance): void {
         }
         
         // Handle streaming vs non-streaming
-        console.log(`[Routes] Stream mode: ${body.stream ? 'streaming' : 'non-streaming'}`)
-        
         if (body.stream) {
           // Streaming response
-          console.log(`[Routes] Starting stream request`)
           reply.raw.setHeader('Content-Type', 'text/event-stream')
           reply.raw.setHeader('Cache-Control', 'no-cache')
           reply.raw.setHeader('Connection', 'keep-alive')
@@ -267,8 +270,6 @@ export function registerRoutes(app: FastifyInstance): void {
           const inputTokens = usage?.promptTokens
           const outputTokens = usage?.completionTokens
           
-          console.log(`[Routes] Stream completed, tokens: ${usage ? `${inputTokens}/${outputTokens}` : 'N/A'}`)
-          
           // Log streaming request
           logRequest({
             proxyId: proxy.id,
@@ -299,11 +300,8 @@ export function registerRoutes(app: FastifyInstance): void {
         }
         
         // Non-streaming response
-        console.log(`[Routes] Starting non-streaming request`)
         try {
-          console.log(`[Routes] Calling bridge.chat...`)
           const response = await bridge.chat(mappedRequest)
-          console.log(`[Routes] bridge.chat completed`)
           const latencyMs = Date.now() - startTime
           
           // ⭐ 从 Bridge 钩子中获取 Token（已经是 IR 统一格式！）
@@ -311,10 +309,7 @@ export function registerRoutes(app: FastifyInstance): void {
           const inputTokens = usage?.promptTokens
           const outputTokens = usage?.completionTokens
           
-          console.log(`[Routes] Tokens: ${usage ? `${inputTokens}/${outputTokens}` : 'N/A'}`)
-          
           // Log successful request
-          console.log(`[Routes] Logging request, latency: ${latencyMs}ms`)
           logRequest({
             proxyId: proxy.id,
             proxyPath: proxy.proxy_path,
@@ -431,6 +426,4 @@ export function registerRoutes(app: FastifyInstance): void {
       }))
     })
   })
-  
-  console.log(`[Routes] All routes registered`)
 }

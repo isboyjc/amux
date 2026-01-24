@@ -159,8 +159,25 @@ export function registerChatHandlers(): void {
         }
 
         adapterType = provider.adapter_type
-        const endpoint = getEndpointForAdapter(adapterType)
+        // 使用 Provider 自己的 chat_path，如果没有则使用 adapter 默认端点
+        let endpoint = provider.chat_path || getEndpointForAdapter(adapterType)
+        
+        console.log(`\n[Chat] 📨 Building request URL for provider`)
+        console.log(`[Chat]   - Provider name: ${provider.name}`)
+        console.log(`[Chat]   - Provider proxy_path: ${provider.proxy_path}`)
+        console.log(`[Chat]   - Provider chat_path: ${provider.chat_path}`)
+        console.log(`[Chat]   - Adapter type: ${adapterType}`)
+        console.log(`[Chat]   - Endpoint (before replace): ${endpoint}`)
+        console.log(`[Chat]   - Model: ${model}`)
+        
+        // 替换 {model} 占位符为实际的模型名
+        if (endpoint.includes('{model}')) {
+          endpoint = endpoint.replace('{model}', model)
+          console.log(`[Chat]   - Endpoint (after replace): ${endpoint}`)
+        }
+        
         proxyUrl = `http://${serverState.host}:${serverState.port}/providers/${provider.proxy_path}${endpoint}`
+        console.log(`[Chat]   - Final proxy URL: ${proxyUrl}`)
       } else {
         sender.send('chat:stream-error', 'No proxy or provider configured')
         return
@@ -235,8 +252,20 @@ export function registerChatHandlers(): void {
 
                 // Check for error in response
                 if (rawChunk.error) {
-                  const errorMsg = rawChunk.error.message || rawChunk.error.code || 'API Error'
                   console.error('[Chat] API error in stream:', rawChunk.error)
+                  
+                  // ✅ 只提取关键信息：错误码 + 错误描述
+                  let errorMsg = 'API Error'
+                  const errorObj = rawChunk.error.error || rawChunk.error
+                  
+                  if (errorObj.message) {
+                    errorMsg = errorObj.message
+                    if (errorObj.code) {
+                      errorMsg = `[${errorObj.code}] ${errorMsg}`
+                    }
+                  } else if (errorObj.code) {
+                    errorMsg = `Error ${errorObj.code}`
+                  }
                   sender.send('chat:stream-error', errorMsg)
                   hasError = true
                   break
@@ -276,7 +305,8 @@ export function registerChatHandlers(): void {
                       break
 
                     case 'error':
-                      const errorMsg = 'Stream error'
+                      // ✅ 提取错误详情
+                      const errorMsg = event.error?.message || event.message || 'Stream error'
                       console.error('[Chat] Stream error event:', event)
                       sender.send('chat:stream-error', errorMsg)
                       hasError = true
@@ -329,7 +359,14 @@ export function registerChatHandlers(): void {
 
       } catch (streamError) {
         console.error('[Chat] Stream error:', streamError)
-        sender.send('chat:stream-error', streamError instanceof Error ? streamError.message : 'Stream error')
+        // ✅ 提取详细的错误信息
+        let errorMsg = 'Stream error'
+        if (streamError instanceof Error) {
+          errorMsg = streamError.message
+        } else if (typeof streamError === 'string') {
+          errorMsg = streamError
+        }
+        sender.send('chat:stream-error', errorMsg)
       }
 
     } catch (error) {
@@ -547,8 +584,20 @@ export function registerChatHandlers(): void {
 
                 // Check for error in response
                 if (rawChunk.error) {
-                  const errorMsg = rawChunk.error.message || rawChunk.error.code || 'API Error'
                   console.error('[Chat] API error in stream:', rawChunk.error)
+                  
+                  // ✅ 只提取关键信息：错误码 + 错误描述
+                  let errorMsg = 'API Error'
+                  const errorObj = rawChunk.error.error || rawChunk.error
+                  
+                  if (errorObj.message) {
+                    errorMsg = errorObj.message
+                    if (errorObj.code) {
+                      errorMsg = `[${errorObj.code}] ${errorMsg}`
+                    }
+                  } else if (errorObj.code) {
+                    errorMsg = `Error ${errorObj.code}`
+                  }
                   sender.send('chat:stream-error', errorMsg)
                   hasError = true
                   break
@@ -588,7 +637,8 @@ export function registerChatHandlers(): void {
                       break
 
                     case 'error':
-                      const errorMsg = 'Stream error'
+                      // ✅ 提取错误详情
+                      const errorMsg = event.error?.message || event.message || 'Stream error'
                       console.error('[Chat] Stream error event:', event)
                       sender.send('chat:stream-error', errorMsg)
                       hasError = true

@@ -481,10 +481,30 @@ interface GenerationConfig {
   frequencyPenalty?: number    // -2 to 2: Penalize frequency
   n?: number                   // >0: Number of completions
   seed?: number                // Deterministic generation
+  responseFormat?: ResponseFormat  // Response format configuration
+  thinking?: ThinkingConfig    // Thinking/reasoning configuration
+  enableSearch?: boolean       // Enable web search (Qwen)
+  logprobs?: boolean           // Log probabilities
+  topLogprobs?: number         // Number of top log probabilities
+}
+
+interface ResponseFormat {
+  type: 'text' | 'json_object' | 'json_schema'
+  jsonSchema?: {
+    name: string
+    description?: string
+    schema: Record<string, unknown>
+    strict?: boolean
+  }
+}
+
+interface ThinkingConfig {
+  enabled: boolean
+  budgetTokens?: number        // Budget tokens for thinking (Anthropic)
 }
 ```
 
-<Tabs items={['Temperature', 'Sampling', 'Limits', 'Penalties']}>
+<Tabs items={['Temperature', 'Sampling', 'Limits', 'Penalties', 'Response Format', 'Thinking', 'Advanced']}>
   <Tab value="Temperature">
     ### Temperature
 
@@ -563,6 +583,97 @@ interface GenerationConfig {
     - Positive: Reduce repetition
     - Negative: Encourage repetition
     - Good for reducing redundancy
+  </Tab>
+
+  <Tab value="Response Format">
+    ### Response Format
+
+    Configure structured output format.
+
+    ```typescript
+    generation: {
+      responseFormat: {
+        type: 'json_object'  // or 'json_schema', 'text'
+      }
+    }
+    ```
+
+    **Format Types:**
+    - `'text'`: Plain text response (default)
+    - `'json_object'`: Valid JSON object
+    - `'json_schema'`: Structured output with schema validation
+
+    **JSON Schema Example:**
+    ```typescript
+    generation: {
+      responseFormat: {
+        type: 'json_schema',
+        jsonSchema: {
+          name: 'weather_response',
+          description: 'Weather information',
+          schema: {
+            type: 'object',
+            properties: {
+              temperature: { type: 'number' },
+              condition: { type: 'string' }
+            },
+            required: ['temperature', 'condition']
+          },
+          strict: true  // OpenAI structured outputs
+        }
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab value="Thinking">
+    ### Thinking/Reasoning Mode
+
+    Enable thinking mode for reasoning models.
+
+    ```typescript
+    generation: {
+      thinking: {
+        enabled: true,
+        budgetTokens: 1000  // Optional: for Anthropic
+      }
+    }
+    ```
+
+    **Supported Providers:**
+    - **DeepSeek**: `deepseek-reasoner` model
+    - **Qwen**: `QwQ` model
+    - **Anthropic**: Extended thinking mode (with budget)
+
+    **How it works:**
+    - Model generates internal reasoning steps
+    - Reasoning content available in `reasoningContent` field
+    - Final answer in `content` field
+  </Tab>
+
+  <Tab value="Advanced">
+    ### Advanced Features
+
+    ```typescript
+    generation: {
+      // Web search (Qwen specific)
+      enableSearch: true,
+
+      // Log probabilities
+      logprobs: true,
+      topLogprobs: 5  // Top 5 alternatives per token
+    }
+    ```
+
+    **enableSearch** (Qwen only):
+    - Enable real-time web search
+    - Model can access current information
+    - Useful for fact-checking and recent events
+
+    **logprobs / topLogprobs**:
+    - Get probability distribution over tokens
+    - Useful for uncertainty estimation
+    - Available in response `logprobs` field
   </Tab>
 </Tabs>
 

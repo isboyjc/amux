@@ -18,7 +18,33 @@ import { recordRequest as recordMetrics } from '../metrics'
 
 import { getAdapter } from './bridge-manager'
 import { ProxyErrorCode } from './types'
-import { extractApiKey, validateApiKey, createErrorResponse } from './utils'
+import { extractApiKey, validateApiKey, createErrorResponse, getEndpointForAdapter } from './utils'
+
+/**
+ * 🆕 获取 Provider 的认证 Token（支持 OAuth 和 API Key）
+ * 
+ * @param provider - Provider configuration
+ * @returns Token string or { token, accountId, metadata } for OAuth providers, or null if not available
+ */
+async function getProviderToken(
+  provider: ProviderRow
+): Promise<string | { token: string; accountId: string; metadata: Record<string, unknown> } | null> {
+  // 新架构：所有 Provider（包括 OAuth Pool）都直接使用 api_key 字段
+  // OAuth Pool Provider 的 api_key 存储的是 OAuth 服务的 API Key (sk-amux.oauth.codex-xxx)
+  // 账号选择和 Token 管理由 OAuth 转换服务层处理
+  
+  if (!provider.api_key) {
+    return null
+  }
+  
+  const decryptedKey = decryptApiKey(provider.api_key)
+  if (!decryptedKey) {
+    console.error(`[Passthrough] Failed to decrypt API key for provider: ${provider.name}`)
+    return null
+  }
+  
+  return decryptedKey
+}
 
 /**
  * Handle Provider Passthrough Proxy request
@@ -46,8 +72,50 @@ export async function handleProviderPassthrough(
   const startTime = Date.now()
   const errorFormat = provider.adapter_type === 'anthropic' ? 'anthropic' : 'openai'
   
+  console.log(`\n[Passthrough] 🚀 Handling request for provider: ${provider.name}`)
+  console.log(`[Passthrough]   - Request URL: ${request.url}`)
+  console.log(`[Passthrough]   - Request method: ${request.method}`)
+  console.log(`[Passthrough]   - Provider adapter: ${provider.adapter_type}`)
+  console.log(`[Passthrough]   - Provider base_url: ${provider.base_url}`)
+  console.log(`[Passthrough]   - Provider chat_path: ${provider.chat_path}`)
+  
   try {
     const body = request.body as any
+    
+    console.log(`[Passthrough]   - Request params:`, request.params)
+    console.log(`[Passthrough]   - Request body model (before): ${body.model}`)
+    
+    // 🆕 对于 Google adapter，从 URL 参数中提取模型名并注入到请求体
+    // URL 格式：/providers/{path}/v1beta/models/{model}:streamGenerateContent
+    if (provider.adapter_type === 'google' && !body.model) {
+      const params = request.params as any
+      
+      console.log(`[Passthrough]   - Google adapter: extracting model from params`)
+      
+      // 支持两种路由格式：
+      // 1. 通配符：params['*'] = 'gemini-2.5-flash-lite:streamGenerateContent'
+      // 2. 路由参数：params.model = 'gemini-2.5-flash-lite'
+      let modelName: string | undefined
+      
+      if (params['*']) {
+        // 从通配符中提取模型名（冒号之前的部分）
+        const wildcardParam = params['*'] as string
+        console.log(`[Passthrough]   - Wildcard param: ${wildcardParam}`)
+        const colonIndex = wildcardParam.indexOf(':')
+        modelName = colonIndex > 0 ? wildcardParam.substring(0, colonIndex) : wildcardParam
+        console.log(`[Passthrough]   - Extracted model from wildcard: ${modelName}`)
+      } else if (params.model) {
+        modelName = params.model
+        console.log(`[Passthrough]   - Model from route param: ${modelName}`)
+      }
+      
+      if (modelName) {
+        body.model = modelName
+        console.log(`[Passthrough]   - Injected model into body: ${modelName}`)
+      }
+    }
+    
+    console.log(`[Passthrough]   - Request body model (after): ${body.model}`)
 
     // 1. Detect internal requests (from Chat IPC - localhost + no auth header)
     const apiKey = extractApiKey(request)
@@ -57,32 +125,22 @@ export async function handleProviderPassthrough(
     let targetApiKey: string
 
     if (isInternalRequest) {
-      // Internal request from Chat - always use provider's configured key
-      console.log(`[Passthrough] Internal request detected, using provider key`)
+      // Internal request - use provider's token (OAuth or API Key)
 
-      if (!provider.api_key) {
+      const result = await getProviderToken(provider)  // ✅ 使用新函数
+      if (!result) {
         const error = createErrorResponse(
           ProxyErrorCode.MISSING_API_KEY,
-          `Provider "${provider.name}" has no API key configured. Please configure the API key in Provider settings.`,
+          `Provider "${provider.name}" has no API key or OAuth account configured.`,
           500,
           errorFormat
         )
         return reply.status(error.statusCode).send(error.body)
       }
 
-      const decryptedKey = decryptApiKey(provider.api_key)
-      if (!decryptedKey) {
-        const error = createErrorResponse(
-          ProxyErrorCode.INTERNAL_ERROR,
-          `Failed to decrypt API key for provider "${provider.name}".`,
-          500,
-          errorFormat
-        )
-        return reply.status(error.statusCode).send(error.body)
-      }
-      targetApiKey = decryptedKey
+      targetApiKey = result
     } else {
-      // External request - validate API key based on auth settings
+      // External request - validate and use appropriate key
       const keyValidation = validateApiKey(apiKey)
 
       if (!keyValidation.valid) {
@@ -99,28 +157,19 @@ export async function handleProviderPassthrough(
         // User provided their own key (pass-through mode)
         targetApiKey = apiKey!
       } else {
-        // Use provider's configured key
-        if (!provider.api_key) {
+        // Use provider's token (OAuth or API Key)
+        const result = await getProviderToken(provider)  // ✅ 使用新函数
+        if (!result) {
           const error = createErrorResponse(
             ProxyErrorCode.MISSING_API_KEY,
-            `Provider "${provider.name}" has no API key configured. Please configure the API key in Provider settings.`,
+            `Provider "${provider.name}" has no API key configured.`,
             500,
             errorFormat
           )
           return reply.status(error.statusCode).send(error.body)
         }
 
-        const decryptedKey = decryptApiKey(provider.api_key)
-        if (!decryptedKey) {
-          const error = createErrorResponse(
-            ProxyErrorCode.INTERNAL_ERROR,
-            `Failed to decrypt API key for provider "${provider.name}".`,
-            500,
-            errorFormat
-          )
-          return reply.status(error.statusCode).send(error.body)
-        }
-        targetApiKey = decryptedKey
+        targetApiKey = result
       }
     }
     
@@ -130,15 +179,41 @@ export async function handleProviderPassthrough(
       throw new Error(`Adapter not found: ${provider.adapter_type}`)
     }
     
-    // 4. Create Bridge with hooks for token tracking
+    // 4. 处理 chatPath 中的 {model} 占位符
+    // 对于 OAuth Provider，provider.chat_path 可能为 null，此时 llm-bridge 会使用 adapter 的默认 chatPath
+    // 如果默认 chatPath 包含 {model} 占位符，需要手动替换，因为 llm-bridge 可能无法正确处理
+    let chatPath = provider.chat_path
+    
+    if (provider.adapter_type === 'google' && !chatPath && body.model) {
+      // 获取 Google adapter 的默认 chatPath
+      const defaultChatPath = getEndpointForAdapter('google')
+      console.log(`[Passthrough]   - Google adapter default chatPath: ${defaultChatPath}`)
+      
+      // 手动替换 {model} 占位符
+      if (defaultChatPath.includes('{model}')) {
+        chatPath = defaultChatPath.replace('{model}', body.model)
+        console.log(`[Passthrough]   - Replaced {model} with ${body.model}: ${chatPath}`)
+      }
+    }
+    
+    // 5. Create Bridge with standard adapter (OAuth translation handled by dedicated service)
+    const bridgeConfig = {
+      apiKey: targetApiKey,
+      baseURL: provider.base_url || undefined,
+      chatPath: chatPath || undefined,
+      timeout: 60000,
+    }
+    
+    console.log(`[Passthrough]   - Bridge config:`, {
+      baseURL: bridgeConfig.baseURL,
+      chatPath: bridgeConfig.chatPath,
+      model: body.model
+    })
+    
     const bridge = new Bridge({
       inbound: adapter,
-      outbound: adapter,  // Same adapter = no format conversion
-      config: {
-        apiKey: targetApiKey,
-        baseURL: provider.base_url || undefined,
-        timeout: 60000,
-      },
+      outbound: adapter,  // Passthrough uses same adapter for inbound/outbound
+      config: bridgeConfig,
       // ⭐ Add hooks to capture token usage (unified IR format!)
       hooks: {
         onResponse: async (ir) => {
@@ -157,8 +232,33 @@ export async function handleProviderPassthrough(
     })
     
     // 4. Handle request (streaming vs non-streaming)
-    if (body.stream) {
+    console.log(`[Passthrough] 📋 Request body.stream: ${body.stream}`)
+    console.log(`[Passthrough] 📋 Request body keys: ${Object.keys(body).join(', ')}`)
+    console.log(`[Passthrough] 📋 Request URL: ${request.url}`)
+    
+    // 判断是否为流式请求
+    // - OpenAI/Anthropic: 使用 body.stream 字段
+    // - Google: 检查 URL 中的 alt=sse 参数 或 请求方法名包含 "stream"
+    const isStreamRequest = body.stream || 
+      (provider.adapter_type === 'google' && (
+        request.url.includes('alt=sse') || 
+        request.url.includes('stream') ||
+        (chatPath && chatPath.includes('stream'))
+      ))
+    
+    console.log(`[Passthrough] 📋 Is stream request: ${isStreamRequest}`)
+    
+    if (isStreamRequest) {
       // Streaming response
+      console.log(`[Passthrough] 🌊 Using STREAMING mode`)
+      
+      // 对于 Google adapter，确保 body.stream 设置为 true
+      // 这样 llm-bridge 才能正确处理流式响应
+      if (provider.adapter_type === 'google' && !body.stream) {
+        body.stream = true
+        console.log(`[Passthrough] ✅ Set body.stream = true for Google adapter`)
+      }
+      
       reply.raw.setHeader('Content-Type', 'text/event-stream')
       reply.raw.setHeader('Cache-Control', 'no-cache')
       reply.raw.setHeader('Connection', 'keep-alive')
@@ -169,12 +269,21 @@ export async function handleProviderPassthrough(
       const streamChunks: unknown[] = []
       
       try {
+        console.log(`[Passthrough] 🌊 Starting stream for ${provider.adapter_type}`)
         const stream = await bridge.chatStream(body)
+        console.log(`[Passthrough] ✅ Stream created successfully`)
         
+        let chunkCount = 0
         for await (const event of stream) {
+          chunkCount++
           // Bridge returns SSE events in format: { event: "...", data: {...} }
           // Extract the actual data for passthrough
           const sseEvent = event as { event?: string; data?: unknown; type?: string }
+          
+          if (chunkCount === 1) {
+            console.log(`[Passthrough] 📦 First chunk type: ${sseEvent.type || sseEvent.event}`)
+            console.log(`[Passthrough] 📦 First chunk data keys: ${Object.keys(sseEvent.data || sseEvent).join(', ')}`)
+          }
 
           // Collect chunks for logging
           streamChunks.push(sseEvent.data || sseEvent)
@@ -185,6 +294,10 @@ export async function handleProviderPassthrough(
             const eventType = sseEvent.event || sseEvent.type || 'message'
             const eventData = sseEvent.data || sseEvent
             reply.raw.write(`event: ${eventType}\ndata: ${JSON.stringify(eventData)}\n\n`)
+          } else if (provider.adapter_type === 'google') {
+            // Google 格式：直接转发原始事件
+            const chunkData = sseEvent.data || sseEvent
+            reply.raw.write(`data: ${JSON.stringify(chunkData)}\n\n`)
           } else {
             // OpenAI Chat Completions format: data: {...}\n\n
             // For OpenAI format, we need to send the actual chunk data, not the wrapper
@@ -193,29 +306,49 @@ export async function handleProviderPassthrough(
           }
         }
         
+        console.log(`[Passthrough] ✅ Stream completed, total chunks: ${chunkCount}`)
+        
         // Add protocol-level end marker for OpenAI Chat Completions format only
         if (provider.adapter_type !== 'anthropic' && provider.adapter_type !== 'openai-responses') {
           reply.raw.write('data: [DONE]\n\n')
+          console.log(`[Passthrough] 📤 Sent [DONE] marker`)
         }
         
         reply.raw.end()
+        console.log(`[Passthrough] ✅ Stream ended successfully`)
       } catch (error) {
         streamSuccess = false
         streamError = error instanceof Error ? error.message : 'Stream error'
-        console.error(`[Passthrough] Stream error:`, error)
+        console.error(`[Passthrough] ❌ Stream error:`, error)
+        console.error(`[Passthrough] Error type: ${error.constructor.name}`)
+        console.error(`[Passthrough] Error message: ${streamError}`)
+        
+        // 🔄 提取原始错误详情
+        let errorDetails: any = {
+          type: 'api_error',
+          message: streamError,
+          code: ProxyErrorCode.INTERNAL_ERROR
+        }
+        
+        // 如果是 Bridge 的 APIError，提取原始错误信息
+        if (error && typeof error === 'object') {
+          const err = error as any
+          // ✅ 直接使用 err.data（完整的错误响应）
+          if (err.data) {
+            errorDetails = err.data
+          } else if (err.details) {
+            errorDetails = err.details
+          }
+        }
         
         if (provider.adapter_type === 'anthropic') {
           reply.raw.write(`event: error\ndata: ${JSON.stringify({
             type: 'error',
-            error: { type: 'api_error', message: streamError }
+            error: errorDetails
           })}\n\n`)
         } else {
           reply.raw.write(`data: ${JSON.stringify({
-            error: {
-              message: streamError,
-              type: 'api_error',
-              code: ProxyErrorCode.INTERNAL_ERROR
-            }
+            error: errorDetails
           })}\n\n`)
         }
         reply.raw.end()
@@ -228,12 +361,15 @@ export async function handleProviderPassthrough(
       const inputTokens = usage?.promptTokens
       const outputTokens = usage?.completionTokens
       
-      // Log request
+      // Log request (including OAuth account info)
+      const finalStatusCode = streamSuccess ? 200 : 500
+      console.log(`[Passthrough] 📊 Logging request: success=${streamSuccess}, statusCode=${finalStatusCode}`)
+      
       logRequest({
         proxyPath: provider.proxy_path || `provider-${provider.id}`,
         sourceModel: body.model,
         targetModel: body.model,
-        statusCode: streamSuccess ? 200 : 500,
+        statusCode: finalStatusCode,
         inputTokens,
         outputTokens,
         latencyMs,
@@ -257,8 +393,11 @@ export async function handleProviderPassthrough(
     }
     
     // Non-streaming response
+    console.log(`[Passthrough] 📝 Using NON-STREAMING mode`)
     try {
+      console.log(`[Passthrough] 🔄 Calling bridge.chat()...`)
       const response = await bridge.chat(body)
+      console.log(`[Passthrough] ✅ bridge.chat() completed`)
       const latencyMs = Date.now() - startTime
       
       // Get Token statistics from Bridge automatically
@@ -266,7 +405,7 @@ export async function handleProviderPassthrough(
       const inputTokens = usage?.promptTokens
       const outputTokens = usage?.completionTokens
       
-      // Log successful request
+      // Log successful request (including OAuth account info)
       logRequest({
         proxyPath: provider.proxy_path || `provider-${provider.id}`,
         sourceModel: body.model,
@@ -291,15 +430,45 @@ export async function handleProviderPassthrough(
       reply.header('X-Request-ID', requestId)
       return reply.send(response)
     } catch (error) {
+      console.error(`[Passthrough] ❌ bridge.chat() failed:`, error)
+      console.error(`[Passthrough] Error type: ${error.constructor.name}`)
+      console.error(`[Passthrough] Error message: ${error instanceof Error ? error.message : 'Unknown'}`)
+      
       const latencyMs = Date.now() - startTime
       const errorMessage = error instanceof Error ? error.message : 'Chat request failed'
+      
+      // 🔄 提取原始状态码和错误详情
+      let statusCode = 502
+      let errorBody: any = {
+        message: errorMessage,
+        type: 'api_error',
+        code: ProxyErrorCode.ADAPTER_ERROR
+      }
+      
+      // 如果是 Bridge 的 APIError，提取原始错误信息
+      if (error && typeof error === 'object') {
+        const err = error as any
+        
+        // Bridge 的 APIError 结构：{ status, data, provider, details }
+        if (err.status) {
+          statusCode = err.status
+        }
+        
+        // 提取错误详情（优先使用完整的 data）
+        if (err.data) {
+          // ✅ 直接使用 err.data，它可能是完整的错误响应
+          errorBody = err.data
+        } else if (err.details) {
+          errorBody = err.details
+        }
+      }
       
       // Log failed request
       logRequest({
         proxyPath: provider.proxy_path || `provider-${provider.id}`,
         sourceModel: body.model,
         targetModel: body.model,
-        statusCode: 502,
+        statusCode,
         inputTokens: undefined,
         outputTokens: undefined,
         latencyMs,
@@ -309,14 +478,7 @@ export async function handleProviderPassthrough(
       })
       recordMetrics(`provider-${provider.id}`, provider.id, false, latencyMs)
       
-      console.error(`[Passthrough] Chat error:`, error)
-      const err = createErrorResponse(
-        ProxyErrorCode.ADAPTER_ERROR,
-        errorMessage,
-        502,
-        errorFormat
-      )
-      return reply.status(err.statusCode).send(err.body)
+      return reply.status(statusCode).send({ error: errorBody })
     }
   } catch (error) {
     console.error(`[Passthrough] Error:`, error)

@@ -31,6 +31,11 @@ function toProvider(row: ProviderRow) {
     color: row.color ?? undefined,
     enableAsProxy: row.enable_as_proxy === 1,
     proxyPath: row.proxy_path ?? undefined,
+    // OAuth Pool Provider fields
+    isPool: row.is_pool === 1,
+    poolStrategy: row.pool_strategy ?? undefined,
+    oauthAccountId: row.oauth_account_id ?? undefined,
+    oauthProviderType: row.oauth_provider_type ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   }
@@ -102,6 +107,7 @@ export function registerProviderHandlers(): void {
       return { success: false, latency: 0, error: 'Provider not found' }
     }
 
+    // All providers use api_key field (including OAuth Pool Providers)
     const apiKey = row.api_key ? decryptApiKey(row.api_key) : ''
     if (!apiKey) {
       return { success: false, latency: 0, error: 'No API key configured' }
@@ -195,8 +201,7 @@ export function registerProviderHandlers(): void {
       const { baseUrl, apiKey, modelsPath } = params
       const url = `${baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl}${modelsPath}`
 
-      console.log(`[FetchModels] Request URL: ${url}`)
-      console.log(`[FetchModels] Adapter Type: ${params.adapterType}`)
+      console.log(`[FetchModels] Fetching models from: ${url}`)
 
       const response = await fetch(url, {
         method: 'GET',
@@ -220,6 +225,139 @@ export function registerProviderHandlers(): void {
 
       // Handle different API response formats
       let models: Array<{ id: string; name?: string }> = []
+      
+      // ✅ Antigravity v1internal:fetchAvailableModels format: { models: { "model-id": {...}, ... } }
+      if (data.models && typeof data.models === 'object' && !Array.isArray(data.models)) {
+        console.log(`[FetchModels] Detected Antigravity object format`)
+        const modelKeys = Object.keys(data.models)
+        console.log(`[FetchModels] Model count:`, modelKeys.length)
+        console.log(`[FetchModels] First 5 model keys:`, modelKeys.slice(0, 5))
+        
+        models = modelKeys.map(modelId => {
+          const modelData = data.models[modelId]
+          // Use displayName if available, otherwise use the model ID
+          const displayName = modelData?.displayName || modelData?.name || modelId
+          return {
+            id: modelId,
+            name: displayName
+          }
+        })
+      } else if (Array.isArray(data)) {
+        models = data.map((m: { id?: string; name?: string }) => ({
+          id: m.id || '',
+          name: m.name || m.id || ''
+        }))
+      } else if (data.data && Array.isArray(data.data)) {
+        // OpenAI format
+        models = data.data.map((m: { id: string; name?: string }) => ({
+          id: m.id,
+          name: m.name || m.id
+        }))
+      } else if (data.models && Array.isArray(data.models)) {
+        // Gemini / Google format or other providers
+        models = data.models.map((m: { id?: string; name?: string; model?: string; displayName?: string }) => {
+          // Extract model ID from different formats:
+          // 1. For Gemini: name field like "models/gemini-1.5-pro" -> extract "gemini-1.5-pro"
+          // 2. For other providers: use id or model field directly
+          let modelId = m.id || m.model || ''
+          
+          // Special handling for Gemini format (name starts with "models/")
+          if (!modelId && m.name && m.name.startsWith('models/')) {
+            modelId = m.name.replace('models/', '')
+          } else if (!modelId) {
+            modelId = m.name || ''
+          }
+          
+          // Use displayName for Gemini, fallback to other fields
+          const displayName = m.displayName || m.name || modelId
+          
+          return {
+            id: modelId,
+            name: displayName
+          }
+        })
+      }
+
+      console.log(`[FetchModels] Success! Found ${models.length} models`)
+      if (models.length > 0) {
+        console.log(`[FetchModels] First 5 models:`, models.slice(0, 5).map(m => m.id))
+      }
+
+      return { success: true, models }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch models',
+        models: []
+      }
+    }
+  })
+
+  // Fetch models for OAuth provider
+  ipcMain.handle('providers:fetch-models-oauth', async (_event, providerId: string) => {
+    try {
+      const row = repo.findById(providerId)
+      if (!row) {
+        return { success: false, error: 'Provider not found', models: [] }
+      }
+
+      // Check if this is an OAuth provider
+      const isOAuthProvider = row.is_pool === 1 || !!row.oauth_account_id
+      if (!isOAuthProvider) {
+        return { success: false, error: 'Not an OAuth provider', models: [] }
+      }
+
+      // Get OAuth token
+      const { getOAuthManager } = await import('../services/oauth/oauth-manager')
+      const { getPoolHandler } = await import('../services/oauth/pool-handler')
+      const oauthManager = getOAuthManager()
+      const poolHandler = getPoolHandler()
+
+      let apiKey = ''
+      if (row.is_pool === 1) {
+        const selection = await poolHandler.selectAccount(
+          row.oauth_provider_type!
+        )
+        if (!selection) {
+          return { success: false, error: 'No available OAuth accounts in pool', models: [] }
+        }
+        apiKey = selection.accessToken
+      } else if (row.oauth_account_id) {
+        const token = await oauthManager.getAccessToken(row.oauth_account_id)
+        if (!token) {
+          return { success: false, error: 'Failed to get OAuth token', models: [] }
+        }
+        apiKey = token
+      }
+
+      const baseUrl = row.base_url || getDefaultBaseUrl(row.adapter_type)
+      const modelsPath = row.models_path || '/v1/models'
+
+      console.log(`[FetchModels OAuth] Fetching from: ${baseUrl}${modelsPath}`)
+      console.log(`[FetchModels OAuth] Using token: ${apiKey.substring(0, 20)}...`)
+
+      const response = await fetch(`${baseUrl}${modelsPath}`, {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        signal: AbortSignal.timeout(15000)
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unable to read error')
+        console.error(`[FetchModels OAuth] HTTP ${response.status}:`, errorText)
+        return {
+          success: false,
+          error: `HTTP ${response.status}: ${response.statusText} - ${errorText}`,
+          models: []
+        }
+      }
+
+      const data = await response.json()
+
+      // Handle different API response formats
+      let models: Array<{ id: string; name?: string }> = []
       if (Array.isArray(data)) {
         models = data.map((m: { id?: string; name?: string }) => ({
           id: m.id || '',
@@ -232,19 +370,26 @@ export function registerProviderHandlers(): void {
           name: m.name || m.id
         }))
       } else if (data.models && Array.isArray(data.models)) {
-        models = data.models.map((m: { id?: string; name?: string; model?: string }) => ({
-          id: m.id || m.model || '',
-          name: m.name || m.id || m.model || ''
-        }))
+        // Gemini / Google format
+        models = data.models.map((m: { id?: string; name?: string; model?: string; displayName?: string }) => {
+          let modelId = m.id || m.model || ''
+          if (!modelId && m.name && m.name.startsWith('models/')) {
+            modelId = m.name.replace('models/', '')
+          } else if (!modelId) {
+            modelId = m.name || ''
+          }
+          const displayName = m.displayName || m.name || modelId
+          return {
+            id: modelId,
+            name: displayName
+          }
+        })
       }
 
-      console.log(`[FetchModels] Success! Found ${models.length} models`)
-      if (models.length > 0) {
-        console.log(`[FetchModels] First 5 models:`, models.slice(0, 5).map(m => m.id))
-      }
-
+      console.log(`[FetchModels OAuth] Success! Found ${models.length} models`)
       return { success: true, models }
     } catch (error) {
+      console.error('[FetchModels OAuth] Error:', error)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to fetch models',

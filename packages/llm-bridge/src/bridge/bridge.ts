@@ -3,9 +3,9 @@ import type { LLMRequestIR } from '../ir/request'
 import type { LLMResponseIR } from '../ir/response'
 import type { LLMStreamEvent, SSEEvent } from '../ir/stream'
 import type { Message, ContentPart } from '../types/message'
+import { SSELineParser } from '../utils/sse-parser'
 
 import { HTTPClient } from './http-client'
-import { SSELineParser } from '../utils/sse-parser'
 import type {
   BridgeConfig,
   BridgeHooks,
@@ -159,7 +159,7 @@ export class Bridge implements LLMBridge {
 
       // Step 6: Send HTTP request to provider API
       const baseURL = this.config.baseURL ?? this.getDefaultBaseURL()
-      const endpoint = this.getEndpoint()
+      const endpoint = this.getEndpoint(ir.model)
 
       const response = await this.httpClient.request({
         method: 'POST',
@@ -238,7 +238,7 @@ export class Bridge implements LLMBridge {
 
     // Step 5: Send HTTP request to provider API
     const baseURL = this.config.baseURL ?? this.getDefaultBaseURL()
-    const endpoint = this.getEndpoint()
+    const endpoint = this.getEndpoint(ir.model)
 
     const response = await this.httpClient.request({
       method: 'POST',
@@ -333,7 +333,7 @@ export class Bridge implements LLMBridge {
 
       // Step 5: Send streaming HTTP request
       const baseURL = this.config.baseURL ?? this.getDefaultBaseURL()
-      const endpoint = this.getEndpoint()
+      const endpoint = this.getEndpoint(ir.model)
 
       const streamHandler = this.outboundAdapter.inbound.parseStream
       if (!streamHandler) {
@@ -420,6 +420,21 @@ export class Bridge implements LLMBridge {
   }
 
   /**
+   * List available models from the provider
+   */
+  async listModels(): Promise<unknown> {
+    const baseURL = this.config.baseURL ?? this.getDefaultBaseURL()
+    const modelsPath = this.getModelsPath()
+
+    const response = await this.httpClient.request({
+      method: 'GET',
+      url: `${baseURL}${modelsPath}`,
+    })
+
+    return response.data
+  }
+
+  /**
    * Check compatibility between adapters
    */
   checkCompatibility(): CompatibilityReport {
@@ -480,6 +495,7 @@ export class Bridge implements LLMBridge {
 
   /**
    * Get default base URL from outbound adapter
+   * Note: config.baseURL is checked before calling this method
    */
   private getDefaultBaseURL(): string {
     const endpoint = this.outboundAdapter.getInfo().endpoint
@@ -487,10 +503,48 @@ export class Bridge implements LLMBridge {
   }
 
   /**
-   * Get API endpoint from outbound adapter
+   * Get chat endpoint path
+   * Supports dynamic model replacement for endpoints like /v1beta/models/{model}:generateContent
+   * Priority: config.chatPath > adapter.endpoint.chatPath
    */
-  private getEndpoint(): string {
+  private getEndpoint(model?: string): string {
     const endpoint = this.outboundAdapter.getInfo().endpoint
-    return endpoint?.chatPath ?? '/v1/chat/completions'
+    
+    // Priority 1: Use config.chatPath if provided
+    // Priority 2: Use adapter's default chatPath
+    let chatPath = (this.config as any).chatPath ?? endpoint?.chatPath
+    
+    if (!chatPath) {
+      throw new Error(
+        `No chatPath configured. Either provide chatPath in config or ensure adapter '${this.outboundAdapter.name}' defines endpoint.chatPath`
+      )
+    }
+    
+    // Replace {model} placeholder if present and model is provided
+    if (model && chatPath.includes('{model}')) {
+      chatPath = chatPath.replace('{model}', model)
+    }
+    
+    return chatPath
+  }
+
+  /**
+   * Get models endpoint path
+   * Priority: config.modelsPath > adapter.endpoint.modelsPath
+   */
+  private getModelsPath(): string {
+    const endpoint = this.outboundAdapter.getInfo().endpoint
+    
+    // Priority 1: Use config.modelsPath if provided
+    // Priority 2: Use adapter's default modelsPath
+    const modelsPath = (this.config as any).modelsPath ?? endpoint?.modelsPath
+    
+    if (!modelsPath) {
+      throw new Error(
+        `No modelsPath configured. Either provide modelsPath in config or ensure adapter '${this.outboundAdapter.name}' defines endpoint.modelsPath`
+      )
+    }
+    
+    return modelsPath
   }
 }

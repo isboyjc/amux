@@ -10,6 +10,7 @@ import {
   ArrowRight
 } from 'lucide-react'
 import { useEffect, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 import { PageContainer } from '@/components/layout'
@@ -56,12 +57,15 @@ export function Dashboard() {
   const { proxies, fetch: fetchProxies } = useBridgeProxyStore()
   const { settings, fetch: fetchSettings } = useSettingsStore()
   const { t } = useI18n()
+  const navigate = useNavigate()
 
   const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesPoint[]>([])
   const [hoveredLogoIndex, setHoveredLogoIndex] = useState<number | null>(null)
 
   // Get configured and enabled providers for logo display
-  const configuredProviders = providers.filter(p => p.enabled && p.apiKey)
+  // OAuth providers don't need API key (they use OAuth tokens)
+  const isOAuthProvider = (p: Provider) => p.isPool || !!p.oauthAccountId
+  const configuredProviders = providers.filter(p => p.enabled && (isOAuthProvider(p) || p.apiKey))
   
   // Get passthrough providers count
   const passthroughProviders = providers.filter(p => p.enabled && p.enableAsProxy)

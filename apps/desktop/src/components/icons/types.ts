@@ -13,3 +13,6 @@ export interface AnimatedIconHandle {
   startAnimation: () => void;
   stopAnimation: () => void;
 }
+
+// Alias for backward compatibility
+export type IconProps = AnimatedIconProps

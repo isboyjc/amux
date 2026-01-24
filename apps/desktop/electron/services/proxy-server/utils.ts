@@ -138,21 +138,37 @@ export function createErrorResponse(
   }
 }
 
-// Endpoint mapping by adapter type
-const ADAPTER_ENDPOINTS: Record<string, string> = {
-  openai: '/v1/chat/completions',
-  'openai-responses': '/v1/responses',
-  anthropic: '/v1/messages',
-  deepseek: '/v1/chat/completions',
-  moonshot: '/v1/chat/completions',
-  qwen: '/v1/chat/completions',
-  zhipu: '/v1/chat/completions',
-  google: '/v1/chat/completions'
-}
+import * as fs from 'fs'
+import * as path from 'path'
+
+// Cache for presets to avoid repeated file reads
+let presetsCache: any = null
 
 /**
- * Get endpoint for adapter type
+ * Get endpoint for adapter type from presets
+ * Returns the endpoint template (may contain {model} placeholder for some adapters)
+ * 
+ * Note: This function loads from presets to avoid hardcoding adapter endpoints
+ * Conversion proxies need this to determine inbound adapter endpoint
  */
 export function getEndpointForAdapter(adapterType: string): string {
-  return ADAPTER_ENDPOINTS[adapterType] || '/v1/chat/completions'
+  try {
+    // Load presets once and cache
+    if (!presetsCache) {
+      const presetsPath = path.join(__dirname, '../../../resources/presets/providers.json')
+      presetsCache = JSON.parse(fs.readFileSync(presetsPath, 'utf-8'))
+    }
+    
+    // Find preset by adapterType
+    const preset = presetsCache.providers.find((p: any) => p.adapterType === adapterType)
+    
+    if (preset?.chatPath) {
+      return preset.chatPath
+    }
+  } catch (error) {
+    console.error('[Utils] Failed to load presets for endpoint:', error)
+  }
+  
+  // Fallback to default OpenAI-compatible endpoint
+  return '/v1/chat/completions'
 }

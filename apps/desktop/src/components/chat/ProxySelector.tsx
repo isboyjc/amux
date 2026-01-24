@@ -251,8 +251,10 @@ export function ProxySelector({
   }, [])
 
   // Filter available providers (enabled + passthrough enabled)
+  // OAuth providers don't need API key (they use OAuth tokens)
   const availableProviders = useMemo(() => {
-    return providers.filter(p => p.enabled && p.enableAsProxy && p.apiKey)
+    const isOAuthProvider = (p: Provider) => p.isPool || !!p.oauthAccountId
+    return providers.filter(p => p.enabled && p.enableAsProxy && (isOAuthProvider(p) || p.apiKey))
   }, [providers])
 
   // Filter available proxies (enabled)

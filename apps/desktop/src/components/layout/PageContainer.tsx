@@ -13,7 +13,7 @@ interface PageContainerProps {
 export function PageContainer({ children, className }: PageContainerProps) {
   return (
     <main className={cn('content-card h-full overflow-auto', className)}>
-      <div className="p-6">
+      <div className="p-6 h-full">
         {children}
       </div>
     </main>

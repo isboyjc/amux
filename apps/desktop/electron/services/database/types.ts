@@ -47,6 +47,44 @@ export interface ProviderRow extends BaseRow {
   color: string | null // Brand color hex code
   enable_as_proxy: number // 0 or 1 - enable provider as passthrough proxy
   proxy_path: string | null // URL path identifier for passthrough proxy (e.g. "openai-personal")
+  // OAuth Pool Provider fields
+  is_pool: number // 0 or 1 - whether this is a pool provider
+  pool_strategy: string | null // 'round_robin' | 'least_used' | 'quota_aware'
+  oauth_account_id: string | null // For individual provider: bound OAuth account ID
+  oauth_provider_type: string | null // For pool provider: 'codex' | 'antigravity'
+  updated_at: number
+}
+
+// OAuth account row from database
+export interface OAuthAccountRow extends BaseRow {
+  // 基础信息
+  provider_type: string // 'codex' | 'antigravity'
+  email: string
+  
+  // OAuth Token
+  access_token: string // 加密存储
+  refresh_token: string // 加密存储
+  expires_at: number // Unix timestamp (milliseconds)
+  token_type: string // 'Bearer'
+  
+  // 账号状态
+  is_active: number // 0 or 1
+  health_status: string // 'active' | 'rate_limited' | 'expired' | 'forbidden'
+  consecutive_failures: number
+  
+  // Pool 相关
+  pool_enabled: number // 0 or 1
+  pool_weight: number // 1-10
+  
+  // 时间戳
+  last_used_at: number | null
+  last_refresh_at: number | null
+  
+  // 厂商特定数据（JSON）
+  provider_metadata: string | null // JSON string
+  quota_info: string | null // JSON string
+  usage_stats: string | null // JSON string
+  
   updated_at: number
 }
 

@@ -285,6 +285,19 @@ export interface IPCHandlers {
     selectedModel?: string,
     selectedProxy?: { type: 'provider' | 'proxy'; id: string }
   ) => Promise<void>
+
+  // OAuth operations
+  'oauth:getAuthUrl': (providerType: string) => Promise<{ success: boolean; authUrl?: string; state?: string; error?: string }>
+  'oauth:authorize': (providerType: string) => Promise<{ success: boolean; account?: any; error?: string }>
+  'oauth:cancelAuthorize': (providerType: string, state: string) => Promise<{ success: boolean; error?: string }>
+  'oauth:getAccounts': (providerType?: string) => Promise<{ success: boolean; accounts: any[]; error?: string }>
+  'oauth:deleteAccount': (accountId: string, options?: { deleteIndividualProvider?: boolean; cleanupPool?: boolean }) => Promise<{ success: boolean; error?: string }>
+  'oauth:refreshToken': (accountId: string) => Promise<{ success: boolean; error?: string }>
+  'oauth:updateQuota': (accountId: string) => Promise<{ success: boolean; error?: string }>
+  'oauth:togglePoolEnabled': (accountId: string, enabled: boolean) => Promise<{ success: boolean; error?: string }>
+  'oauth:getPoolStats': (providerType: string) => Promise<{ success: boolean; stats?: any; error?: string }>
+  'oauth:generateIndividualProvider': (accountId: string) => Promise<{ success: boolean; provider?: any; error?: string }>
+  'oauth:generatePoolProvider': (providerType: string, strategy: string) => Promise<{ success: boolean; provider?: any; error?: string }>
 }
 
 // ============ IPC Events (Main -> Renderer) ============

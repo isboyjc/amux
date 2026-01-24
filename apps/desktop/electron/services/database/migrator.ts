@@ -11,6 +11,9 @@ import { migration003ProviderPaths } from './migrations/003_provider_paths'
 import { migration004ProviderPassthrough } from './migrations/004_provider_passthrough'
 import { migration005Tunnel } from './migrations/005_tunnel'
 import { migration006RequestSource } from './migrations/006_request_source'
+import { migration007FixGeminiAdapter } from './migrations/007_fix_gemini_adapter'
+import { migration008FixGeminiStreamEndpoint } from './migrations/008_fix_gemini_stream_endpoint'
+import { migration009 } from './migrations/009_oauth_accounts'
 
 // Register all migrations here
 const migrations: Migration[] = [
@@ -19,7 +22,10 @@ const migrations: Migration[] = [
   migration003ProviderPaths,
   migration004ProviderPassthrough,
   migration005Tunnel,
-  migration006RequestSource
+  migration006RequestSource,
+  migration007FixGeminiAdapter,
+  migration008FixGeminiStreamEndpoint,
+  migration009
 ]
 
 /**

@@ -13,7 +13,7 @@ import {
   Zap
 } from 'lucide-react'
 import { useEffect, useState, useMemo, useRef } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'  // ✅ 添加 useSearchParams
 import { toast } from 'sonner'
 
 import { CopyIcon, RefreshIcon, ResetIcon, EyeIcon, EyeOffIcon, TerminalIcon, CheckIcon, TrashIcon } from '@/components/icons'
@@ -61,7 +61,9 @@ export function Providers() {
   } = useProviderStore()
   const { t } = useI18n()
   const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()  // ✅ 添加 searchParams
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null)
+  const hasProcessedInitialState = useRef(false)  // 🆕 标记是否已处理初始状态
   const [showAddModal, setShowAddModal] = useState(false)
   const [testingId, setTestingId] = useState<string | null>(null)
 
@@ -70,18 +72,48 @@ export function Providers() {
     fetch()
     fetchPresets()
   }, [fetch, fetchPresets])
-
-  // Auto-select from location state or first provider
+  
+  // 🆕 当 providers 列表改变时，重置初始状态标志（例如删除 provider 后）
   useEffect(() => {
-    // Check if there's a selectedProviderId passed from navigation
+    // 如果当前选中的 provider 已经不存在了，重置标志以允许重新选择
+    if (selectedProviderId && !providers.find(p => p.id === selectedProviderId)) {
+      hasProcessedInitialState.current = false
+    }
+  }, [providers, selectedProviderId])
+
+  // 🆕 Auto-select from URL query params, location state, or first provider
+  useEffect(() => {
+    // 只在第一次或 providers 列表变化时处理初始状态
+    if (hasProcessedInitialState.current && providers.length > 0) {
+      return
+    }
+    
+    // 1. 优先检查 URL 查询参数 ?select={providerId}
+    const selectId = searchParams.get('select')
+    if (selectId && providers.find(p => p.id === selectId)) {
+      setSelectedProviderId(selectId)
+      // 清除 URL 参数（保持 URL 干净）
+      searchParams.delete('select')
+      setSearchParams(searchParams, { replace: true })
+      hasProcessedInitialState.current = true
+      return
+    }
+    
+    // 2. 检查 location state（用于页面内跳转）
     const state = location.state as { selectedProviderId?: string } | null
     const stateProviderId = state?.selectedProviderId
     if (stateProviderId && providers.find(p => p.id === stateProviderId)) {
       setSelectedProviderId(stateProviderId)
-    } else if (providers.length > 0 && !selectedProviderId) {
-      setSelectedProviderId(providers[0]?.id ?? null)
+      hasProcessedInitialState.current = true
+      return
     }
-  }, [providers, selectedProviderId, location.state])
+    
+    // 3. 默认选中第一个 provider
+    if (providers.length > 0 && !selectedProviderId) {
+      setSelectedProviderId(providers[0]?.id ?? null)
+      hasProcessedInitialState.current = true
+    }
+  }, [providers, selectedProviderId, location.state, searchParams, setSearchParams])
 
   const selectedProvider = useMemo(() => {
     return providers.find(p => p.id === selectedProviderId) || null
@@ -382,6 +414,7 @@ function ProviderConfigPanel({
   const [apiKey, setApiKey] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
   const [selectedModels, setSelectedModels] = useState<string[]>([])
+  
   const [customModelId, setCustomModelId] = useState('')
   const [showTestModal, setShowTestModal] = useState(false)
   const [fetchingModels, setFetchingModels] = useState(false)
@@ -476,9 +509,30 @@ function ProviderConfigPanel({
   // Copy proxy URL
   const handleCopyProxyUrl = () => {
     if (!proxyPath) return
-    const endpoint = provider?.adapterType === 'anthropic' ? '/v1/messages' : '/v1/chat/completions'
+    const endpoint = getProxyEndpoint()
     const url = `http://127.0.0.1:9527/providers/${proxyPath}${endpoint}`
     copyProxyUrl(url)
+  }
+
+  // 获取直通代理的端点（从 Provider 配置或预设中读取）
+  // 获取直通代理端点（保留 {model} 占位符用于展示）
+  const getProxyEndpoint = () => {
+    if (!provider) return '/v1/chat/completions'
+    
+    // 优先使用 Provider 自己的 chatPath
+    let chatPath = provider.chatPath
+    
+    // 如果 Provider 没有设置，使用预设的 chatPath
+    if (!chatPath && preset?.chatPath) {
+      chatPath = preset.chatPath
+    }
+    
+    // 如果还是没有，使用默认值
+    if (!chatPath) {
+      chatPath = '/v1/chat/completions'
+    }
+    
+    return chatPath
   }
 
   const handleAddCustomModel = () => {
@@ -508,7 +562,7 @@ function ProviderConfigPanel({
   }
 
   const handleFetchModels = async () => {
-    // Use provider's modelsPath (from database) or fallback to preset
+    // Regular Provider: use existing logic
     const modelsPath = provider.modelsPath || preset?.modelsPath
     if (!modelsPath || !apiKey || !baseUrl || !provider?.adapterType) {
       toast.warning(t('providers.apiKeyRequired'))
@@ -529,16 +583,21 @@ function ProviderConfigPanel({
       }) as { success: boolean; models: Array<{ id: string; name?: string }>; error?: string }
       
       if (result.success && result.models && result.models.length > 0) {
-        // Merge fetched models with existing provider models (deduplicate)
         const fetchedModelIds = result.models.map((m) => m.id)
-        const existingModelIds = provider.models || []
-        const mergedModelIds = [...new Set([...existingModelIds, ...fetchedModelIds])]
+        
+        // When we successfully fetch models (especially more than 1), replace the entire model list
+        if (result.models.length > 1) {
+          // Clear selected models
+          setSelectedModels([])
+          console.log(`[FetchModels] Cleared selected models, replacing model list with ${fetchedModelIds.length} new models`)
+        }
         
         // Update provider's models via store (will update both database and UI)
-        await onModelsUpdate(mergedModelIds)
+        // Replace with new models instead of merging
+        await onModelsUpdate(fetchedModelIds)
         
         toast.success(t('providers.fetchModelsSuccess').replace('{count}', String(result.models.length)))
-        console.log(`[FetchModels] Successfully fetched ${fetchedModelIds.length} models, merged total: ${mergedModelIds.length}`)
+        console.log(`[FetchModels] Successfully fetched and updated ${fetchedModelIds.length} models`)
       } else if (result.error) {
         toast.error(t('providers.fetchModelsFailed'), {
           description: result.error
@@ -877,8 +936,7 @@ function ProviderConfigPanel({
                   <Label className="text-xs font-medium">{t('providers.proxyUrl')}</Label>
                   <div className="flex gap-2">
                     <code className="flex-1 bg-muted px-2.5 py-1.5 rounded-md text-xs font-mono truncate border">
-                      http://127.0.0.1:9527/providers/{proxyPath}
-                      {provider?.adapterType === 'anthropic' ? '/v1/messages' : '/v1/chat/completions'}
+                      http://127.0.0.1:9527/providers/{proxyPath}{getProxyEndpoint()}
                     </code>
                     <Button
                       variant="ghost"

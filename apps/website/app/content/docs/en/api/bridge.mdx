@@ -66,9 +66,13 @@ function createBridge(options: BridgeOptions): Bridge
     interface BridgeConfig {
       apiKey?: string           // API key for the outbound provider
       baseURL?: string          // Base URL for API calls
+      chatPath?: string         // Custom chat endpoint path
+      modelsPath?: string       // Custom models endpoint path
       timeout?: number          // Request timeout in milliseconds
       maxRetries?: number       // Maximum number of retries
       headers?: Record<string, string>  // Additional headers
+      authHeaderName?: string   // Authentication header name (default: 'Authorization')
+      authHeaderPrefix?: string // Authentication header prefix (default: 'Bearer')
     }
     ```
 
@@ -76,9 +80,13 @@ function createBridge(options: BridgeOptions): Bridge
     |----------|------|---------|-------------|
     | `apiKey` | `string?` | - | API key for authentication |
     | `baseURL` | `string?` | Auto-detected | Custom API base URL |
+    | `chatPath` | `string?` | Auto-detected | Custom chat endpoint path (overrides adapter default) |
+    | `modelsPath` | `string?` | Auto-detected | Custom models endpoint path (overrides adapter default) |
     | `timeout` | `number?` | `120000` | Request timeout (ms) |
     | `maxRetries` | `number?` | `3` | Max retry attempts |
     | `headers` | `Record<string, string>?` | `{}` | Custom HTTP headers |
+    | `authHeaderName` | `string?` | `'Authorization'` | Name of the authentication header |
+    | `authHeaderPrefix` | `string?` | `'Bearer'` | Prefix for the authentication header value |
   </Tab>
 </Tabs>
 

@@ -22,6 +22,10 @@ export interface Provider {
   color?: string // Brand color hex code
   enableAsProxy?: boolean // Enable provider as passthrough proxy
   proxyPath?: string | null // URL path identifier for passthrough proxy
+  // OAuth Pool Provider fields
+  isPool?: boolean // Whether this is a pool provider
+  oauthAccountId?: string | null // For individual provider: bound OAuth account ID
+  oauthProviderType?: string | null // For pool provider: 'codex' | 'antigravity'
   createdAt: number
   updatedAt: number
 }
@@ -211,3 +215,16 @@ export interface ChatMessage {
   usage: string | null
   createdAt: number
 }
+
+// Re-export OAuth types
+export type {
+  OAuthProviderType,
+  OAuthHealthStatus,
+  OAuthAccount,
+  CodexMetadata,
+  CodexUsageStats,
+  AntigravityMetadata,
+  AntigravityQuotaInfo,
+  OAuthPoolStats,
+  ProviderGenerationMode
+} from './oauth'

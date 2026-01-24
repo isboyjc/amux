@@ -73,7 +73,7 @@ export const googleAdapter: LLMAdapter = {
       capabilities: this.capabilities,
       endpoint: {
         baseUrl: 'https://generativelanguage.googleapis.com',
-        chatPath: '/v1beta/models/{model}:generateContent',
+        chatPath: '/v1beta/models/{model}:streamGenerateContent',  // Use streaming endpoint
         modelsPath: '/v1beta/models',
       },
     }

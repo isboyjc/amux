@@ -9,6 +9,7 @@
     "providers": "Providers",
     "proxies": "Proxies",
     "tunnel": "Tunnel",
+    "oauth": "2API",
     "service": "Service",
     "logs": "Logs",
     "tokens": "Tokens",
@@ -393,5 +394,126 @@
     "serviceStarting": "Starting proxy service...",
     "serviceStopped": "Proxy service stopped. Starting...",
     "serviceError": "Proxy service error. Please check settings."
+  },
+  "oauth": {
+    "title": "2API OAuth",
+    "description": "Authorize and manage OAuth accounts",
+    "antigravity": "Antigravity",
+    "codex": "Codex",
+    "google": "Google",
+    "openai": "OpenAI",
+    "addAccount": "Add Account",
+    "noAccounts": "No accounts yet",
+    "noAccountsDesc": "Click \"Add Account\" to authorize your first {provider} account",
+    "accountCard": {
+      "poolEnabled": "Pool Enabled",
+      "inactive": "Inactive",
+      "lastUsed": "Last used",
+      "refreshToken": "Refresh Token",
+      "refreshAll": "Refresh Stats & Quota",
+      "delete": "Delete",
+      "deleteConfirm": "Delete Account",
+      "deleteConfirmDesc": "Are you sure you want to delete {email}? This action cannot be undone and any associated providers will also be removed.",
+      "healthStatus": {
+        "active": "Active",
+        "rate_limited": "Rate Limited",
+        "expired": "Expired",
+        "forbidden": "Forbidden",
+        "error": "Error"
+      }
+    },
+    "pool": {
+      "title": "Pool Configuration",
+      "accountStatus": "Account Status",
+      "stats": {
+        "totalAccounts": "Total Accounts",
+        "enabledAccounts": "Enabled",
+        "totalRequests": "Total Requests",
+        "avgLatency": "Avg Latency"
+      }
+    },
+    "authorization": {
+      "title": "Authorize {name} Account",
+      "codexDesc": "Authorize your OpenAI account to access Codex",
+      "antigravityDesc": "Authorize your Google account to access Antigravity",
+      "authUrl": "Authorization URL",
+      "authUrlHint": "You can copy this URL and open it in your browser manually.",
+      "startAuth": "Start Authorization",
+      "authorizing": "Authorizing...",
+      "steps": "Authorization Steps:",
+      "step1": "Click the \"Start Authorization\" button below",
+      "step2": "Sign in to your {provider} account in the popup window",
+      "step3": "Grant the requested permissions",
+      "step4": "The window will automatically close after authorization"
+    },
+    "quota": {
+      "codex": {
+        "todayUsage": "Today's Usage",
+        "todayRequests": "Today's Requests",
+        "todayTokens": "Today's Tokens",
+        "totalRequests": "Total Requests",
+        "cumulative": "Cumulative",
+        "requests": "requests",
+        "tokens": "tokens",
+        "noOfficialQuota": "OpenAI doesn't provide public quota API, showing local statistics only",
+        "freeAccountWarning": "Free accounts do not have Codex API access and are disabled by default. Please upgrade to Plus for access"
+      },
+      "antigravity": {
+        "modelQuotas": "Model Quotas",
+        "forbidden": "Access forbidden - quota unavailable",
+        "noQuota": "No quota information available",
+        "load": "Load",
+        "updated": "Updated",
+        "showAll": "Show All",
+        "showLess": "Show Less",
+        "more": "more",
+        "models": "models",
+        "resetIn": "Reset in",
+        "resetting": "Resetting soon"
+      }
+    },
+    "stats": {
+      "localCalls": "Local Calls",
+      "noData": "No data yet",
+      "tryOtherRange": "Try switching to other time ranges",
+      "requests": "Requests",
+      "successRate": "Success Rate",
+      "tokens": "Tokens",
+      "lastUsed": "Last used",
+      "today": "Today",
+      "week": "Week",
+      "month": "Month",
+      "total": "Total",
+      "thisWeek": "This Week",
+      "thisMonth": "This Month",
+      "cumulative": "Cumulative"
+    },
+    "messages": {
+      "loadFailed": "Failed to load accounts",
+      "authUrlFailed": "Failed to get authorization URL",
+      "authSuccess": "Account authorized successfully",
+      "authFailed": "Failed to authorize account",
+      "deleteFailed": "Failed to delete account",
+      "refreshSuccess": "Token refreshed successfully",
+      "refreshFailed": "Failed to refresh token",
+      "poolToggleSuccess": "Pool status updated",
+      "poolToggleFailed": "Failed to update pool status",
+      "quotaUpdateSuccess": "Quota updated",
+      "quotaUpdateFailed": "Failed to update quota",
+      "poolProviderExists": "Pool Provider exists",
+      "poolProviderStatus": "Active: {active}, Healthy: {healthy}",
+      "poolProviderCreated": "Pool Provider created",
+      "poolProviderAccountsAdded": "Added {count} accounts to Pool",
+      "poolProviderCheckFailed": "Failed to check Pool Provider",
+      "providerCreated": "Proxy configuration created",
+      "providerCreateFailed": "Failed to create proxy configuration",
+      "checkPoolSuccess": "Pool Provider checked/created successfully",
+      "checkPoolFailed": "Failed to check/create Pool Provider",
+      "createIndividualSuccess": "Proxy configuration created/updated successfully",
+      "createIndividualFailed": "Failed to create/update proxy configuration"
+    },
+    "checkPoolProvider": "Check Provider Pool",
+    "createIndividualProvider": "Generate Proxy Config",
+    "createProvider": "Generate Config"
   }
 }

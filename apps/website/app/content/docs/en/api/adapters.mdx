@@ -220,6 +220,7 @@ Handles conversion from IR to provider format.
 interface OutboundAdapter {
   buildRequest(ir: LLMRequestIR): unknown
   buildResponse?(ir: LLMResponseIR): unknown
+  createStreamBuilder?(): StreamEventBuilder
   buildStreamHandler?(): StreamHandler
   buildErrorHandler?(): ErrorHandler
 }
@@ -231,7 +232,7 @@ All `build*` methods convert **from IR to provider format**. They are used when 
 
 ### Methods
 
-<Tabs items={['buildRequest', 'buildResponse', 'buildStreamHandler', 'buildErrorHandler']}>
+<Tabs items={['buildRequest', 'buildResponse', 'createStreamBuilder', 'buildStreamHandler', 'buildErrorHandler']}>
   <Tab value="buildRequest">
     ```typescript
     buildRequest(ir: LLMRequestIR): unknown
@@ -265,6 +266,66 @@ All `build*` methods convert **from IR to provider format**. They are used when 
     - `ir` - Response in IR format
 
     **Returns:** Response in provider's format
+  </Tab>
+
+  <Tab value="createStreamBuilder">
+    ```typescript
+    createStreamBuilder?(): StreamEventBuilder
+    ```
+
+    Creates a stream event builder for converting IR events to provider SSE format.
+
+    **Returns:** `StreamEventBuilder` - Stateful stream event builder
+
+    ```typescript
+    interface StreamEventBuilder {
+      // Process an IR stream event and return SSE events
+      process(event: LLMStreamEvent): SSEEvent[]
+
+      // Get final events when stream ends
+      finalize?(): SSEEvent[]
+    }
+    ```
+
+    **Purpose:**
+    - Maintains state for proper event sequencing
+    - Converts IR stream events to provider-specific SSE format
+    - Handles complex streaming protocols (e.g., Anthropic's multi-event system)
+
+    **Example:**
+    ```typescript
+    createStreamBuilder(): StreamEventBuilder {
+      let contentBlockIndex = 0
+
+      return {
+        process(event: LLMStreamEvent): SSEEvent[] {
+          if (event.type === 'start') {
+            return [
+              { event: 'message_start', data: { id: event.id } }
+            ]
+          }
+          if (event.type === 'content' && event.content) {
+            return [
+              {
+                event: 'content_block_delta',
+                data: {
+                  index: contentBlockIndex,
+                  delta: { text: event.content.delta }
+                }
+              }
+            ]
+          }
+          return []
+        },
+
+        finalize() {
+          return [
+            { event: 'message_end', data: {} }
+          ]
+        }
+      }
+    }
+    ```
   </Tab>
 
   <Tab value="buildStreamHandler">
@@ -308,6 +369,11 @@ interface AdapterCapabilities {
   multimodal: boolean
   systemPrompt: boolean
   toolChoice: boolean
+  reasoning?: boolean          // Supports reasoning/thinking mode
+  webSearch?: boolean          // Supports web search
+  jsonMode?: boolean           // Supports JSON mode/structured output
+  logprobs?: boolean           // Supports log probabilities
+  seed?: boolean               // Supports seed for reproducibility
 }
 ```
 
@@ -321,6 +387,11 @@ interface AdapterCapabilities {
 | `multimodal` | `boolean` | Supports multiple content types |
 | `systemPrompt` | `boolean` | Supports system prompts |
 | `toolChoice` | `boolean` | Supports tool choice control |
+| `reasoning` | `boolean?` | Supports reasoning/thinking mode (DeepSeek, Qwen, Anthropic) |
+| `webSearch` | `boolean?` | Supports web search (Qwen) |
+| `jsonMode` | `boolean?` | Supports JSON mode and structured output |
+| `logprobs` | `boolean?` | Supports log probabilities |
+| `seed` | `boolean?` | Supports seed for reproducible generation |
 
 <Callout type="info">
 Use capabilities to check if an adapter supports the features you need before using it in a Bridge.
@@ -383,6 +454,13 @@ interface AdapterInfo {
   capabilities: AdapterCapabilities
   description?: string
   provider?: string
+  endpoint?: ProviderEndpoint
+}
+
+interface ProviderEndpoint {
+  baseUrl: string             // Base URL for the API
+  chatPath?: string          // Chat completions path (default: '/v1/chat/completions')
+  modelsPath?: string        // Models list path (default: '/v1/models')
 }
 ```
 
@@ -395,6 +473,13 @@ console.log(`${info.name} v${info.version}`)
 console.log(`Provider: ${info.provider}`)
 console.log(`Description: ${info.description}`)
 console.log(`Capabilities:`, info.capabilities)
+
+// Endpoint information
+if (info.endpoint) {
+  console.log(`Base URL: ${info.endpoint.baseUrl}`)
+  console.log(`Chat path: ${info.endpoint.chatPath}`)
+  console.log(`Models path: ${info.endpoint.modelsPath}`)
+}
 ```
 
 ## Creating Custom Adapters

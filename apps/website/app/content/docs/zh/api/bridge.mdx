@@ -66,9 +66,13 @@ function createBridge(options: BridgeOptions): Bridge
     interface BridgeConfig {
       apiKey?: string           // 出站提供商的 API 密钥
       baseURL?: string          // API 调用的基础 URL
+      chatPath?: string         // 自定义聊天端点路径
+      modelsPath?: string       // 自定义模型端点路径
       timeout?: number          // 请求超时时间（毫秒）
       maxRetries?: number       // 最大重试次数
       headers?: Record<string, string>  // 额外的请求头
+      authHeaderName?: string   // 认证请求头名称（默认：'Authorization'）
+      authHeaderPrefix?: string // 认证请求头前缀（默认：'Bearer'）
     }
     ```
 
@@ -76,9 +80,13 @@ function createBridge(options: BridgeOptions): Bridge
     |------|------|--------|------|
     | `apiKey` | `string?` | - | 用于身份验证的 API 密钥 |
     | `baseURL` | `string?` | 自动检测 | 自定义 API 基础 URL |
+    | `chatPath` | `string?` | 自动检测 | 自定义聊天端点路径（覆盖适配器默认值） |
+    | `modelsPath` | `string?` | 自动检测 | 自定义模型端点路径（覆盖适配器默认值） |
     | `timeout` | `number?` | `120000` | 请求超时时间（毫秒） |
     | `maxRetries` | `number?` | `3` | 最大重试次数 |
     | `headers` | `Record<string, string>?` | `{}` | 自定义 HTTP 请求头 |
+    | `authHeaderName` | `string?` | `'Authorization'` | 认证请求头的名称 |
+    | `authHeaderPrefix` | `string?` | `'Bearer'` | 认证请求头值的前缀 |
   </Tab>
 </Tabs>
 

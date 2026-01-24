@@ -1,5 +1,6 @@
-import type { HTTPRequestOptions, HTTPResponse } from './types'
 import { APIError, NetworkError, TimeoutError } from '../errors'
+
+import type { HTTPRequestOptions, HTTPResponse } from './types'
 
 /**
  * Simple HTTP client for making requests to LLM APIs
@@ -167,14 +168,16 @@ export class HTTPClient {
     }, options.timeout ?? this.defaultTimeout)
 
     try {
+      const headers = {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+        ...this.defaultHeaders,
+        ...options.headers,
+      }
+      
       const response = await fetch(options.url, {
         method: options.method,
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'text/event-stream',
-          ...this.defaultHeaders,
-          ...options.headers,
-        },
+        headers,
         body: options.body ? JSON.stringify(options.body) : undefined,
         signal: options.signal ?? controller.signal,
       })

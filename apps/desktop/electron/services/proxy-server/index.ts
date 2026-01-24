@@ -4,9 +4,12 @@
 
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import Fastify, { FastifyInstance } from 'fastify'
+
 import cors from '@fastify/cors'
+import Fastify, { FastifyInstance } from 'fastify'
+
 import { getSettingsRepository } from '../database/repositories'
+
 import type { ProxyServerConfig, ProxyServerState, ProxyServerMetrics } from './types'
 
 // Read version from package.json
@@ -354,7 +357,24 @@ export async function startServer(
   invalidateCache()
   console.log('[ProxyServer] Bridge cache cleared')
 
+  // 🔒 重置 OAuth 路由标志（在创建新服务器之前）
+  try {
+    const { resetOAuthRoutes } = await import('./oauth')
+    resetOAuthRoutes()
+  } catch (error) {
+    // Ignore errors
+  }
+
   server = createServer(fullConfig)
+
+  // 🆕 Register OAuth translation routes FIRST (higher priority)
+  try {
+    const { registerOAuthRoutes } = await import('./oauth')
+    registerOAuthRoutes(server)
+  } catch (error) {
+    console.error('[ProxyServer] Failed to register OAuth routes:', error)
+    // OAuth routes are optional, don't fail server start
+  }
 
   // Register routes BEFORE listening (Fastify requirement)
   if (routeRegistrar) {
@@ -417,6 +437,14 @@ export async function stopServer(): Promise<void> {
       running: false,
       port: serverState.port,
       host: serverState.host
+    }
+    
+    // 🔒 重置 OAuth 路由注册标志，允许下次重新注册
+    try {
+      const { resetOAuthRoutes } = await import('./oauth')
+      resetOAuthRoutes()
+    } catch (error) {
+      // OAuth routes are optional, ignore errors
     }
   }
 }
