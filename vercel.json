@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm build:website",
+  "devCommand": "pnpm dev:website",
+  "installCommand": "pnpm install --no-frozen-lockfile",
+  "framework": null,
+  "outputDirectory": "apps/website/.next",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD ./apps/website"
+}
