@@ -174,7 +174,7 @@ jobs:
             #### macOS
             - **Apple Silicon (M1/M2/M3)**: `Amux-*-macos-arm64.dmg`
             - **Intel Mac**: `Amux-*-macos-x64.dmg`
-            - **通用版本**: `Amux-*-macos-universal.dmg`
+            - **Universal**: `Amux-*-macos-universal.dmg`
             
             #### Windows
             - **Windows x64**: `Amux-*-windows-x64-setup.exe`
@@ -186,7 +186,7 @@ jobs:
             
             ### 📝 Changelog
             
-            View [CHANGELOG](https://github.com/isboyjc/amux/blob/main/apps/desktop/CHANGELOG.md) 了解详细更新内容。
+            View [CHANGELOG](https://github.com/isboyjc/amux/blob/main/apps/desktop/CHANGELOG.md) for detailed update information.
             
             ### ⚠️ MacOS Security Tips
             
