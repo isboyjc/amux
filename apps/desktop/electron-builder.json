@@ -63,15 +63,16 @@
     "target": [
       {
         "target": "AppImage",
-        "arch": ["x64", "arm64"]
+        "arch": ["x64"]
       },
       {
         "target": "deb",
-        "arch": ["x64", "arm64"]
+        "arch": ["x64"]
       }
     ],
     "artifactName": "${productName}-${version}-linux-${arch}.${ext}",
-    "category": "Development"
+    "category": "Development",
+    "maintainer": "isboyjc <me@isboyjc.com>"
   },
   "appImage": {
     "artifactName": "${productName}-${version}-linux-${arch}.AppImage"

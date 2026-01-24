@@ -173,8 +173,8 @@ jobs:
             - **Windows ARM64**: `Amux-*-windows-arm64-setup.exe`
             
             #### Linux
-            - **AppImage**: `Amux-*-linux-x64.AppImage`
-            - **Debian/Ubuntu**: `Amux-*-linux-x64.deb`
+            - **AppImage (x64)**: `Amux-*-linux-x64.AppImage`
+            - **Debian/Ubuntu (x64)**: `Amux-*-linux-amd64.deb`
             
             ### 📝 更新日志
             

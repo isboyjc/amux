@@ -3,7 +3,11 @@
   "version": "0.1.3",
   "private": true,
   "description": "Amux Desktop Client - LLM API Proxy Bridge",
-  "author": "isboyjc",
+  "author": {
+    "name": "isboyjc",
+    "email": "me@isboyjc.com"
+  },
+  "homepage": "https://amux.ai",
   "license": "MIT",
   "main": "out/main/index.js",
   "scripts": {
