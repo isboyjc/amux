@@ -1,0 +1,185 @@
+name: Release Desktop App
+
+on:
+  push:
+    tags:
+      - 'desktop-v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.1.3)'
+        required: true
+
+jobs:
+  release:
+    name: Build & Release (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+      
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Install system dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlite3-dev
+      
+      - name: Build Desktop App (macOS)
+        if: matrix.os == 'macos-latest'
+        run: pnpm package:desktop:mac
+        env:
+          # 如果有 Apple 开发者证书，可以配置代码签名
+          # CSC_LINK: ${{ secrets.MAC_CERTS }}
+          # CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
+          # 不签名也可以发布，用户需要手动信任
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      
+      - name: Build Desktop App (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          pnpm package:desktop:win
+          pnpm package:desktop:win:arm64
+        env:
+          # 如果有 Windows 代码签名证书
+          # CSC_LINK: ${{ secrets.WIN_CERTS }}
+          # CSC_KEY_PASSWORD: ${{ secrets.WIN_CERTS_PASSWORD }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      
+      - name: Build Desktop App (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: pnpm package:desktop:linux
+      
+      - name: List release files (macOS)
+        if: matrix.os == 'macos-latest'
+        run: ls -lah apps/desktop/release/
+      
+      - name: Upload artifacts (macOS)
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-builds
+          path: |
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.zip
+          if-no-files-found: error
+      
+      - name: List release files (Windows)
+        if: matrix.os == 'windows-latest'
+        run: Get-ChildItem -Path apps/desktop/release/ -Recurse
+        shell: pwsh
+      
+      - name: Upload artifacts (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-builds
+          path: |
+            apps/desktop/release/*.exe
+            apps/desktop/release/*-win*.zip
+          if-no-files-found: error
+      
+      - name: List release files (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: ls -lah apps/desktop/release/
+      
+      - name: Upload artifacts (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-builds
+          path: |
+            apps/desktop/release/*.AppImage
+            apps/desktop/release/*.deb
+          if-no-files-found: error
+  
+  publish:
+    name: Publish Release
+    needs: release
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+      
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            artifacts/macos-builds/*
+            artifacts/windows-builds/*
+            artifacts/linux-builds/*
+          body: |
+            ## 🎉 Amux Desktop Release
+            
+            ### 📥 下载
+            
+            选择适合你系统的版本：
+            
+            #### macOS
+            - **Apple Silicon (M1/M2/M3)**: `Amux-*-macos-arm64.dmg`
+            - **Intel Mac**: `Amux-*-macos-x64.dmg`
+            - **通用版本**: `Amux-*-macos-universal.dmg`
+            
+            #### Windows
+            - **Windows x64**: `Amux-*-windows-x64-setup.exe`
+            - **Windows ARM64**: `Amux-*-windows-arm64-setup.exe`
+            
+            #### Linux
+            - **AppImage**: `Amux-*-linux-x64.AppImage`
+            - **Debian/Ubuntu**: `Amux-*-linux-x64.deb`
+            
+            ### 📝 更新日志
+            
+            查看 [CHANGELOG](https://github.com/isboyjc/amux/blob/main/apps/desktop/CHANGELOG.md) 了解详细更新内容。
+            
+            ### ⚠️ macOS 安全提示
+            
+            由于应用未经过 Apple 公证，首次运行时：
+            1. 右键点击应用图标
+            2. 选择"打开"
+            3. 在弹出的对话框中点击"打开"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
