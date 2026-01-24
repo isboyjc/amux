@@ -149,9 +149,14 @@ jobs:
       - name: Display structure of downloaded files
         run: ls -R artifacts
       
+      - name: Extract version
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/desktop-v}" >> $GITHUB_OUTPUT
+      
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
+          name: Amux Desktop v${{ steps.version.outputs.VERSION }}
           draft: false
           prerelease: false
           generate_release_notes: true
@@ -162,9 +167,9 @@ jobs:
           body: |
             ## 🎉 Amux Desktop Release
             
-            ### 📥 下载
+            ### 📥 Download
             
-            选择适合你系统的版本：
+            Select the appropriate version for your system:
             
             #### macOS
             - **Apple Silicon (M1/M2/M3)**: `Amux-*-macos-arm64.dmg`
@@ -179,15 +184,15 @@ jobs:
             - **AppImage (x64)**: `Amux-*-linux-x64.AppImage`
             - **Debian/Ubuntu (x64)**: `Amux-*-linux-amd64.deb`
             
-            ### 📝 更新日志
+            ### 📝 Changelog
             
-            查看 [CHANGELOG](https://github.com/isboyjc/amux/blob/main/apps/desktop/CHANGELOG.md) 了解详细更新内容。
+            View [CHANGELOG](https://github.com/isboyjc/amux/blob/main/apps/desktop/CHANGELOG.md) 了解详细更新内容。
             
-            ### ⚠️ macOS 安全提示
+            ### ⚠️ MacOS Security Tips
             
-            由于应用未经过 Apple 公证，首次运行时：
-            1. 右键点击应用图标
-            2. 选择"打开"
-            3. 在弹出的对话框中点击"打开"
+            Since the app is not notarized by Apple, when you run it for the first time:
+            1. Right click on the application icon
+            2. Select "Open"
+            3. Click "Open" in the pop-up dialog box
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
