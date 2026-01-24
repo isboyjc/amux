@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "cd apps/website && pnpm build",
-  "devCommand": "cd apps/website && pnpm dev",
+  "buildCommand": "pnpm --filter @amux.ai/website build",
+  "devCommand": "pnpm --filter @amux.ai/website dev",
   "installCommand": "pnpm install --no-frozen-lockfile",
   "framework": null,
   "outputDirectory": "apps/website/.next"
