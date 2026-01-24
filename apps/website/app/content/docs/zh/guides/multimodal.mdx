@@ -23,9 +23,9 @@ Amux 统一了跨提供商的多模态内容格式，允许你使用相同的代
 在消息内容中直接传递图像 URL：
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
 const bridge = createBridge({
   inbound: openaiAdapter,
@@ -197,7 +197,7 @@ const response = await bridge.chat({
 ### 音频输入（Qwen）
 
 ```typescript
-import { qwenAdapter } from '@amux/adapter-qwen'
+import { qwenAdapter } from '@amux.ai/adapter-qwen'
 
 const bridge = createBridge({
   inbound: qwenAdapter,
@@ -225,7 +225,7 @@ const response = await bridge.chat({
 ### 视频输入（Gemini、Qwen）
 
 ```typescript
-import { geminiAdapter } from '@amux/adapter-gemini'
+import { geminiAdapter } from '@amux.ai/adapter-gemini'
 
 const bridge = createBridge({
   inbound: geminiAdapter,

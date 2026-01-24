@@ -3,7 +3,7 @@ import type {
   Message,
   Tool,
   ToolChoice,
-} from '@amux/llm-bridge'
+} from '@amux.ai/llm-bridge'
 
 import type { KimiRequest, KimiMessage, KimiTool } from '../types'
 

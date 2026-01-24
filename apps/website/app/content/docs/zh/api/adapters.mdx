@@ -495,7 +495,7 @@ if (info.endpoint) {
 <Tabs items={['1. 定义结构', '2. 实现入站', '3. 实现出站', '4. 添加元数据']}>
   <Tab value="1. 定义结构">
     ```typescript
-    import type { LLMAdapter } from '@amux/llm-bridge'
+    import type { LLMAdapter } from '@amux.ai/llm-bridge'
 
     export const myAdapter: LLMAdapter = {
       name: 'my-provider',
@@ -632,7 +632,7 @@ if (info.endpoint) {
 ### 完整示例
 
 ```typescript
-import type { LLMAdapter, LLMRequestIR, LLMResponseIR } from '@amux/llm-bridge'
+import type { LLMAdapter, LLMRequestIR, LLMResponseIR } from '@amux.ai/llm-bridge'
 
 export const myAdapter: LLMAdapter = {
   name: 'my-provider',

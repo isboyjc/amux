@@ -1,4 +1,4 @@
-import type { JSONSchema } from '@amux/llm-bridge'
+import type { JSONSchema } from '@amux.ai/llm-bridge'
 
 /**
  * Anthropic request format

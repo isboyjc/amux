@@ -6,9 +6,9 @@ import type { BridgeOptions, LLMBridge } from './types'
  *
  * @example
  * ```typescript
- * import { createBridge } from '@amux/llm-bridge'
- * import { openaiAdapter } from '@amux/adapter-openai'
- * import { anthropicAdapter } from '@amux/adapter-anthropic'
+ * import { createBridge } from '@amux.ai/llm-bridge'
+ * import { openaiAdapter } from '@amux.ai/adapter-openai'
+ * import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
  *
  * const bridge = createBridge({
  *   inbound: openaiAdapter,

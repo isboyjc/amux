@@ -1,7 +1,7 @@
 /**
  * Adapter configuration types
  */
-import type { LLMAdapter } from '@amux/llm-bridge'
+import type { LLMAdapter } from '@amux.ai/llm-bridge'
 
 export interface AdapterConfig {
   adapter: LLMAdapter

@@ -7,7 +7,7 @@ import type {
   TextContent,
   ImageContent,
   ToolCall,
-} from '@amux/llm-bridge'
+} from '@amux.ai/llm-bridge'
 
 import type { GeminiRequest, GeminiContent } from '../types'
 

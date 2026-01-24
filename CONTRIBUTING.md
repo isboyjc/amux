@@ -49,8 +49,8 @@ pnpm start
 ```
 amux/
 ├── packages/
-│   ├── llm-bridge/        # Core IR + Bridge (@amux/llm-bridge)
-│   ├── utils/             # Shared utilities (@amux/utils)
+│   ├── llm-bridge/        # Core IR + Bridge (@amux.ai/llm-bridge)
+│   ├── utils/             # Shared utilities (@amux.ai/utils)
 │   ├── adapter-openai/    # OpenAI adapter
 │   ├── adapter-anthropic/ # Anthropic adapter
 │   ├── adapter-deepseek/  # DeepSeek adapter

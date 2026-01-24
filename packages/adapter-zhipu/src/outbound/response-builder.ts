@@ -1,5 +1,5 @@
-import type { LLMResponseIR } from '@amux/llm-bridge'
-import { contentToString } from '@amux/llm-bridge'
+import type { LLMResponseIR } from '@amux.ai/llm-bridge'
+import { contentToString } from '@amux.ai/llm-bridge'
 
 import type { ZhipuResponse } from '../types'
 

@@ -1,6 +1,6 @@
 {
-  "name": "@amux/adapter-deepseek",
-  "version": "0.1.0",
+  "name": "@amux.ai/adapter-deepseek",
+  "version": "0.1.1",
   "description": "DeepSeek adapter for Amux",
   "keywords": [
     "amux",
@@ -39,7 +39,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@amux/llm-bridge": "workspace:*"
+    "@amux.ai/llm-bridge": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.11.5",

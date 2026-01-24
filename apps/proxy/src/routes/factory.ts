@@ -1,7 +1,7 @@
 /**
  * Route factory - creates Express routers for bridge routes
  */
-import { Bridge } from '@amux/llm-bridge'
+import { Bridge } from '@amux.ai/llm-bridge'
 import { Router, Request, Response } from 'express'
 import { adapters } from '../adapters'
 import type { RouteConfig } from '../types'

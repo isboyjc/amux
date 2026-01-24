@@ -21,9 +21,9 @@ Amux normalizes tool calling formats across all providers, allowing you to use t
 Define tools using the standard JSON Schema format:
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
 const bridge = createBridge({
   inbound: openaiAdapter,
@@ -179,9 +179,9 @@ if (response.choices[0].message.tool_calls) {
 Here's a full implementation with tool execution:
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
 // Define tools
 const tools = [

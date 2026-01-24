@@ -17,33 +17,33 @@ description: 安装 Amux 并开始使用
 安装核心包和您需要的适配器：
 
 ```bash tab="pnpm"
-pnpm add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
+pnpm add @amux.ai/llm-bridge @amux.ai/adapter-openai @amux.ai/adapter-anthropic
 ```
 
 ```bash tab="npm"
-npm install @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
+npm install @amux.ai/llm-bridge @amux.ai/adapter-openai @amux.ai/adapter-anthropic
 ```
 
 ```bash tab="yarn"
-yarn add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
+yarn add @amux.ai/llm-bridge @amux.ai/adapter-openai @amux.ai/adapter-anthropic
 ```
 
 ```bash tab="bun"
-bun add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
+bun add @amux.ai/llm-bridge @amux.ai/adapter-openai @amux.ai/adapter-anthropic
 ```
 
 ## 可用包
 
 | 包名 | 大小 | 描述 |
 |------|------|------|
-| `@amux/llm-bridge` | ~15KB | 核心包（必需）|
-| `@amux/adapter-openai` | ~8KB | OpenAI 适配器 |
-| `@amux/adapter-anthropic` | ~8KB | Anthropic 适配器 |
-| `@amux/adapter-deepseek` | ~6KB | DeepSeek 适配器 |
-| `@amux/adapter-moonshot` | ~6KB | Moonshot 适配器 |
-| `@amux/adapter-zhipu` | ~6KB | 智谱适配器 |
-| `@amux/adapter-qwen` | ~6KB | Qwen 适配器 |
-| `@amux/adapter-google` | ~7KB | Google Gemini 适配器 |
+| `@amux.ai/llm-bridge` | ~15KB | 核心包（必需）|
+| `@amux.ai/adapter-openai` | ~8KB | OpenAI 适配器 |
+| `@amux.ai/adapter-anthropic` | ~8KB | Anthropic 适配器 |
+| `@amux.ai/adapter-deepseek` | ~6KB | DeepSeek 适配器 |
+| `@amux.ai/adapter-moonshot` | ~6KB | Moonshot 适配器 |
+| `@amux.ai/adapter-zhipu` | ~6KB | 智谱适配器 |
+| `@amux.ai/adapter-qwen` | ~6KB | Qwen 适配器 |
+| `@amux.ai/adapter-google` | ~7KB | Google Gemini 适配器 |
 
 <Callout type="info">
 只安装您需要的适配器。这些包支持 tree-shaking，因此未使用的代码不会包含在您的打包文件中。
@@ -87,8 +87,8 @@ Amux 包含完整的 TypeScript 定义。确保您的 `tsconfig.json` 包含：
 
 ```typescript
 // test.ts
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
 
 console.log('✓ Amux 安装成功！')
 console.log('✓ OpenAI 适配器：', openaiAdapter.name, 'v' + openaiAdapter.version)

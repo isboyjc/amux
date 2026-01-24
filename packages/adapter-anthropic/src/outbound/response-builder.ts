@@ -1,4 +1,4 @@
-import type { LLMResponseIR, Message, ContentPart } from '@amux/llm-bridge'
+import type { LLMResponseIR, Message, ContentPart } from '@amux.ai/llm-bridge'
 
 import type { AnthropicResponse, AnthropicContent } from '../types'
 

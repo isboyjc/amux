@@ -140,7 +140,7 @@ const bridge = createBridge({
 使用 `LLMBridgeError` 配合 try/catch：
 
 ```typescript
-import { LLMBridgeError } from '@amux/llm-bridge'
+import { LLMBridgeError } from '@amux.ai/llm-bridge'
 
 try {
   const response = await bridge.chat(request)
@@ -184,7 +184,7 @@ const bridge = createBridge({
 创建一个实现 `LLMAdapter` 接口的适配器：
 
 ```typescript
-import type { LLMAdapter } from '@amux/llm-bridge'
+import type { LLMAdapter } from '@amux.ai/llm-bridge'
 
 export const myAdapter: LLMAdapter = {
   name: 'my-provider',

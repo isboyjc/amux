@@ -6,7 +6,7 @@ import type {
   ContentPart,
   TextContent,
   ImageContent,
-} from '@amux/llm-bridge'
+} from '@amux.ai/llm-bridge'
 
 import type { OpenAIRequest, OpenAIMessage, OpenAITool, OpenAIContentPart } from '../types'
 

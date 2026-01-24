@@ -95,9 +95,9 @@ function createBridge(options: BridgeOptions): Bridge
 <Tabs items={['Basic', 'With Config', 'Model Mapping', 'Multiple Providers']}>
   <Tab value="Basic">
     ```typescript
-    import { createBridge } from '@amux/llm-bridge'
-    import { openaiAdapter } from '@amux/adapter-openai'
-    import { anthropicAdapter } from '@amux/adapter-anthropic'
+    import { createBridge } from '@amux.ai/llm-bridge'
+    import { openaiAdapter } from '@amux.ai/adapter-openai'
+    import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
     const bridge = createBridge({
       inbound: openaiAdapter,
@@ -1246,9 +1246,9 @@ graph TD
 Here's a complete example showing error handling, compatibility checking, and streaming:
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
 // Create bridge
 const bridge = createBridge({

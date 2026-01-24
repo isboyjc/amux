@@ -8,18 +8,18 @@ Moonshot 适配器提供了与月之暗面（Moonshot AI）API 的集成。Moons
 ## 安装
 
 ```bash tab="pnpm"
-pnpm add @amux/llm-bridge @amux/adapter-moonshot
+pnpm add @amux.ai/llm-bridge @amux.ai/adapter-moonshot
 ```
 
 ```bash tab="npm"
-npm install @amux/llm-bridge @amux/adapter-moonshot
+npm install @amux.ai/llm-bridge @amux.ai/adapter-moonshot
 ```
 
 ## 基本使用
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { moonshotAdapter } from '@amux/adapter-moonshot'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { moonshotAdapter } from '@amux.ai/adapter-moonshot'
 
 const bridge = createBridge({
   inbound: moonshotAdapter,
@@ -214,8 +214,8 @@ const response = await bridge.chat({
 Moonshot 完全兼容 OpenAI 格式：
 
 ```typescript
-import { openaiAdapter } from '@amux/adapter-openai'
-import { moonshotAdapter } from '@amux/adapter-moonshot'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { moonshotAdapter } from '@amux.ai/adapter-moonshot'
 
 const bridge = createBridge({
   inbound: openaiAdapter,

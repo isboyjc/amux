@@ -79,23 +79,23 @@ Amux 提供了 7 个官方适配器,支持主流的 LLM 提供商。每个适配
 ## 快速开始
 
 ```bash tab="pnpm"
-pnpm add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
+pnpm add @amux.ai/llm-bridge @amux.ai/adapter-openai @amux.ai/adapter-anthropic
 ```
 
 ```bash tab="npm"
-npm install @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
+npm install @amux.ai/llm-bridge @amux.ai/adapter-openai @amux.ai/adapter-anthropic
 ```
 
 ```bash tab="yarn"
-yarn add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
+yarn add @amux.ai/llm-bridge @amux.ai/adapter-openai @amux.ai/adapter-anthropic
 ```
 
 ### 基本使用
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
 // 接受 OpenAI 格式,调用 Claude API
 const bridge = createBridge({
@@ -117,7 +117,7 @@ const response = await bridge.chat({
 需要支持其他 LLM 提供商?创建自定义适配器:
 
 ```typescript
-import type { LLMAdapter } from '@amux/llm-bridge'
+import type { LLMAdapter } from '@amux.ai/llm-bridge'
 
 export const myAdapter: LLMAdapter = {
   name: 'my-provider',

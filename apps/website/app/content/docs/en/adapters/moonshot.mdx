@@ -8,18 +8,18 @@ The Moonshot adapter provides integration with the Moonshot AI API. Moonshot is 
 ## Installation
 
 ```bash tab="pnpm"
-pnpm add @amux/llm-bridge @amux/adapter-moonshot
+pnpm add @amux.ai/llm-bridge @amux.ai/adapter-moonshot
 ```
 
 ```bash tab="npm"
-npm install @amux/llm-bridge @amux/adapter-moonshot
+npm install @amux.ai/llm-bridge @amux.ai/adapter-moonshot
 ```
 
 ## Basic Usage
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { moonshotAdapter } from '@amux/adapter-moonshot'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { moonshotAdapter } from '@amux.ai/adapter-moonshot'
 
 const bridge = createBridge({
   inbound: moonshotAdapter,
@@ -214,8 +214,8 @@ const response = await bridge.chat({
 Moonshot is fully compatible with OpenAI format:
 
 ```typescript
-import { openaiAdapter } from '@amux/adapter-openai'
-import { moonshotAdapter } from '@amux/adapter-moonshot'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { moonshotAdapter } from '@amux.ai/adapter-moonshot'
 
 const bridge = createBridge({
   inbound: openaiAdapter,

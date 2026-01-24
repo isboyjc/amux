@@ -50,28 +50,28 @@ importers:
 
   apps/desktop:
     dependencies:
-      '@amux/adapter-anthropic':
+      '@amux.ai/adapter-anthropic':
         specifier: workspace:*
         version: link:../../packages/adapter-anthropic
-      '@amux/adapter-deepseek':
+      '@amux.ai/adapter-deepseek':
         specifier: workspace:*
         version: link:../../packages/adapter-deepseek
-      '@amux/adapter-google':
+      '@amux.ai/adapter-google':
         specifier: workspace:*
         version: link:../../packages/adapter-google
-      '@amux/adapter-moonshot':
+      '@amux.ai/adapter-moonshot':
         specifier: workspace:*
         version: link:../../packages/adapter-moonshot
-      '@amux/adapter-openai':
+      '@amux.ai/adapter-openai':
         specifier: workspace:*
         version: link:../../packages/adapter-openai
-      '@amux/adapter-qwen':
+      '@amux.ai/adapter-qwen':
         specifier: workspace:*
         version: link:../../packages/adapter-qwen
-      '@amux/adapter-zhipu':
+      '@amux.ai/adapter-zhipu':
         specifier: workspace:*
         version: link:../../packages/adapter-zhipu
-      '@amux/llm-bridge':
+      '@amux.ai/llm-bridge':
         specifier: workspace:*
         version: link:../../packages/llm-bridge
       '@fastify/cors':
@@ -237,22 +237,22 @@ importers:
 
   apps/proxy:
     dependencies:
-      '@amux/adapter-anthropic':
+      '@amux.ai/adapter-anthropic':
         specifier: workspace:*
         version: link:../../packages/adapter-anthropic
-      '@amux/adapter-deepseek':
+      '@amux.ai/adapter-deepseek':
         specifier: workspace:*
         version: link:../../packages/adapter-deepseek
-      '@amux/adapter-moonshot':
+      '@amux.ai/adapter-moonshot':
         specifier: workspace:*
         version: link:../../packages/adapter-moonshot
-      '@amux/adapter-openai':
+      '@amux.ai/adapter-openai':
         specifier: workspace:*
         version: link:../../packages/adapter-openai
-      '@amux/adapter-zhipu':
+      '@amux.ai/adapter-zhipu':
         specifier: workspace:*
         version: link:../../packages/adapter-zhipu
-      '@amux/llm-bridge':
+      '@amux.ai/llm-bridge':
         specifier: workspace:*
         version: link:../../packages/llm-bridge
       express:
@@ -353,13 +353,13 @@ importers:
 
   examples/basic:
     dependencies:
-      '@amux/adapter-anthropic':
+      '@amux.ai/adapter-anthropic':
         specifier: workspace:*
         version: link:../../packages/adapter-anthropic
-      '@amux/adapter-openai':
+      '@amux.ai/adapter-openai':
         specifier: workspace:*
         version: link:../../packages/adapter-openai
-      '@amux/llm-bridge':
+      '@amux.ai/llm-bridge':
         specifier: workspace:*
         version: link:../../packages/llm-bridge
     devDependencies:
@@ -372,13 +372,13 @@ importers:
 
   examples/streaming:
     dependencies:
-      '@amux/adapter-anthropic':
+      '@amux.ai/adapter-anthropic':
         specifier: workspace:*
         version: link:../../packages/adapter-anthropic
-      '@amux/adapter-openai':
+      '@amux.ai/adapter-openai':
         specifier: workspace:*
         version: link:../../packages/adapter-openai
-      '@amux/llm-bridge':
+      '@amux.ai/llm-bridge':
         specifier: workspace:*
         version: link:../../packages/llm-bridge
     devDependencies:
@@ -391,7 +391,7 @@ importers:
 
   packages/adapter-anthropic:
     dependencies:
-      '@amux/llm-bridge':
+      '@amux.ai/llm-bridge':
         specifier: workspace:*
         version: link:../llm-bridge
     devDependencies:
@@ -410,7 +410,7 @@ importers:
 
   packages/adapter-deepseek:
     dependencies:
-      '@amux/llm-bridge':
+      '@amux.ai/llm-bridge':
         specifier: workspace:*
         version: link:../llm-bridge
     devDependencies:
@@ -429,7 +429,7 @@ importers:
 
   packages/adapter-google:
     dependencies:
-      '@amux/llm-bridge':
+      '@amux.ai/llm-bridge':
         specifier: workspace:*
         version: link:../llm-bridge
     devDependencies:
@@ -448,7 +448,7 @@ importers:
 
   packages/adapter-moonshot:
     dependencies:
-      '@amux/llm-bridge':
+      '@amux.ai/llm-bridge':
         specifier: workspace:*
         version: link:../llm-bridge
     devDependencies:
@@ -467,7 +467,7 @@ importers:
 
   packages/adapter-openai:
     dependencies:
-      '@amux/llm-bridge':
+      '@amux.ai/llm-bridge':
         specifier: workspace:*
         version: link:../llm-bridge
     devDependencies:
@@ -486,7 +486,7 @@ importers:
 
   packages/adapter-qwen:
     dependencies:
-      '@amux/llm-bridge':
+      '@amux.ai/llm-bridge':
         specifier: workspace:*
         version: link:../llm-bridge
     devDependencies:
@@ -505,7 +505,7 @@ importers:
 
   packages/adapter-zhipu:
     dependencies:
-      '@amux/llm-bridge':
+      '@amux.ai/llm-bridge':
         specifier: workspace:*
         version: link:../llm-bridge
     devDependencies:

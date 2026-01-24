@@ -45,7 +45,7 @@ mkdir my-adapter
 cd my-adapter
 npm init -y
 npm install --save-dev typescript @types/node
-npm install @amux/llm-bridge
+npm install @amux.ai/llm-bridge
 ```
 
 ### 步骤 2：定义适配器结构
@@ -53,7 +53,7 @@ npm install @amux/llm-bridge
 创建 `src/adapter.ts`：
 
 ```typescript
-import type { LLMAdapter, LLMRequestIR, LLMResponseIR } from '@amux/llm-bridge'
+import type { LLMAdapter, LLMRequestIR, LLMResponseIR } from '@amux.ai/llm-bridge'
 
 export const myAdapter: LLMAdapter = {
   name: 'my-provider',
@@ -260,7 +260,7 @@ describe('My Adapter', () => {
 ### 步骤 7：使用您的适配器
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
+import { createBridge } from '@amux.ai/llm-bridge'
 import { myAdapter } from './adapter'
 
 const bridge = createBridge({
@@ -282,7 +282,7 @@ const response = await bridge.chat({
 这是一个完整的最小适配器：
 
 ```typescript
-import type { LLMAdapter } from '@amux/llm-bridge'
+import type { LLMAdapter } from '@amux.ai/llm-bridge'
 
 export const simpleAdapter: LLMAdapter = {
   name: 'simple-provider',
@@ -425,7 +425,7 @@ parseError(error: any) {
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "peerDependencies": {
-    "@amux/llm-bridge": "^1.0.0"
+    "@amux.ai/llm-bridge": "^1.0.0"
   }
 }
 ```

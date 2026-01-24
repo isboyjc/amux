@@ -1,4 +1,4 @@
-import type { LLMStreamEvent, FinishReason } from '@amux/llm-bridge'
+import type { LLMStreamEvent, FinishReason } from '@amux.ai/llm-bridge'
 
 import type { QwenStreamChunk } from '../types'
 

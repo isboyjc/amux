@@ -11,15 +11,15 @@ The OpenAI adapter package provides two adapters for different OpenAI API endpoi
 ## Installation
 
 ```bash tab="pnpm"
-pnpm add @amux/llm-bridge @amux/adapter-openai
+pnpm add @amux.ai/llm-bridge @amux.ai/adapter-openai
 ```
 
 ```bash tab="npm"
-npm install @amux/llm-bridge @amux/adapter-openai
+npm install @amux.ai/llm-bridge @amux.ai/adapter-openai
 ```
 
 ```bash tab="yarn"
-yarn add @amux/llm-bridge @amux/adapter-openai
+yarn add @amux.ai/llm-bridge @amux.ai/adapter-openai
 ```
 
 ## Choosing an Adapter
@@ -49,8 +49,8 @@ yarn add @amux/llm-bridge @amux/adapter-openai
 ### Using Chat Completions API (openaiAdapter)
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
 
 const bridge = createBridge({
   inbound: openaiAdapter,
@@ -74,8 +74,8 @@ console.log(response.choices[0].message.content)
 ### Using Responses API (openaiResponsesAdapter)
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiResponsesAdapter } from '@amux/adapter-openai'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiResponsesAdapter } from '@amux.ai/adapter-openai'
 
 const bridge = createBridge({
   inbound: openaiResponsesAdapter,
@@ -243,8 +243,8 @@ for await (const chunk of stream) {
     #### Reasoning Models (o3, o4-mini)
 
     ```typescript
-    import { createBridge } from '@amux/llm-bridge'
-    import { openaiResponsesAdapter } from '@amux/adapter-openai'
+    import { createBridge } from '@amux.ai/llm-bridge'
+    import { openaiResponsesAdapter } from '@amux.ai/adapter-openai'
 
     const bridge = createBridge({
       inbound: openaiResponsesAdapter,
@@ -491,7 +491,7 @@ const bridge = createBridge({
 
 ```typescript
 // Before: Using Chat Completions API
-import { openaiAdapter } from '@amux/adapter-openai'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
 
 const bridge = createBridge({
   inbound: openaiAdapter,
@@ -500,7 +500,7 @@ const bridge = createBridge({
 })
 
 // After: Using Responses API
-import { openaiResponsesAdapter } from '@amux/adapter-openai'
+import { openaiResponsesAdapter } from '@amux.ai/adapter-openai'
 
 const bridge = createBridge({
   inbound: openaiResponsesAdapter,
@@ -518,7 +518,7 @@ const response = await bridge.chat({
 ### Cross-API Conversion
 
 ```typescript
-import { openaiAdapter, openaiResponsesAdapter } from '@amux/adapter-openai'
+import { openaiAdapter, openaiResponsesAdapter } from '@amux.ai/adapter-openai'
 
 // Accept old format requests, call new API
 const bridge = createBridge({
@@ -622,8 +622,8 @@ async function chatWithRetry(request, maxRetries = 3) {
 ### OpenAI → Anthropic
 
 ```typescript
-import { openaiAdapter } from '@amux/adapter-openai'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
 // Accept OpenAI format, call Claude
 const bridge = createBridge({
@@ -644,8 +644,8 @@ const response = await bridge.chat({
 ### OpenAI → DeepSeek
 
 ```typescript
-import { openaiAdapter } from '@amux/adapter-openai'
-import { deepseekAdapter } from '@amux/adapter-deepseek'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { deepseekAdapter } from '@amux.ai/adapter-deepseek'
 
 // Accept OpenAI format, call DeepSeek
 const bridge = createBridge({

@@ -45,7 +45,7 @@ mkdir my-adapter
 cd my-adapter
 npm init -y
 npm install --save-dev typescript @types/node
-npm install @amux/llm-bridge
+npm install @amux.ai/llm-bridge
 ```
 
 ### Step 2: Define Adapter Structure
@@ -53,7 +53,7 @@ npm install @amux/llm-bridge
 Create `src/adapter.ts`:
 
 ```typescript
-import type { LLMAdapter, LLMRequestIR, LLMResponseIR } from '@amux/llm-bridge'
+import type { LLMAdapter, LLMRequestIR, LLMResponseIR } from '@amux.ai/llm-bridge'
 
 export const myAdapter: LLMAdapter = {
   name: 'my-provider',
@@ -260,7 +260,7 @@ describe('My Adapter', () => {
 ### Step 7: Use Your Adapter
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
+import { createBridge } from '@amux.ai/llm-bridge'
 import { myAdapter } from './adapter'
 
 const bridge = createBridge({
@@ -282,7 +282,7 @@ const response = await bridge.chat({
 Here's a complete minimal adapter:
 
 ```typescript
-import type { LLMAdapter } from '@amux/llm-bridge'
+import type { LLMAdapter } from '@amux.ai/llm-bridge'
 
 export const simpleAdapter: LLMAdapter = {
   name: 'simple-provider',
@@ -425,7 +425,7 @@ If you want to share your adapter:
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "peerDependencies": {
-    "@amux/llm-bridge": "^1.0.0"
+    "@amux.ai/llm-bridge": "^1.0.0"
   }
 }
 ```

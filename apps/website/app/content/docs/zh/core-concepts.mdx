@@ -166,7 +166,7 @@ const response = await bridge.chat({
 桥接提供统一的错误处理：
 
 ```typescript
-import { LLMBridgeError } from '@amux/llm-bridge'
+import { LLMBridgeError } from '@amux.ai/llm-bridge'
 
 try {
   const response = await bridge.chat(request)
@@ -198,9 +198,9 @@ try {
 以下是所有概念如何协同工作：
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
 // 1. 使用适配器创建桥接
 const bridge = createBridge({

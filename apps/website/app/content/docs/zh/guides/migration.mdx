@@ -44,8 +44,8 @@ console.log(response.choices[0].message.content)
 ### 之后（Amux）
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
 
 const bridge = createBridge({
   inbound: openaiAdapter,
@@ -199,8 +199,8 @@ console.log(response.content[0].text)
 ### 之后（Amux）
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
 const bridge = createBridge({
   inbound: anthropicAdapter,
@@ -338,9 +338,9 @@ const response = await openai.chat.completions.create({
 })
 
 // 之后：相同代码，不同提供商
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
 const bridge = createBridge({
   inbound: openaiAdapter,
@@ -361,9 +361,9 @@ const response = await bridge.chat({
 ### Anthropic 到 DeepSeek
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
-import { deepseekAdapter } from '@amux/adapter-deepseek'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
+import { deepseekAdapter } from '@amux.ai/adapter-deepseek'
 
 const bridge = createBridge({
   inbound: anthropicAdapter,
@@ -394,8 +394,8 @@ import OpenAI from 'openai'
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 // 步骤 2：同时添加 Amux
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
 
 const bridge = createBridge({
   inbound: openaiAdapter,
@@ -519,7 +519,7 @@ console.log(response.content[0].text)  // Anthropic 格式
 错误在提供商之间规范化：
 
 ```typescript
-import { APIError, NetworkError } from '@amux/llm-bridge'
+import { APIError, NetworkError } from '@amux.ai/llm-bridge'
 
 try {
   const response = await bridge.chat(request)
@@ -534,7 +534,7 @@ try {
 
 ## 迁移检查清单
 
-- [ ] 安装 Amux 包：`@amux/llm-bridge`、`@amux/adapter-*`
+- [ ] 安装 Amux 包：`@amux.ai/llm-bridge`、`@amux.ai/adapter-*`
 - [ ] 用 Amux 导入替换 SDK 导入
 - [ ] 用 `createBridge()` 替换客户端初始化
 - [ ] 用 `bridge.chat()` 替换 API 调用
@@ -590,7 +590,7 @@ describe('迁移测试', () => {
 利用 TypeScript 实现更安全的迁移：
 
 ```typescript
-import type { LLMBridge } from '@amux/llm-bridge'
+import type { LLMBridge } from '@amux.ai/llm-bridge'
 
 // 为你的桥接添加类型
 const bridge: LLMBridge = createBridge({

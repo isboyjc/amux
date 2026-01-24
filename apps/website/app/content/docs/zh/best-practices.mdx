@@ -63,7 +63,7 @@ const bridge = createBridge({
 ### 始终处理错误
 
 ```typescript
-import { LLMBridgeError } from '@amux/llm-bridge'
+import { LLMBridgeError } from '@amux.ai/llm-bridge'
 
 try {
   const response = await bridge.chat({
@@ -206,7 +206,7 @@ try {
 ### 记录重要事件
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
+import { createBridge } from '@amux.ai/llm-bridge'
 
 const bridge = createBridge({
   inbound: openaiAdapter,

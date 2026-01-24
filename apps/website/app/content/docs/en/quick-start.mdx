@@ -10,19 +10,19 @@ This guide will walk you through creating your first bridge. You'll learn how to
 ## Step 1: Install Packages
 
 ```bash tab="pnpm"
-pnpm add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
+pnpm add @amux.ai/llm-bridge @amux.ai/adapter-openai @amux.ai/adapter-anthropic
 ```
 
 ```bash tab="npm"
-npm install @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
+npm install @amux.ai/llm-bridge @amux.ai/adapter-openai @amux.ai/adapter-anthropic
 ```
 
 ```bash tab="yarn"
-yarn add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
+yarn add @amux.ai/llm-bridge @amux.ai/adapter-openai @amux.ai/adapter-anthropic
 ```
 
 ```bash tab="bun"
-bun add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
+bun add @amux.ai/llm-bridge @amux.ai/adapter-openai @amux.ai/adapter-anthropic
 ```
 
 ## Step 2: Set Up API Keys
@@ -42,9 +42,9 @@ Never commit your `.env` file to version control. Add it to `.gitignore`.
 Create `bridge.ts`:
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
 // Create a bridge: OpenAI format in → Anthropic API out
 const bridge = createBridge({
@@ -89,9 +89,9 @@ You should see a response from Claude, but in OpenAI format!
 For better user experience, use streaming:
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
 const bridge = createBridge({
   inbound: openaiAdapter,
@@ -180,7 +180,7 @@ if (response.choices[0].message.toolCalls) {
 Always handle errors:
 
 ```typescript
-import { LLMBridgeError } from '@amux/llm-bridge'
+import { LLMBridgeError } from '@amux.ai/llm-bridge'
 
 try {
   const response = await bridge.chat(request)

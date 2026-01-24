@@ -1,5 +1,13 @@
 # @amux/adapter-google
 
+## 0.1.1
+
+### Patch Changes
+
+- Fix Gemini streaming API endpoint
+- Updated dependencies
+  - @amux.ai/llm-bridge@0.2.0
+
 ## 0.1.0
 
 ### Minor Changes

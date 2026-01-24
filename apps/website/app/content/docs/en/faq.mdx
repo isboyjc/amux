@@ -140,7 +140,7 @@ const bridge = createBridge({
 Use try/catch with `LLMBridgeError`:
 
 ```typescript
-import { LLMBridgeError } from '@amux/llm-bridge'
+import { LLMBridgeError } from '@amux.ai/llm-bridge'
 
 try {
   const response = await bridge.chat(request)
@@ -184,7 +184,7 @@ See the [Model Mapping Guide](/docs/en/guides/model-mapping) for details.
 Create an adapter that implements the `LLMAdapter` interface:
 
 ```typescript
-import type { LLMAdapter } from '@amux/llm-bridge'
+import type { LLMAdapter } from '@amux.ai/llm-bridge'
 
 export const myAdapter: LLMAdapter = {
   name: 'my-provider',

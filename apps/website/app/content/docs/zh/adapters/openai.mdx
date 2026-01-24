@@ -11,15 +11,15 @@ OpenAI 适配器包提供了两个适配器，对应不同的 OpenAI API 端点�
 ## 安装
 
 ```bash tab="pnpm"
-pnpm add @amux/llm-bridge @amux/adapter-openai
+pnpm add @amux.ai/llm-bridge @amux.ai/adapter-openai
 ```
 
 ```bash tab="npm"
-npm install @amux/llm-bridge @amux/adapter-openai
+npm install @amux.ai/llm-bridge @amux.ai/adapter-openai
 ```
 
 ```bash tab="yarn"
-yarn add @amux/llm-bridge @amux/adapter-openai
+yarn add @amux.ai/llm-bridge @amux.ai/adapter-openai
 ```
 
 ## 选择适配器
@@ -49,8 +49,8 @@ yarn add @amux/llm-bridge @amux/adapter-openai
 ### 使用 Chat Completions API (openaiAdapter)
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
 
 const bridge = createBridge({
   inbound: openaiAdapter,
@@ -74,8 +74,8 @@ console.log(response.choices[0].message.content)
 ### 使用 Responses API (openaiResponsesAdapter)
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiResponsesAdapter } from '@amux/adapter-openai'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiResponsesAdapter } from '@amux.ai/adapter-openai'
 
 const bridge = createBridge({
   inbound: openaiResponsesAdapter,
@@ -243,8 +243,8 @@ for await (const chunk of stream) {
     #### 推理模型 (o3, o4-mini)
 
     ```typescript
-    import { createBridge } from '@amux/llm-bridge'
-    import { openaiResponsesAdapter } from '@amux/adapter-openai'
+    import { createBridge } from '@amux.ai/llm-bridge'
+    import { openaiResponsesAdapter } from '@amux.ai/adapter-openai'
 
     const bridge = createBridge({
       inbound: openaiResponsesAdapter,
@@ -491,7 +491,7 @@ const bridge = createBridge({
 
 ```typescript
 // 之前：使用 Chat Completions API
-import { openaiAdapter } from '@amux/adapter-openai'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
 
 const bridge = createBridge({
   inbound: openaiAdapter,
@@ -500,7 +500,7 @@ const bridge = createBridge({
 })
 
 // 之后：使用 Responses API
-import { openaiResponsesAdapter } from '@amux/adapter-openai'
+import { openaiResponsesAdapter } from '@amux.ai/adapter-openai'
 
 const bridge = createBridge({
   inbound: openaiResponsesAdapter,
@@ -518,7 +518,7 @@ const response = await bridge.chat({
 ### 跨 API 转换
 
 ```typescript
-import { openaiAdapter, openaiResponsesAdapter } from '@amux/adapter-openai'
+import { openaiAdapter, openaiResponsesAdapter } from '@amux.ai/adapter-openai'
 
 // 接受旧格式请求，调用新 API
 const bridge = createBridge({
@@ -622,8 +622,8 @@ async function chatWithRetry(request, maxRetries = 3) {
 ### OpenAI → Anthropic
 
 ```typescript
-import { openaiAdapter } from '@amux/adapter-openai'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
 // 接受 OpenAI 格式，调用 Claude
 const bridge = createBridge({
@@ -644,8 +644,8 @@ const response = await bridge.chat({
 ### OpenAI → DeepSeek
 
 ```typescript
-import { openaiAdapter } from '@amux/adapter-openai'
-import { deepseekAdapter } from '@amux/adapter-deepseek'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { deepseekAdapter } from '@amux.ai/adapter-deepseek'
 
 // 接受 OpenAI 格式，调用 DeepSeek
 const bridge = createBridge({

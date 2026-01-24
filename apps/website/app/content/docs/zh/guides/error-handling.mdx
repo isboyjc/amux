@@ -16,7 +16,7 @@ import {
   ValidationError,
   AdapterError,
   BridgeError
-} from '@amux/llm-bridge'
+} from '@amux.ai/llm-bridge'
 ```
 
 ### LLMBridgeError
@@ -177,10 +177,10 @@ try {
 无效或缺失的 API 密钥：
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
-import { APIError } from '@amux/llm-bridge'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
+import { APIError } from '@amux.ai/llm-bridge'
 
 try {
   const bridge = createBridge({
@@ -205,7 +205,7 @@ try {
 使用指数退避处理速率限制错误：
 
 ```typescript
-import { APIError } from '@amux/llm-bridge'
+import { APIError } from '@amux.ai/llm-bridge'
 
 async function chatWithRetry(bridge, request, maxRetries = 3) {
   let lastError
@@ -243,7 +243,7 @@ const response = await chatWithRetry(bridge, request)
 处理瞬时网络故障：
 
 ```typescript
-import { NetworkError, TimeoutError } from '@amux/llm-bridge'
+import { NetworkError, TimeoutError } from '@amux.ai/llm-bridge'
 
 async function chatWithNetworkRetry(bridge, request) {
   const maxRetries = 3
@@ -273,7 +273,7 @@ async function chatWithNetworkRetry(bridge, request) {
 处理内容政策违规：
 
 ```typescript
-import { APIError } from '@amux/llm-bridge'
+import { APIError } from '@amux.ai/llm-bridge'
 
 try {
   const response = await bridge.chat(request)

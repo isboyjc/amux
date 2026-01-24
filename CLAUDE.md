@@ -29,7 +29,7 @@ pnpm test
 
 # Run tests for specific package
 cd packages/llm-bridge && pnpm test
-pnpm --filter @amux/llm-bridge test
+pnpm --filter @amux.ai/llm-bridge test
 
 # Watch mode
 cd packages/llm-bridge && pnpm test:watch
@@ -87,9 +87,9 @@ pnpm start:website
 
 This is a pnpm workspace monorepo managed by Nx:
 
-- **packages/llm-bridge**: Core IR definitions, adapter interfaces, bridge orchestration, HTTP client (@amux/llm-bridge)
-- **packages/utils**: Shared utilities (SSE stream parsing, error handling) (@amux/utils)
-- **packages/adapter-{provider}**: Official adapters (@amux/adapter-openai, @amux/adapter-anthropic, etc.)
+- **packages/llm-bridge**: Core IR definitions, adapter interfaces, bridge orchestration, HTTP client (@amux.ai/llm-bridge)
+- **packages/utils**: Shared utilities (SSE stream parsing, error handling) (@amux.ai/utils)
+- **packages/adapter-{provider}**: Official adapters (@amux.ai/adapter-openai, @amux.ai/adapter-anthropic, etc.)
 - **apps/website**: Documentation site (fumadocs)
 - **apps/proxy**: Proxy server for testing
 - **examples/**: Usage examples

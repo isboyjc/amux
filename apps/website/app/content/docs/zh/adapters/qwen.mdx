@@ -8,18 +8,18 @@ Qwen 适配器提供了与阿里云通义千问 API 的集成，支持文本生�
 ## 安装
 
 ```bash tab="pnpm"
-pnpm add @amux/llm-bridge @amux/adapter-qwen
+pnpm add @amux.ai/llm-bridge @amux.ai/adapter-qwen
 ```
 
 ```bash tab="npm"
-npm install @amux/llm-bridge @amux/adapter-qwen
+npm install @amux.ai/llm-bridge @amux.ai/adapter-qwen
 ```
 
 ## 基本使用
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { qwenAdapter } from '@amux/adapter-qwen'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { qwenAdapter } from '@amux.ai/adapter-qwen'
 
 const bridge = createBridge({
   inbound: qwenAdapter,
@@ -241,8 +241,8 @@ const response = await bridge.chat({
 ## 与 OpenAI 互转
 
 ```typescript
-import { openaiAdapter } from '@amux/adapter-openai'
-import { qwenAdapter } from '@amux/adapter-qwen'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { qwenAdapter } from '@amux.ai/adapter-qwen'
 
 const bridge = createBridge({
   inbound: openaiAdapter,

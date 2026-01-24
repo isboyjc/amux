@@ -1,5 +1,5 @@
 {
-  "name": "@amux/tunnel-api",
+  "name": "@amux.ai/tunnel-api",
   "version": "0.1.0",
   "private": true,
   "description": "Cloudflare Workers API for Amux Tunnel management",

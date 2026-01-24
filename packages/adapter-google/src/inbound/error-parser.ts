@@ -1,4 +1,4 @@
-import type { LLMErrorIR, ErrorType } from '@amux/llm-bridge'
+import type { LLMErrorIR, ErrorType } from '@amux.ai/llm-bridge'
 
 import type { GeminiError } from '../types'
 

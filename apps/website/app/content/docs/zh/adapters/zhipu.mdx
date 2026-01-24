@@ -8,18 +8,18 @@ Zhipu 适配器提供了与智谱 AI（Zhipu AI）API 的集成。智谱 AI 提�
 ## 安装
 
 ```bash tab="pnpm"
-pnpm add @amux/llm-bridge @amux/adapter-zhipu
+pnpm add @amux.ai/llm-bridge @amux.ai/adapter-zhipu
 ```
 
 ```bash tab="npm"
-npm install @amux/llm-bridge @amux/adapter-zhipu
+npm install @amux.ai/llm-bridge @amux.ai/adapter-zhipu
 ```
 
 ## 基本使用
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { zhipuAdapter } from '@amux/adapter-zhipu'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { zhipuAdapter } from '@amux.ai/adapter-zhipu'
 
 const bridge = createBridge({
   inbound: zhipuAdapter,
@@ -205,8 +205,8 @@ const response = await bridge.chat({
 智谱 AI 完全兼容 OpenAI 格式：
 
 ```typescript
-import { openaiAdapter } from '@amux/adapter-openai'
-import { zhipuAdapter } from '@amux/adapter-zhipu'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { zhipuAdapter } from '@amux.ai/adapter-zhipu'
 
 const bridge = createBridge({
   inbound: openaiAdapter,

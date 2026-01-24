@@ -5,7 +5,7 @@ import type {
   LLMStreamEvent,
   LLMErrorIR,
   AdapterInfo,
-} from '@amux/llm-bridge'
+} from '@amux.ai/llm-bridge'
 
 import { parseRequest } from './inbound/request-parser'
 import { parseResponse } from './inbound/response-parser'

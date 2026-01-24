@@ -8,7 +8,7 @@ import type {
   ImageContent,
   ResponseFormat,
   GenerationConfig,
-} from '@amux/llm-bridge'
+} from '@amux.ai/llm-bridge'
 
 import type {
   ResponsesRequest,

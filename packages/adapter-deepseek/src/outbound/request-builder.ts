@@ -1,4 +1,4 @@
-import type { LLMRequestIR, ContentPart, ImageContent } from '@amux/llm-bridge'
+import type { LLMRequestIR, ContentPart, ImageContent } from '@amux.ai/llm-bridge'
 
 import type { DeepSeekRequest, DeepSeekMessage, DeepSeekContentPart } from '../types'
 

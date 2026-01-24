@@ -8,7 +8,7 @@ echo ""
 
 # 定义可能的用户数据路径
 APP_DATA_PATHS=(
-  "$HOME/Library/Application Support/@amux/desktop"
+  "$HOME/Library/Application Support/@amux.ai/desktop"
   "$HOME/Library/Application Support/amux-desktop"
   "$HOME/Library/Application Support/Amux Desktop"
 )

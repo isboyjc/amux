@@ -10,19 +10,19 @@ description: 在 5 分钟内构建您的第一个 Amux 桥接
 ## 步骤 1：安装包
 
 ```bash tab="pnpm"
-pnpm add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
+pnpm add @amux.ai/llm-bridge @amux.ai/adapter-openai @amux.ai/adapter-anthropic
 ```
 
 ```bash tab="npm"
-npm install @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
+npm install @amux.ai/llm-bridge @amux.ai/adapter-openai @amux.ai/adapter-anthropic
 ```
 
 ```bash tab="yarn"
-yarn add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
+yarn add @amux.ai/llm-bridge @amux.ai/adapter-openai @amux.ai/adapter-anthropic
 ```
 
 ```bash tab="bun"
-bun add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
+bun add @amux.ai/llm-bridge @amux.ai/adapter-openai @amux.ai/adapter-anthropic
 ```
 
 ## 步骤 2：设置 API 密钥
@@ -42,9 +42,9 @@ ANTHROPIC_API_KEY=your_key_here
 创建 `bridge.ts`：
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
 // 创建一个桥接：OpenAI 格式输入 → Anthropic API 输出
 const bridge = createBridge({
@@ -89,9 +89,9 @@ bun bridge.ts
 为了更好的用户体验，使用流式传输：
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
 const bridge = createBridge({
   inbound: openaiAdapter,
@@ -180,7 +180,7 @@ if (response.choices[0].message.toolCalls) {
 始终处理错误：
 
 ```typescript
-import { LLMBridgeError } from '@amux/llm-bridge'
+import { LLMBridgeError } from '@amux.ai/llm-bridge'
 
 try {
   const response = await bridge.chat(request)

@@ -21,9 +21,9 @@ Amux provides three ways to map models: `targetModel` (fixed), `modelMapper` (fu
 Use `targetModel` to always call a specific model, ignoring the inbound model:
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
 const bridge = createBridge({
   inbound: openaiAdapter,
@@ -150,7 +150,7 @@ const bridge = createBridge({
 ### OpenAI to DeepSeek
 
 ```typescript
-import { deepseekAdapter } from '@amux/adapter-deepseek'
+import { deepseekAdapter } from '@amux.ai/adapter-deepseek'
 
 const bridge = createBridge({
   inbound: openaiAdapter,
@@ -239,9 +239,9 @@ const bridge = createBridge({
 Try multiple providers with fallback:
 
 ```typescript
-import { anthropicAdapter } from '@amux/adapter-anthropic'
-import { openaiAdapter } from '@amux/adapter-openai'
-import { deepseekAdapter } from '@amux/adapter-deepseek'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { deepseekAdapter } from '@amux.ai/adapter-deepseek'
 
 async function chatWithFallback(request) {
   const providers = [

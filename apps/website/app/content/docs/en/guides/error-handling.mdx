@@ -16,7 +16,7 @@ import {
   ValidationError,
   AdapterError,
   BridgeError
-} from '@amux/llm-bridge'
+} from '@amux.ai/llm-bridge'
 ```
 
 ### LLMBridgeError
@@ -177,10 +177,10 @@ try {
 Invalid or missing API keys:
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
-import { APIError } from '@amux/llm-bridge'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
+import { APIError } from '@amux.ai/llm-bridge'
 
 try {
   const bridge = createBridge({
@@ -205,7 +205,7 @@ try {
 Handle rate limit errors with exponential backoff:
 
 ```typescript
-import { APIError } from '@amux/llm-bridge'
+import { APIError } from '@amux.ai/llm-bridge'
 
 async function chatWithRetry(bridge, request, maxRetries = 3) {
   let lastError
@@ -243,7 +243,7 @@ const response = await chatWithRetry(bridge, request)
 Handle transient network failures:
 
 ```typescript
-import { NetworkError, TimeoutError } from '@amux/llm-bridge'
+import { NetworkError, TimeoutError } from '@amux.ai/llm-bridge'
 
 async function chatWithNetworkRetry(bridge, request) {
   const maxRetries = 3
@@ -273,7 +273,7 @@ async function chatWithNetworkRetry(bridge, request) {
 Handle content policy violations:
 
 ```typescript
-import { APIError } from '@amux/llm-bridge'
+import { APIError } from '@amux.ai/llm-bridge'
 
 try {
   const response = await bridge.chat(request)

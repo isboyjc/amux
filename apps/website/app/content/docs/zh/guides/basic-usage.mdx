@@ -8,9 +8,9 @@ description: 学习创建和使用桥接的基础知识
 桥接连接两个适配器：**入站**适配器（你的格式）和**出站**适配器（要调用的提供商）。
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
 const bridge = createBridge({
   inbound: openaiAdapter,      // 你的请求格式

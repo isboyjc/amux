@@ -8,7 +8,7 @@
 
 import { randomUUID } from 'crypto'
 
-import { Bridge, type Usage } from '@amux/llm-bridge'
+import { Bridge, type Usage } from '@amux.ai/llm-bridge'
 import type { FastifyRequest, FastifyReply } from 'fastify'
 
 import { decryptApiKey } from '../crypto'

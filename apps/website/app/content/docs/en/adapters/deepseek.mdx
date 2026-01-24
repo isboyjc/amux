@@ -8,18 +8,18 @@ The DeepSeek adapter provides integration with the DeepSeek API. DeepSeek API is
 ## Installation
 
 ```bash tab="pnpm"
-pnpm add @amux/llm-bridge @amux/adapter-deepseek
+pnpm add @amux.ai/llm-bridge @amux.ai/adapter-deepseek
 ```
 
 ```bash tab="npm"
-npm install @amux/llm-bridge @amux/adapter-deepseek
+npm install @amux.ai/llm-bridge @amux.ai/adapter-deepseek
 ```
 
 ## Basic Usage
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { deepseekAdapter } from '@amux/adapter-deepseek'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { deepseekAdapter } from '@amux.ai/adapter-deepseek'
 
 const bridge = createBridge({
   inbound: deepseekAdapter,
@@ -139,8 +139,8 @@ const bridge = createBridge({
 DeepSeek is fully compatible with OpenAI format:
 
 ```typescript
-import { openaiAdapter } from '@amux/adapter-openai'
-import { deepseekAdapter } from '@amux/adapter-deepseek'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { deepseekAdapter } from '@amux.ai/adapter-deepseek'
 
 // OpenAI format → DeepSeek API
 const bridge = createBridge({

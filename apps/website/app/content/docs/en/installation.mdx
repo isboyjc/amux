@@ -17,33 +17,33 @@ Check your Node.js version with `node --version`. Amux requires Node.js 18+.
 Install the core package and the adapters you need:
 
 ```bash tab="pnpm"
-pnpm add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
+pnpm add @amux.ai/llm-bridge @amux.ai/adapter-openai @amux.ai/adapter-anthropic
 ```
 
 ```bash tab="npm"
-npm install @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
+npm install @amux.ai/llm-bridge @amux.ai/adapter-openai @amux.ai/adapter-anthropic
 ```
 
 ```bash tab="yarn"
-yarn add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
+yarn add @amux.ai/llm-bridge @amux.ai/adapter-openai @amux.ai/adapter-anthropic
 ```
 
 ```bash tab="bun"
-bun add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
+bun add @amux.ai/llm-bridge @amux.ai/adapter-openai @amux.ai/adapter-anthropic
 ```
 
 ## Available Packages
 
 | Package | Size | Description |
 |---------|------|-------------|
-| `@amux/llm-bridge` | ~15KB | Core package (required) |
-| `@amux/adapter-openai` | ~8KB | OpenAI adapter |
-| `@amux/adapter-anthropic` | ~8KB | Anthropic adapter |
-| `@amux/adapter-deepseek` | ~6KB | DeepSeek adapter |
-| `@amux/adapter-moonshot` | ~6KB | Moonshot adapter |
-| `@amux/adapter-zhipu` | ~6KB | Zhipu adapter |
-| `@amux/adapter-qwen` | ~6KB | Qwen adapter |
-| `@amux/adapter-google` | ~7KB | Google Gemini adapter |
+| `@amux.ai/llm-bridge` | ~15KB | Core package (required) |
+| `@amux.ai/adapter-openai` | ~8KB | OpenAI adapter |
+| `@amux.ai/adapter-anthropic` | ~8KB | Anthropic adapter |
+| `@amux.ai/adapter-deepseek` | ~6KB | DeepSeek adapter |
+| `@amux.ai/adapter-moonshot` | ~6KB | Moonshot adapter |
+| `@amux.ai/adapter-zhipu` | ~6KB | Zhipu adapter |
+| `@amux.ai/adapter-qwen` | ~6KB | Qwen adapter |
+| `@amux.ai/adapter-google` | ~7KB | Google Gemini adapter |
 
 <Callout type="info">
 Only install the adapters you need. The packages are tree-shakable, so unused code won't be included in your bundle.
@@ -87,8 +87,8 @@ Create a test file to verify everything works:
 
 ```typescript
 // test.ts
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
 
 console.log('✓ Amux installed successfully!')
 console.log('✓ OpenAI adapter:', openaiAdapter.name, 'v' + openaiAdapter.version)

@@ -2,14 +2,14 @@
  * Bridge Manager - Manages Bridge instances with LRU caching
  */
 
-import { anthropicAdapter } from '@amux/adapter-anthropic'
-import { deepseekAdapter } from '@amux/adapter-deepseek'
-import { googleAdapter } from '@amux/adapter-google'
-import { moonshotAdapter } from '@amux/adapter-moonshot'
-import { openaiAdapter, openaiResponsesAdapter } from '@amux/adapter-openai'
-import { qwenAdapter } from '@amux/adapter-qwen'
-import { zhipuAdapter } from '@amux/adapter-zhipu'
-import { Bridge, type LLMAdapter, type LLMRequestIR, type LLMResponseIR, type LLMStreamEvent } from '@amux/llm-bridge'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
+import { deepseekAdapter } from '@amux.ai/adapter-deepseek'
+import { googleAdapter } from '@amux.ai/adapter-google'
+import { moonshotAdapter } from '@amux.ai/adapter-moonshot'
+import { openaiAdapter, openaiResponsesAdapter } from '@amux.ai/adapter-openai'
+import { qwenAdapter } from '@amux.ai/adapter-qwen'
+import { zhipuAdapter } from '@amux.ai/adapter-zhipu'
+import { Bridge, type LLMAdapter, type LLMRequestIR, type LLMResponseIR, type LLMStreamEvent } from '@amux.ai/llm-bridge'
 
 import { decryptApiKey } from '../crypto'
 import { getBridgeProxyRepository, getProviderRepository } from '../database/repositories'

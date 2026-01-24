@@ -22,15 +22,15 @@
 
 ```bash
 # Install core package and adapters you need
-pnpm add @amux/llm-bridge @amux/adapter-openai @amux/adapter-anthropic
+pnpm add @amux.ai/llm-bridge @amux.ai/adapter-openai @amux.ai/adapter-anthropic
 ```
 
 ### Basic Usage
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
 // Create a bridge: OpenAI format in → Anthropic API out
 const bridge = createBridge({
@@ -56,15 +56,15 @@ console.log(response.choices[0].message.content)
 
 | Package | Description | Version | Status |
 |---------|-------------|---------|--------|
-| [@amux/llm-bridge](./packages/llm-bridge) | Core IR and adapter interfaces | - | ✅ Stable |
-| [@amux/adapter-openai](./packages/adapter-openai) | OpenAI adapter | - | ✅ Stable |
-| [@amux/adapter-anthropic](./packages/adapter-anthropic) | Anthropic (Claude) adapter | - | ✅ Stable |
-| [@amux/adapter-deepseek](./packages/adapter-deepseek) | DeepSeek adapter | - | ✅ Stable |
-| [@amux/adapter-moonshot](./packages/adapter-moonshot) | Moonshot (Kimi) adapter | - | ✅ Stable |
-| [@amux/adapter-zhipu](./packages/adapter-zhipu) | Zhipu AI (GLM) adapter | - | ✅ Stable |
-| [@amux/adapter-qwen](./packages/adapter-qwen) | Qwen adapter | - | ✅ Stable |
-| [@amux/adapter-google](./packages/adapter-google) | Google Gemini adapter | - | ✅ Stable |
-| [@amux/utils](./packages/utils) | Shared utilities | - | ✅ Stable |
+| [@amux.ai/llm-bridge](./packages/llm-bridge) | Core IR and adapter interfaces | - | ✅ Stable |
+| [@amux.ai/adapter-openai](./packages/adapter-openai) | OpenAI adapter | - | ✅ Stable |
+| [@amux.ai/adapter-anthropic](./packages/adapter-anthropic) | Anthropic (Claude) adapter | - | ✅ Stable |
+| [@amux.ai/adapter-deepseek](./packages/adapter-deepseek) | DeepSeek adapter | - | ✅ Stable |
+| [@amux.ai/adapter-moonshot](./packages/adapter-moonshot) | Moonshot (Kimi) adapter | - | ✅ Stable |
+| [@amux.ai/adapter-zhipu](./packages/adapter-zhipu) | Zhipu AI (GLM) adapter | - | ✅ Stable |
+| [@amux.ai/adapter-qwen](./packages/adapter-qwen) | Qwen adapter | - | ✅ Stable |
+| [@amux.ai/adapter-google](./packages/adapter-google) | Google Gemini adapter | - | ✅ Stable |
+| [@amux.ai/utils](./packages/utils) | Shared utilities | - | ✅ Stable |
 
 ## 🏗️ Architecture
 
@@ -110,13 +110,13 @@ console.log(response.choices[0].message.content)
 ### All Adapters
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
-import { deepseekAdapter } from '@amux/adapter-deepseek'
-import { moonshotAdapter } from '@amux/adapter-moonshot'
-import { qwenAdapter } from '@amux/adapter-qwen'
-import { geminiAdapter } from '@amux/adapter-google'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
+import { deepseekAdapter } from '@amux.ai/adapter-deepseek'
+import { moonshotAdapter } from '@amux.ai/adapter-moonshot'
+import { qwenAdapter } from '@amux.ai/adapter-qwen'
+import { geminiAdapter } from '@amux.ai/adapter-google'
 
 // OpenAI → Anthropic
 const bridge1 = createBridge({

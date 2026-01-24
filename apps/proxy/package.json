@@ -1,6 +1,6 @@
 {
-  "name": "@amux/proxy",
-  "version": "0.0.2",
+  "name": "@amux.ai/proxy",
+  "version": "0.0.3",
   "private": true,
   "description": "Amux Proxy Server - Proxy LLM APIs bidirectionally",
   "type": "module",
@@ -11,12 +11,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@amux/adapter-anthropic": "workspace:*",
-    "@amux/adapter-deepseek": "workspace:*",
-    "@amux/adapter-moonshot": "workspace:*",
-    "@amux/adapter-openai": "workspace:*",
-    "@amux/adapter-zhipu": "workspace:*",
-    "@amux/llm-bridge": "workspace:*",
+    "@amux.ai/adapter-anthropic": "workspace:*",
+    "@amux.ai/adapter-deepseek": "workspace:*",
+    "@amux.ai/adapter-moonshot": "workspace:*",
+    "@amux.ai/adapter-openai": "workspace:*",
+    "@amux.ai/adapter-zhipu": "workspace:*",
+    "@amux.ai/llm-bridge": "workspace:*",
     "express": "^5.2.1"
   },
   "devDependencies": {

@@ -8,9 +8,9 @@ description: Learn the fundamentals of creating and using bridges
 A bridge connects two adapters: an **inbound** adapter (your format) and an **outbound** adapter (provider to call).
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
 const bridge = createBridge({
   inbound: openaiAdapter,      // Your request format

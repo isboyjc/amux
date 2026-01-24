@@ -8,18 +8,18 @@ The Gemini adapter provides integration with the Google Gemini API, supporting t
 ## Installation
 
 ```bash tab="pnpm"
-pnpm add @amux/llm-bridge @amux/adapter-google
+pnpm add @amux.ai/llm-bridge @amux.ai/adapter-google
 ```
 
 ```bash tab="npm"
-npm install @amux/llm-bridge @amux/adapter-google
+npm install @amux.ai/llm-bridge @amux.ai/adapter-google
 ```
 
 ## Basic Usage
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { googleAdapter } from '@amux/adapter-google'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { googleAdapter } from '@amux.ai/adapter-google'
 
 const bridge = createBridge({
   inbound: googleAdapter,
@@ -275,8 +275,8 @@ const bookAnalysis = await bridge.chat({
 ## Converting with OpenAI
 
 ```typescript
-import { openaiAdapter } from '@amux/adapter-openai'
-import { googleAdapter } from '@amux/adapter-google'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { googleAdapter } from '@amux.ai/adapter-google'
 
 const bridge = createBridge({
   inbound: openaiAdapter,

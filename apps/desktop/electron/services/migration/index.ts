@@ -9,7 +9,7 @@ import Database from 'better-sqlite3'
  * Migrates user data from old directory (@amux) to new directory (Amux)
  */
 
-const OLD_APP_NAME = '@amux/desktop'  // Full package name creates nested directory
+const OLD_APP_NAME = '@amux.ai/desktop'  // Full package name creates nested directory
 const NEW_APP_NAME = 'Amux'
 const MIGRATION_MARKER = '.migrated-to-Amux'
 
@@ -22,11 +22,11 @@ interface MigrationResult {
 }
 
 /**
- * Get the old userData path (using @amux/desktop package name)
- * The old package name "@amux/desktop" creates nested directory structure:
- * - macOS: ~/Library/Application Support/@amux/desktop/
+ * Get the old userData path (using @amux.ai/desktop package name)
+ * The old package name "@amux.ai/desktop" creates nested directory structure:
+ * - macOS: ~/Library/Application Support/@amux.ai/desktop/
  * - Windows: %APPDATA%\@amux\desktop\
- * - Linux: ~/.config/@amux/desktop/
+ * - Linux: ~/.config/@amux.ai/desktop/
  */
 function getOldUserDataPath(): string {
   const homedir = app.getPath('home')

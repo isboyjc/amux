@@ -1,4 +1,4 @@
-import type { LLMRequestIR, ContentPart } from '@amux/llm-bridge'
+import type { LLMRequestIR, ContentPart } from '@amux.ai/llm-bridge'
 
 import type { KimiRequest, KimiMessage } from '../types'
 

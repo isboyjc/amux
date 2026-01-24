@@ -44,8 +44,8 @@ console.log(response.choices[0].message.content)
 ### After (Amux)
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
 
 const bridge = createBridge({
   inbound: openaiAdapter,
@@ -199,8 +199,8 @@ console.log(response.content[0].text)
 ### After (Amux)
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
 const bridge = createBridge({
   inbound: anthropicAdapter,
@@ -338,9 +338,9 @@ const response = await openai.chat.completions.create({
 })
 
 // After: Same code, different provider
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
 const bridge = createBridge({
   inbound: openaiAdapter,
@@ -361,9 +361,9 @@ const response = await bridge.chat({
 ### Anthropic to DeepSeek
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
-import { deepseekAdapter } from '@amux/adapter-deepseek'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
+import { deepseekAdapter } from '@amux.ai/adapter-deepseek'
 
 const bridge = createBridge({
   inbound: anthropicAdapter,
@@ -394,8 +394,8 @@ import OpenAI from 'openai'
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 // Step 2: Add Amux alongside
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
 
 const bridge = createBridge({
   inbound: openaiAdapter,
@@ -519,7 +519,7 @@ console.log(response.content[0].text)  // Anthropic format
 Errors are normalized across providers:
 
 ```typescript
-import { APIError, NetworkError } from '@amux/llm-bridge'
+import { APIError, NetworkError } from '@amux.ai/llm-bridge'
 
 try {
   const response = await bridge.chat(request)
@@ -534,7 +534,7 @@ try {
 
 ## Migration Checklist
 
-- [ ] Install Amux packages: `@amux/llm-bridge`, `@amux/adapter-*`
+- [ ] Install Amux packages: `@amux.ai/llm-bridge`, `@amux.ai/adapter-*`
 - [ ] Replace SDK imports with Amux imports
 - [ ] Replace client initialization with `createBridge()`
 - [ ] Replace API calls with `bridge.chat()`
@@ -590,7 +590,7 @@ describe('Migration Tests', () => {
 Leverage TypeScript for safer migration:
 
 ```typescript
-import type { LLMBridge } from '@amux/llm-bridge'
+import type { LLMBridge } from '@amux.ai/llm-bridge'
 
 // Type your bridge
 const bridge: LLMBridge = createBridge({

@@ -1,4 +1,4 @@
-import type { LLMResponseIR, Choice, FinishReason, Role, ToolCall } from '@amux/llm-bridge'
+import type { LLMResponseIR, Choice, FinishReason, Role, ToolCall } from '@amux.ai/llm-bridge'
 
 import type { ResponsesResponse, ResponsesOutputItem } from '../types'
 

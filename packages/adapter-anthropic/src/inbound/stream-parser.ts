@@ -1,4 +1,4 @@
-import type { LLMStreamEvent } from '@amux/llm-bridge'
+import type { LLMStreamEvent } from '@amux.ai/llm-bridge'
 
 import type { AnthropicStreamEvent } from '../types'
 

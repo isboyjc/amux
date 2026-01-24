@@ -495,7 +495,7 @@ Follow this pattern to ensure your adapter works seamlessly with Amux.
 <Tabs items={['1. Define Structure', '2. Implement Inbound', '3. Implement Outbound', '4. Add Metadata']}>
   <Tab value="1. Define Structure">
     ```typescript
-    import type { LLMAdapter } from '@amux/llm-bridge'
+    import type { LLMAdapter } from '@amux.ai/llm-bridge'
 
     export const myAdapter: LLMAdapter = {
       name: 'my-provider',
@@ -632,7 +632,7 @@ Follow this pattern to ensure your adapter works seamlessly with Amux.
 ### Complete Example
 
 ```typescript
-import type { LLMAdapter, LLMRequestIR, LLMResponseIR } from '@amux/llm-bridge'
+import type { LLMAdapter, LLMRequestIR, LLMResponseIR } from '@amux.ai/llm-bridge'
 
 export const myAdapter: LLMAdapter = {
   name: 'my-provider',

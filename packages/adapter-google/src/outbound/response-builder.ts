@@ -1,4 +1,4 @@
-import type { LLMResponseIR, ContentPart, TextContent } from '@amux/llm-bridge'
+import type { LLMResponseIR, ContentPart, TextContent } from '@amux.ai/llm-bridge'
 
 import type { GeminiResponse, GeminiPart } from '../types'
 

@@ -1,4 +1,4 @@
-import type { LLMStreamEvent, SSEEvent, StreamEventBuilder } from '@amux/llm-bridge'
+import type { LLMStreamEvent, SSEEvent, StreamEventBuilder } from '@amux.ai/llm-bridge'
 
 /**
  * Create a stream builder for Responses API format

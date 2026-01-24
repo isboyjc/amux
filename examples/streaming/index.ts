@@ -1,6 +1,6 @@
-import { createBridge } from '@amux/llm-bridge'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
-import { openaiAdapter } from '@amux/adapter-openai'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
 
 /**
  * Example: Streaming with OpenAI → Anthropic

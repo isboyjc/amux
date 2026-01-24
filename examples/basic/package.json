@@ -1,6 +1,6 @@
 {
-  "name": "@amux/example-basic",
-  "version": "0.0.1",
+  "name": "@amux.ai/example-basic",
+  "version": "0.0.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,9 +10,9 @@
     "clean": "rm -rf node_modules"
   },
   "dependencies": {
-    "@amux/llm-bridge": "workspace:*",
-    "@amux/adapter-openai": "workspace:*",
-    "@amux/adapter-anthropic": "workspace:*"
+    "@amux.ai/llm-bridge": "workspace:*",
+    "@amux.ai/adapter-openai": "workspace:*",
+    "@amux.ai/adapter-anthropic": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.7.0",

@@ -1,5 +1,5 @@
-import type { LLMResponseIR, Choice, Role } from '@amux/llm-bridge'
-import { mapFinishReason } from '@amux/llm-bridge'
+import type { LLMResponseIR, Choice, Role } from '@amux.ai/llm-bridge'
+import { mapFinishReason } from '@amux.ai/llm-bridge'
 
 import type { DeepSeekResponse } from '../types'
 

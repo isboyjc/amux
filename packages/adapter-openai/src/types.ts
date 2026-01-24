@@ -1,4 +1,4 @@
-import type { ToolCall, JSONSchema } from '@amux/llm-bridge'
+import type { ToolCall, JSONSchema } from '@amux.ai/llm-bridge'
 
 /**
  * OpenAI message content part types

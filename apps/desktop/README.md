@@ -68,7 +68,7 @@ apps/desktop/
 - **路由**: React Router
 - **数据库**: better-sqlite3
 - **HTTP 服务器**: Fastify
-- **核心库**: @amux/llm-bridge + 各适配器包
+- **核心库**: @amux.ai/llm-bridge + 各适配器包
 
 ## 配置说明
 

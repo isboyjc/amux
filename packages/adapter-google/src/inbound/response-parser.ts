@@ -1,4 +1,4 @@
-import type { LLMResponseIR, Choice, FinishReason, ContentPart, TextContent, ToolCall } from '@amux/llm-bridge'
+import type { LLMResponseIR, Choice, FinishReason, ContentPart, TextContent, ToolCall } from '@amux.ai/llm-bridge'
 
 import type { GeminiResponse, GeminiPart } from '../types'
 

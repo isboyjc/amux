@@ -95,9 +95,9 @@ function createBridge(options: BridgeOptions): Bridge
 <Tabs items={['基础用法', '完整配置', '模型映射', '多提供商']}>
   <Tab value="基础用法">
     ```typescript
-    import { createBridge } from '@amux/llm-bridge'
-    import { openaiAdapter } from '@amux/adapter-openai'
-    import { anthropicAdapter } from '@amux/adapter-anthropic'
+    import { createBridge } from '@amux.ai/llm-bridge'
+    import { openaiAdapter } from '@amux.ai/adapter-openai'
+    import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
     const bridge = createBridge({
       inbound: openaiAdapter,
@@ -1246,9 +1246,9 @@ graph TD
 这是一个展示错误处理、兼容性检查和流式传输的完整示例：
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
 // 创建 bridge
 const bridge = createBridge({

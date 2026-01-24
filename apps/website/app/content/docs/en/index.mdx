@@ -22,9 +22,9 @@ Unlike other solutions that only provide a unified interface, Amux enables true 
 ## Quick Example
 
 ```typescript
-import { createBridge } from '@amux/llm-bridge'
-import { openaiAdapter } from '@amux/adapter-openai'
-import { anthropicAdapter } from '@amux/adapter-anthropic'
+import { createBridge } from '@amux.ai/llm-bridge'
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
 // Create a bridge: OpenAI format in → Anthropic API out
 const bridge = createBridge({
@@ -71,13 +71,13 @@ The IR is a unified format that captures all LLM capabilities - messages, tools,
 
 | Provider | Package | Features |
 |----------|---------|----------|
-| OpenAI | `@amux/adapter-openai` | Chat, streaming, tools, vision, JSON mode |
-| Anthropic | `@amux/adapter-anthropic` | Messages, streaming, tools, vision, reasoning |
-| DeepSeek | `@amux/adapter-deepseek` | Chat, streaming, tools, reasoning |
-| Moonshot | `@amux/adapter-moonshot` | Chat, streaming, tools |
-| Zhipu (GLM) | `@amux/adapter-zhipu` | Chat, streaming, tools |
-| Qwen | `@amux/adapter-qwen` | Chat, streaming, tools, vision |
-| Gemini | `@amux/adapter-google` | Chat, streaming, tools, vision |
+| OpenAI | `@amux.ai/adapter-openai` | Chat, streaming, tools, vision, JSON mode |
+| Anthropic | `@amux.ai/adapter-anthropic` | Messages, streaming, tools, vision, reasoning |
+| DeepSeek | `@amux.ai/adapter-deepseek` | Chat, streaming, tools, reasoning |
+| Moonshot | `@amux.ai/adapter-moonshot` | Chat, streaming, tools |
+| Zhipu (GLM) | `@amux.ai/adapter-zhipu` | Chat, streaming, tools |
+| Qwen | `@amux.ai/adapter-qwen` | Chat, streaming, tools, vision |
+| Gemini | `@amux.ai/adapter-google` | Chat, streaming, tools, vision |
 
 ## Common Use Cases
 

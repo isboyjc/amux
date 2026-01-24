@@ -14,7 +14,7 @@
 
 import { randomUUID } from 'crypto'
 
-import type { Usage } from '@amux/llm-bridge'
+import type { Usage } from '@amux.ai/llm-bridge'
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 
 import {

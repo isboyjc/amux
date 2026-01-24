@@ -1,4 +1,4 @@
-import type { LLMRequestIR, Message, ContentPart, ToolCall } from '@amux/llm-bridge'
+import type { LLMRequestIR, Message, ContentPart, ToolCall } from '@amux.ai/llm-bridge'
 
 import type { AnthropicRequest, AnthropicMessage, AnthropicContent } from '../types'
 
