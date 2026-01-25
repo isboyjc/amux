@@ -9,6 +9,7 @@ import {
   ExternalLink,
   Sun,
   Moon,
+  Monitor,
   Info,
   Loader2,
   ChevronRight,
@@ -224,15 +225,15 @@ interface SettingsSectionProps extends SectionProps {
 }
 
 // Appearance Section
-function AppearanceSection({ 
-  theme, 
-  setTheme, 
-  locale, 
-  setLocale, 
-  t 
-}: SectionProps & { 
+function AppearanceSection({
+  theme,
+  setTheme,
+  locale,
+  setLocale,
+  t
+}: SectionProps & {
   theme: string
-  setTheme: (theme: 'light' | 'dark') => void
+  setTheme: (theme: 'light' | 'dark' | 'system') => void
   locale: string
   setLocale: (locale: 'en-US' | 'zh-CN') => void
 }) {
@@ -246,7 +247,7 @@ function AppearanceSection({
 
       {/* Theme */}
       <SettingItem
-        icon={theme === 'light' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        icon={theme === 'light' ? <Sun className="h-4 w-4" /> : theme === 'dark' ? <Moon className="h-4 w-4" /> : <Monitor className="h-4 w-4" />}
         label={t('settings.theme')}
         description={t('settings.themeDesc')}
       >
@@ -266,6 +267,14 @@ function AppearanceSection({
           >
             <Moon className="h-4 w-4 mr-1.5" />
             {t('settings.themeDark')}
+          </Button>
+          <Button
+            variant={theme === 'system' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setTheme('system')}
+          >
+            <Monitor className="h-4 w-4 mr-1.5" />
+            {t('settings.themeSystem')}
           </Button>
         </div>
       </SettingItem>

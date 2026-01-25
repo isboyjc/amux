@@ -7,7 +7,15 @@ import { persist } from 'zustand/middleware'
 import { ipc } from '@/lib/ipc'
 import type { SettingsSchema } from '@/types'
 
-type Theme = 'light' | 'dark'
+type Theme = 'light' | 'dark' | 'system'
+
+// Get the actual theme based on system preference
+export function getEffectiveTheme(theme: Theme): 'light' | 'dark' {
+  if (theme === 'system') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  }
+  return theme
+}
 
 interface SettingsState {
   settings: Partial<SettingsSchema>

@@ -14,7 +14,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/stores/i18n-store'
 import { useProxyStore } from '@/stores/proxy-store'
-import { useSettingsStore } from '@/stores/settings-store'
+import { useSettingsStore, getEffectiveTheme } from '@/stores/settings-store'
 
 interface HeaderProps {
   sidebarCollapsed: boolean
@@ -35,13 +35,34 @@ export function Header({ sidebarCollapsed, onToggleSidebar }: HeaderProps) {
   }, [fetchStatus])
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark')
+    const applyTheme = () => {
+      const effectiveTheme = getEffectiveTheme(theme)
+      document.documentElement.classList.toggle('dark', effectiveTheme === 'dark')
+    }
+
+    applyTheme()
+
+    // Listen for system theme changes when theme is 'system'
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+      mediaQuery.addEventListener('change', applyTheme)
+      return () => mediaQuery.removeEventListener('change', applyTheme)
+    }
   }, [theme])
 
   const toggleTheme = () => {
     themeIconRef.current?.startAnimation()
-    setTheme(theme === 'light' ? 'dark' : 'light')
+    // Cycle: light -> dark -> system -> light
+    if (theme === 'light') {
+      setTheme('dark')
+    } else if (theme === 'dark') {
+      setTheme('system')
+    } else {
+      setTheme('light')
+    }
   }
+
+  const effectiveTheme = getEffectiveTheme(theme)
 
   const toggleLocale = () => {
     setLocale(locale === 'en-US' ? 'zh-CN' : 'en-US')
@@ -190,7 +211,7 @@ export function Header({ sidebarCollapsed, onToggleSidebar }: HeaderProps) {
                 onMouseEnter={() => themeIconRef.current?.startAnimation()}
                 onMouseLeave={() => themeIconRef.current?.stopAnimation()}
               >
-                {theme === 'light' ? (
+                {effectiveTheme === 'light' ? (
                   <MoonIcon ref={themeIconRef} size={16} />
                 ) : (
                   <SunIcon ref={themeIconRef} size={16} />
@@ -198,7 +219,9 @@ export function Header({ sidebarCollapsed, onToggleSidebar }: HeaderProps) {
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              {theme === 'light' ? t('common.darkMode') : t('common.lightMode')}
+              {theme === 'light' && t('common.darkMode')}
+              {theme === 'dark' && t('common.systemMode')}
+              {theme === 'system' && t('common.lightMode')}
             </TooltipContent>
           </Tooltip>
         </div>
