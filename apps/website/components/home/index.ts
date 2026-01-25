@@ -1,0 +1,11 @@
+export { HomeNav } from './home-nav';
+export { HeroSection } from './hero-section';
+export { LogosSection } from './logos-section';
+export { PainPointsSection } from './pain-points-section';
+export { SolutionSection } from './solution-section';
+export { FeaturesSection } from './features-section';
+export { CodeExampleSection } from './code-example-section';
+export { UseCasesSection } from './use-cases-section';
+export { CTASection } from './cta-section';
+export { FooterSection } from './footer-section';
+export { InfiniteScrollLogos } from './infinite-scroll-logos';

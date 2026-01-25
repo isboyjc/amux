@@ -1,16 +1,50 @@
-import Link from 'next/link';
+import {
+  HeroSection,
+  LogosSection,
+  PainPointsSection,
+  SolutionSection,
+  FeaturesSection,
+  CodeExampleSection,
+  UseCasesSection,
+  CTASection,
+  FooterSection,
+} from '@/components/home';
 
-export default function HomePage() {
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}) {
+  const { lang } = await params;
+
   return (
-    <div className="flex flex-col justify-center text-center flex-1">
-      <h1 className="text-2xl font-bold mb-4">Hello World</h1>
-      <p>
-        You can open{' '}
-        <Link href="/docs" className="font-medium underline">
-          /docs
-        </Link>{' '}
-        and see the documentation.
-      </p>
+    <div className="flex flex-col">
+      {/* Hero Section with Logos */}
+      <div className="relative">
+        <HeroSection lang={lang} />
+        <LogosSection />
+      </div>
+
+      {/* Pain Points */}
+      <PainPointsSection lang={lang} />
+
+      {/* Solution / Products */}
+      <SolutionSection lang={lang} />
+
+      {/* Features */}
+      <FeaturesSection lang={lang} />
+
+      {/* Code Example */}
+      <CodeExampleSection lang={lang} />
+
+      {/* Use Cases */}
+      <UseCasesSection lang={lang} />
+
+      {/* Final CTA */}
+      <CTASection lang={lang} />
+
+      {/* Footer */}
+      <FooterSection lang={lang} />
     </div>
   );
 }
