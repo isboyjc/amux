@@ -4,7 +4,14 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
+    plugins: [
+      externalizeDepsPlugin({
+        // 不外部化 workspace 依赖，将它们打包进主进程
+        exclude: ['@amux.ai/llm-bridge', '@amux.ai/adapter-openai', '@amux.ai/adapter-anthropic', 
+                  '@amux.ai/adapter-deepseek', '@amux.ai/adapter-moonshot', '@amux.ai/adapter-qwen',
+                  '@amux.ai/adapter-google', '@amux.ai/adapter-zhipu']
+      })
+    ],
     build: {
       rollupOptions: {
         input: {

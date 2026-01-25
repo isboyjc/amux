@@ -14,6 +14,7 @@ import { migration006RequestSource } from './migrations/006_request_source'
 import { migration007FixGeminiAdapter } from './migrations/007_fix_gemini_adapter'
 import { migration008FixGeminiStreamEndpoint } from './migrations/008_fix_gemini_stream_endpoint'
 import { migration009 } from './migrations/009_oauth_accounts'
+import { migration010FixHealthStatus } from './migrations/010_fix_health_status'
 
 // Register all migrations here
 const migrations: Migration[] = [
@@ -25,7 +26,8 @@ const migrations: Migration[] = [
   migration006RequestSource,
   migration007FixGeminiAdapter,
   migration008FixGeminiStreamEndpoint,
-  migration009
+  migration009,
+  migration010FixHealthStatus
 ]
 
 /**

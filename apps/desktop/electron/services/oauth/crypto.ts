@@ -31,9 +31,22 @@ export function encryptToken(token: string): string {
  * 解密Token
  */
 export function decryptToken(encryptedToken: string): string {
+  // 首先尝试使用 safeStorage 解密
   if (safeStorage.isEncryptionAvailable()) {
-    const buffer = Buffer.from(encryptedToken, 'base64')
-    return safeStorage.decryptString(buffer)
+    try {
+      const buffer = Buffer.from(encryptedToken, 'base64')
+      return safeStorage.decryptString(buffer)
+    } catch (error) {
+      // safeStorage 解密失败，可能是在不同机器上加密的
+      console.warn('[Crypto] safeStorage decryption failed, trying fallback:', error.message)
+      // 尝试 fallback 解密
+      try {
+        return fallbackDecrypt(encryptedToken)
+      } catch (fallbackError) {
+        // 两种方式都失败了，抛出原始错误
+        throw new Error(`Failed to decrypt token: ${error.message}`)
+      }
+    }
   }
   
   // Fallback: 使用AES解密

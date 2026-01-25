@@ -141,20 +141,6 @@ app.whenReady().then(async () => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  // Migrate user data from old directory (@amux) to new directory (Amux)
-  console.log('[App] Checking for data migration...')
-  try {
-    const { migrateUserData } = await import('./services/migration')
-    const migrationResult = await migrateUserData()
-    if (migrationResult.migrated) {
-      console.log('[App] Data migration completed:', migrationResult.message)
-    } else if (!migrationResult.success) {
-      console.error('[App] Data migration failed:', migrationResult.message)
-    }
-  } catch (error) {
-    console.error('[App] Error during migration:', error)
-  }
-
   // Initialize crypto service (must be before database for API key encryption)
   console.log('[App] Initializing crypto service...')
   try {

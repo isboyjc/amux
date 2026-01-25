@@ -123,7 +123,20 @@ export class TokenManager {
     
     try {
       // 解密refresh_token
-      const refreshToken = decryptToken(account.refresh_token)
+      let refreshToken: string
+      try {
+        refreshToken = decryptToken(account.refresh_token)
+      } catch (decryptError) {
+        console.error(`[TokenManager] Failed to decrypt token for ${account.email}:`, decryptError)
+        // 解密失败，标记账号为 forbidden 状态
+        repo.update(accountId, {
+          health_status: 'forbidden',
+          is_active: 0,
+          error_message: 'Token decryption failed. Please re-authenticate.',
+          consecutive_failures: account.consecutive_failures + 1
+        })
+        return false
+      }
       
       // 获取对应的OAuth service
       const service = this.getOAuthService(account.provider_type)
@@ -175,9 +188,9 @@ export class TokenManager {
         error_message: error.message
       }
       
-      // 如果连续失败3次，标记为error状态
+      // 如果连续失败3次，标记为 expired 状态并禁用账号
       if (consecutiveFailures >= 3) {
-        updates.health_status = 'error'
+        updates.health_status = 'expired'
         updates.is_active = 0
       }
       

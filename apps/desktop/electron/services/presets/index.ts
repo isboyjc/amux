@@ -36,7 +36,7 @@ export interface PresetsConfig {
 }
 
 // Default remote URL
-const DEFAULT_REMOTE_URL = 'https://raw.githubusercontent.com/isboyjc/amux/main/presets/providers.json'
+const DEFAULT_REMOTE_URL = 'https://raw.githubusercontent.com/isboyjc/amux/main/apps/desktop/resources/presets/providers.json'
 
 // Cache file name
 const PRESETS_CACHE_FILE = 'presets-cache.json'
@@ -166,7 +166,7 @@ export async function fetchRemotePresets(url?: string): Promise<PresetsConfig | 
   } catch (error) {
     // Silently fail - will use builtin presets as fallback
     // Only log in development mode
-    if (process.env.NODE_ENV === 'development') {
+    if (!app.isPackaged) {
       console.warn('[Presets] Failed to fetch remote presets:', error)
     }
     return null
@@ -262,7 +262,7 @@ async function refreshPresetsInBackground(): Promise<void> {
     }
   } catch (error) {
     // Silently fail - will continue using cached/builtin presets
-    if (process.env.NODE_ENV === 'development') {
+    if (!app.isPackaged) {
       console.warn('[Presets] Background refresh failed:', error)
     }
   }
