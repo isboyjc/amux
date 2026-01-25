@@ -14,6 +14,31 @@ Amux Desktop 是一个基于 Electron 的跨平台桌面客户端，提供 LLM A
 - **自动启动**: 支持开机自启动
 - **配置导入导出**: 方便的配置备份和迁移
 
+## 安装
+
+### macOS
+
+从 Release 页面下载 `.dmg` 文件后，将应用拖入 Applications 文件夹。
+
+首次打开应用时，macOS 可能会提示"无法打开，因为无法验证开发者"。这是因为应用未经过 Apple 公证。请运行以下命令解除隔离属性：
+
+```bash
+sudo xattr -dr com.apple.quarantine /Applications/Amux.app
+```
+
+然后重新打开应用即可正常使用。
+
+### Windows
+
+从 Release 页面下载 `.exe` 安装程序，双击运行即可安装。
+
+### Linux
+
+从 Release 页面下载 `.AppImage` 或 `.deb` 文件：
+
+- **AppImage**: 添加执行权限后直接运行 `chmod +x Amux-*.AppImage && ./Amux-*.AppImage`
+- **deb**: 使用 `sudo dpkg -i Amux-*.deb` 安装
+
 ## 快速开始
 
 ### 开发环境
