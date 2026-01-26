@@ -20,7 +20,9 @@ import {
   EyeOff,
   Palette,
   Database,
-  ScrollText
+  ScrollText,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react'
 
 import { GearIcon, RefreshIcon, TrashIcon, GithubIcon } from '@/components/icons'
@@ -31,7 +33,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { useSettingsStore, useI18n } from '@/stores'
+import { useSettingsStore, useI18n, useUpdaterStore } from '@/stores'
 import { ipc } from '@/lib/ipc'
 import { cn } from '@/lib/utils'
 import type { ApiKey } from '@/types'
@@ -326,6 +328,16 @@ function GeneralSection({ settings, setSetting, t }: SettingsSectionProps) {
           onCheckedChange={(v) => setSetting('app.minimizeToTray', v)}
         />
       </SettingItem>
+
+      <SettingItem
+        label={t('settings.analytics')}
+        description={t('settings.analyticsDesc')}
+      >
+        <Switch
+          checked={settings['analytics.enabled'] as boolean ?? true}
+          onCheckedChange={(v) => setSetting('analytics.enabled', v)}
+        />
+      </SettingItem>
     </div>
   )
 }
@@ -539,6 +551,24 @@ function AboutSection({
   t 
 }: SectionProps & { appVersion: string; platform: string }) {
   const githubIconRef = useRef<AnimatedIconHandle>(null)
+  const refreshIconRef = useRef<AnimatedIconHandle>(null)
+  const { versionInfo, isChecking, checkForUpdates, openReleasePage } = useUpdaterStore()
+
+  const handleCheckUpdate = async () => {
+    await checkForUpdates()
+    
+    if (versionInfo?.hasUpdate) {
+      toast.success(t('settings.updateAvailable') || '发现新版本!', {
+        description: `v${versionInfo.latestVersion}`,
+        action: {
+          label: t('settings.viewUpdate') || '查看更新',
+          onClick: () => openReleasePage()
+        }
+      })
+    } else if (!isChecking) {
+      toast.success(t('settings.upToDate') || '已是最新版本')
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -548,16 +578,86 @@ function AboutSection({
         description="Amux Desktop"
       />
 
-      <div className="space-y-4">
-        <div className="flex items-center justify-between py-2">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between py-2.5">
           <span className="text-sm text-muted-foreground">{t('settings.version')}</span>
-          <Badge variant="secondary">{appVersion || '-'}</Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="font-mono">{appVersion || '-'}</Badge>
+            {!versionInfo?.hasUpdate && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCheckUpdate}
+                disabled={isChecking}
+                className="h-6 px-2 text-xs -mr-2"
+                onMouseEnter={() => refreshIconRef.current?.startAnimation()}
+                onMouseLeave={() => refreshIconRef.current?.stopAnimation()}
+              >
+                {isChecking ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <RefreshIcon ref={refreshIconRef} size={12} className="mr-1" />
+                )}
+                {isChecking ? t('settings.checking') || '检查中...' : t('settings.checkUpdate') || '检查更新'}
+              </Button>
+            )}
+          </div>
         </div>
-        <div className="flex items-center justify-between py-2">
+        <div className="flex items-center justify-between py-2.5">
           <span className="text-sm text-muted-foreground">{t('settings.platform')}</span>
-          <Badge variant="outline">{platform || '-'}</Badge>
+          <Badge variant="outline" className="font-mono">{platform || '-'}</Badge>
         </div>
       </div>
+
+      {/* 更新提示区域 */}
+      {versionInfo?.hasUpdate && (
+        <div className="pt-4 space-y-3">
+          <div className="relative overflow-hidden rounded-lg border border-red-200 dark:border-red-800/50 bg-gradient-to-br from-red-50/50 via-orange-50/50 to-red-50/50 dark:from-red-950/10 dark:via-orange-950/10 dark:to-red-950/10">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full blur-3xl" />
+            <div className="relative p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                  <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="text-sm font-semibold text-red-900 dark:text-red-100">
+                      {t('settings.newVersionAvailable') || '发现新版本'}
+                    </h4>
+                    <Badge variant="secondary" className="h-5 text-[10px] font-bold bg-red-500 text-white border-0 cursor-default">
+                      NEW
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-red-700 dark:text-red-300 mb-3">
+                    <span className="font-mono font-medium">v{versionInfo.currentVersion}</span>
+                    <span>→</span>
+                    <span className="font-mono font-bold">v{versionInfo.latestVersion}</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={openReleasePage}
+                    className="h-8 bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 shadow-sm"
+                  >
+                    <Download className="h-3.5 w-3.5 mr-1.5" />
+                    {t('settings.downloadUpdate') || '下载更新'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!versionInfo?.hasUpdate && versionInfo && !isChecking && (
+        <div className="pt-4">
+          <div className="flex items-center gap-2.5 p-3 rounded-lg bg-muted/50 border border-border">
+            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-500 shrink-0" />
+            <span className="text-sm text-muted-foreground">
+              {t('settings.upToDate') || '已是最新版本'}
+            </span>
+          </div>
+        </div>
+      )}
 
       <div className="pt-4 border-t">
         <Button

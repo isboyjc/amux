@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 
 import {
@@ -15,10 +15,12 @@ import {
   PlugConnectedIcon
 } from '@/components/icons'
 import type { AnimatedIconHandle } from '@/components/icons'
+import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
 import { ipc } from '@/lib/ipc'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/stores/i18n-store'
+import { useUpdaterStore } from '@/stores/updater-store'
 
 interface NavItemData {
   to: string
@@ -45,9 +47,26 @@ export function Sidebar({ collapsed }: SidebarProps) {
   const { t } = useI18n()
   const location = useLocation()
   const logoRef = useRef<AnimatedIconHandle>(null)
+  const { versionInfo, checkForUpdates, openReleasePage } = useUpdaterStore()
+  
+  // 启动时检查更新
+  useEffect(() => {
+    // 延迟 3 秒后检查，避免影响启动速度
+    const timer = setTimeout(() => {
+      checkForUpdates()
+    }, 3000)
+
+    return () => clearTimeout(timer)
+  }, [checkForUpdates])
   
   const handleOpenGithub = () => {
     ipc.invoke('app:open-external', 'https://github.com/isboyjc/amux')
+  }
+
+  const handleLogoClick = () => {
+    if (versionInfo?.hasUpdate) {
+      openReleasePage()
+    }
   }
 
   const handleLogoMouseEnter = () => {
@@ -69,20 +88,67 @@ export function Sidebar({ collapsed }: SidebarProps) {
         {/* Logo */}
         <div 
           className={cn(
-            'flex items-center h-10 mb-1 px-2 cursor-pointer',
+            'flex items-center h-10 mb-1 px-2 group',
             collapsed && 'justify-center'
           )}
           onMouseEnter={handleLogoMouseEnter}
           onMouseLeave={handleLogoMouseLeave}
         >
-          <div className={cn(
-            'flex items-center h-8',
-            collapsed ? 'justify-center' : 'w-8 justify-center'
-          )}>
-            <Logo ref={logoRef} size={22} color="currentColor" className="text-foreground" />
+          <div 
+            className={cn(
+              'flex items-center h-8 relative',
+              collapsed ? 'justify-center' : 'w-8 justify-center'
+            )}
+          >
+            <div
+              className={cn(
+                versionInfo?.hasUpdate && 'cursor-pointer transition-transform hover:scale-110'
+              )}
+              onClick={versionInfo?.hasUpdate ? handleLogoClick : undefined}
+            >
+              <Logo ref={logoRef} size={22} color="currentColor" className="text-foreground" />
+            </div>
+            {versionInfo?.hasUpdate && collapsed && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    className="absolute bottom-1 left-1/2 -translate-x-1/2 cursor-pointer z-10"
+                    onClick={handleLogoClick}
+                  >
+                    <div className="w-2 h-2 rounded-full bg-red-500 animate-bounce" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={5} className="bg-primary text-primary-foreground">
+                  <div className="space-y-0.5">
+                    <div className="font-semibold text-xs">v{versionInfo.latestVersion} {t('nav.updateAvailable') || '可用'}</div>
+                    <div className="text-[10px] opacity-80">{t('nav.clickToView') || '点击查看'}</div>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
           {!collapsed && (
-            <span className="ml-3 font-bold text-[1.2rem] tracking-tight whitespace-nowrap">Amux</span>
+            <div className="flex items-center gap-1.5">
+              <span className="ml-3 font-bold text-[1.2rem] tracking-tight whitespace-nowrap">Amux</span>
+              {versionInfo?.hasUpdate && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      className="h-4 px-1.5 rounded text-[9px] font-bold bg-red-500 text-white shadow-sm cursor-pointer"
+                      onClick={handleLogoClick}
+                    >
+                      NEW
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={5} className="bg-primary text-primary-foreground">
+                    <div className="space-y-0.5">
+                      <div className="font-semibold text-xs">v{versionInfo.latestVersion} {t('nav.updateAvailable') || '可用'}</div>
+                      <div className="text-[10px] opacity-80">{t('nav.clickToView') || '点击查看'}</div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           )}
         </div>
 

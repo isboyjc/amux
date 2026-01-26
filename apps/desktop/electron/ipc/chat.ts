@@ -6,6 +6,11 @@
 import { ipcMain, type IpcMainInvokeEvent } from 'electron'
 
 import {
+  trackConversationCreated,
+  trackConversationDeleted,
+  trackMessageSent
+} from '../services/analytics'
+import {
   getConversationRepository,
   getMessageRepository,
   getProviderRepository,
@@ -16,8 +21,8 @@ import {
   type UpdateConversationDTO
 } from '../services/database/repositories'
 import { getServerState } from '../services/proxy-server'
-import { getEndpointForAdapter } from '../services/proxy-server/utils'
 import { getAdapter } from '../services/proxy-server/bridge-manager'
+import { getEndpointForAdapter } from '../services/proxy-server/utils'
 
 /**
  * Register chat IPC handlers
@@ -39,7 +44,18 @@ export function registerChatHandlers(): void {
 
   // Create a new conversation
   ipcMain.handle('chat:create-conversation', async (_event, data: CreateConversationDTO): Promise<Conversation> => {
-    return conversationRepo.create(data)
+    const conversation = conversationRepo.create(data)
+    
+    // 追踪对话创建（异步，不阻塞）
+    setImmediate(() => {
+      try {
+        trackConversationCreated(data.model, data.providerId, data.proxyId)
+      } catch (e) {
+        // 静默失败
+      }
+    })
+    
+    return conversation
   })
 
   // Update a conversation
@@ -50,7 +66,20 @@ export function registerChatHandlers(): void {
   // Delete a conversation
   ipcMain.handle('chat:delete-conversation', async (_event, id: string): Promise<boolean> => {
     // Messages will be deleted by CASCADE
-    return conversationRepo.delete(id)
+    const result = conversationRepo.delete(id)
+    
+    // 追踪对话删除（异步，不阻塞）
+    if (result) {
+      setImmediate(() => {
+        try {
+          trackConversationDeleted()
+        } catch (e) {
+          // 静默失败
+        }
+      })
+    }
+    
+    return result
   })
 
   // Get messages for a conversation
@@ -200,6 +229,7 @@ export function registerChatHandlers(): void {
       let fullReasoning = ''
       let usage: { promptTokens?: number; completionTokens?: number} | undefined
       let hasError = false
+      const streamStartTime = Date.now()
 
       try {
         const response = await fetch(proxyUrl, {
@@ -348,13 +378,44 @@ export function registerChatHandlers(): void {
 
           // Send stream end event
           sender.send('chat:stream-end', assistantMessage)
+          
+          // 追踪消息发送成功（异步，不阻塞）
+          setImmediate(() => {
+            try {
+              const latency = Date.now() - streamStartTime
+              const proxyType = conversation.proxyId ? 'proxy' : 'provider'
+              trackMessageSent(model, proxyType, adapterType, true, latency)
+            } catch (e) {
+              // 静默失败
+            }
+          })
         } else if (hasError) {
           // Error already sent via chat:stream-error
           console.log('[Chat] Stream ended with error, not saving message')
+          
+          // 追踪消息发送失败（异步，不阻塞）
+          setImmediate(() => {
+            try {
+              const proxyType = conversation.proxyId ? 'proxy' : 'provider'
+              trackMessageSent(model, proxyType, adapterType, false, undefined, 'Stream error')
+            } catch (e) {
+              // 静默失败
+            }
+          })
         } else {
           // No content and no reasoning - empty response
           console.log('[Chat] Empty response from API (no content or reasoning)')
           sender.send('chat:stream-error', 'Empty response from API')
+          
+          // 追踪消息发送失败（异步，不阻塞）
+          setImmediate(() => {
+            try {
+              const proxyType = conversation.proxyId ? 'proxy' : 'provider'
+              trackMessageSent(model, proxyType, adapterType, false, undefined, 'Empty response')
+            } catch (e) {
+              // 静默失败
+            }
+          })
         }
 
       } catch (streamError) {
@@ -367,11 +428,30 @@ export function registerChatHandlers(): void {
           errorMsg = streamError
         }
         sender.send('chat:stream-error', errorMsg)
+        
+        // 追踪消息发送失败（异步，不阻塞）
+        setImmediate(() => {
+          try {
+            const proxyType = conversation.proxyId ? 'proxy' : 'provider'
+            trackMessageSent(model, proxyType, adapterType, false, undefined, errorMsg)
+          } catch (e) {
+            // 静默失败
+          }
+        })
       }
 
     } catch (error) {
       console.error('[Chat] Error:', error)
       sender.send('chat:stream-error', error instanceof Error ? error.message : 'Unknown error')
+      
+      // 追踪消息发送失败（异步，不阻塞）
+      setImmediate(() => {
+        try {
+          trackMessageSent('unknown', 'provider', 'unknown', false, undefined, error instanceof Error ? error.message : 'Unknown error')
+        } catch (e) {
+          // 静默失败
+        }
+      })
     }
   })
 

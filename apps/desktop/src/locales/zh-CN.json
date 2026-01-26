@@ -13,7 +13,9 @@
     "service": "服务",
     "logs": "日志",
     "tokens": "令牌",
-    "settings": "设置"
+    "settings": "设置",
+    "updateAvailable": "可用",
+    "clickToView": "点击查看"
   },
   "dashboard": {
     "title": "仪表盘",
@@ -226,6 +228,8 @@
     "autoLaunchDesc": "系统启动时自动启动 Amux",
     "minimizeToTray": "最小化到托盘",
     "minimizeToTrayDesc": "关闭窗口时最小化到系统托盘",
+    "analytics": "使用情况统计",
+    "analyticsDesc": "发送匿名使用数据帮助改进 Amux（不会收集个人信息或 API 密钥）",
     "defaultPort": "默认端口",
     "defaultHost": "默认地址",
     "autoStartService": "自动启动服务",
@@ -263,7 +267,14 @@
     "deletedLogs": "已删除",
     "entries": "条",
     "noLogsToCleanup": "没有需要清理的日志",
-    "timeoutUnit": "秒"
+    "timeoutUnit": "秒",
+    "checkUpdate": "检查更新",
+    "checking": "检查中...",
+    "updateAvailable": "发现新版本",
+    "newVersionAvailable": "发现新版本",
+    "upToDate": "已是最新版本",
+    "downloadUpdate": "下载更新",
+    "viewUpdate": "查看更新"
   },
   "common": {
     "save": "保存",

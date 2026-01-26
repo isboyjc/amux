@@ -36,6 +36,15 @@ export class ErrorBoundary extends Component<Props, State> {
       error,
       errorInfo
     })
+    
+    // 追踪错误（异步，不阻塞）
+    setImmediate(() => {
+      try {
+        window.api.invoke('analytics:trackError', 'react_error', error.message)
+      } catch (e) {
+        // 静默失败，不影响功能
+      }
+    })
   }
 
   handleReload = () => {

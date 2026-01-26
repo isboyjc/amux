@@ -298,6 +298,18 @@ export interface IPCHandlers {
   'oauth:getPoolStats': (providerType: string) => Promise<{ success: boolean; stats?: any; error?: string }>
   'oauth:generateIndividualProvider': (accountId: string) => Promise<{ success: boolean; provider?: any; error?: string }>
   'oauth:generatePoolProvider': (providerType: string, strategy: string) => Promise<{ success: boolean; provider?: any; error?: string }>
+
+  // Updater operations
+  'updater:check': () => Promise<{
+    currentVersion: string
+    latestVersion: string
+    hasUpdate: boolean
+    releaseUrl: string
+    releaseNotes: string
+    publishedAt: string
+  }>
+  'updater:get-release-url': () => Promise<string>
+  'updater:open-release-page': () => Promise<void>
 }
 
 // ============ IPC Events (Main -> Renderer) ============

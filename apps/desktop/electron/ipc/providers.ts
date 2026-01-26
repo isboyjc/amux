@@ -4,6 +4,11 @@
 
 import { ipcMain } from 'electron'
 
+import {
+  trackProviderCreated,
+  trackProviderDeleted,
+  trackProviderTested
+} from '../services/analytics'
 import { encryptApiKey, decryptApiKey } from '../services/crypto'
 import {
   getProviderRepository,
@@ -71,6 +76,16 @@ export function registerProviderHandlers(): void {
       color: data.color
     }
     const row = repo.create(createData)
+    
+    // 追踪 Provider 创建（异步，不阻塞）
+    setImmediate(() => {
+      try {
+        trackProviderCreated(data.adapterType, !!data.apiKey)
+      } catch (e) {
+        // 静默失败，不影响功能
+      }
+    })
+    
     return toProvider(row)
   })
 
@@ -92,7 +107,24 @@ export function registerProviderHandlers(): void {
 
   // Delete provider
   ipcMain.handle('provider:delete', async (_event, id: string) => {
-    return repo.delete(id)
+    // 获取 Provider 信息用于追踪
+    const provider = repo.findById(id)
+    const adapterType = provider?.adapter_type
+    
+    const result = repo.delete(id)
+    
+    // 追踪 Provider 删除（异步，不阻塞）
+    if (result && adapterType) {
+      setImmediate(() => {
+        try {
+          trackProviderDeleted(adapterType)
+        } catch (e) {
+          // 静默失败，不影响功能
+        }
+      })
+    }
+    
+    return result
   })
 
   // Toggle provider enabled
@@ -140,6 +172,15 @@ export function registerProviderHandlers(): void {
       const data = await response.json()
       const models = (data.data || []).map((m: { id: string }) => m.id)
 
+      // 追踪测试成功（异步，不阻塞）
+      setImmediate(() => {
+        try {
+          trackProviderTested(row.adapter_type, true, latency)
+        } catch (e) {
+          // 静默失败
+        }
+      })
+
       return {
         success: true,
         latency,
@@ -151,9 +192,20 @@ export function registerProviderHandlers(): void {
         }
       }
     } catch (error) {
+      const failureLatency = Date.now() - startTime
+
+      // 追踪测试失败（异步，不阻塞）
+      setImmediate(() => {
+        try {
+          trackProviderTested(row.adapter_type, false, failureLatency)
+        } catch (e) {
+          // 静默失败
+        }
+      })
+
       return {
         success: false,
-        latency: Date.now() - startTime,
+        latency: failureLatency,
         error: error instanceof Error ? error.message : 'Unknown error'
       }
     }

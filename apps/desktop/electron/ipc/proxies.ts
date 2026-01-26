@@ -3,6 +3,7 @@
  */
 
 import { ipcMain } from 'electron'
+
 import {
   getBridgeProxyRepository,
   getModelMappingRepository,
@@ -13,6 +14,7 @@ import {
 import { invalidateCache } from '../services/proxy-server/bridge-manager'
 import { decryptApiKey } from '../services/crypto'
 import type { BridgeProxyRow, ModelMappingRow } from '../services/database/types'
+import { trackProxyCreated, trackProxyDeleted } from '../services/analytics'
 
 // Convert DB row to BridgeProxy object
 function toProxy(row: BridgeProxyRow) {
@@ -86,6 +88,15 @@ export function registerProxyHandlers(): void {
       }
     }
 
+    // 追踪 Proxy 创建（异步，不阻塞）
+    setImmediate(() => {
+      try {
+        trackProxyCreated(data.inboundAdapter, data.outboundType)
+      } catch (e) {
+        // 静默失败，不影响功能
+      }
+    })
+
     return toProxy(row)
   })
 
@@ -105,6 +116,15 @@ export function registerProxyHandlers(): void {
     if (result) {
       // Invalidate bridge cache
       invalidateCache(id)
+      
+      // 追踪 Proxy 删除（异步，不阻塞）
+      setImmediate(() => {
+        try {
+          trackProxyDeleted()
+        } catch (e) {
+          // 静默失败，不影响功能
+        }
+      })
     }
     return result
   })

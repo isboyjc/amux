@@ -3,6 +3,8 @@
  */
 
 import { ipcMain, BrowserWindow } from 'electron'
+
+import { trackProxyServiceStarted, trackProxyServiceStopped } from '../services/analytics'
 import {
   startServer,
   stopServer,
@@ -21,6 +23,18 @@ export function registerProxyServiceHandlers(): void {
 
       // Notify renderer of state change
       notifyStateChange()
+      
+      // 追踪服务启动（异步，不阻塞）
+      setImmediate(() => {
+        try {
+          const state = getServerState()
+          if (state.port) {
+            trackProxyServiceStarted(state.port)
+          }
+        } catch (e) {
+          // 静默失败
+        }
+      })
     } catch (error) {
       // If server is already running, treat as success and just return current state
       if (error instanceof Error && error.message.includes('already running')) {
@@ -37,6 +51,15 @@ export function registerProxyServiceHandlers(): void {
   ipcMain.handle('proxy-service:stop', async () => {
     await stopServer()
     notifyStateChange()
+    
+    // 追踪服务停止（异步，不阻塞）
+    setImmediate(() => {
+      try {
+        trackProxyServiceStopped()
+      } catch (e) {
+        // 静默失败
+      }
+    })
   })
 
   // Restart proxy service

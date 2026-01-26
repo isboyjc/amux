@@ -3,6 +3,8 @@
  */
 
 import { ipcMain, BrowserWindow } from 'electron'
+
+import { trackSettingChanged } from '../services/analytics'
 import { getSettingsRepository, type SettingsSchema } from '../services/database/repositories'
 
 export function registerSettingsHandlers(): void {
@@ -21,6 +23,18 @@ export function registerSettingsHandlers(): void {
     const windows = BrowserWindow.getAllWindows()
     for (const window of windows) {
       window.webContents.send('settings:changed', key, value)
+    }
+
+    // 追踪设置变更（异步，不阻塞）
+    // 排除 analytics 相关设置，避免循环追踪
+    if (!key.startsWith('analytics.')) {
+      setImmediate(() => {
+        try {
+          trackSettingChanged(key, value)
+        } catch (e) {
+          // 静默失败，不影响功能
+        }
+      })
     }
   })
 

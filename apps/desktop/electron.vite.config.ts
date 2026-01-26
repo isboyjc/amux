@@ -1,6 +1,10 @@
 import { resolve } from 'path'
+import { config } from 'dotenv'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
+
+// 加载 .env 文件
+config()
 
 export default defineConfig({
   main: {
@@ -12,6 +16,11 @@ export default defineConfig({
                   '@amux.ai/adapter-google', '@amux.ai/adapter-zhipu']
       })
     ],
+    define: {
+      // 将环境变量注入到主进程
+      'process.env.GA_MEASUREMENT_ID': JSON.stringify(process.env.GA_MEASUREMENT_ID),
+      'process.env.GA_API_SECRET': JSON.stringify(process.env.GA_API_SECRET)
+    },
     build: {
       rollupOptions: {
         input: {

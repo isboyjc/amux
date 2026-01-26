@@ -6,6 +6,7 @@
 
 import { ipcMain } from 'electron'
 
+import { trackOAuthAuthorized, trackOAuthAccountDeleted } from '../services/analytics'
 import { getOAuthManager } from '../services/oauth/oauth-manager'
 import { getPoolHandler } from '../services/oauth/pool-handler'
 import { getProviderGenerator } from '../services/oauth/provider-generator'
@@ -22,7 +23,7 @@ export function registerOAuthHandlers(): void {
   /**
    * 获取OAuth授权URL（不打开浏览器）
    */
-  ipcMain.handle('oauth:getAuthUrl', async (event, providerType: OAuthProviderType) => {
+  ipcMain.handle('oauth:getAuthUrl', async (_event, providerType: OAuthProviderType) => {
     try {
       const service = oauthManager.getService(providerType)
       const { authUrl, state } = await service.getAuthorizationUrl()
@@ -32,11 +33,11 @@ export function registerOAuthHandlers(): void {
         authUrl,
         state
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[IPC:oauth:getAuthUrl] Error:', error)
       return {
         success: false,
-        error: error.message || 'Failed to get authorization URL'
+        error: error?.message || 'Failed to get authorization URL'
       }
     }
   })
@@ -46,12 +47,21 @@ export function registerOAuthHandlers(): void {
    * 
    * ✅ 授权成功后自动确保 Pool Provider 存在
    */
-  ipcMain.handle('oauth:authorize', async (event, providerType: OAuthProviderType) => {
+  ipcMain.handle('oauth:authorize', async (_event, providerType: OAuthProviderType) => {
     try {
       // 1. 执行OAuth授权，创建账号
       const result = await oauthManager.authorizeAccount(providerType)
       
       if (!result.success || !result.account) {
+        // 追踪授权失败（异步，不阻塞）
+        setImmediate(() => {
+          try {
+            trackOAuthAuthorized(providerType, false, result.error)
+          } catch (e) {
+            // 静默失败
+          }
+        })
+        
         return {
           success: false,
           error: result.error
@@ -77,16 +87,35 @@ export function registerOAuthHandlers(): void {
         // 不影响账号创建流程，只是记录错误
       }
       
+      // 追踪授权成功（异步，不阻塞）
+      setImmediate(() => {
+        try {
+          trackOAuthAuthorized(providerType, true)
+        } catch (e) {
+          // 静默失败
+        }
+      })
+      
       return {
         success: true,
         account: result.account,
         poolProviderId  // ✅ 返回 Pool Provider ID 给 UI
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[IPC:oauth:authorize] Error:', error)
+      
+      // 追踪授权失败（异步，不阻塞）
+      setImmediate(() => {
+        try {
+          trackOAuthAuthorized(providerType, false, error?.message)
+        } catch (e) {
+          // 静默失败
+        }
+      })
+      
       return {
         success: false,
-        error: error.message || 'Authorization failed'
+        error: error?.message || 'Authorization failed'
       }
     }
   })
@@ -94,7 +123,7 @@ export function registerOAuthHandlers(): void {
   /**
    * 取消OAuth授权流程
    */
-  ipcMain.handle('oauth:cancelAuthorize', async (event, providerType: OAuthProviderType, state: string) => {
+  ipcMain.handle('oauth:cancelAuthorize', async (_event, providerType: OAuthProviderType, state: string) => {
     try {
       const service = oauthManager.getService(providerType)
       await service.cancelOAuthFlow(state)
@@ -102,11 +131,11 @@ export function registerOAuthHandlers(): void {
       return {
         success: true
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[IPC:oauth:cancelAuthorize] Error:', error)
       return {
         success: false,
-        error: error.message || 'Failed to cancel authorization'
+        error: error?.message || 'Failed to cancel authorization'
       }
     }
   })
@@ -114,18 +143,18 @@ export function registerOAuthHandlers(): void {
   /**
    * 获取OAuth账号列表
    */
-  ipcMain.handle('oauth:getAccounts', async (event, providerType?: OAuthProviderType) => {
+  ipcMain.handle('oauth:getAccounts', async (_event, providerType?: OAuthProviderType) => {
     try {
       const accounts = oauthManager.getAccounts(providerType)
       return {
         success: true,
         accounts
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[IPC:oauth:getAccounts] Error:', error)
       return {
         success: false,
-        error: error.message || 'Failed to get accounts'
+        error: error?.message || 'Failed to get accounts'
       }
     }
   })
@@ -134,7 +163,7 @@ export function registerOAuthHandlers(): void {
    * 删除OAuth账号
    * ✅ 自动删除 Individual Provider 和检查清理 Pool Provider
    */
-  ipcMain.handle('oauth:deleteAccount', async (event, accountId: string) => {
+  ipcMain.handle('oauth:deleteAccount', async (_event, accountId: string) => {
     try {
       // 1. 获取账号信息以便后续清理
       const accounts = oauthManager.getAccounts()
@@ -164,14 +193,23 @@ export function registerOAuthHandlers(): void {
       
       console.log(`[IPC:oauth:deleteAccount] Deleted account: ${accountId}`)
       
+      // 追踪账号删除（异步，不阻塞）
+      setImmediate(() => {
+        try {
+          trackOAuthAccountDeleted(providerType)
+        } catch (e) {
+          // 静默失败
+        }
+      })
+      
       return {
         success: true
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[IPC:oauth:deleteAccount] Error:', error)
       return {
         success: false,
-        error: error.message || 'Failed to delete account'
+        error: error?.message || 'Failed to delete account'
       }
     }
   })
@@ -179,17 +217,17 @@ export function registerOAuthHandlers(): void {
   /**
    * 刷新账号token
    */
-  ipcMain.handle('oauth:refreshToken', async (event, accountId: string) => {
+  ipcMain.handle('oauth:refreshToken', async (_event, accountId: string) => {
     try {
       const success = await oauthManager.refreshAccountToken(accountId)
       return {
         success
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[IPC:oauth:refreshToken] Error:', error)
       return {
         success: false,
-        error: error.message || 'Failed to refresh token'
+        error: error?.message || 'Failed to refresh token'
       }
     }
   })
@@ -197,17 +235,17 @@ export function registerOAuthHandlers(): void {
   /**
    * 更新账号配额信息（Antigravity）
    */
-  ipcMain.handle('oauth:updateQuota', async (event, accountId: string) => {
+  ipcMain.handle('oauth:updateQuota', async (_event, accountId: string) => {
     try {
       const success = await oauthManager.updateAccountQuota(accountId)
       return {
         success
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[IPC:oauth:updateQuota] Error:', error)
       return {
         success: false,
-        error: error.message || 'Failed to update quota'
+        error: error?.message || 'Failed to update quota'
       }
     }
   })
@@ -215,7 +253,7 @@ export function registerOAuthHandlers(): void {
   /**
    * 切换账号Pool启用状态
    */
-  ipcMain.handle('oauth:togglePoolEnabled', async (event, accountId: string, enabled: boolean) => {
+  ipcMain.handle('oauth:togglePoolEnabled', async (_event, accountId: string, enabled: boolean) => {
     try {
       const accounts = oauthManager.getAccounts()
       const account = accounts.find(a => a.id === accountId)
@@ -238,11 +276,11 @@ export function registerOAuthHandlers(): void {
       return {
         success: true
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[IPC:oauth:togglePoolEnabled] Error:', error)
       return {
         success: false,
-        error: error.message || 'Failed to toggle pool enabled'
+        error: error?.message || 'Failed to toggle pool enabled'
       }
     }
   })
@@ -250,18 +288,18 @@ export function registerOAuthHandlers(): void {
   /**
    * 获取Pool统计信息
    */
-  ipcMain.handle('oauth:getPoolStats', async (event, providerType: OAuthProviderType) => {
+  ipcMain.handle('oauth:getPoolStats', async (_event, providerType: OAuthProviderType) => {
     try {
       const stats = poolHandler.getPoolStats(providerType)
       return {
         success: true,
         stats
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[IPC:oauth:getPoolStats] Error:', error)
       return {
         success: false,
-        error: error.message || 'Failed to get pool stats'
+        error: error?.message || 'Failed to get pool stats'
       }
     }
   })
@@ -269,7 +307,7 @@ export function registerOAuthHandlers(): void {
   /**
    * 为Individual模式生成Provider
    */
-  ipcMain.handle('oauth:generateIndividualProvider', async (event, accountId: string) => {
+  ipcMain.handle('oauth:generateIndividualProvider', async (_event, accountId: string) => {
     try {
       const accounts = oauthManager.getAccounts()
       const account = accounts.find(a => a.id === accountId)
@@ -286,11 +324,11 @@ export function registerOAuthHandlers(): void {
       })
       
       return result
-    } catch (error) {
+    } catch (error: any) {
       console.error('[IPC:oauth:generateIndividualProvider] Error:', error)
       return {
         success: false,
-        error: error.message || 'Failed to generate provider'
+        error: error?.message || 'Failed to generate provider'
       }
     }
   })
@@ -298,7 +336,7 @@ export function registerOAuthHandlers(): void {
   /**
    * 为Pool模式生成Provider
    */
-  ipcMain.handle('oauth:generatePoolProvider', async (event, providerType: OAuthProviderType, strategy: 'round_robin' | 'least_used' | 'quota_aware') => {
+  ipcMain.handle('oauth:generatePoolProvider', async (_event, providerType: OAuthProviderType, strategy: 'round_robin' | 'least_used' | 'quota_aware') => {
     try {
       const accounts = oauthManager.getAccounts(providerType)
       
@@ -310,17 +348,25 @@ export function registerOAuthHandlers(): void {
       }
       
       // 使用第一个账号来触发pool provider生成
-      const result = await providerGenerator.generateProvider(accounts[0], {
+      const account = accounts[0]
+      if (!account) {
+        return {
+          success: false,
+          error: 'No valid account found'
+        }
+      }
+      
+      const result = await providerGenerator.generateProvider(account, {
         mode: 'pool',
         poolStrategy: strategy
       })
       
       return result
-    } catch (error) {
+    } catch (error: any) {
       console.error('[IPC:oauth:generatePoolProvider] Error:', error)
       return {
         success: false,
-        error: error.message || 'Failed to generate pool provider'
+        error: error?.message || 'Failed to generate pool provider'
       }
     }
   })
@@ -328,7 +374,7 @@ export function registerOAuthHandlers(): void {
   /**
    * 🆕 检测并确保 Pool Provider 存在（手动触发）
    */
-  ipcMain.handle('oauth:check-pool-provider', async (event, params: {
+  ipcMain.handle('oauth:check-pool-provider', async (_event, params: {
     providerType: string
   }) => {
     try {
@@ -400,11 +446,11 @@ export function registerOAuthHandlers(): void {
           healthy: activeAccounts.filter(a => a.health_status === 'active').length
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[IPC:oauth:check-pool-provider] Error:', error)
       return {
         success: false,
-        error: error.message || 'Failed to check pool provider'
+        error: error?.message || 'Failed to check pool provider'
       }
     }
   })

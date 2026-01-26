@@ -36,6 +36,10 @@ export interface SettingsSchema {
   'presets.remoteUrl': string
   'presets.lastUpdated': number
   'presets.autoUpdate': boolean
+  
+  // Analytics settings
+  'analytics.enabled': boolean
+  'analytics.userId': string
   'app.launchAtStartup': boolean
   'app.startMinimized': boolean
   'app.minimizeToTray': boolean

@@ -9,6 +9,8 @@ import { runMigrations } from './services/database/migrator'
 import { getProviderRepository } from './services/database/repositories/provider'
 // Presets imports
 import { initPresets, getProviderPresets } from './services/presets'
+// Analytics imports
+import { initAnalytics } from './services/analytics'
 
 // Main window instance
 let mainWindow: BrowserWindow | null = null
@@ -165,6 +167,10 @@ app.whenReady().then(async () => {
   
   // Initialize default providers if database is empty
   initializeDefaultProviders()
+
+  // Initialize Analytics
+  console.log('[App] Initializing analytics...')
+  await initAnalytics()
 
   // Initialize OAuth Manager
   console.log('[App] Initializing OAuth manager...')

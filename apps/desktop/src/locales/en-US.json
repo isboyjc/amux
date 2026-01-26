@@ -13,7 +13,9 @@
     "service": "Service",
     "logs": "Logs",
     "tokens": "Tokens",
-    "settings": "Settings"
+    "settings": "Settings",
+    "updateAvailable": "available",
+    "clickToView": "Click to view"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -226,6 +228,8 @@
     "autoLaunchDesc": "Automatically start Amux when system boots",
     "minimizeToTray": "Minimize to Tray",
     "minimizeToTrayDesc": "Minimize to system tray when closing window",
+    "analytics": "Usage Analytics",
+    "analyticsDesc": "Help improve Amux by sending anonymous usage data (no personal info or API keys)",
     "defaultPort": "Default Port",
     "defaultHost": "Default Host",
     "autoStartService": "Auto Start Service",
@@ -263,7 +267,14 @@
     "deletedLogs": "Deleted",
     "entries": "entries",
     "noLogsToCleanup": "No logs to cleanup",
-    "timeoutUnit": "seconds"
+    "timeoutUnit": "seconds",
+    "checkUpdate": "Check for Updates",
+    "checking": "Checking...",
+    "updateAvailable": "New version available",
+    "newVersionAvailable": "New version available",
+    "upToDate": "You're up to date",
+    "downloadUpdate": "Download Update",
+    "viewUpdate": "View Update"
   },
   "common": {
     "save": "Save",
