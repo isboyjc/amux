@@ -1,5 +1,6 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react'
 import { AlertCircle, RefreshCw } from 'lucide-react'
+import { Component, ErrorInfo, ReactNode } from 'react'
+
 import { Button } from '@/components/ui/button'
 
 interface Props {
@@ -30,7 +31,7 @@ export class ErrorBoundary extends Component<Props, State> {
     }
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Error boundary caught an error:', error, errorInfo)
     this.setState({
       error,
@@ -59,7 +60,7 @@ export class ErrorBoundary extends Component<Props, State> {
     })
   }
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return (
         <div className="flex items-center justify-center min-h-screen bg-background p-6">
