@@ -1,6 +1,7 @@
 import { RootProvider } from 'fumadocs-ui/provider/next';
 import { Ubuntu, Ubuntu_Mono } from 'next/font/google';
 import { defineI18nUI } from 'fumadocs-ui/i18n';
+import { GoogleAnalytics } from '@next/third-parties/google';
 import { i18n } from '@/lib/i18n';
 import '../global.css';
 
@@ -37,6 +38,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const lang = (await params).lang;
+  const gaId = process.env.NEXT_PUBLIC_GA_ID;
 
   return (
     <html lang={lang} className={`${ubuntu.variable} ${ubuntuMono.variable}`} suppressHydrationWarning>
@@ -46,6 +48,7 @@ export default async function RootLayout({
         >
           {children}
         </RootProvider>
+        {gaId && <GoogleAnalytics gaId={gaId} />}
       </body>
     </html>
   );
