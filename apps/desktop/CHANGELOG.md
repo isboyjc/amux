@@ -1,5 +1,37 @@
 # @amux/desktop
 
+## 0.2.0
+
+### Minor Changes
+
+- feat: add version update checker and GA4 analytics tracking
+
+  **New Features:**
+  - 🔔 **Version Update Notification System**
+    - Automatic update checking from GitHub Releases
+    - Visual "NEW" badge on logo when updates available
+    - One-click navigation to download page
+    - "Check for Updates" button in settings
+  - 📊 **Google Analytics 4 Integration**
+    - Comprehensive feature usage tracking (20 events)
+    - Anonymous user analytics with privacy protection
+    - User-controllable analytics toggle
+    - Async, non-blocking, silent-fail tracking
+    - Track: app startup, provider/proxy management, chat, tunnel, OAuth, errors
+
+  **Technical Improvements:**
+  - Add updater service with GitHub API integration
+  - Implement GA4 analytics service with electron-google-analytics4
+  - Enhanced settings page with update checker and analytics controls
+  - Error boundary for React error tracking
+  - i18n support for update notifications
+
+  **Privacy & Security:**
+  - Anonymous client IDs
+  - No sensitive data collection (no API keys, tokens, or message content)
+  - User can disable analytics in settings
+  - All tracking complies with privacy best practices
+
 ## 0.1.4
 
 ### Patch Changes
