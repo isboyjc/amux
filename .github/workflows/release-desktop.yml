@@ -29,10 +29,14 @@ jobs:
           - name: macOS-arm64
             os: macos-latest
             arch: arm64
-          # Windows
-          - name: Windows
+          # Windows x64
+          - name: Windows-x64
             os: windows-latest
-            arch: multi
+            arch: x64
+          # Windows arm64
+          - name: Windows-arm64
+            os: windows-latest
+            arch: arm64
           # Linux
           - name: Linux
             os: ubuntu-latest
@@ -129,28 +133,34 @@ jobs:
           GA_MEASUREMENT_ID: ${{ secrets.GA_MEASUREMENT_ID }}
           GA_API_SECRET: ${{ secrets.GA_API_SECRET }}
       
-      - name: Build Desktop App (Windows x64)
-        if: matrix.name == 'Windows'
+      - name: Rebuild native modules (Windows x64)
+        if: matrix.name == 'Windows-x64'
         run: |
           cd apps/desktop
           pnpm rebuild
-          cd ../..
-          pnpm package:desktop:win
         env:
           npm_config_target_arch: x64
+      
+      - name: Build Desktop App (Windows x64)
+        if: matrix.name == 'Windows-x64'
+        run: pnpm package:desktop:win
+        env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           GA_MEASUREMENT_ID: ${{ secrets.GA_MEASUREMENT_ID }}
           GA_API_SECRET: ${{ secrets.GA_API_SECRET }}
       
-      - name: Build Desktop App (Windows arm64)
-        if: matrix.name == 'Windows'
+      - name: Rebuild native modules (Windows arm64)
+        if: matrix.name == 'Windows-arm64'
         run: |
           cd apps/desktop
           pnpm rebuild
-          cd ../..
-          pnpm package:desktop:win:arm64
         env:
           npm_config_target_arch: arm64
+      
+      - name: Build Desktop App (Windows arm64)
+        if: matrix.name == 'Windows-arm64'
+        run: pnpm package:desktop:win:arm64
+        env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           GA_MEASUREMENT_ID: ${{ secrets.GA_MEASUREMENT_ID }}
           GA_API_SECRET: ${{ secrets.GA_API_SECRET }}
@@ -188,19 +198,34 @@ jobs:
             apps/desktop/release/*-macos-arm64.dmg
           if-no-files-found: error
       
-      - name: List release files (Windows)
-        if: matrix.name == 'Windows'
+      - name: List release files (Windows x64)
+        if: matrix.name == 'Windows-x64'
         run: Get-ChildItem -Path apps/desktop/release/ -Recurse
         shell: pwsh
       
-      - name: Upload artifacts (Windows)
-        if: matrix.name == 'Windows'
+      - name: Upload artifacts (Windows x64)
+        if: matrix.name == 'Windows-x64'
         uses: actions/upload-artifact@v4
         with:
-          name: windows-builds
+          name: windows-x64-builds
           path: |
-            apps/desktop/release/*.exe
-            apps/desktop/release/*-win*.zip
+            apps/desktop/release/*-windows-x64-setup.exe
+            apps/desktop/release/*-win-x64*.zip
+          if-no-files-found: error
+      
+      - name: List release files (Windows arm64)
+        if: matrix.name == 'Windows-arm64'
+        run: Get-ChildItem -Path apps/desktop/release/ -Recurse
+        shell: pwsh
+      
+      - name: Upload artifacts (Windows arm64)
+        if: matrix.name == 'Windows-arm64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-arm64-builds
+          path: |
+            apps/desktop/release/*-windows-arm64-setup.exe
+            apps/desktop/release/*-win-arm64*.zip
           if-no-files-found: error
       
       - name: List release files (Linux)
@@ -256,18 +281,18 @@ jobs:
           files: |
             artifacts/macos-x64-builds/*
             artifacts/macos-arm64-builds/*
-            artifacts/windows-builds/*
+            artifacts/windows-x64-builds/*
+            artifacts/windows-arm64-builds/*
             artifacts/linux-builds/*
           body: |
-            ${{ steps.version.outputs.IS_PRERELEASE == 'true' && '## ⚠️ Pre-release Version / 预发布版本
+            ${{ steps.version.outputs.IS_PRERELEASE == 'true' && '## ⚠️ Pre-release Version
 
-            **This is a pre-release version for testing purposes.**  
-            **这是一个用于测试的预发布版本。**
+            **This is a pre-release version for testing purposes.**
 
-            - ⚠️ May contain bugs or unstable features / 可能包含错误或不稳定的功能
-            - 🧪 For testing and feedback only / 仅用于测试和反馈
-            - 🚫 Not recommended for production use / 不建议在生产环境使用
-            - 📝 Please report any issues you find / 请报告您发现的任何问题
+            - ⚠️ May contain bugs or unstable features
+            - 🧪 For testing and feedback only
+            - 🚫 Not recommended for production use
+            - 📝 Please report any issues you find
 
             ---
 
@@ -275,29 +300,101 @@ jobs:
             
             ### 📥 Download
             
-            Select the appropriate version for your system:
-            
-            #### macOS
-            - **Apple Silicon (M1/M2/M3)**: `Amux-*-macos-arm64.dmg`
-            - **Intel Mac**: `Amux-*-macos-x64.dmg`
-            
-            #### Windows
-            - **Windows x64**: `Amux-*-windows-x64-setup.exe`
-            - **Windows ARM64**: `Amux-*-windows-arm64-setup.exe`
-            
-            #### Linux
-            - **AppImage (x64)**: `Amux-*-linux-x64.AppImage`
-            - **Debian/Ubuntu (x64)**: `Amux-*-linux-x64.deb`
+            | Platform | Architecture | Download |
+            |----------|--------------|----------|
+            | **macOS** | Apple Silicon (M1+) | [![Download](https://img.shields.io/badge/Download-DMG-blue?style=for-the-badge&logo=apple)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-macos-arm64.dmg) |
+            | **macOS** | Intel | [![Download](https://img.shields.io/badge/Download-DMG-blue?style=for-the-badge&logo=apple)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-macos-x64.dmg) |
+            | **Windows** | x64 | [![Download](https://img.shields.io/badge/Download-EXE-blue?style=for-the-badge&logo=windows)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-windows-x64-setup.exe) |
+            | **Windows** | ARM64 | [![Download](https://img.shields.io/badge/Download-EXE-blue?style=for-the-badge&logo=windows)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-windows-arm64-setup.exe) |
+            | **Linux** | x64 (AppImage) | [![Download](https://img.shields.io/badge/Download-AppImage-blue?style=for-the-badge&logo=linux)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-linux-x64.AppImage) |
+            | **Linux** | x64 (Debian/Ubuntu) | [![Download](https://img.shields.io/badge/Download-DEB-blue?style=for-the-badge&logo=debian)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-linux-x64.deb) |
             
             ### 📝 Changelog
             
             View [CHANGELOG](https://github.com/isboyjc/amux/blob/main/apps/desktop/CHANGELOG.md) for detailed update information.
             
-            ### ⚠️ MacOS Security Tips
+            ### ⚠️ macOS Security Tips
             
-            Since the app is not notarized by Apple, when you run it for the first time:
-            1. Right click on the application icon
-            2. Select "Open"
-            3. Click "Open" in the pop-up dialog box
+            Since the app is not notarized by Apple, macOS may show "damaged" or "can't be opened" error. Here are three methods to fix it:
+            
+            **Method 1: Right-click to Open**
+            1. Right-click (or Control+Click) on the app icon
+            2. Select "Open" from the menu
+            3. Click "Open" in the security dialog
+            
+            **Method 2: System Settings**
+            1. Try to open the app (it will be blocked)
+            2. Go to `System Settings > Privacy & Security`
+            3. Scroll down to find "Amux was blocked" message
+            4. Click "Open Anyway"
+            5. Click "Open" in the confirmation dialog
+            
+            **Method 3: Remove Quarantine (Terminal)**
+            ```bash
+            # Open Terminal and run:
+            xattr -cr /Applications/Amux.app
+            
+            # Or if app is in Downloads folder:
+            xattr -cr ~/Downloads/Amux.app
+            ```
+            
+            > **Note**: After using any of these methods, the app will open normally in the future.
+            
+            ---
+            
+            ${{ steps.version.outputs.IS_PRERELEASE == 'true' && '## ⚠️ 预发布版本
+
+            **这是一个用于测试的预发布版本。**
+
+            - ⚠️ 可能包含错误或不稳定的功能
+            - 🧪 仅用于测试和反馈
+            - 🚫 不建议在生产环境使用
+            - 📝 请报告您发现的任何问题
+
+            ---
+
+            ' || '## 🎉 Amux Desktop 发布' }}
+            
+            ### 📥 下载
+            
+            | 平台 | 架构 | 下载 |
+            |------|------|------|
+            | **macOS** | Apple Silicon (M1+) | [![下载](https://img.shields.io/badge/下载-DMG-blue?style=for-the-badge&logo=apple)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-macos-arm64.dmg) |
+            | **macOS** | Intel | [![下载](https://img.shields.io/badge/下载-DMG-blue?style=for-the-badge&logo=apple)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-macos-x64.dmg) |
+            | **Windows** | x64 | [![下载](https://img.shields.io/badge/下载-EXE-blue?style=for-the-badge&logo=windows)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-windows-x64-setup.exe) |
+            | **Windows** | ARM64 | [![下载](https://img.shields.io/badge/下载-EXE-blue?style=for-the-badge&logo=windows)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-windows-arm64-setup.exe) |
+            | **Linux** | x64 (AppImage) | [![下载](https://img.shields.io/badge/下载-AppImage-blue?style=for-the-badge&logo=linux)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-linux-x64.AppImage) |
+            | **Linux** | x64 (Debian/Ubuntu) | [![下载](https://img.shields.io/badge/下载-DEB-blue?style=for-the-badge&logo=debian)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-linux-x64.deb) |
+            
+            ### 📝 更新日志
+            
+            查看 [CHANGELOG](https://github.com/isboyjc/amux/blob/main/apps/desktop/CHANGELOG.md) 了解详细的更新信息。
+            
+            ### ⚠️ macOS 安全提示
+            
+            由于应用未经 Apple 公证，macOS 可能显示"已损坏"或"无法打开"的错误。以下是三种解决方法：
+            
+            **方法 1：右键打开**
+            1. 右键点击（或 Control+点击）应用图标
+            2. 从菜单中选择"打开"
+            3. 在安全对话框中点击"打开"
+            
+            **方法 2：系统设置放行**
+            1. 尝试打开应用（会被阻止）
+            2. 前往 `系统设置 > 隐私与安全性`
+            3. 向下滚动找到"已阻止 Amux"的提示
+            4. 点击"仍要打开"
+            5. 在确认对话框中点击"打开"
+            
+            **方法 3：移除隔离属性（终端）**
+            ```bash
+            # 打开终端并运行：
+            xattr -cr /Applications/Amux.app
+            
+            # 或者如果应用在下载文件夹：
+            xattr -cr ~/Downloads/Amux.app
+            ```
+            
+            > **注意**：使用任一方法后，应用将可以正常打开。
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

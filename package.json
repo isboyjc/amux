@@ -59,11 +59,13 @@
     "package:desktop:win:arm64": "cd apps/desktop && pnpm package:win:arm64",
     "package:desktop:linux": "cd apps/desktop && pnpm package:linux",
     "clean:desktop:data": "bash ./clean-data.sh",
-    "clean:desktop:release": "cd apps/desktop && pnpm clean:release"
+    "clean:desktop:release": "cd apps/desktop && pnpm clean:release",
+    "release": "tsx scripts/release.ts"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.1",
-    "@types/node": "^20.11.5",
+    "@clack/prompts": "^0.7.0",
+    "@types/node": "^20.19.29",
     "@typescript-eslint/eslint-plugin": "^6.19.1",
     "@typescript-eslint/parser": "^6.19.1",
     "@vitest/coverage-v8": "^4.0.16",
@@ -73,6 +75,7 @@
     "nx": "^18.0.4",
     "prettier": "^3.2.4",
     "tsup": "^8.0.1",
+    "tsx": "^4.21.0",
     "typescript": "^5.3.3",
     "vitest": "^4.0.16"
   },
@@ -80,5 +83,6 @@
   "engines": {
     "node": ">=18.0.0",
     "pnpm": ">=8.0.0"
-  }
+  },
+  "type": "module"
 }
