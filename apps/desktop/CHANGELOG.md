@@ -1,5 +1,11 @@
 # @amux/desktop
 
+## 0.2.1
+
+### Patch Changes
+
+- 5b4c36e: Fix the incompatibility of native module architecture of macos Intel package better-sqlite3 #3
+
 ## 0.2.0
 
 ### Minor Changes
