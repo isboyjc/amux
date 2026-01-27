@@ -29,14 +29,10 @@ jobs:
           - name: macOS-arm64
             os: macos-latest
             arch: arm64
-          # Windows x64
+          # Windows x64 (ARM64 users can run x64 version via emulation)
           - name: Windows-x64
             os: windows-latest
             arch: x64
-          # Windows arm64
-          - name: Windows-arm64
-            os: windows-latest
-            arch: arm64
           # Linux
           - name: Linux
             os: ubuntu-latest
@@ -149,21 +145,6 @@ jobs:
           GA_MEASUREMENT_ID: ${{ secrets.GA_MEASUREMENT_ID }}
           GA_API_SECRET: ${{ secrets.GA_API_SECRET }}
       
-      - name: Rebuild native modules (Windows arm64)
-        if: matrix.name == 'Windows-arm64'
-        run: |
-          cd apps/desktop
-          pnpm rebuild
-        env:
-          npm_config_target_arch: arm64
-      
-      - name: Build Desktop App (Windows arm64)
-        if: matrix.name == 'Windows-arm64'
-        run: pnpm package:desktop:win:arm64
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: false
-          GA_MEASUREMENT_ID: ${{ secrets.GA_MEASUREMENT_ID }}
-          GA_API_SECRET: ${{ secrets.GA_API_SECRET }}
       
       - name: Build Desktop App (Linux)
         if: matrix.name == 'Linux'
@@ -213,20 +194,6 @@ jobs:
             apps/desktop/release/*-win-x64*.zip
           if-no-files-found: error
       
-      - name: List release files (Windows arm64)
-        if: matrix.name == 'Windows-arm64'
-        run: Get-ChildItem -Path apps/desktop/release/ -Recurse
-        shell: pwsh
-      
-      - name: Upload artifacts (Windows arm64)
-        if: matrix.name == 'Windows-arm64'
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-arm64-builds
-          path: |
-            apps/desktop/release/*-windows-arm64-setup.exe
-            apps/desktop/release/*-win-arm64*.zip
-          if-no-files-found: error
       
       - name: List release files (Linux)
         if: matrix.name == 'Linux'
@@ -282,7 +249,6 @@ jobs:
             artifacts/macos-x64-builds/*
             artifacts/macos-arm64-builds/*
             artifacts/windows-x64-builds/*
-            artifacts/windows-arm64-builds/*
             artifacts/linux-builds/*
           body: |
             ${{ steps.version.outputs.IS_PRERELEASE == 'true' && '## ⚠️ Pre-release Version
@@ -305,7 +271,6 @@ jobs:
             | **macOS** | Apple Silicon (M1+) | [![Download](https://img.shields.io/badge/Download-DMG-blue?style=for-the-badge&logo=apple)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-macos-arm64.dmg) |
             | **macOS** | Intel | [![Download](https://img.shields.io/badge/Download-DMG-blue?style=for-the-badge&logo=apple)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-macos-x64.dmg) |
             | **Windows** | x64 | [![Download](https://img.shields.io/badge/Download-EXE-blue?style=for-the-badge&logo=windows)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-windows-x64-setup.exe) |
-            | **Windows** | ARM64 | [![Download](https://img.shields.io/badge/Download-EXE-blue?style=for-the-badge&logo=windows)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-windows-arm64-setup.exe) |
             | **Linux** | x64 (AppImage) | [![Download](https://img.shields.io/badge/Download-AppImage-blue?style=for-the-badge&logo=linux)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-linux-x64.AppImage) |
             | **Linux** | x64 (Debian/Ubuntu) | [![Download](https://img.shields.io/badge/Download-DEB-blue?style=for-the-badge&logo=debian)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-linux-x64.deb) |
             
@@ -362,7 +327,6 @@ jobs:
             | **macOS** | Apple Silicon (M1+) | [![下载](https://img.shields.io/badge/下载-DMG-blue?style=for-the-badge&logo=apple)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-macos-arm64.dmg) |
             | **macOS** | Intel | [![下载](https://img.shields.io/badge/下载-DMG-blue?style=for-the-badge&logo=apple)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-macos-x64.dmg) |
             | **Windows** | x64 | [![下载](https://img.shields.io/badge/下载-EXE-blue?style=for-the-badge&logo=windows)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-windows-x64-setup.exe) |
-            | **Windows** | ARM64 | [![下载](https://img.shields.io/badge/下载-EXE-blue?style=for-the-badge&logo=windows)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-windows-arm64-setup.exe) |
             | **Linux** | x64 (AppImage) | [![下载](https://img.shields.io/badge/下载-AppImage-blue?style=for-the-badge&logo=linux)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-linux-x64.AppImage) |
             | **Linux** | x64 (Debian/Ubuntu) | [![下载](https://img.shields.io/badge/下载-DEB-blue?style=for-the-badge&logo=debian)](https://github.com/isboyjc/amux/releases/download/desktop-v${{ steps.version.outputs.VERSION }}/Amux-${{ steps.version.outputs.VERSION }}-linux-x64.deb) |
             
