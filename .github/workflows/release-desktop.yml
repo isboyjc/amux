@@ -21,9 +21,9 @@ jobs:
     strategy:
       matrix:
         include:
-          # macOS x64 on Intel runner
+          # macOS x64 on Intel runner (macos-13 retired, use macos-15-intel)
           - name: macOS-x64
-            os: macos-13
+            os: macos-15-intel
             arch: x64
           # macOS arm64 on Apple Silicon runner
           - name: macOS-arm64
