@@ -70,11 +70,13 @@ function exec(
   options: { silent?: boolean; ignoreError?: boolean } = {}
 ): string {
   try {
-    return execSync(cmd, {
+    const result = execSync(cmd, {
       cwd: rootDir,
       encoding: 'utf-8',
       stdio: options.silent ? 'pipe' : 'inherit',
-    }).trim()
+    })
+    // 当 stdio 为 'inherit' 时，result 可能为 null
+    return result ? result.trim() : ''
   } catch (error) {
     if (!options.ignoreError) {
       throw error
@@ -88,10 +90,16 @@ function readPackageJson(
   path: string
 ): { name: string; version: string; private?: boolean } | null {
   try {
-    return JSON.parse(
-      readFileSync(join(rootDir, path, 'package.json'), 'utf-8')
-    )
-  } catch {
+    const content = readFileSync(join(rootDir, path, 'package.json'), 'utf-8')
+    if (!content || content.trim() === '') {
+      return null
+    }
+    const pkg = JSON.parse(content)
+    if (!pkg || !pkg.name || !pkg.version) {
+      return null
+    }
+    return pkg
+  } catch (error) {
     return null
   }
 }
@@ -157,7 +165,12 @@ function checkGitStatus(): GitStatus {
 // 检测是否有未提交的版本更新
 function hasUncommittedVersionChanges(): boolean {
   const status = exec('git status --porcelain', { silent: true })
-  const lines = status.split('\n').filter((line) => line.trim())
+  if (!status) {
+    return false
+  }
+  const lines = status
+    .split('\n')
+    .filter((line) => line && line.trim && line.trim())
 
   // 检查是否有 package.json 或 CHANGELOG.md 的修改
   return lines.some((line) => {
@@ -175,12 +188,20 @@ function detectVersionChanges(): VersionChange[] {
 
   // 执行 changeset:version
   p.log.step('执行 changeset:version 更新版本...')
-  exec('pnpm changeset:version')
+  try {
+    exec('pnpm changeset:version')
+  } catch (error) {
+    throw new Error(`执行 changeset:version 失败: ${error}`)
+  }
 
   const after = getAllPackages()
   const changes: VersionChange[] = []
 
   after.forEach((pkg) => {
+    if (!pkg || !pkg.name || !pkg.version) {
+      console.error('Invalid package:', pkg)
+      return
+    }
     const beforePkg = before.find((p) => p.name === pkg.name)
     if (beforePkg && beforePkg.version !== pkg.version) {
       changes.push({
