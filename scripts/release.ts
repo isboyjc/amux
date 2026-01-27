@@ -102,34 +102,38 @@ function getAllPackages(): PackageInfo[] {
 
   // Packages (npm)
   const packagesDir = join(rootDir, 'packages')
-  readdirSync(packagesDir).forEach((name) => {
-    const path = join('packages', name)
-    const pkg = readPackageJson(path)
-    if (pkg && !pkg.private) {
-      packages.push({
-        name: pkg.name,
-        version: pkg.version,
-        path,
-        type: 'npm',
-      })
-    }
-  })
+  readdirSync(packagesDir)
+    .filter((name) => !name.startsWith('.')) // 过滤隐藏文件
+    .forEach((name) => {
+      const path = join('packages', name)
+      const pkg = readPackageJson(path)
+      if (pkg && !pkg.private) {
+        packages.push({
+          name: pkg.name,
+          version: pkg.version,
+          path,
+          type: 'npm',
+        })
+      }
+    })
 
   // Apps
   const appsDir = join(rootDir, 'apps')
-  readdirSync(appsDir).forEach((name) => {
-    const path = join('apps', name)
-    const pkg = readPackageJson(path)
-    if (pkg) {
-      const type: PackageInfo['type'] = name === 'desktop' ? 'desktop' : 'app'
-      packages.push({
-        name: pkg.name,
-        version: pkg.version,
-        path,
-        type,
-      })
-    }
-  })
+  readdirSync(appsDir)
+    .filter((name) => !name.startsWith('.')) // 过滤隐藏文件
+    .forEach((name) => {
+      const path = join('apps', name)
+      const pkg = readPackageJson(path)
+      if (pkg) {
+        const type: PackageInfo['type'] = name === 'desktop' ? 'desktop' : 'app'
+        packages.push({
+          name: pkg.name,
+          version: pkg.version,
+          path,
+          type,
+        })
+      }
+    })
 
   return packages
 }
@@ -137,7 +141,7 @@ function getAllPackages(): PackageInfo[] {
 // 检查是否有待处理的 changesets
 function hasChangesets(): boolean {
   const changesetDir = join(rootDir, '.changeset')
-  const files = readdirSync(changesetDir)
+  const files = readdirSync(changesetDir).filter((f) => !f.startsWith('.'))
   return files.some((f) => f.endsWith('.md') && f !== 'README.md')
 }
 
