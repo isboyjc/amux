@@ -15,12 +15,28 @@ permissions:
 
 jobs:
   release:
-    name: Build & Release (${{ matrix.os }})
+    name: Build & Release (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     
     strategy:
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        include:
+          # macOS x64 on Intel runner
+          - name: macOS-x64
+            os: macos-13
+            arch: x64
+          # macOS arm64 on Apple Silicon runner
+          - name: macOS-arm64
+            os: macos-latest
+            arch: arm64
+          # Windows
+          - name: Windows
+            os: windows-latest
+            arch: multi
+          # Linux
+          - name: Linux
+            os: ubuntu-latest
+            arch: x64
     
     steps:
       - name: Checkout code
@@ -55,6 +71,20 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
       
+      - name: Cache electron-builder
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+          key: ${{ runner.os }}-electron-${{ hashFiles('apps/desktop/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-electron-
+      
       - name: Install system dependencies (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -67,59 +97,104 @@ jobs:
       - name: Build workspace packages
         run: pnpm build
       
-      - name: Build Desktop App (macOS)
-        if: matrix.os == 'macos-latest'
-        run: pnpm package:desktop:mac
+      - name: Rebuild native modules (macOS x64)
+        if: matrix.name == 'macOS-x64'
+        run: |
+          cd apps/desktop
+          pnpm rebuild
         env:
-          # 如果有 Apple 开发者证书，可以配置代码签名
-          # CSC_LINK: ${{ secrets.MAC_CERTS }}
-          # CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
-          # 不签名也可以发布，用户需要手动信任
+          npm_config_target_arch: x64
+      
+      - name: Rebuild native modules (macOS arm64)
+        if: matrix.name == 'macOS-arm64'
+        run: |
+          cd apps/desktop
+          pnpm rebuild
+        env:
+          npm_config_target_arch: arm64
+      
+      - name: Build Desktop App (macOS x64)
+        if: matrix.name == 'macOS-x64'
+        run: pnpm package:desktop:mac:x64
+        env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           GA_MEASUREMENT_ID: ${{ secrets.GA_MEASUREMENT_ID }}
           GA_API_SECRET: ${{ secrets.GA_API_SECRET }}
       
-      - name: Build Desktop App (Windows)
-        if: matrix.os == 'windows-latest'
+      - name: Build Desktop App (macOS arm64)
+        if: matrix.name == 'macOS-arm64'
+        run: pnpm package:desktop:mac:arm64
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          GA_MEASUREMENT_ID: ${{ secrets.GA_MEASUREMENT_ID }}
+          GA_API_SECRET: ${{ secrets.GA_API_SECRET }}
+      
+      - name: Build Desktop App (Windows x64)
+        if: matrix.name == 'Windows'
         run: |
+          cd apps/desktop
+          pnpm rebuild
+          cd ../..
           pnpm package:desktop:win
+        env:
+          npm_config_target_arch: x64
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          GA_MEASUREMENT_ID: ${{ secrets.GA_MEASUREMENT_ID }}
+          GA_API_SECRET: ${{ secrets.GA_API_SECRET }}
+      
+      - name: Build Desktop App (Windows arm64)
+        if: matrix.name == 'Windows'
+        run: |
+          cd apps/desktop
+          pnpm rebuild
+          cd ../..
           pnpm package:desktop:win:arm64
         env:
-          # 如果有 Windows 代码签名证书
-          # CSC_LINK: ${{ secrets.WIN_CERTS }}
-          # CSC_KEY_PASSWORD: ${{ secrets.WIN_CERTS_PASSWORD }}
+          npm_config_target_arch: arm64
           CSC_IDENTITY_AUTO_DISCOVERY: false
           GA_MEASUREMENT_ID: ${{ secrets.GA_MEASUREMENT_ID }}
           GA_API_SECRET: ${{ secrets.GA_API_SECRET }}
       
       - name: Build Desktop App (Linux)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.name == 'Linux'
         run: pnpm package:desktop:linux
         env:
           GA_MEASUREMENT_ID: ${{ secrets.GA_MEASUREMENT_ID }}
           GA_API_SECRET: ${{ secrets.GA_API_SECRET }}
       
-      - name: List release files (macOS)
-        if: matrix.os == 'macos-latest'
+      - name: List release files (macOS x64)
+        if: matrix.name == 'macOS-x64'
         run: ls -lah apps/desktop/release/
       
-      - name: Upload artifacts (macOS)
-        if: matrix.os == 'macos-latest'
+      - name: Upload artifacts (macOS x64)
+        if: matrix.name == 'macOS-x64'
         uses: actions/upload-artifact@v4
         with:
-          name: macos-builds
+          name: macos-x64-builds
           path: |
-            apps/desktop/release/*.dmg
-            apps/desktop/release/*.zip
+            apps/desktop/release/*-macos-x64.dmg
+          if-no-files-found: error
+      
+      - name: List release files (macOS arm64)
+        if: matrix.name == 'macOS-arm64'
+        run: ls -lah apps/desktop/release/
+      
+      - name: Upload artifacts (macOS arm64)
+        if: matrix.name == 'macOS-arm64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm64-builds
+          path: |
+            apps/desktop/release/*-macos-arm64.dmg
           if-no-files-found: error
       
       - name: List release files (Windows)
-        if: matrix.os == 'windows-latest'
+        if: matrix.name == 'Windows'
         run: Get-ChildItem -Path apps/desktop/release/ -Recurse
         shell: pwsh
       
       - name: Upload artifacts (Windows)
-        if: matrix.os == 'windows-latest'
+        if: matrix.name == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: windows-builds
@@ -129,11 +204,11 @@ jobs:
           if-no-files-found: error
       
       - name: List release files (Linux)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.name == 'Linux'
         run: ls -lah apps/desktop/release/
       
       - name: Upload artifacts (Linux)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.name == 'Linux'
         uses: actions/upload-artifact@v4
         with:
           name: linux-builds
@@ -161,21 +236,42 @@ jobs:
       
       - name: Extract version
         id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/desktop-v}" >> $GITHUB_OUTPUT
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/desktop-v}
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          # 检查是否为 pre-release 版本 (包含 beta, alpha, rc 等)
+          if [[ "$VERSION" =~ (beta|alpha|rc) ]]; then
+            echo "IS_PRERELEASE=true" >> $GITHUB_OUTPUT
+          else
+            echo "IS_PRERELEASE=false" >> $GITHUB_OUTPUT
+          fi
       
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           name: Amux Desktop v${{ steps.version.outputs.VERSION }}
           draft: false
-          prerelease: false
+          prerelease: ${{ steps.version.outputs.IS_PRERELEASE }}
           generate_release_notes: true
           files: |
-            artifacts/macos-builds/*
+            artifacts/macos-x64-builds/*
+            artifacts/macos-arm64-builds/*
             artifacts/windows-builds/*
             artifacts/linux-builds/*
           body: |
-            ## 🎉 Amux Desktop Release
+            ${{ steps.version.outputs.IS_PRERELEASE == 'true' && '## ⚠️ Pre-release Version / 预发布版本
+
+            **This is a pre-release version for testing purposes.**  
+            **这是一个用于测试的预发布版本。**
+
+            - ⚠️ May contain bugs or unstable features / 可能包含错误或不稳定的功能
+            - 🧪 For testing and feedback only / 仅用于测试和反馈
+            - 🚫 Not recommended for production use / 不建议在生产环境使用
+            - 📝 Please report any issues you find / 请报告您发现的任何问题
+
+            ---
+
+            ' || '## 🎉 Amux Desktop Release' }}
             
             ### 📥 Download
             
@@ -184,7 +280,6 @@ jobs:
             #### macOS
             - **Apple Silicon (M1/M2/M3)**: `Amux-*-macos-arm64.dmg`
             - **Intel Mac**: `Amux-*-macos-x64.dmg`
-            - **Universal**: `Amux-*-macos-universal.dmg`
             
             #### Windows
             - **Windows x64**: `Amux-*-windows-x64-setup.exe`
@@ -192,7 +287,7 @@ jobs:
             
             #### Linux
             - **AppImage (x64)**: `Amux-*-linux-x64.AppImage`
-            - **Debian/Ubuntu (x64)**: `Amux-*-linux-amd64.deb`
+            - **Debian/Ubuntu (x64)**: `Amux-*-linux-x64.deb`
             
             ### 📝 Changelog
             

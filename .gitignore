@@ -48,10 +48,6 @@ lerna-debug.log*
 # OS
 Thumbs.db
 
-# Changesets
-.changeset/*.md
-!.changeset/README.md
-
 # Temporary docs
 tmp-docs/
 

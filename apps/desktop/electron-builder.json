@@ -21,16 +21,7 @@
     }
   ],
   "mac": {
-    "target": [
-      {
-        "target": "dmg",
-        "arch": ["universal", "x64", "arm64"]
-      },
-      {
-        "target": "zip",
-        "arch": ["universal"]
-      }
-    ],
+    "target": "dmg",
     "artifactName": "${productName}-${version}-macos-${arch}.${ext}",
     "category": "public.app-category.developer-tools",
     "mergeASARs": false,
