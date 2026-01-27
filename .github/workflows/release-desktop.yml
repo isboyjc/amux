@@ -297,10 +297,10 @@ jobs:
             **Method 3: Remove Quarantine (Terminal)**
             ```bash
             # Open Terminal and run:
-            xattr -cr /Applications/Amux.app
+            xattr -dr com.apple.quarantine /Applications/Amux.app
             
             # Or if app is in Downloads folder:
-            xattr -cr ~/Downloads/Amux.app
+            xattr -dr com.apple.quarantine ~/Downloads/Amux.app
             ```
             
             > **Note**: After using any of these methods, the app will open normally in the future.
@@ -353,10 +353,10 @@ jobs:
             **方法 3：移除隔离属性（终端）**
             ```bash
             # 打开终端并运行：
-            xattr -cr /Applications/Amux.app
+            xattr -dr com.apple.quarantine /Applications/Amux.app
             
             # 或者如果应用在下载文件夹：
-            xattr -cr ~/Downloads/Amux.app
+            xattr -dr com.apple.quarantine ~/Downloads/Amux.app
             ```
             
             > **注意**：使用任一方法后，应用将可以正常打开。
