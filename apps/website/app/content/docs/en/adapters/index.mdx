@@ -3,7 +3,7 @@ title: Adapters Overview
 description: All official adapters supported by Amux
 ---
 
-Amux provides 7 official adapters supporting mainstream LLM providers. Each adapter handles bidirectional conversion between provider-specific formats and a unified intermediate representation (IR).
+Amux provides 8 official adapters supporting mainstream LLM providers. Each adapter handles bidirectional conversion between provider-specific formats and a unified intermediate representation (IR).
 
 ## Official Adapters
 
@@ -29,6 +29,9 @@ Amux provides 7 official adapters supporting mainstream LLM providers. Each adap
   <Card title="Google Gemini" href="/en/docs/adapters/gemini">
     Gemini Pro, 1M+ tokens context
   </Card>
+  <Card title="MiniMax" href="/en/docs/adapters/minimax">
+    MiniMax-M2.1, Interleaved Thinking, multilingual programming
+  </Card>
 </Cards>
 
 ## Feature Comparison
@@ -42,6 +45,7 @@ Amux provides 7 official adapters supporting mainstream LLM providers. Each adap
 | Zhipu | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
 | Qwen | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Gemini | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
+| MiniMax | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
 
 ## Choosing an Adapter
 
@@ -54,10 +58,10 @@ Amux provides 7 official adapters supporting mainstream LLM providers. Each adap
 - Gemini (1M+ tokens), Anthropic (200K), Moonshot (200K)
 
 **Coding**
-- DeepSeek (DeepSeek Coder), OpenAI (GPT-4), Anthropic (Claude 3.5 Sonnet)
+- MiniMax (MiniMax-M2.1), DeepSeek (DeepSeek Coder), OpenAI (GPT-4), Anthropic (Claude 3.5 Sonnet)
 
 **Reasoning**
-- OpenAI (o3, o4-mini), DeepSeek (DeepSeek Reasoner), Moonshot (Kimi K2 Thinking)
+- MiniMax (Interleaved Thinking), OpenAI (o3, o4-mini), DeepSeek (DeepSeek Reasoner), Moonshot (Kimi K2 Thinking)
 
 ### By Price
 
@@ -71,6 +75,7 @@ Amux provides 7 official adapters supporting mainstream LLM providers. Each adap
 
 These adapters are OpenAI-compatible and can be seamlessly swapped:
 - DeepSeek (fully compatible)
+- MiniMax (fully compatible)
 - Moonshot (fully compatible)
 - Zhipu (fully compatible)
 - Qwen (mostly compatible, minor differences)

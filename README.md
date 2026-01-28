@@ -14,7 +14,7 @@
 - **⚡ Zero Dependencies**: Core package has zero runtime dependencies
 - **🧪 Well-Tested**: High test coverage with comprehensive test suites
 - **📦 Tree-Shakable**: Optimized for modern bundlers
-- **🚀 7 Official Adapters**: OpenAI, Anthropic, DeepSeek, Moonshot, Zhipu, Qwen, Gemini
+- **🚀 8 Official Adapters**: OpenAI, Anthropic, DeepSeek, Moonshot, Zhipu, Qwen, Gemini, MiniMax
 
 ## 🚀 Quick Start
 
@@ -64,6 +64,7 @@ console.log(response.choices[0].message.content)
 | [@amux.ai/adapter-zhipu](./packages/adapter-zhipu) | Zhipu AI (GLM) adapter | - | ✅ Stable |
 | [@amux.ai/adapter-qwen](./packages/adapter-qwen) | Qwen adapter | - | ✅ Stable |
 | [@amux.ai/adapter-google](./packages/adapter-google) | Google Gemini adapter | - | ✅ Stable |
+| [@amux.ai/adapter-minimax](./packages/adapter-minimax) | MiniMax adapter | - | ✅ Stable |
 | [@amux.ai/utils](./packages/utils) | Shared utilities | - | ✅ Stable |
 
 ## 🏗️ Architecture

@@ -5,11 +5,12 @@
 import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 import { deepseekAdapter } from '@amux.ai/adapter-deepseek'
 import { googleAdapter } from '@amux.ai/adapter-google'
+import { minimaxAdapter } from '@amux.ai/adapter-minimax'
 import { moonshotAdapter } from '@amux.ai/adapter-moonshot'
 import { openaiAdapter, openaiResponsesAdapter } from '@amux.ai/adapter-openai'
 import { qwenAdapter } from '@amux.ai/adapter-qwen'
 import { zhipuAdapter } from '@amux.ai/adapter-zhipu'
-import { Bridge, type LLMAdapter, type LLMRequestIR, type LLMResponseIR, type LLMStreamEvent } from '@amux.ai/llm-bridge'
+import { Bridge, type LLMAdapter, type LLMResponseIR, type LLMStreamEvent } from '@amux.ai/llm-bridge'
 
 import { decryptApiKey } from '../crypto'
 import { getBridgeProxyRepository, getProviderRepository } from '../database/repositories'
@@ -21,6 +22,7 @@ const ADAPTER_MAP: Record<string, LLMAdapter> = {
   'openai-responses': openaiResponsesAdapter,
   anthropic: anthropicAdapter,
   deepseek: deepseekAdapter,
+  minimax: minimaxAdapter,
   moonshot: moonshotAdapter,
   qwen: qwenAdapter,
   zhipu: zhipuAdapter,
@@ -40,6 +42,25 @@ const MAX_CACHE_SIZE = 50
 
 // Bridge cache
 const bridgeCache = new Map<string, BridgeCacheEntry>()
+
+// WeakMap to store usage data for bridges (avoids type casting)
+const bridgeUsageMap = new WeakMap<Bridge, LLMResponseIR['usage']>()
+
+/**
+ * Get the last usage data for a bridge
+ */
+export function getBridgeUsage(bridge: Bridge): LLMResponseIR['usage'] | undefined {
+  return bridgeUsageMap.get(bridge)
+}
+
+/**
+ * Set usage data for a bridge
+ */
+export function setBridgeUsage(bridge: Bridge, usage: LLMResponseIR['usage']): void {
+  if (usage) {
+    bridgeUsageMap.set(bridge, usage)
+  }
+}
 
 /**
  * Get adapter instance by type
@@ -170,8 +191,7 @@ export function getBridge(proxyId: string, requestApiKey?: string): {
     // Use provider's stored API key
     if (provider.api_key) {
       apiKey = decryptApiKey(provider.api_key)
-      if (apiKey) {
-      } else {
+      if (!apiKey) {
         console.warn(`[BridgeManager] Provider has encrypted API key but decryption failed - using empty key`)
       }
     } else {
@@ -201,13 +221,13 @@ export function getBridge(proxyId: string, requestApiKey?: string): {
           if (ir.usage) {
             // 可以在这里记录到全局变量或直接传递给日志系统
             // 这里先存储起来，让 routes.ts 可以访问
-            ;(bridge as any)._lastUsage = ir.usage
+            bridgeUsageMap.set(bridge, ir.usage)
           }
         },
         onStreamEvent: async (event: LLMStreamEvent) => {
           // 流式响应中的 Token 也是统一格式
           if (event.type === 'end' && event.usage) {
-            ;(bridge as any)._lastUsage = event.usage
+            bridgeUsageMap.set(bridge, event.usage)
           }
         }
       }
@@ -252,13 +272,13 @@ export function getBridge(proxyId: string, requestApiKey?: string): {
         // Token 已经是统一格式，无需区分 Provider！
         if (ir.usage) {
           // 存储到 bridge 实例上，供 routes.ts 访问
-          ;(bridge as any)._lastUsage = ir.usage
+          bridgeUsageMap.set(bridge, ir.usage)
         }
       },
       onStreamEvent: async (event: LLMStreamEvent) => {
         // 流式响应中的 Token 也是统一格式
         if (event.type === 'end' && event.usage) {
-          ;(bridge as any)._lastUsage = event.usage
+          bridgeUsageMap.set(bridge, event.usage)
         }
       }
     }

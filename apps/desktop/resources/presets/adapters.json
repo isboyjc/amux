@@ -49,6 +49,12 @@
       "name": "Google",
       "description": "Google Gemini API format",
       "provider": "google"
+    },
+    {
+      "id": "minimax",
+      "name": "MiniMax",
+      "description": "MiniMax API format (OpenAI compatible)",
+      "provider": "minimax"
     }
   ]
 }

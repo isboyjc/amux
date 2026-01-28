@@ -4,7 +4,7 @@
  * Falls back to showing provider name initial when no logo is available
  */
 
-import { cn } from '@/lib/utils'
+import { cn } from '../../lib/utils'
 
 type SizePreset = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 

@@ -28,6 +28,7 @@
     "adapters/zhipu",
     "adapters/qwen",
     "adapters/gemini",
+    "adapters/minimax",
     "adapters/custom-adapter"
   ]
 }

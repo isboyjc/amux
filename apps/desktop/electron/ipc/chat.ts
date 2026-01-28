@@ -259,6 +259,7 @@ export function registerChatHandlers(): void {
         const decoder = new TextDecoder()
         let buffer = ''
 
+        // eslint-disable-next-line no-constant-condition
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
@@ -302,7 +303,7 @@ export function registerChatHandlers(): void {
                 }
 
                 // Use adapter to parse the chunk into IR format
-                const events = adapter.inbound.parseStream!(rawChunk)
+                const events = adapter.inbound.parseStream?.(rawChunk)
                 if (!events) continue
 
                 // Handle single event or array of events
@@ -334,13 +335,14 @@ export function registerChatHandlers(): void {
                       }
                       break
 
-                    case 'error':
+                    case 'error': {
                       // ✅ 提取错误详情
                       const errorMsg = event.error?.message || event.message || 'Stream error'
                       console.error('[Chat] Stream error event:', event)
                       sender.send('chat:stream-error', errorMsg)
                       hasError = true
                       break
+                    }
 
                     // Ignore other event types (start, tool_call, etc.)
                   }
@@ -641,6 +643,7 @@ export function registerChatHandlers(): void {
         const decoder = new TextDecoder()
         let buffer = ''
 
+        // eslint-disable-next-line no-constant-condition
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
@@ -684,7 +687,7 @@ export function registerChatHandlers(): void {
                 }
 
                 // Use adapter to parse the chunk into IR format
-                const events = adapter.inbound.parseStream!(rawChunk)
+                const events = adapter.inbound.parseStream?.(rawChunk)
                 if (!events) continue
 
                 // Handle single event or array of events
@@ -716,13 +719,14 @@ export function registerChatHandlers(): void {
                       }
                       break
 
-                    case 'error':
+                    case 'error': {
                       // ✅ 提取错误详情
                       const errorMsg = event.error?.message || event.message || 'Stream error'
                       console.error('[Chat] Stream error event:', event)
                       sender.send('chat:stream-error', errorMsg)
                       hasError = true
                       break
+                    }
 
                     // Ignore other event types (start, tool_call, etc.)
                   }

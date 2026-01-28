@@ -4,6 +4,8 @@
 
 import { ipcMain } from 'electron'
 
+import { trackProxyCreated, trackProxyDeleted } from '../services/analytics'
+import { decryptApiKey } from '../services/crypto'
 import {
   getBridgeProxyRepository,
   getModelMappingRepository,
@@ -11,10 +13,8 @@ import {
   type CreateProxyDTO,
   type UpdateProxyDTO
 } from '../services/database/repositories'
-import { invalidateCache } from '../services/proxy-server/bridge-manager'
-import { decryptApiKey } from '../services/crypto'
 import type { BridgeProxyRow, ModelMappingRow } from '../services/database/types'
-import { trackProxyCreated, trackProxyDeleted } from '../services/analytics'
+import { invalidateCache } from '../services/proxy-server/bridge-manager'
 
 // Convert DB row to BridgeProxy object
 function toProxy(row: BridgeProxyRow) {

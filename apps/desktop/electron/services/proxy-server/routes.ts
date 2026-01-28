@@ -14,7 +14,7 @@
 
 import { randomUUID } from 'crypto'
 
-import type { Usage } from '@amux.ai/llm-bridge'
+// Usage type is now accessed via getBridgeUsage() instead of direct import
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 
 import {
@@ -25,7 +25,7 @@ import {
 import { logRequest } from '../logger'
 import { recordRequest as recordMetrics } from '../metrics'
 
-import { getBridge, resolveProxyChain } from './bridge-manager'
+import { getBridge, getBridgeUsage, resolveProxyChain } from './bridge-manager'
 import { handleProviderPassthrough } from './provider-passthrough'
 import { ProxyErrorCode } from './types'
 import { 
@@ -266,7 +266,7 @@ export function registerRoutes(app: FastifyInstance): void {
           const latencyMs = Date.now() - startTime
           
           // ⭐ 从 Bridge 钩子中获取 Token（已经是 IR 统一格式！）
-          const usage = (bridge as any)._lastUsage as Usage | undefined
+          const usage = getBridgeUsage(bridge)
           const inputTokens = usage?.promptTokens
           const outputTokens = usage?.completionTokens
           
@@ -305,7 +305,7 @@ export function registerRoutes(app: FastifyInstance): void {
           const latencyMs = Date.now() - startTime
           
           // ⭐ 从 Bridge 钩子中获取 Token（已经是 IR 统一格式！）
-          const usage = (bridge as any)._lastUsage as Usage | undefined
+          const usage = getBridgeUsage(bridge)
           const inputTokens = usage?.promptTokens
           const outputTokens = usage?.completionTokens
           

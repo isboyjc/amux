@@ -133,7 +133,7 @@ export function registerProviderHandlers(): void {
   })
 
   // Test provider connection
-  ipcMain.handle('provider:test', async (_event, id: string) => {
+  ipcMain.handle('provider:test', async (_event, id: string, modelId?: string) => {
     const row = repo.findById(id)
     if (!row) {
       return { success: false, latency: 0, error: 'Provider not found' }
@@ -146,11 +146,109 @@ export function registerProviderHandlers(): void {
     }
 
     const baseUrl = row.base_url || getDefaultBaseUrl(row.adapter_type)
-    const modelsPath = row.models_path || '/v1/models'
+    const modelsPath = row.models_path || null
     const startTime = Date.now()
 
+    console.log(`[Provider Test] Testing provider: ${row.name} (${row.adapter_type})`)
+    console.log(`[Provider Test]   - baseUrl: ${baseUrl}`)
+    console.log(`[Provider Test]   - modelsPath: ${modelsPath}`)
+    console.log(`[Provider Test]   - modelId: ${modelId}`)
+
+    // If no modelsPath configured, send a test chat message instead
+    if (!modelsPath) {
+      if (!modelId) {
+        return { success: false, latency: 0, error: 'No model specified for test' }
+      }
+
+      const chatPath = row.chat_path || '/v1/chat/completions'
+      console.log(`[Provider Test]   - Using chat test: ${baseUrl}${chatPath}`)
+
+      try {
+        // Build test message request based on adapter type
+        let requestBody: Record<string, unknown>
+        let headers: Record<string, string>
+
+        if (row.adapter_type === 'anthropic') {
+          // Anthropic format
+          requestBody = {
+            model: modelId,
+            messages: [{ role: 'user', content: 'Hi' }],
+            max_tokens: 10
+          }
+          headers = {
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'Content-Type': 'application/json'
+          }
+        } else {
+          // OpenAI-compatible format (including MiniMax)
+          requestBody = {
+            model: modelId,
+            messages: [{ role: 'user', content: 'Hi' }],
+            max_tokens: 10
+          }
+          headers = {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          }
+        }
+
+        const response = await fetch(`${baseUrl}${chatPath}`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(requestBody),
+          signal: AbortSignal.timeout(30000)
+        })
+
+        const latency = Date.now() - startTime
+
+        if (!response.ok) {
+          const errorText = await response.text()
+          return {
+            success: false,
+            latency,
+            error: `HTTP ${response.status}: ${errorText}`
+          }
+        }
+
+        // 追踪测试成功（异步，不阻塞）
+        setImmediate(() => {
+          try {
+            trackProviderTested(row.adapter_type, true, latency)
+          } catch (e) {
+            // 静默失败
+          }
+        })
+
+        return {
+          success: true,
+          latency,
+          message: 'Chat test successful'
+        }
+      } catch (error) {
+        const failureLatency = Date.now() - startTime
+
+        // 追踪测试失败（异步，不阻塞）
+        setImmediate(() => {
+          try {
+            trackProviderTested(row.adapter_type, false, failureLatency)
+          } catch (e) {
+            // 静默失败
+          }
+        })
+
+        return {
+          success: false,
+          latency: failureLatency,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }
+      }
+    }
+
+    // Original logic: Try to fetch models list
+    console.log(`[Provider Test]   - Full URL: ${baseUrl}${modelsPath}`)
+
     try {
-      // Try to fetch models list
       const response = await fetch(`${baseUrl}${modelsPath}`, {
         headers: {
           'Authorization': `Bearer ${apiKey}`,

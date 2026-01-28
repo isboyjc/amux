@@ -1,0 +1,373 @@
+---
+title: MiniMax Adapter
+description: Use the MiniMax adapter to connect to MiniMax-M2.1 and other MiniMax models with Interleaved Thinking support
+---
+
+The MiniMax adapter provides integration with the MiniMax API. MiniMax M2.1 features strong multilingual programming capabilities and supports Interleaved Thinking for enhanced reasoning.
+
+## Installation
+
+```bash tab="pnpm"
+pnpm add @amux.ai/llm-bridge @amux.ai/adapter-minimax
+```
+
+```bash tab="npm"
+npm install @amux.ai/llm-bridge @amux.ai/adapter-minimax
+```
+
+## Basic Usage
+
+```typescript
+import { createBridge } from '@amux.ai/llm-bridge'
+import { minimaxAdapter } from '@amux.ai/adapter-minimax'
+
+const bridge = createBridge({
+  inbound: minimaxAdapter,
+  outbound: minimaxAdapter,
+  config: {
+    apiKey: process.env.MINIMAX_API_KEY
+  }
+})
+
+const response = await bridge.chat({
+  model: 'MiniMax-M2.1',
+  messages: [
+    { role: 'system', content: 'You are a helpful assistant.' },
+    { role: 'user', content: 'Hello, how are you?' }
+  ]
+})
+
+console.log(response.choices[0].message.content)
+```
+
+## Supported Models
+
+| Model | Description | Output Speed |
+|-------|-------------|--------------|
+| `MiniMax-M2.1` | Strong multilingual programming capabilities | ~60 tps |
+| `MiniMax-M2.1-lightning` | Lightning version: faster and more agile | ~100 tps |
+| `MiniMax-M2` | Designed for efficient coding and Agent workflows | ~60 tps |
+
+## Key Features
+
+<Tabs items={['Interleaved Thinking', 'Multilingual Programming', 'Function Calling', 'Streaming']}>
+  <Tab value="Interleaved Thinking">
+    ### Interleaved Thinking
+
+    MiniMax M2.1 supports Interleaved Thinking, which provides transparent reasoning process.
+    
+    **`reasoning_split` is enabled by default** - thinking content is automatically separated:
+
+    ```typescript
+    // reasoning_split is enabled by default
+    const stream = bridge.chatStream({
+      model: 'MiniMax-M2.1',
+      messages: [
+        { role: 'user', content: 'Solve: What is 15 * 24?' }
+      ],
+      stream: true
+    })
+
+    for await (const event of stream) {
+      if (event.type === 'reasoning') {
+        console.log('Thinking:', event.reasoning?.delta)
+      } else if (event.type === 'content') {
+        console.log('Answer:', event.content?.delta)
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab value="Multilingual Programming">
+    ### Multilingual Programming
+
+    MiniMax M2.1 excels at multiple programming languages:
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'MiniMax-M2.1',
+      messages: [
+        {
+          role: 'user',
+          content: 'Write a Rust function to calculate Fibonacci numbers'
+        }
+      ],
+      temperature: 1.0 // Recommended temperature for MiniMax
+    })
+
+    console.log(response.choices[0].message.content)
+    ```
+
+    Supported languages include:
+    - Rust, Java, Golang, C++
+    - Kotlin, Objective-C
+    - TypeScript, JavaScript
+    - Python and more
+  </Tab>
+
+  <Tab value="Function Calling">
+    ### Function Calling
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'MiniMax-M2.1',
+      messages: [
+        { role: 'user', content: 'What is the weather in Beijing?' }
+      ],
+      tools: [{
+        type: 'function',
+        function: {
+          name: 'get_weather',
+          description: 'Get the weather for a specified city',
+          parameters: {
+            type: 'object',
+            properties: {
+              city: { type: 'string', description: 'City name' }
+            },
+            required: ['city']
+          }
+        }
+      }]
+    })
+    ```
+  </Tab>
+
+  <Tab value="Streaming">
+    ### Streaming
+
+    ```typescript
+    const stream = bridge.chatStream({
+      model: 'MiniMax-M2.1-lightning',
+      messages: [
+        { role: 'user', content: 'Tell me a story about AI' }
+      ],
+      stream: true
+    })
+
+    for await (const chunk of stream) {
+      if (chunk.choices[0]?.delta?.content) {
+        process.stdout.write(chunk.choices[0].delta.content)
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Configuration Options
+
+```typescript
+const bridge = createBridge({
+  inbound: minimaxAdapter,
+  outbound: minimaxAdapter,
+  config: {
+    apiKey: process.env.MINIMAX_API_KEY,
+    baseURL: 'https://api.minimaxi.com', // Default
+    timeout: 60000
+  }
+})
+```
+
+## Converting with OpenAI
+
+MiniMax is fully compatible with OpenAI format:
+
+```typescript
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { minimaxAdapter } from '@amux.ai/adapter-minimax'
+
+// OpenAI format → MiniMax API
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: minimaxAdapter,
+  config: {
+    apiKey: process.env.MINIMAX_API_KEY
+  }
+})
+
+// Send request in OpenAI format
+const response = await bridge.chat({
+  model: 'gpt-4', // Will be mapped to MiniMax-M2.1
+  messages: [{ role: 'user', content: 'Hello' }]
+})
+```
+
+## Feature Support
+
+| Feature | Supported | Notes |
+|---------|-----------|-------|
+| Chat Completion | ✅ | Fully supported |
+| Streaming | ✅ | With usage tracking |
+| Function Calling | ✅ | Fully supported |
+| Vision | ❌ | Not supported in text models |
+| System Prompt | ✅ | Fully supported |
+| Reasoning | ✅ | Interleaved Thinking |
+| JSON Mode | ✅ | Structured output |
+
+## Special Features
+
+### Interleaved Thinking
+
+MiniMax M2.1 supports Interleaved Thinking, which allows you to see the model's reasoning process.
+
+**By default, `reasoning_split` is enabled**, which means thinking content is automatically separated from the final answer:
+
+```typescript
+// reasoning_split is enabled by default
+const stream = bridge.chatStream({
+  model: 'MiniMax-M2.1',
+  messages: [
+    { role: 'user', content: 'Solve this complex problem...' }
+  ],
+  stream: true
+})
+
+for await (const event of stream) {
+  if (event.type === 'reasoning') {
+    // Model's thinking process (automatically separated)
+    console.log('💭 Thinking:', event.reasoning?.delta)
+  } else if (event.type === 'content') {
+    // Final answer (without <think> tags)
+    console.log('📝 Answer:', event.content?.delta)
+  }
+}
+```
+
+**To disable reasoning split** (show `<think>` tags in content):
+
+```typescript
+const ir = {
+  model: 'MiniMax-M2.1',
+  messages: [
+    { role: 'user', content: 'Solve this complex problem...' }
+  ],
+  stream: true,
+  extensions: {
+    minimax: {
+      reasoning_split: false  // Disable reasoning split
+    }
+  }
+}
+
+const stream = await bridge.chatStream(ir)
+// Now thinking content will be included in content with <think> tags
+```
+
+### Temperature Range
+
+MiniMax has a strict temperature range of (0.0, 1.0]:
+
+```typescript
+const response = await bridge.chat({
+  model: 'MiniMax-M2.1',
+  messages: [{ role: 'user', content: 'Hello' }],
+  temperature: 1.0 // Recommended: 1.0
+})
+```
+
+- **Minimum**: 0.01 (values ≤ 0.0 are clamped to 0.01)
+- **Maximum**: 1.0 (values > 1.0 are clamped to 1.0)
+- **Recommended**: 1.0
+
+## Advantages
+
+- **Multilingual Programming**: Excellent support for Rust, Java, Golang, C++, and more
+- **Interleaved Thinking**: Transparent reasoning process for complex tasks
+- **WebDev & AppDev**: Enhanced capabilities for web and mobile app development
+- **Efficient**: More concise responses and lower token consumption
+- **Agent-Friendly**: Great support for various AI coding tools and Agent frameworks
+
+## Best Practices
+
+### 1. Choose the Right Model
+
+```typescript
+// For general tasks with good balance
+const response = await bridge.chat({
+  model: 'MiniMax-M2.1',
+  messages: [{ role: 'user', content: 'Explain quantum computing' }]
+})
+
+// For high-speed responses
+const fastResponse = await bridge.chat({
+  model: 'MiniMax-M2.1-lightning',
+  messages: [{ role: 'user', content: 'Quick summary of this article' }]
+})
+
+// For Agent workflows
+const agentResponse = await bridge.chat({
+  model: 'MiniMax-M2',
+  messages: [{ role: 'user', content: 'Help me debug this code' }]
+})
+```
+
+### 2. Leverage Interleaved Thinking
+
+```typescript
+// For complex problem-solving
+const ir = {
+  model: 'MiniMax-M2.1',
+  messages: [
+    {
+      role: 'system',
+      content: 'You are a professional problem solver. Think step by step.'
+    },
+    {
+      role: 'user',
+      content: 'Design a distributed cache system with high availability'
+    }
+  ],
+  stream: true,
+  extensions: {
+    minimax: {
+      reasoning_split: true
+    }
+  }
+}
+```
+
+### 3. Optimize for Multilingual Development
+
+```typescript
+const response = await bridge.chat({
+  model: 'MiniMax-M2.1',
+  messages: [
+    {
+      role: 'system',
+      content: 'You are an expert in multiple programming languages.'
+    },
+    {
+      role: 'user',
+      content: 'Convert this Python code to Rust and optimize for performance'
+    }
+  ],
+  temperature: 1.0
+})
+```
+
+## Unsupported Parameters
+
+The following OpenAI parameters are not supported by MiniMax:
+
+- `presence_penalty`
+- `frequency_penalty`
+- `logit_bias`
+- `logprobs`
+- `seed`
+- `n` (only supports value 1)
+
+## Related Resources
+
+- [MiniMax Text Generation Guide](https://platform.minimax.com/docs/guides/text-generation)
+- [OpenAI API Compatibility](https://platform.minimax.com/docs/api-reference/text-openai-api)
+- [MiniMax M2.1 Release](https://minimax.com/news/minimax-m21)
+
+## Next Steps
+
+<Cards>
+  <Card title="DeepSeek Adapter" href="/en/docs/adapters/deepseek">
+    Learn how to use DeepSeek models
+  </Card>
+  <Card title="OpenAI Adapter" href="/en/docs/adapters/openai">
+    Learn about OpenAI compatible format
+  </Card>
+</Cards>

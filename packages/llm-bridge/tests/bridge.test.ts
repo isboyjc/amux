@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest'
-import { createBridge } from '../src/bridge/factory'
+import { describe, expect, it, vi } from 'vitest'
+
 import type { LLMAdapter } from '../src/adapter/base'
+import { createBridge } from '../src/bridge/factory'
 
 describe('Bridge', () => {
   const mockInboundAdapter: LLMAdapter = {
@@ -46,6 +47,10 @@ describe('Bridge', () => {
         name: this.name,
         version: this.version,
         capabilities: this.capabilities,
+        endpoint: {
+          baseUrl: 'https://api.mock.com',
+          chatPath: '/v1/chat/completions',
+        },
       }
     },
   }
@@ -142,6 +147,7 @@ describe('Bridge', () => {
       })
 
       // Mock HTTP response
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mockHttpClient = (bridge as any).httpClient
       mockHttpClient.request = vi.fn().mockResolvedValue({
         status: 200,
@@ -177,6 +183,7 @@ describe('Bridge', () => {
       })
 
       // Mock HTTP response
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mockHttpClient = (bridge as any).httpClient
       mockHttpClient.request = vi.fn().mockResolvedValue({
         status: 200,
@@ -210,6 +217,7 @@ describe('Bridge', () => {
       })
 
       // Mock HTTP error
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mockHttpClient = (bridge as any).httpClient
       mockHttpClient.request = vi.fn().mockRejectedValue(new Error('Test error'))
 
@@ -225,6 +233,7 @@ describe('Bridge', () => {
     })
 
     it('should extract token usage in onResponse hook', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let extractedUsage: any = null
       
       const mockAdapterWithUsage: LLMAdapter = {
@@ -264,6 +273,7 @@ describe('Bridge', () => {
       })
 
       // Mock HTTP response
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mockHttpClient = (bridge as any).httpClient
       mockHttpClient.request = vi.fn().mockResolvedValue({
         status: 200,

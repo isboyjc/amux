@@ -1,0 +1,373 @@
+---
+title: MiniMax 适配器
+description: 使用 MiniMax 适配器连接到 MiniMax-M2.1 等模型,支持 Interleaved Thinking
+---
+
+MiniMax 适配器提供了与 MiniMax API 的集成。MiniMax M2.1 拥有强大的多语言编程能力,并支持 Interleaved Thinking 增强推理能力。
+
+## 安装
+
+```bash tab="pnpm"
+pnpm add @amux.ai/llm-bridge @amux.ai/adapter-minimax
+```
+
+```bash tab="npm"
+npm install @amux.ai/llm-bridge @amux.ai/adapter-minimax
+```
+
+## 基础用法
+
+```typescript
+import { createBridge } from '@amux.ai/llm-bridge'
+import { minimaxAdapter } from '@amux.ai/adapter-minimax'
+
+const bridge = createBridge({
+  inbound: minimaxAdapter,
+  outbound: minimaxAdapter,
+  config: {
+    apiKey: process.env.MINIMAX_API_KEY
+  }
+})
+
+const response = await bridge.chat({
+  model: 'MiniMax-M2.1',
+  messages: [
+    { role: 'system', content: '你是一个有帮助的助手。' },
+    { role: 'user', content: '你好,你好吗?' }
+  ]
+})
+
+console.log(response.choices[0].message.content)
+```
+
+## 支持的模型
+
+| 模型 | 说明 | 输出速度 |
+|------|------|----------|
+| `MiniMax-M2.1` | 强大多语言编程能力,全面升级编程体验 | 约 60 tps |
+| `MiniMax-M2.1-lightning` | M2.1 极速版:效果不变,更快,更敏捷 | 约 100 tps |
+| `MiniMax-M2` | 专为高效编码与 Agent 工作流而生 | 约 60 tps |
+
+## 核心特性
+
+<Tabs items={['Interleaved Thinking', '多语言编程', '函数调用', '流式输出']}>
+  <Tab value="Interleaved Thinking">
+    ### Interleaved Thinking
+
+    MiniMax M2.1 支持 Interleaved Thinking,提供透明的推理过程。
+    
+    **`reasoning_split` 默认已启用** - 思考内容会自动分离:
+
+    ```typescript
+    // reasoning_split 默认已启用
+    const stream = bridge.chatStream({
+      model: 'MiniMax-M2.1',
+      messages: [
+        { role: 'user', content: '计算: 15 * 24 等于多少?' }
+      ],
+      stream: true
+    })
+
+    for await (const event of stream) {
+      if (event.type === 'reasoning') {
+        console.log('思考中:', event.reasoning?.delta)
+      } else if (event.type === 'content') {
+        console.log('答案:', event.content?.delta)
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab value="多语言编程">
+    ### 多语言编程
+
+    MiniMax M2.1 在多种编程语言上表现出色:
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'MiniMax-M2.1',
+      messages: [
+        {
+          role: 'user',
+          content: '用 Rust 写一个计算斐波那契数列的函数'
+        }
+      ],
+      temperature: 1.0 // MiniMax 推荐的温度值
+    })
+
+    console.log(response.choices[0].message.content)
+    ```
+
+    支持的语言包括:
+    - Rust、Java、Golang、C++
+    - Kotlin、Objective-C
+    - TypeScript、JavaScript
+    - Python 等
+  </Tab>
+
+  <Tab value="函数调用">
+    ### 函数调用
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'MiniMax-M2.1',
+      messages: [
+        { role: 'user', content: '北京的天气怎么样?' }
+      ],
+      tools: [{
+        type: 'function',
+        function: {
+          name: 'get_weather',
+          description: '获取指定城市的天气',
+          parameters: {
+            type: 'object',
+            properties: {
+              city: { type: 'string', description: '城市名称' }
+            },
+            required: ['city']
+          }
+        }
+      }]
+    })
+    ```
+  </Tab>
+
+  <Tab value="流式输出">
+    ### 流式输出
+
+    ```typescript
+    const stream = bridge.chatStream({
+      model: 'MiniMax-M2.1-lightning',
+      messages: [
+        { role: 'user', content: '给我讲一个关于 AI 的故事' }
+      ],
+      stream: true
+    })
+
+    for await (const chunk of stream) {
+      if (chunk.choices[0]?.delta?.content) {
+        process.stdout.write(chunk.choices[0].delta.content)
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## 配置选项
+
+```typescript
+const bridge = createBridge({
+  inbound: minimaxAdapter,
+  outbound: minimaxAdapter,
+  config: {
+    apiKey: process.env.MINIMAX_API_KEY,
+    baseURL: 'https://api.minimaxi.com', // 默认值
+    timeout: 60000
+  }
+})
+```
+
+## 与 OpenAI 格式转换
+
+MiniMax 完全兼容 OpenAI 格式:
+
+```typescript
+import { openaiAdapter } from '@amux.ai/adapter-openai'
+import { minimaxAdapter } from '@amux.ai/adapter-minimax'
+
+// OpenAI 格式 → MiniMax API
+const bridge = createBridge({
+  inbound: openaiAdapter,
+  outbound: minimaxAdapter,
+  config: {
+    apiKey: process.env.MINIMAX_API_KEY
+  }
+})
+
+// 使用 OpenAI 格式发送请求
+const response = await bridge.chat({
+  model: 'gpt-4', // 将被映射到 MiniMax-M2.1
+  messages: [{ role: 'user', content: '你好' }]
+})
+```
+
+## 功能支持
+
+| 功能 | 支持 | 备注 |
+|------|------|------|
+| 对话补全 | ✅ | 完全支持 |
+| 流式输出 | ✅ | 支持 usage 追踪 |
+| 函数调用 | ✅ | 完全支持 |
+| 视觉理解 | ❌ | 文本模型暂不支持 |
+| 系统提示词 | ✅ | 完全支持 |
+| 推理能力 | ✅ | Interleaved Thinking |
+| JSON 模式 | ✅ | 结构化输出 |
+
+## 特色功能
+
+### Interleaved Thinking
+
+MiniMax M2.1 支持 Interleaved Thinking,可以看到模型的推理过程。
+
+**默认情况下,`reasoning_split` 已启用**,这意味着思考内容会自动与最终答案分离:
+
+```typescript
+// reasoning_split 默认启用
+const stream = bridge.chatStream({
+  model: 'MiniMax-M2.1',
+  messages: [
+    { role: 'user', content: '解决这个复杂问题...' }
+  ],
+  stream: true
+})
+
+for await (const event of stream) {
+  if (event.type === 'reasoning') {
+    // 模型的思考过程(自动分离)
+    console.log('💭 思考中:', event.reasoning?.delta)
+  } else if (event.type === 'content') {
+    // 最终答案(不包含 <think> 标签)
+    console.log('📝 答案:', event.content?.delta)
+  }
+}
+```
+
+**如果要禁用推理分离**(在内容中显示 `<think>` 标签):
+
+```typescript
+const ir = {
+  model: 'MiniMax-M2.1',
+  messages: [
+    { role: 'user', content: '解决这个复杂问题...' }
+  ],
+  stream: true,
+  extensions: {
+    minimax: {
+      reasoning_split: false  // 禁用推理分离
+    }
+  }
+}
+
+const stream = await bridge.chatStream(ir)
+// 现在思考内容会包含在 content 中,带有 <think> 标签
+```
+
+### 温度参数范围
+
+MiniMax 的温度参数范围为 (0.0, 1.0]:
+
+```typescript
+const response = await bridge.chat({
+  model: 'MiniMax-M2.1',
+  messages: [{ role: 'user', content: '你好' }],
+  temperature: 1.0 // 推荐值: 1.0
+})
+```
+
+- **最小值**: 0.01(≤ 0.0 的值会被限制为 0.01)
+- **最大值**: 1.0(> 1.0 的值会被限制为 1.0)
+- **推荐值**: 1.0
+
+## 优势
+
+- **多语言编程**: 对 Rust、Java、Golang、C++ 等语言有出色支持
+- **Interleaved Thinking**: 透明的推理过程,适合复杂任务
+- **WebDev & AppDev**: 增强的 Web 和移动应用开发能力
+- **高效**: 更简洁的回复和更低的 token 消耗
+- **Agent 友好**: 对各类 AI 编程工具和 Agent 框架有良好支持
+
+## 最佳实践
+
+### 1. 选择合适的模型
+
+```typescript
+// 通用任务,平衡性能
+const response = await bridge.chat({
+  model: 'MiniMax-M2.1',
+  messages: [{ role: 'user', content: '解释量子计算' }]
+})
+
+// 需要快速响应
+const fastResponse = await bridge.chat({
+  model: 'MiniMax-M2.1-lightning',
+  messages: [{ role: 'user', content: '快速总结这篇文章' }]
+})
+
+// Agent 工作流
+const agentResponse = await bridge.chat({
+  model: 'MiniMax-M2',
+  messages: [{ role: 'user', content: '帮我调试这段代码' }]
+})
+```
+
+### 2. 利用 Interleaved Thinking
+
+```typescript
+// 复杂问题求解
+const ir = {
+  model: 'MiniMax-M2.1',
+  messages: [
+    {
+      role: 'system',
+      content: '你是一个专业的问题解决专家。请一步步思考。'
+    },
+    {
+      role: 'user',
+      content: '设计一个高可用的分布式缓存系统'
+    }
+  ],
+  stream: true,
+  extensions: {
+    minimax: {
+      reasoning_split: true
+    }
+  }
+}
+```
+
+### 3. 优化多语言开发
+
+```typescript
+const response = await bridge.chat({
+  model: 'MiniMax-M2.1',
+  messages: [
+    {
+      role: 'system',
+      content: '你是一个精通多种编程语言的专家。'
+    },
+    {
+      role: 'user',
+      content: '将这段 Python 代码转换为 Rust 并优化性能'
+    }
+  ],
+  temperature: 1.0
+})
+```
+
+## 不支持的参数
+
+以下 OpenAI 参数不被 MiniMax 支持:
+
+- `presence_penalty`
+- `frequency_penalty`
+- `logit_bias`
+- `logprobs`
+- `seed`
+- `n`(仅支持值为 1)
+
+## 相关资源
+
+- [MiniMax 文本生成指南](https://platform.minimax.com/docs/guides/text-generation)
+- [OpenAI API 兼容](https://platform.minimax.com/docs/api-reference/text-openai-api)
+- [MiniMax M2.1 发布](https://minimax.com/news/minimax-m21)
+
+## 下一步
+
+<Cards>
+  <Card title="DeepSeek 适配器" href="/zh/docs/adapters/deepseek">
+    了解如何使用 DeepSeek 模型
+  </Card>
+  <Card title="OpenAI 适配器" href="/zh/docs/adapters/openai">
+    了解 OpenAI 兼容格式
+  </Card>
+</Cards>

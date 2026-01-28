@@ -1,0 +1,59 @@
+{
+  "name": "@amux.ai/adapter-minimax",
+  "version": "0.0.0",
+  "description": "MiniMax adapter for Amux",
+  "keywords": [
+    "amux",
+    "llm",
+    "minimax",
+    "adapter"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/isboyjc/amux.git",
+    "directory": "packages/adapter-minimax"
+  },
+  "homepage": "https://github.com/isboyjc/amux#readme",
+  "bugs": {
+    "url": "https://github.com/isboyjc/amux/issues"
+  },
+  "license": "MIT",
+  "author": "isboyjc",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@amux.ai/llm-bridge": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

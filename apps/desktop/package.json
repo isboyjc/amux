@@ -37,6 +37,7 @@
     "@amux.ai/adapter-anthropic": "workspace:*",
     "@amux.ai/adapter-deepseek": "workspace:*",
     "@amux.ai/adapter-google": "workspace:*",
+    "@amux.ai/adapter-minimax": "workspace:*",
     "@amux.ai/adapter-moonshot": "workspace:*",
     "@amux.ai/adapter-openai": "workspace:*",
     "@amux.ai/adapter-qwen": "workspace:*",

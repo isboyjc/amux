@@ -8,7 +8,7 @@
 
 import { randomUUID } from 'crypto'
 
-import { Bridge, type Usage } from '@amux.ai/llm-bridge'
+import { Bridge } from '@amux.ai/llm-bridge'
 import type { FastifyRequest, FastifyReply } from 'fastify'
 
 import { decryptApiKey } from '../crypto'
@@ -16,19 +16,46 @@ import type { ProviderRow } from '../database/types'
 import { logRequest } from '../logger'
 import { recordRequest as recordMetrics } from '../metrics'
 
-import { getAdapter } from './bridge-manager'
+import { getAdapter, getBridgeUsage, setBridgeUsage } from './bridge-manager'
 import { ProxyErrorCode } from './types'
 import { extractApiKey, validateApiKey, createErrorResponse, getEndpointForAdapter } from './utils'
+
+// Type definitions for request/response
+interface ChatRequestBody {
+  model?: string
+  stream?: boolean
+  [key: string]: unknown
+}
+
+interface RequestParams {
+  '*'?: string
+  [key: string]: unknown
+}
+
+interface ErrorDetails {
+  type?: string
+  message: string
+  code?: string | number
+  [key: string]: unknown
+}
+
+interface BridgeError {
+  status?: number
+  data?: unknown
+  details?: unknown
+  message?: string
+  constructor: { name: string }
+}
 
 /**
  * 🆕 获取 Provider 的认证 Token（支持 OAuth 和 API Key）
  * 
  * @param provider - Provider configuration
- * @returns Token string or { token, accountId, metadata } for OAuth providers, or null if not available
+ * @returns Token string, or null if not available
  */
 async function getProviderToken(
   provider: ProviderRow
-): Promise<string | { token: string; accountId: string; metadata: Record<string, unknown> } | null> {
+): Promise<string | null> {
   // 新架构：所有 Provider（包括 OAuth Pool）都直接使用 api_key 字段
   // OAuth Pool Provider 的 api_key 存储的是 OAuth 服务的 API Key (sk-amux.oauth.codex-xxx)
   // 账号选择和 Token 管理由 OAuth 转换服务层处理
@@ -80,7 +107,7 @@ export async function handleProviderPassthrough(
   console.log(`[Passthrough]   - Provider chat_path: ${provider.chat_path}`)
   
   try {
-    const body = request.body as any
+    const body = request.body as ChatRequestBody
     
     console.log(`[Passthrough]   - Request params:`, request.params)
     console.log(`[Passthrough]   - Request body model (before): ${body.model}`)
@@ -88,7 +115,7 @@ export async function handleProviderPassthrough(
     // 🆕 对于 Google adapter，从 URL 参数中提取模型名并注入到请求体
     // URL 格式：/providers/{path}/v1beta/models/{model}:streamGenerateContent
     if (provider.adapter_type === 'google' && !body.model) {
-      const params = request.params as any
+      const params = request.params as RequestParams
       
       console.log(`[Passthrough]   - Google adapter: extracting model from params`)
       
@@ -104,7 +131,7 @@ export async function handleProviderPassthrough(
         const colonIndex = wildcardParam.indexOf(':')
         modelName = colonIndex > 0 ? wildcardParam.substring(0, colonIndex) : wildcardParam
         console.log(`[Passthrough]   - Extracted model from wildcard: ${modelName}`)
-      } else if (params.model) {
+      } else if (params.model && typeof params.model === 'string') {
         modelName = params.model
         console.log(`[Passthrough]   - Model from route param: ${modelName}`)
       }
@@ -155,7 +182,7 @@ export async function handleProviderPassthrough(
 
       if (keyValidation.usePassThrough) {
         // User provided their own key (pass-through mode)
-        targetApiKey = apiKey!
+        targetApiKey = apiKey || ''
       } else {
         // Use provider's token (OAuth or API Key)
         const result = await getProviderToken(provider)  // ✅ 使用新函数
@@ -219,13 +246,13 @@ export async function handleProviderPassthrough(
         onResponse: async (ir) => {
           // Token统计已经是统一格式，无需区分 Provider！
           if (ir.usage) {
-            ;(bridge as any)._lastUsage = ir.usage
+            setBridgeUsage(bridge, ir.usage)
           }
         },
         onStreamEvent: async (event) => {
           // 流式响应中的 Token 也是统一格式
           if (event.type === 'end' && event.usage) {
-            ;(bridge as any)._lastUsage = event.usage
+            setBridgeUsage(bridge, event.usage)
           }
         }
       }
@@ -320,11 +347,11 @@ export async function handleProviderPassthrough(
         streamSuccess = false
         streamError = error instanceof Error ? error.message : 'Stream error'
         console.error(`[Passthrough] ❌ Stream error:`, error)
-        console.error(`[Passthrough] Error type: ${error.constructor.name}`)
+        console.error(`[Passthrough] Error type: ${error instanceof Error ? error.constructor.name : 'Unknown'}`)
         console.error(`[Passthrough] Error message: ${streamError}`)
         
         // 🔄 提取原始错误详情
-        let errorDetails: any = {
+        let errorDetails: ErrorDetails = {
           type: 'api_error',
           message: streamError,
           code: ProxyErrorCode.INTERNAL_ERROR
@@ -332,12 +359,12 @@ export async function handleProviderPassthrough(
         
         // 如果是 Bridge 的 APIError，提取原始错误信息
         if (error && typeof error === 'object') {
-          const err = error as any
+          const err = error as BridgeError
           // ✅ 直接使用 err.data（完整的错误响应）
-          if (err.data) {
-            errorDetails = err.data
-          } else if (err.details) {
-            errorDetails = err.details
+          if (err.data && typeof err.data === 'object') {
+            errorDetails = { message: streamError, ...err.data as Record<string, unknown> }
+          } else if (err.details && typeof err.details === 'object') {
+            errorDetails = { message: streamError, ...err.details as Record<string, unknown> }
           }
         }
         
@@ -357,7 +384,7 @@ export async function handleProviderPassthrough(
       const latencyMs = Date.now() - startTime
       
       // Get Token statistics from Bridge automatically
-      const usage = (bridge as any)._lastUsage as Usage | undefined
+      const usage = getBridgeUsage(bridge)
       const inputTokens = usage?.promptTokens
       const outputTokens = usage?.completionTokens
       
@@ -367,8 +394,8 @@ export async function handleProviderPassthrough(
       
       logRequest({
         proxyPath: provider.proxy_path || `provider-${provider.id}`,
-        sourceModel: body.model,
-        targetModel: body.model,
+        sourceModel: body.model || 'unknown',
+        targetModel: body.model || 'unknown',
         statusCode: finalStatusCode,
         inputTokens,
         outputTokens,
@@ -401,15 +428,15 @@ export async function handleProviderPassthrough(
       const latencyMs = Date.now() - startTime
       
       // Get Token statistics from Bridge automatically
-      const usage = (bridge as any)._lastUsage as Usage | undefined
+      const usage = getBridgeUsage(bridge)
       const inputTokens = usage?.promptTokens
       const outputTokens = usage?.completionTokens
       
       // Log successful request (including OAuth account info)
       logRequest({
         proxyPath: provider.proxy_path || `provider-${provider.id}`,
-        sourceModel: body.model,
-        targetModel: body.model,
+        sourceModel: body.model || 'unknown',
+        targetModel: body.model || 'unknown',
         statusCode: 200,
         inputTokens,
         outputTokens,
@@ -431,7 +458,7 @@ export async function handleProviderPassthrough(
       return reply.send(response)
     } catch (error) {
       console.error(`[Passthrough] ❌ bridge.chat() failed:`, error)
-      console.error(`[Passthrough] Error type: ${error.constructor.name}`)
+      console.error(`[Passthrough] Error type: ${error instanceof Error ? error.constructor.name : 'Unknown'}`)
       console.error(`[Passthrough] Error message: ${error instanceof Error ? error.message : 'Unknown'}`)
       
       const latencyMs = Date.now() - startTime
@@ -439,7 +466,7 @@ export async function handleProviderPassthrough(
       
       // 🔄 提取原始状态码和错误详情
       let statusCode = 502
-      let errorBody: any = {
+      let errorBody: ErrorDetails = {
         message: errorMessage,
         type: 'api_error',
         code: ProxyErrorCode.ADAPTER_ERROR
@@ -447,7 +474,7 @@ export async function handleProviderPassthrough(
       
       // 如果是 Bridge 的 APIError，提取原始错误信息
       if (error && typeof error === 'object') {
-        const err = error as any
+        const err = error as BridgeError
         
         // Bridge 的 APIError 结构：{ status, data, provider, details }
         if (err.status) {
@@ -455,19 +482,19 @@ export async function handleProviderPassthrough(
         }
         
         // 提取错误详情（优先使用完整的 data）
-        if (err.data) {
+        if (err.data && typeof err.data === 'object') {
           // ✅ 直接使用 err.data，它可能是完整的错误响应
-          errorBody = err.data
-        } else if (err.details) {
-          errorBody = err.details
+          errorBody = { message: errorMessage, ...err.data as Record<string, unknown> }
+        } else if (err.details && typeof err.details === 'object') {
+          errorBody = { message: errorMessage, ...err.details as Record<string, unknown> }
         }
       }
       
       // Log failed request
       logRequest({
         proxyPath: provider.proxy_path || `provider-${provider.id}`,
-        sourceModel: body.model,
-        targetModel: body.model,
+        sourceModel: body.model || 'unknown',
+        targetModel: body.model || 'unknown',
         statusCode,
         inputTokens: undefined,
         outputTokens: undefined,

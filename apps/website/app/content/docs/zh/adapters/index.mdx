@@ -3,7 +3,7 @@ title: 适配器概览
 description: Amux 支持的所有官方适配器
 ---
 
-Amux 提供了 7 个官方适配器,支持主流的 LLM 提供商。每个适配器负责在提供商特定格式和统一的中间表示 (IR) 之间进行双向转换。
+Amux 提供了 8 个官方适配器,支持主流的 LLM 提供商。每个适配器负责在提供商特定格式和统一的中间表示 (IR) 之间进行双向转换。
 
 ## 官方适配器
 
@@ -29,6 +29,9 @@ Amux 提供了 7 个官方适配器,支持主流的 LLM 提供商。每个适配
   <Card title="Google Gemini" href="/zh/docs/adapters/gemini">
     Gemini Pro、1M+ tokens 上下文
   </Card>
+  <Card title="MiniMax" href="/zh/docs/adapters/minimax">
+    MiniMax-M2.1、Interleaved Thinking、多语言编程
+  </Card>
 </Cards>
 
 ## 功能对比
@@ -42,6 +45,7 @@ Amux 提供了 7 个官方适配器,支持主流的 LLM 提供商。每个适配
 | Zhipu | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
 | Qwen | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Gemini | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
+| MiniMax | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
 
 ## 选择适配器
 
@@ -54,10 +58,10 @@ Amux 提供了 7 个官方适配器,支持主流的 LLM 提供商。每个适配
 - Gemini (1M+ tokens)、Anthropic (200K)、Moonshot (200K)
 
 **编程能力**
-- DeepSeek (DeepSeek Coder)、OpenAI (GPT-4)、Anthropic (Claude 3.5 Sonnet)
+- MiniMax (MiniMax-M2.1)、DeepSeek (DeepSeek Coder)、OpenAI (GPT-4)、Anthropic (Claude 3.5 Sonnet)
 
 **推理能力**
-- OpenAI (o3、o4-mini)、DeepSeek (DeepSeek Reasoner)、Moonshot (Kimi K2 Thinking)
+- MiniMax (Interleaved Thinking)、OpenAI (o3、o4-mini)、DeepSeek (DeepSeek Reasoner)、Moonshot (Kimi K2 Thinking)
 
 ### 按价格选择
 
@@ -71,6 +75,7 @@ Amux 提供了 7 个官方适配器,支持主流的 LLM 提供商。每个适配
 
 以下适配器兼容 OpenAI 格式,可以无缝替换:
 - DeepSeek (完全兼容)
+- MiniMax (完全兼容)
 - Moonshot (完全兼容)
 - Zhipu (完全兼容)
 - Qwen (基本兼容,有细微差异)

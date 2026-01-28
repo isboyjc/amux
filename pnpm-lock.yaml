@@ -65,6 +65,9 @@ importers:
       '@amux.ai/adapter-google':
         specifier: workspace:*
         version: link:../../packages/adapter-google
+      '@amux.ai/adapter-minimax':
+        specifier: workspace:*
+        version: link:../../packages/adapter-minimax
       '@amux.ai/adapter-moonshot':
         specifier: workspace:*
         version: link:../../packages/adapter-moonshot
@@ -443,6 +446,25 @@ importers:
         version: 1.6.1(@types/node@20.19.29)
 
   packages/adapter-google:
+    dependencies:
+      '@amux.ai/llm-bridge':
+        specifier: workspace:*
+        version: link:../llm-bridge
+    devDependencies:
+      '@types/node':
+        specifier: ^20.11.5
+        version: 20.19.29
+      tsup:
+        specifier: ^8.0.1
+        version: 8.5.1(tsx@4.21.0)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+      vitest:
+        specifier: ^1.2.1
+        version: 1.6.1(@types/node@20.19.29)
+
+  packages/adapter-minimax:
     dependencies:
       '@amux.ai/llm-bridge':
         specifier: workspace:*
@@ -5263,7 +5285,7 @@ packages:
     dependencies:
       '@types/http-cache-semantics': 4.0.4
       '@types/keyv': 3.1.4
-      '@types/node': 22.19.6
+      '@types/node': 20.19.29
       '@types/responselike': 1.0.3
     dev: true
 
@@ -5497,7 +5519,7 @@ packages:
   /@types/fs-extra@9.0.13:
     resolution: {integrity: sha512-nEnwB++1u5lVDM2UI4c1+5R+FYaKfaAzS4OococimjVm3nQw3TuzH5UNsocrcTBbhnerblyHj4A49qXbIiZdpA==}
     dependencies:
-      '@types/node': 22.19.6
+      '@types/node': 20.19.29
     dev: true
 
   /@types/geojson@7946.0.16:
@@ -5529,7 +5551,7 @@ packages:
   /@types/keyv@3.1.4:
     resolution: {integrity: sha512-BQ5aZNSCpj7D6K2ksrRCTmKRLEpnPvWDiLPfoGyhZ++8YtiK9d/3DBKPJgry359X/P1PfruyYwvnvwFjuEiEIg==}
     dependencies:
-      '@types/node': 22.19.6
+      '@types/node': 20.19.29
     dev: true
 
   /@types/mdast@4.0.4:
@@ -5570,7 +5592,7 @@ packages:
     resolution: {integrity: sha512-E6OCaRmAe4WDmWNsL/9RMqdkkzDCY1etutkflWk4c+AcjDU07Pcz1fQwTX0TQz+Pxqn9i4L1TU3UFpjnrcDgxA==}
     requiresBuild: true
     dependencies:
-      '@types/node': 22.19.6
+      '@types/node': 20.19.29
       xmlbuilder: 15.1.1
     dev: true
     optional: true
@@ -5624,7 +5646,7 @@ packages:
   /@types/responselike@1.0.3:
     resolution: {integrity: sha512-H/+L+UkTV33uf49PH5pCAUBVPNj2nDBXTN+qS1dOwyyg24l3CcicicCA7ca+HMvJBZcFgl5r8e+RR6elsb4Lyw==}
     dependencies:
-      '@types/node': 22.19.6
+      '@types/node': 20.19.29
     dev: true
 
   /@types/semver@7.7.1:
