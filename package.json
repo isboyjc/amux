@@ -60,7 +60,9 @@
     "package:desktop:linux": "cd apps/desktop && pnpm package:linux",
     "clean:desktop:data": "bash ./clean-data.sh",
     "clean:desktop:release": "cd apps/desktop && pnpm clean:release",
-    "release": "tsx scripts/release.ts"
+    "release": "tsx scripts/release.ts",
+    "release:desktop": "tsx scripts/release.ts",
+    "publish:packages": "pnpm --filter \"./packages/**\" build && pnpm changeset:publish"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.1",

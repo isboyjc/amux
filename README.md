@@ -209,6 +209,49 @@ pnpm typecheck
 pnpm lint
 ```
 
+### 📦 Release Process
+
+#### NPM Packages
+
+For publishing npm packages, use the manual publish workflow:
+
+```bash
+# 1. Add changeset (describe your changes)
+pnpm changeset
+
+# 2. Update versions and generate CHANGELOG
+pnpm changeset:version
+
+# 3. Commit and push version updates
+git add .
+git commit -m "chore: bump package versions"
+git push
+
+# 4. Build packages
+pnpm --filter "./packages/**" build
+
+# 5. Publish to npm (requires npm login)
+pnpm changeset:publish
+
+# 6. Push generated tags
+git push --tags
+```
+
+#### Desktop App
+
+For releasing the Desktop application:
+
+```bash
+# Use the release script (recommended)
+pnpm release
+
+# Or manually create tag
+git tag -a desktop-v0.2.1 -m "Release Desktop v0.2.1"
+git push origin desktop-v0.2.1
+```
+
+The Desktop release will automatically trigger GitHub Actions to build installers for macOS, Windows, and Linux.
+
 ## 📊 Project Status
 
 ✅ **MVP Complete!**
