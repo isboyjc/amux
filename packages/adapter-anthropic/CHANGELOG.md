@@ -1,5 +1,12 @@
 # @amux/adapter-anthropic
 
+## 0.1.3
+
+### Patch Changes
+
+- Updated dependencies [50c8b01]
+  - @amux.ai/llm-bridge@0.3.1
+
 ## 0.1.2
 
 ### Patch Changes

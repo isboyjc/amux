@@ -1,6 +1,6 @@
 {
   "name": "@amux.ai/adapter-anthropic",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Anthropic adapter for Amux",
   "keywords": [
     "amux",

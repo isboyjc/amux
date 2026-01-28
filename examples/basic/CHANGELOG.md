@@ -1,5 +1,14 @@
 # @amux/example-basic
 
+## 0.0.4
+
+### Patch Changes
+
+- Updated dependencies [50c8b01]
+  - @amux.ai/llm-bridge@0.3.1
+  - @amux.ai/adapter-anthropic@0.1.3
+  - @amux.ai/adapter-openai@0.1.3
+
 ## 0.0.3
 
 ### Patch Changes

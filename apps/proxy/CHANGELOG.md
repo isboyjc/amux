@@ -1,5 +1,17 @@
 # @amux/proxy
 
+## 0.0.5
+
+### Patch Changes
+
+- Updated dependencies [50c8b01]
+  - @amux.ai/llm-bridge@0.3.1
+  - @amux.ai/adapter-anthropic@0.1.3
+  - @amux.ai/adapter-deepseek@0.1.3
+  - @amux.ai/adapter-moonshot@0.1.3
+  - @amux.ai/adapter-openai@0.1.3
+  - @amux.ai/adapter-zhipu@0.1.3
+
 ## 0.0.4
 
 ### Patch Changes

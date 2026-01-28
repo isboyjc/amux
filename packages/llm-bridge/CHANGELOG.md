@@ -1,5 +1,11 @@
 # @amux/llm-bridge
 
+## 0.3.1
+
+### Patch Changes
+
+- 50c8b01: fix test file
+
 ## 0.3.0
 
 ### Minor Changes

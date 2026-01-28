@@ -4,6 +4,23 @@
 
 ### Patch Changes
 
+- 50c8b01: add MiniMax adapter with Interleaved Thinking support
+- Updated dependencies [50c8b01]
+- Updated dependencies [50c8b01]
+  - @amux.ai/llm-bridge@0.3.1
+  - @amux.ai/adapter-minimax@0.1.0
+  - @amux.ai/adapter-anthropic@0.1.3
+  - @amux.ai/adapter-deepseek@0.1.3
+  - @amux.ai/adapter-google@0.1.3
+  - @amux.ai/adapter-moonshot@0.1.3
+  - @amux.ai/adapter-openai@0.1.3
+  - @amux.ai/adapter-qwen@0.1.3
+  - @amux.ai/adapter-zhipu@0.1.3
+
+## 0.2.1
+
+### Patch Changes
+
 - 5b4c36e: Fix the incompatibility of native module architecture of macos Intel package better-sqlite3 #3
 
 ## 0.2.0
