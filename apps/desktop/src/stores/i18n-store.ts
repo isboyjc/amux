@@ -13,7 +13,7 @@ const messages: Record<Locale, typeof enUS> = {
 interface I18nState {
   locale: Locale
   setLocale: (locale: Locale) => void
-  t: (key: string) => string
+  t: (key: string, params?: Record<string, string | number>) => string
 }
 
 export const useI18nStore = create<I18nState>()(
@@ -25,7 +25,7 @@ export const useI18nStore = create<I18nState>()(
         set({ locale })
       },
       
-      t: (key: string) => {
+      t: (key: string, params?: Record<string, string | number>) => {
         const { locale } = get()
         const keys = key.split('.')
         let value: unknown = messages[locale]
@@ -38,7 +38,16 @@ export const useI18nStore = create<I18nState>()(
           }
         }
         
-        return typeof value === 'string' ? value : key
+        let result = typeof value === 'string' ? value : key
+        
+        // Replace placeholders like {cliType} with actual values
+        if (params) {
+          Object.entries(params).forEach(([paramKey, paramValue]) => {
+            result = result.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), String(paramValue))
+          })
+        }
+        
+        return result
       },
     }),
     {

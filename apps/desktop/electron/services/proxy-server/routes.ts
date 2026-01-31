@@ -27,6 +27,7 @@ import { recordRequest as recordMetrics } from '../metrics'
 
 import { getBridge, getBridgeUsage, resolveProxyChain } from './bridge-manager'
 import { handleProviderPassthrough } from './provider-passthrough'
+import { handleCodeSwitch } from './code-switch-handler'
 import { ProxyErrorCode } from './types'
 import { 
   extractApiKey, 
@@ -49,6 +50,25 @@ interface ChatCompletionRequest {
 export function registerRoutes(app: FastifyInstance): void {
   const proxyRepo = getBridgeProxyRepository()
   const providerRepo = getProviderRepository()
+  
+  // ============================================================================
+  // 0. Code Switch Routes (Claude Code & Codex CLI)
+  // ============================================================================
+  console.log(`\n[Routes] 📋 Registering Code Switch routes`)
+  
+  // Claude Code route: /code/claudecode/v1/messages
+  app.post('/code/claudecode/v1/messages', async (request: FastifyRequest, reply: FastifyReply) => {
+    console.log(`[Routes] 🎯 Code Switch route matched: claudecode`)
+    return handleCodeSwitch(request, reply, 'claudecode')
+  })
+  console.log(`[Routes]   ✅ Registered route: POST /code/claudecode/v1/messages`)
+  
+  // Codex route: /code/codex/v1/messages
+  app.post('/code/codex/v1/messages', async (request: FastifyRequest, reply: FastifyReply) => {
+    console.log(`[Routes] 🎯 Code Switch route matched: codex`)
+    return handleCodeSwitch(request, reply, 'codex')
+  })
+  console.log(`[Routes]   ✅ Registered route: POST /code/codex/v1/messages\n`)
   
   // ============================================================================
   // 1. Provider Passthrough Proxy Routes

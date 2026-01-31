@@ -301,6 +301,18 @@ export class Bridge implements LLMBridge {
    * Returns raw IR stream events for custom processing
    */
   async *chatStreamRaw(request: unknown): AsyncIterable<LLMStreamEvent> {
+    // Wrap the stream processing in a generator function so we can apply filters
+    const rawStream = this.processRawStream(request)
+    
+    // Apply duplicate end event filter to ensure IR semantic correctness
+    yield* this.filterDuplicateEndEvents(rawStream)
+  }
+
+  /**
+   * Process raw stream without filters (internal use)
+   * @private
+   */
+  private async *processRawStream(request: unknown): AsyncIterable<LLMStreamEvent> {
     try {
       // Step 1: Inbound adapter parses request → IR
       const ir = this.inboundAdapter.inbound.parseRequest(request)
@@ -381,6 +393,32 @@ export class Bridge implements LLMBridge {
         }
       }
       throw error
+    }
+  }
+
+  /**
+   * Filter duplicate end events from stream
+   * Ensures IR semantic correctness: one request = one end event
+   * @private
+   */
+  private async *filterDuplicateEndEvents(
+    stream: AsyncIterable<LLMStreamEvent>
+  ): AsyncIterable<LLMStreamEvent> {
+    let hasSeenEnd = false
+
+    for await (const event of stream) {
+      // Filter duplicate end events
+      if (event.type === 'end') {
+        if (hasSeenEnd) {
+          console.warn(
+            `[Bridge] Duplicate end event filtered (outbound adapter: ${this.outboundAdapter.name})`
+          )
+          continue // Skip duplicate end event
+        }
+        hasSeenEnd = true
+      }
+
+      yield event
     }
   }
 

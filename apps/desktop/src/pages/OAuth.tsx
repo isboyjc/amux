@@ -5,6 +5,12 @@
  */
 
 import { Loader2, Plus } from 'lucide-react'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -311,47 +317,68 @@ export function OAuth() {
               {t('oauth.description')}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 shrink-0">
             {/* Tab Switcher */}
             <Tabs value={activeTab} onValueChange={handleTabChange}>
-              <TabsList className="inline-flex h-8 p-0.5 bg-muted">
+              <TabsList className="inline-flex h-10 p-1 bg-muted">
                 <TabsTrigger 
                   value="antigravity"
-                  className="flex items-center gap-1.5 h-7 px-3 data-[state=active]:bg-white dark:data-[state=active]:bg-background"
+                  className="flex items-center gap-1.5 h-8 px-4 data-[state=active]:bg-white dark:data-[state=active]:bg-background data-[state=active]:shadow-sm"
                 >
-                  <AntigravityIcon className="w-3.5 h-3.5" />
-                  <span className="text-xs">{t('oauth.antigravity')}</span>
+                  <AntigravityIcon className="w-4 h-4" />
+                  <span className="text-sm font-medium">{t('oauth.antigravity')}</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="codex"
-                  className="flex items-center gap-1.5 h-7 px-3 data-[state=active]:bg-white dark:data-[state=active]:bg-background"
+                  className="flex items-center gap-1.5 h-8 px-4 data-[state=active]:bg-white dark:data-[state=active]:bg-background data-[state=active]:shadow-sm"
                 >
-                  <CodexIcon className="w-3.5 h-3.5" />
-                  <span className="text-xs">{t('oauth.codex')}</span>
+                  <CodexIcon className="w-4 h-4" />
+                  <span className="text-sm font-medium">{t('oauth.codex')}</span>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
             
-            {/* 🆕 检测 Pool Provider 按钮 */}
-            <Button 
-              onClick={handleCheckPoolProvider} 
-              variant="outline" 
-              size="sm" 
-              className="h-8"
-              disabled={checkingPool || accounts.length === 0}
-            >
-              {checkingPool ? (
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <KeyframesIcon size={14} className="mr-1.5" />
-              )}
-              <span className="text-xs">{t('oauth.checkPoolProvider')}</span>
-            </Button>
+            {/* 检测 Pool Provider 按钮 */}
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    onClick={handleCheckPoolProvider} 
+                    variant="outline" 
+                    size="icon"
+                    className="w-10 h-10"
+                    disabled={checkingPool || accounts.length === 0}
+                  >
+                    {checkingPool ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <KeyframesIcon size={16} />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p className="text-xs">{t('oauth.checkPoolProvider')}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             
-            <Button onClick={handleOpenDialog} size="sm" className="h-8">
-              <Plus className="mr-1.5 h-3.5 w-3.5" />
-              <span className="text-xs">{t('oauth.addAccount')}</span>
-            </Button>
+            {/* 添加账号按钮 */}
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    onClick={handleOpenDialog} 
+                    size="icon"
+                    className="w-10 h-10"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p className="text-xs">{t('oauth.addAccount')}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
 

@@ -310,6 +310,36 @@ export interface IPCHandlers {
   }>
   'updater:get-release-url': () => Promise<string>
   'updater:open-release-page': () => Promise<void>
+
+  // Code Switch operations
+  'code-switch:get-config': (cliType: 'claudecode' | 'codex') => Promise<import('./index').CodeSwitchConfig | null>
+  'code-switch:detect-files': () => Promise<Array<{
+    cliType: 'claudecode' | 'codex'
+    detected: boolean
+    configPath: string | null
+    valid: boolean
+    error?: string
+  }>>
+  'code-switch:enable': (data: {
+    cliType: 'claudecode' | 'codex'
+    providerId: string
+    modelMappings: Array<{ claudeModel: string; targetModel: string }>
+  }) => Promise<import('./index').CodeSwitchConfig>
+  'code-switch:disable': (cliType: 'claudecode' | 'codex') => Promise<void>
+  'code-switch:update-provider': (
+    cliType: 'claudecode' | 'codex',
+    providerId: string,
+    modelMappings: Array<{ claudeModel: string; targetModel: string }>
+  ) => Promise<void>
+  'code-switch:get-historical-mappings': (
+    codeSwitchId: string,
+    providerId: string
+  ) => Promise<import('./index').CodeModelMapping[]>
+  'code-switch:test-connection': (cliType: 'claudecode' | 'codex') => Promise<{
+    success: boolean
+    latency?: number
+    error?: string
+  }>
 }
 
 // ============ IPC Events (Main -> Renderer) ============

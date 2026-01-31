@@ -149,3 +149,24 @@ export interface SchemaMigrationRow {
   version: number
   applied_at: number
 }
+
+// Code Switch configuration row from database
+export interface CodeSwitchConfigRow extends BaseRow {
+  cli_type: string // 'claudecode' | 'codex'
+  enabled: number // 0 or 1
+  provider_id: string
+  config_path: string
+  backup_config: string | null // JSON string of original config
+  proxy_path: string // e.g. 'code/claudecode'
+  updated_at: number
+}
+
+// Code model mapping row from database (with historical mapping support)
+export interface CodeModelMappingRow extends BaseRow {
+  code_switch_id: string
+  provider_id: string // Support for historical mappings per provider
+  claude_model: string // Source model name (user-configurable)
+  target_model: string // Target provider model name
+  is_active: number // 0 or 1 - only active when provider matches code_switch config
+  updated_at: number
+}

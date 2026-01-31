@@ -228,3 +228,28 @@ export type {
   OAuthPoolStats,
   ProviderGenerationMode
 } from './oauth'
+
+// Code Switch configuration
+export interface CodeSwitchConfig {
+  id: string
+  cliType: 'claudecode' | 'codex'
+  enabled: boolean
+  providerId: string
+  configPath: string
+  backupConfig: string | null
+  proxyPath: string
+  createdAt: number
+  updatedAt: number
+}
+
+// Code model mapping
+export interface CodeModelMapping {
+  id: string
+  codeSwitchId: string
+  providerId: string
+  claudeModel: string // Source model name (user-configurable)
+  targetModel: string // Target provider model name
+  isActive: boolean
+  createdAt: number
+  updatedAt: number
+}

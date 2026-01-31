@@ -17,6 +17,7 @@ import { registerOAuthHandlers } from './oauth-handlers'
 import { registerNavigationHandlers } from './navigation-handlers'  // ✅ 添加导航 handlers
 import { registerUpdaterHandlers } from './updater'
 import { registerAnalyticsHandlers } from './analytics'
+import { registerCodeSwitchHandlers } from './code-switch'
 
 /**
  * Register all IPC handlers
@@ -36,6 +37,7 @@ export function registerAllHandlers(): void {
   registerNavigationHandlers()  // ✅ 注册导航 handlers
   registerUpdaterHandlers()
   registerAnalyticsHandlers()
+  registerCodeSwitchHandlers()
 
   console.log('[IPC] All handlers registered')
 }

@@ -12,11 +12,13 @@ import {
 import { encryptApiKey, decryptApiKey } from '../services/crypto'
 import {
   getProviderRepository,
+  CodeSwitchRepository,
   type CreateProviderDTO,
   type UpdateProviderDTO
 } from '../services/database/repositories'
 import type { ProviderRow } from '../services/database/types'
 import { generateSlug, ensureUniqueSlug, validateSlug } from '../utils/slug'
+import { ConfigBackup, invalidateCodeSwitchCache } from '../services/code-switch'
 
 // Convert DB row to Provider object
 function toProvider(row: ProviderRow) {
@@ -111,6 +113,30 @@ export function registerProviderHandlers(): void {
     const provider = repo.findById(id)
     const adapterType = provider?.adapter_type
     
+    // Check if this provider is used by Code Switch
+    const codeSwitchRepo = new CodeSwitchRepository()
+    const affectedConfigs = codeSwitchRepo.findByProvider(id)
+    
+    // Restore original CLI configs before deletion
+    for (const config of affectedConfigs) {
+      if (config.enabled && config.backup_config) {
+        try {
+          await ConfigBackup.restore(
+            config.cli_type as 'claudecode' | 'codex',
+            config.config_path,
+            config.backup_config
+          )
+          console.log(`[Provider Delete] Restored ${config.cli_type} config`)
+          
+          // Invalidate cache
+          invalidateCodeSwitchCache(config.cli_type as 'claudecode' | 'codex')
+        } catch (error) {
+          console.error(`[Provider Delete] Failed to restore ${config.cli_type} config:`, error)
+        }
+      }
+    }
+    
+    // Delete provider (Code Switch configs will cascade delete due to FK constraint)
     const result = repo.delete(id)
     
     // 追踪 Provider 删除（异步，不阻塞）

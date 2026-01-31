@@ -23,6 +23,7 @@ import {
 } from '@/components/icons'
 import type { AnimatedIconHandle } from '@/components/icons'
 import { ProviderLogo } from '@/components/providers/ProviderLogo'
+import { CodeSwitchProxyList } from '@/components/proxies/CodeSwitchProxyList'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -381,9 +382,20 @@ export function Proxies() {
   }
 
   return (
-    <div className="h-full flex gap-3 animate-fade-in">
-      {/* Left Panel - Proxy List */}
-      <div className="content-card w-72 shrink-0 flex flex-col overflow-hidden">
+    <div className="h-full flex flex-col gap-3 animate-fade-in">
+      {/* CLI Proxies Section */}
+      <div className="content-card p-4 shrink-0">
+        <div className="mb-3">
+          <h3 className="text-sm font-semibold">{t('proxies.cliProxies')}</h3>
+          <p className="text-xs text-muted-foreground">{t('proxies.cliProxiesDesc')}</p>
+        </div>
+        <CodeSwitchProxyList />
+      </div>
+
+      {/* Main Proxy Management Section */}
+      <div className="flex-1 flex gap-3 min-h-0">
+        {/* Left Panel - Proxy List */}
+        <div className="content-card w-72 shrink-0 flex flex-col overflow-hidden">
         <ProxyListPanel
           proxies={proxies}
           providers={providers}
@@ -423,6 +435,7 @@ export function Proxies() {
         onClose={() => setShowAddModal(false)}
         t={t}
       />
+      </div>
     </div>
   )
 }
