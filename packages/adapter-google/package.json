@@ -1,6 +1,6 @@
 {
   "name": "@amux.ai/adapter-google",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Google Gemini adapter for Amux",
   "keywords": [
     "amux",

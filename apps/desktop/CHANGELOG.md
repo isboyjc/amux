@@ -1,5 +1,23 @@
 # @amux/desktop
 
+## 0.2.2
+
+### Patch Changes
+
+- a68736c: Add dynamic writing of Claude Code CLI configuration based on Code Switch
+- 4ff5847: feat: optimize code switch UI, hide codex tab, integrate CS proxies display, add preset system; fix: resolve 30+ TypeScript type errors
+- Updated dependencies [a68736c]
+- Updated dependencies [4ff5847]
+  - @amux.ai/llm-bridge@0.3.2
+  - @amux.ai/adapter-openai@0.1.4
+  - @amux.ai/adapter-anthropic@0.1.4
+  - @amux.ai/adapter-deepseek@0.1.4
+  - @amux.ai/adapter-google@0.1.4
+  - @amux.ai/adapter-minimax@0.1.1
+  - @amux.ai/adapter-moonshot@0.1.4
+  - @amux.ai/adapter-qwen@0.1.4
+  - @amux.ai/adapter-zhipu@0.1.4
+
 ## 0.2.1
 
 ### Patch Changes

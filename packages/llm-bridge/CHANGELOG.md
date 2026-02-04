@@ -1,5 +1,11 @@
 # @amux/llm-bridge
 
+## 0.3.2
+
+### Patch Changes
+
+- a68736c: Compatibility bug fix
+
 ## 0.3.1
 
 ### Patch Changes

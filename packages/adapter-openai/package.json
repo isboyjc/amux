@@ -1,6 +1,6 @@
 {
   "name": "@amux.ai/adapter-openai",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "OpenAI adapter for Amux",
   "keywords": [
     "amux",

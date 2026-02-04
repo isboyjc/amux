@@ -1,6 +1,6 @@
 {
   "name": "@amux.ai/proxy",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "private": true,
   "description": "Amux Proxy Server - Proxy LLM APIs bidirectionally",
   "type": "module",

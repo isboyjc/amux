@@ -1,5 +1,11 @@
 # @amux.ai/website
 
+## 0.1.3
+
+### Patch Changes
+
+- 4ff5847: docs: update openai adapter documentation with better examples
+
 ## 0.1.2
 
 ### Patch Changes

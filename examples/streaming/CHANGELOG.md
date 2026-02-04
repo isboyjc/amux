@@ -1,5 +1,15 @@
 # @amux/example-streaming
 
+## 0.0.5
+
+### Patch Changes
+
+- Updated dependencies [a68736c]
+- Updated dependencies [4ff5847]
+  - @amux.ai/llm-bridge@0.3.2
+  - @amux.ai/adapter-openai@0.1.4
+  - @amux.ai/adapter-anthropic@0.1.4
+
 ## 0.0.4
 
 ### Patch Changes

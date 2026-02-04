@@ -1,5 +1,13 @@
 # @amux/adapter-openai
 
+## 0.1.4
+
+### Patch Changes
+
+- 4ff5847: docs: update openai-responses adapter documentation
+- Updated dependencies [a68736c]
+  - @amux.ai/llm-bridge@0.3.2
+
 ## 0.1.3
 
 ### Patch Changes
