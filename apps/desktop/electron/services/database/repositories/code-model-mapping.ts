@@ -11,7 +11,7 @@ import type { CodeModelMappingRow } from '../types'
 export interface CreateModelMappingDTO {
   codeSwitchId: string
   providerId: string
-  claudeModel: string
+  sourceModel: string
   targetModel: string
   isActive?: boolean
 }
@@ -20,7 +20,7 @@ export interface UpdateModelMappingsDTO {
   codeSwitchId: string
   providerId: string
   mappings: Array<{
-    claudeModel: string
+    sourceModel: string
     targetModel: string
   }>
 }
@@ -31,7 +31,7 @@ export class CodeModelMappingRepository extends BaseRepository<CodeModelMappingR
   /**
    * Find all records (override to remove sort_order)
    */
-  findAll(): CodeModelMappingRow[] {
+  override findAll(): CodeModelMappingRow[] {
     const stmt = this.db.prepare(`SELECT * FROM ${this.tableName} ORDER BY created_at DESC`)
     return stmt.all() as CodeModelMappingRow[]
   }
@@ -82,7 +82,7 @@ export class CodeModelMappingRepository extends BaseRepository<CodeModelMappingR
 
     const stmt = this.db.prepare(`
       INSERT INTO code_model_mappings (
-        id, code_switch_id, provider_id, claude_model, target_model, is_active, created_at, updated_at
+        id, code_switch_id, provider_id, source_model, target_model, is_active, created_at, updated_at
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `)
@@ -91,7 +91,7 @@ export class CodeModelMappingRepository extends BaseRepository<CodeModelMappingR
       id,
       data.codeSwitchId,
       data.providerId,
-      data.claudeModel,
+      data.sourceModel,
       data.targetModel,
       data.isActive !== false ? 1 : 0,
       now,
@@ -127,10 +127,10 @@ export class CodeModelMappingRepository extends BaseRepository<CodeModelMappingR
       // Step 2 & 3: Upsert new mappings and set as active
       const upsertStmt = this.db.prepare(`
         INSERT INTO code_model_mappings (
-          id, code_switch_id, provider_id, claude_model, target_model, is_active, created_at, updated_at
+          id, code_switch_id, provider_id, source_model, target_model, is_active, created_at, updated_at
         )
         VALUES (?, ?, ?, ?, ?, 1, ?, ?)
-        ON CONFLICT (code_switch_id, provider_id, claude_model)
+        ON CONFLICT (code_switch_id, provider_id, source_model)
         DO UPDATE SET
           target_model = excluded.target_model,
           is_active = 1,
@@ -142,7 +142,7 @@ export class CodeModelMappingRepository extends BaseRepository<CodeModelMappingR
           this.generateId(),
           codeSwitchId,
           providerId,
-          mapping.claudeModel,
+          mapping.sourceModel,
           mapping.targetModel,
           now,
           now
@@ -194,4 +194,17 @@ export class CodeModelMappingRepository extends BaseRepository<CodeModelMappingR
     const result = stmt.get(providerId) as { count: number }
     return result.count
   }
+}
+
+// Singleton instance
+let instance: CodeModelMappingRepository | null = null
+
+/**
+ * Get singleton instance of CodeModelMappingRepository
+ */
+export function getCodeModelMappingRepository(): CodeModelMappingRepository {
+  if (!instance) {
+    instance = new CodeModelMappingRepository()
+  }
+  return instance
 }

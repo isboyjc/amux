@@ -83,7 +83,7 @@ export class AntigravityTranslator {
       // 4. 使用账号池执行请求（自动重试和账号轮换）
       await this.poolManager.executeWithRetry('antigravity', async (selection) => {
         const { account, accessToken, metadata } = selection
-        const antigravityMeta = metadata as AntigravityMetadata
+        const antigravityMeta = metadata as unknown as AntigravityMetadata
         const projectId = antigravityMeta?.project_id || ''
         const startTime = Date.now()
 
@@ -166,7 +166,7 @@ export class AntigravityTranslator {
               // 收集 token 统计信息
               let promptTokens = 0
               let candidatesTokens = 0
-              let totalTokens = 0
+              let _totalTokens = 0
 
               // 读取并转发流（需要解包 v1internal 的 response 字段）
               if (response.body) {
@@ -201,7 +201,7 @@ export class AntigravityTranslator {
                           if (unwrapped.usageMetadata) {
                             promptTokens = unwrapped.usageMetadata.promptTokenCount || 0
                             candidatesTokens = unwrapped.usageMetadata.candidatesTokenCount || 0
-                            totalTokens = unwrapped.usageMetadata.totalTokenCount || 0
+                            _totalTokens = unwrapped.usageMetadata.totalTokenCount || 0
                           }
                           
                           reply.raw.write(`data: ${JSON.stringify(unwrapped)}\n\n`)
@@ -393,7 +393,7 @@ export class AntigravityTranslator {
    *   "requestType": "code"
    * }
    */
-  private wrapRequestBody(body: any, projectId: string, metadata?: AntigravityMetadata): any {
+  private wrapRequestBody(body: any, projectId: string, _metadata?: AntigravityMetadata): any {
     // 1. 生成唯一的 requestId
     const requestId = `agent-${this.generateUUID()}`
     

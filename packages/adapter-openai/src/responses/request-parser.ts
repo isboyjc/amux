@@ -106,7 +106,14 @@ export function parseResponsesRequest(request: unknown): LLMRequestIR {
   }
 }
 
-function parseInput(input: string | ResponsesInputItem[]): { messages: Message[]; developerSystem?: string } {
+function parseInput(input: string | ResponsesInputItem[] | null | undefined): { messages: Message[]; developerSystem?: string } {
+  // Handle null/undefined input
+  if (!input) {
+    return {
+      messages: [],
+    }
+  }
+
   if (typeof input === 'string') {
     return {
       messages: [
@@ -135,7 +142,7 @@ function parseInput(input: string | ResponsesInputItem[]): { messages: Message[]
     if (role === 'system' || role === 'developer') {
       if (typeof content === 'string') {
         developerSystem = developerSystem ? `${developerSystem}\n${content}` : content
-      } else {
+      } else if (content && Array.isArray(content)) {
         // Extract text from content parts
         const text = content
           .filter((p) => p.type === 'input_text')
@@ -156,7 +163,12 @@ function parseInput(input: string | ResponsesInputItem[]): { messages: Message[]
   return { messages, developerSystem }
 }
 
-function parseContent(content: string | ResponsesContentPart[]): string | ContentPart[] {
+function parseContent(content: string | ResponsesContentPart[] | null | undefined): string | ContentPart[] {
+  // Handle null/undefined content
+  if (!content) {
+    return ''
+  }
+
   if (typeof content === 'string') {
     return content
   }

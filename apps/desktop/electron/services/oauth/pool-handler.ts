@@ -43,7 +43,7 @@ export class PoolHandler {
     
     // 2. 如果上次的账号不可用，选择第一个可用账号
     if (!selectedAccount) {
-      selectedAccount = accounts[0]
+      selectedAccount = accounts[0] || null
     }
     
     if (!selectedAccount) {

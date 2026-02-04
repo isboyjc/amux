@@ -65,6 +65,7 @@
     "electron-google-analytics4": "^1.2.1",
     "fastify": "^5.2.1",
     "framer-motion": "^12.26.2",
+    "lru-cache": "^11.2.5",
     "lucide-react": "^0.469.0",
     "motion": "^11.18.2",
     "nanoid": "^5.0.9",

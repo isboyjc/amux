@@ -67,7 +67,7 @@ function percentile(sortedArr: number[], p: number): number {
   if (sortedArr.length === 0) return 0
   
   const index = Math.ceil((p / 100) * sortedArr.length) - 1
-  return sortedArr[Math.max(0, index)]
+  return sortedArr[Math.max(0, index)] || 0
 }
 
 /**
@@ -88,7 +88,7 @@ export function recordRequest(
   
   // Clean old timestamps
   const cutoff = now - RPM_WINDOW
-  while (requestTimestamps.length > 0 && requestTimestamps[0] < cutoff) {
+  while (requestTimestamps.length > 0 && (requestTimestamps[0] || 0) < cutoff) {
     requestTimestamps.shift()
   }
   

@@ -25,6 +25,39 @@ import { getAdapter } from '../services/proxy-server/bridge-manager'
 import { getEndpointForAdapter } from '../services/proxy-server/utils'
 
 /**
+ * Build request body based on adapter type
+ * Different adapters expect different request formats
+ */
+function buildRequestBody(
+  adapterType: string,
+  model: string,
+  messages: Array<{ role: string; content: string }>,
+  stream: boolean
+): Record<string, unknown> {
+  // OpenAI Responses API format
+  if (adapterType === 'openai-responses') {
+    return {
+      model,
+      input: messages.map(msg => ({
+        type: 'message',
+        role: msg.role,
+        content: typeof msg.content === 'string'
+          ? [{ type: 'text', text: msg.content }]
+          : msg.content
+      })),
+      stream
+    }
+  }
+
+  // Default: OpenAI Chat Completions format (most adapters use this)
+  return {
+    model,
+    messages,
+    stream
+  }
+}
+
+/**
  * Register chat IPC handlers
  */
 export function registerChatHandlers(): void {
@@ -232,17 +265,22 @@ export function registerChatHandlers(): void {
       const streamStartTime = Date.now()
 
       try {
+        // Build request body based on adapter type
+        const requestBody = buildRequestBody(adapterType, model, llmMessages, true)
+        
+        console.log(`[Chat] 📤 Request body format for adapter "${adapterType}":`, {
+          hasMessages: 'messages' in requestBody,
+          hasInput: 'input' in requestBody,
+          keys: Object.keys(requestBody)
+        })
+        
         const response = await fetch(proxyUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
             // No Authorization header - let proxy service use configured keys
           },
-          body: JSON.stringify({
-            model: model,
-            messages: llmMessages,
-            stream: true
-          })
+          body: JSON.stringify(requestBody)
         })
 
         if (!response.ok) {
@@ -616,17 +654,22 @@ export function registerChatHandlers(): void {
       let hasError = false
 
       try {
+        // Build request body based on adapter type
+        const requestBody = buildRequestBody(adapterType, model, llmMessages, true)
+        
+        console.log(`[Chat] 📤 Regenerate request body format for adapter "${adapterType}":`, {
+          hasMessages: 'messages' in requestBody,
+          hasInput: 'input' in requestBody,
+          keys: Object.keys(requestBody)
+        })
+        
         const response = await fetch(proxyUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
             // No Authorization header - let proxy service use configured keys
           },
-          body: JSON.stringify({
-            model: model,
-            messages: llmMessages,
-            stream: true
-          })
+          body: JSON.stringify(requestBody)
         })
 
         if (!response.ok) {

@@ -71,6 +71,7 @@ export interface OAuthAccountRow extends BaseRow {
   is_active: number // 0 or 1
   health_status: string // 'active' | 'rate_limited' | 'expired' | 'forbidden'
   consecutive_failures: number
+  error_message: string | null
   
   // Pool 相关
   pool_enabled: number // 0 or 1
@@ -165,8 +166,8 @@ export interface CodeSwitchConfigRow extends BaseRow {
 export interface CodeModelMappingRow extends BaseRow {
   code_switch_id: string
   provider_id: string // Support for historical mappings per provider
-  claude_model: string // Source model name (user-configurable)
-  target_model: string // Target provider model name
+  source_model: string // Source model name - Claude official models or Codex default/custom models
+  target_model: string // Target provider model name (format: provider/model)
   is_active: number // 0 or 1 - only active when provider matches code_switch config
   updated_at: number
 }

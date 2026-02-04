@@ -8,7 +8,7 @@ import {
   getBridgeProxyRepository,
   getSettingsRepository
 } from '../database/repositories'
-import type { ConflictStrategy, ImportResult } from '../../src/types/ipc'
+import type { ConflictStrategy, ImportResult } from '../../../src/types/ipc'
 
 interface ImportData {
   version: string

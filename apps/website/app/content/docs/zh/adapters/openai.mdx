@@ -489,6 +489,8 @@ const bridge = createBridge({
 
 ### 从 openaiAdapter 迁移到 openaiResponsesAdapter
 
+当直接使用 Bridge 时，请求格式保持不变（IR 格式）：
+
 ```typescript
 // 之前：使用 Chat Completions API
 import { openaiAdapter } from '@amux.ai/adapter-openai'
@@ -508,12 +510,42 @@ const bridge = createBridge({
   config: { apiKey: process.env.OPENAI_API_KEY }
 })
 
-// 请求格式保持不变！
+// 请求格式保持不变（IR 格式）！
 const response = await bridge.chat({
   model: 'gpt-4',
   messages: [{ role: 'user', content: '你好' }]
 })
 ```
+
+<Callout type="warn">
+**应用开发者注意**: 如果你正在构建一个应用（Web 应用、CLI 等），直接向使用 `openaiResponsesAdapter` 的端点发送 HTTP 请求，你必须发送 Responses API 格式的请求，而不是 Chat Completions 格式。
+
+```typescript
+// ❌ 错误：向 Responses API 端点发送 Chat Completions 格式
+fetch('/v1/responses', {
+  body: JSON.stringify({
+    model: 'gpt-4',
+    messages: [{ role: 'user', content: '你好' }]  // 错误的格式！
+  })
+})
+
+// ✅ 正确：发送 Responses API 格式
+fetch('/v1/responses', {
+  body: JSON.stringify({
+    model: 'gpt-4',
+    input: [
+      {
+        type: 'message',
+        role: 'user',
+        content: [{ type: 'text', text: '你好' }]
+      }
+    ]
+  })
+})
+```
+
+每个适配器都有自己的标准格式。你的应用层应该适配适配器的格式，而不是反过来。
+</Callout>
 
 ### 跨 API 转换
 

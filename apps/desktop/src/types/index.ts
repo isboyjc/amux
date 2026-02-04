@@ -247,8 +247,8 @@ export interface CodeModelMapping {
   id: string
   codeSwitchId: string
   providerId: string
-  claudeModel: string // Source model name (user-configurable)
-  targetModel: string // Target provider model name
+  sourceModel: string // Source model name - Claude official models or Codex default/custom models
+  targetModel: string // Target provider model name (format: provider/model)
   isActive: boolean
   createdAt: number
   updatedAt: number

@@ -118,10 +118,14 @@ export class OAuthManager {
         is_active: 1,
         health_status: 'active',
         consecutive_failures: 0,
+        error_message: null,
         pool_enabled: isCodexFree ? 0 : 1,  // 🔄 免费账号默认禁用
         pool_weight: 1,
+        last_used_at: null,
         last_refresh_at: Date.now(),
-        provider_metadata: JSON.stringify(metadata)
+        provider_metadata: JSON.stringify(metadata),
+        quota_info: null,
+        usage_stats: null
       })
       
       // 6. 初始化provider-specific数据
@@ -136,7 +140,7 @@ export class OAuthManager {
       
       return {
         success: false,
-        error: error.message || 'Authorization failed'
+        error: error instanceof Error ? error.message : 'Authorization failed'
       }
     }
   }

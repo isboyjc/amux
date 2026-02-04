@@ -179,3 +179,16 @@ export class CodeSwitchRepository extends BaseRepository<CodeSwitchConfigRow> {
     stmt.run(this.now(), providerId)
   }
 }
+
+// Singleton instance
+let instance: CodeSwitchRepository | null = null
+
+/**
+ * Get singleton instance of CodeSwitchRepository
+ */
+export function getCodeSwitchRepository(): CodeSwitchRepository {
+  if (!instance) {
+    instance = new CodeSwitchRepository()
+  }
+  return instance
+}

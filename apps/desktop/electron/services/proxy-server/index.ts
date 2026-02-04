@@ -285,13 +285,13 @@ function createServer(config: ProxyServerConfig): FastifyInstance {
     
     // Clean old timestamps
     const cutoff = now - RPM_WINDOW
-    while (requestTimestamps.length > 0 && requestTimestamps[0] < cutoff) {
+    while (requestTimestamps.length > 0 && (requestTimestamps[0] || 0) < cutoff) {
       requestTimestamps.shift()
     }
   })
 
   // Response tracking hook
-  app.addHook('onResponse', async (request, reply) => {
+  app.addHook('onResponse', async (_request, reply) => {
     metrics.activeConnections = Math.max(0, metrics.activeConnections - 1)
     metrics.totalRequests++
     
@@ -319,12 +319,15 @@ function createServer(config: ProxyServerConfig): FastifyInstance {
   })
 
   // Error handler
-  app.setErrorHandler((error, request, reply) => {
+  app.setErrorHandler((error, _request, reply) => {
     console.error('[ProxyServer] Error:', error)
     
-    reply.status(error.statusCode ?? 500).send({
+    const statusCode = (error as any).statusCode ?? 500
+    const message = error instanceof Error ? error.message : String(error)
+    
+    reply.status(statusCode).send({
       error: {
-        message: error.message,
+        message,
         type: 'internal_error',
         code: 'INTERNAL_ERROR'
       }
@@ -511,3 +514,6 @@ export function recordRequest(success: boolean, latencyMs: number): void {
 
 // Export types
 export * from './types'
+
+// Export Codex unified endpoint utilities
+export { invalidateModelListCache } from './codex-unified-handler'

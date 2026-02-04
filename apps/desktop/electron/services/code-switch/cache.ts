@@ -70,7 +70,7 @@ class LRUCache<K, V> {
  */
 export interface CachedCodeSwitchConfig {
   config: CodeSwitchConfigRow
-  modelMappings: Map<string, string> // claudeModel -> targetModel
+  modelMappings: Map<string, string> // sourceModel -> targetModel
   cachedAt: number
 }
 
@@ -83,7 +83,7 @@ export class CodeSwitchCacheManager {
   private configCache: LRUCache<string, CachedCodeSwitchConfig>
 
   // In-memory model mapping cache for active configs
-  private modelMappingCache: Map<string, Map<string, string>> // codeSwitchId -> (claudeModel -> targetModel)
+  private modelMappingCache: Map<string, Map<string, string>> // codeSwitchId -> (sourceModel -> targetModel)
 
   // Repositories
   private codeSwitchRepo: CodeSwitchRepository
@@ -91,6 +91,9 @@ export class CodeSwitchCacheManager {
 
   // Cache TTL (5 minutes)
   private readonly CACHE_TTL = 5 * 60 * 1000
+
+  // Singleton instance getter
+  static getInstance: () => CodeSwitchCacheManager
 
   constructor() {
     this.configCache = new LRUCache(10) // Small cache, only 2 CLI types at most
@@ -125,7 +128,7 @@ export class CodeSwitchCacheManager {
     const mappings = this.modelMappingRepo.findActiveByCodeSwitchId(config.id)
     const modelMappings = new Map<string, string>()
     for (const mapping of mappings) {
-      modelMappings.set(mapping.claude_model, mapping.target_model)
+      modelMappings.set(mapping.source_model, mapping.target_model)
     }
 
     // Cache it

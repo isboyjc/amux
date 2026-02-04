@@ -158,11 +158,11 @@ export interface IPCHandlers {
   'provider:create': (data: CreateProviderDTO) => Promise<Provider>
   'provider:update': (id: string, data: UpdateProviderDTO) => Promise<Provider | null>
   'provider:delete': (id: string) => Promise<boolean>
-  'provider:test': (id: string) => Promise<ProviderTestResult>
+  'provider:test': (id: string, modelId?: string) => Promise<ProviderTestResult>
   'provider:fetch-models': (id: string) => Promise<string[]>
   'provider:toggle': (id: string, enabled: boolean) => Promise<boolean>
   'provider:validate-proxy-path': (path: string, excludeId?: string) => Promise<boolean>
-  'provider:generate-proxy-path': (name: string, adapterType: AdapterType) => Promise<string>
+  'provider:generate-proxy-path': (name: string, adapterType: string) => Promise<string>
 
   // Bridge Proxy operations
   'proxy:list': () => Promise<BridgeProxy[]>
@@ -323,23 +323,58 @@ export interface IPCHandlers {
   'code-switch:enable': (data: {
     cliType: 'claudecode' | 'codex'
     providerId: string
-    modelMappings: Array<{ claudeModel: string; targetModel: string }>
+    modelMappings: Array<{ sourceModel: string; targetModel: string }>
   }) => Promise<import('./index').CodeSwitchConfig>
   'code-switch:disable': (cliType: 'claudecode' | 'codex') => Promise<void>
   'code-switch:update-provider': (
     cliType: 'claudecode' | 'codex',
     providerId: string,
-    modelMappings: Array<{ claudeModel: string; targetModel: string }>
+    modelMappings: Array<{ sourceModel: string; targetModel: string }>
   ) => Promise<void>
   'code-switch:get-historical-mappings': (
     codeSwitchId: string,
-    providerId: string
+    providerId?: string  // Optional for Codex (unified endpoint)
   ) => Promise<import('./index').CodeModelMapping[]>
   'code-switch:test-connection': (cliType: 'claudecode' | 'codex') => Promise<{
     success: boolean
     latency?: number
     error?: string
   }>
+  'code-switch:invalidate-codex-model-mapping-cache': (codeSwitchId: string) => Promise<{ success: boolean }>
+  'code-switch:get-codex-model': (tomlPath: string) => Promise<string>
+  'code-switch:update-codex-model': (tomlPath: string, model: string) => Promise<{ success: boolean }>
+  'code-switch:get-aggregated-models': () => Promise<Array<{
+    providerId: string
+    providerName: string
+    adapterType: string
+    models: Array<{ id: string; name: string }>
+  }>>
+  'code-switch:get-cli-preset': (cliId: 'claudecode' | 'codex') => Promise<{
+    id: string
+    logo: string
+    color: string
+    proxyEndpoint: string
+    defaultModels: Array<{
+      id: string
+      i18nKey: string
+      capabilities: string[]
+      isDefault?: boolean
+    }>
+    defaultConfig: Record<string, any>
+    features: {
+      requiresProvider: boolean
+      supportsModelMapping: boolean
+      supportsDynamicSwitch: boolean
+      requiresRestart: boolean
+      unifiedEndpoint?: boolean
+    }
+  } | null>
+  'code-switch:get-default-models': (cliId: 'claudecode' | 'codex') => Promise<Array<{
+    id: string
+    i18nKey: string
+    capabilities: string[]
+    isDefault?: boolean
+  }>>
 }
 
 // ============ IPC Events (Main -> Renderer) ============

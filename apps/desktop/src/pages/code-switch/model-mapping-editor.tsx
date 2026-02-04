@@ -26,7 +26,7 @@ const DEFAULT_CLAUDE_MODELS = [
 ]
 
 interface ModelMapping {
-  claudeModel: string
+  sourceModel: string
   targetModel: string
 }
 
@@ -85,7 +85,7 @@ export function ModelMappingEditor({
           if (historicalMappings && historicalMappings.length > 0) {
             // Use historical mappings
             mappingsToUse = historicalMappings.map((m: any) => ({
-              claudeModel: m.claudeModel,
+              sourceModel: m.sourceModel,
               targetModel: m.targetModel
             }))
             console.log('[ModelMappingEditor] Loaded historical mappings:', mappingsToUse)
@@ -98,7 +98,7 @@ export function ModelMappingEditor({
       // If no historical mappings, initialize with default Claude models
       if (mappingsToUse.length === 0) {
         mappingsToUse = DEFAULT_CLAUDE_MODELS.map(model => ({
-          claudeModel: model.value,
+          sourceModel: model.value,
           targetModel: '' // Empty by default, user can fill or leave empty
         }))
         console.log('[ModelMappingEditor] Using default mappings')
@@ -111,7 +111,7 @@ export function ModelMappingEditor({
       console.error('[ModelMappingEditor] Failed to load provider and mappings:', error)
       // Fallback to default mappings
       const defaultMappings = DEFAULT_CLAUDE_MODELS.map(model => ({
-        claudeModel: model.value,
+        sourceModel: model.value,
         targetModel: ''
       }))
       setLocalMappings(defaultMappings)
@@ -123,7 +123,7 @@ export function ModelMappingEditor({
 
   // Removed addMapping - no longer needed, models are pre-populated
 
-  const updateMapping = (index: number, field: 'claudeModel' | 'targetModel', value: string) => {
+  const updateMapping = (index: number, field: 'sourceModel' | 'targetModel', value: string) => {
     const newMappings = [...localMappings]
     newMappings[index][field] = value
     setLocalMappings(newMappings)
@@ -157,10 +157,10 @@ export function ModelMappingEditor({
             {/* Left: Claude Model Info */}
             <div className="flex-shrink-0 w-32">
               <div className="text-xs font-semibold text-foreground mb-0.5">
-                {getModelLabel(mapping.claudeModel)}
+                {getModelLabel(mapping.sourceModel)}
               </div>
               <div className="text-[10px] text-muted-foreground font-mono">
-                {mapping.claudeModel}
+                {mapping.sourceModel}
               </div>
             </div>
 

@@ -181,7 +181,7 @@ export class OAuthAccountRepository extends BaseRepository<OAuthAccountRow> {
   /**
    * Override findAll to sort by created_at
    */
-  findAll(): OAuthAccountRow[] {
+  override findAll(): OAuthAccountRow[] {
     const stmt = this.db.prepare(`SELECT * FROM ${this.tableName} ORDER BY created_at DESC`)
     return stmt.all() as OAuthAccountRow[]
   }

@@ -6,7 +6,8 @@ import { ipcMain } from 'electron'
 import { randomUUID } from 'crypto'
 import {
   CodeSwitchRepository,
-  CodeModelMappingRepository
+  CodeModelMappingRepository,
+  getProviderRepository
 } from '../services/database/repositories'
 import type { CodeSwitchConfigRow, CodeModelMappingRow } from '../services/database/types'
 import type { CodeSwitchConfig, CodeModelMapping } from '../../src/types'
@@ -16,6 +17,8 @@ import {
   ConfigWriter,
   invalidateCodeSwitchCache
 } from '../services/code-switch'
+import { isAuthEnabled } from '../services/proxy-server/utils'
+import { getCLIPreset, getDefaultModels } from '../services/presets/code-switch-preset'
 
 // Convert DB row to CodeSwitchConfig object
 function toCodeSwitchConfig(row: CodeSwitchConfigRow): CodeSwitchConfig {
@@ -38,7 +41,7 @@ function toCodeModelMapping(row: CodeModelMappingRow): CodeModelMapping {
     id: row.id,
     codeSwitchId: row.code_switch_id,
     providerId: row.provider_id,
-    claudeModel: row.claude_model,
+    sourceModel: row.source_model,
     targetModel: row.target_model,
     isActive: row.is_active === 1,
     createdAt: row.created_at,
@@ -125,7 +128,7 @@ export function registerCodeSwitchHandlers(): void {
       data: {
         cliType: 'claudecode' | 'codex'
         providerId: string
-        modelMappings: Array<{ claudeModel: string; targetModel: string }>
+        modelMappings: Array<{ sourceModel: string; targetModel: string }>
         customConfigPath?: string
       }
     ) => {
@@ -150,7 +153,14 @@ export function registerCodeSwitchHandlers(): void {
       const backupContent = ConfigBackup.backup(cliType, configPath)
 
       // Step 3: Generate API key and proxy URL
-      const apiKey = `amux_code_${randomUUID().replace(/-/g, '')}`
+      // Check if authentication is enabled
+      const authEnabled = isAuthEnabled()
+      const apiKey = authEnabled 
+        ? `amux_code_${randomUUID().replace(/-/g, '')}` // Auth enabled: generate unique key
+        : 'amux' // Auth disabled: use placeholder
+      
+      console.log(`[CodeSwitch] Auth enabled: ${authEnabled}, using API key: ${authEnabled ? apiKey : 'amux (placeholder)'}`)
+      
       const proxyPath = `code/${cliType}`
       const proxyUrl = `http://127.0.0.1:9527/${proxyPath}`
 
@@ -271,7 +281,7 @@ export function registerCodeSwitchHandlers(): void {
       _event,
       cliType: 'claudecode' | 'codex',
       providerId: string,
-      modelMappings: Array<{ claudeModel: string; targetModel: string }>
+      modelMappings: Array<{ sourceModel: string; targetModel: string }>
     ) => {
       const config = codeSwitchRepo.findByCLIType(cliType)
 
@@ -279,17 +289,25 @@ export function registerCodeSwitchHandlers(): void {
         throw new Error(`Code Switch config not found for ${cliType}`)
       }
 
-      // Update provider
-      codeSwitchRepo.updateProvider(cliType, providerId)
+      // For Codex, use the existing provider_id from config (unified endpoint doesn't switch providers)
+      // For Claude Code, update to the new provider
+      const actualProviderId = cliType === 'codex' ? config.provider_id : providerId
+
+      // Update provider (only for Claude Code)
+      if (cliType === 'claudecode') {
+        codeSwitchRepo.updateProvider(cliType, providerId)
+      }
 
       // Update model mappings
       if (modelMappings.length > 0) {
         modelMappingRepo.updateMappingsForProvider({
           codeSwitchId: config.id,
-          providerId,
+          providerId: actualProviderId, // Use actual provider ID from config for Codex
           mappings: modelMappings
         })
       }
+
+      console.log(`[IPC] Updated ${cliType} mappings using provider ${actualProviderId}`)
 
       // Invalidate cache for dynamic switching
       invalidateCodeSwitchCache(cliType as 'claudecode' | 'codex')
@@ -299,11 +317,23 @@ export function registerCodeSwitchHandlers(): void {
   /**
    * Get historical model mappings for a provider
    * Used to auto-restore mappings when switching back
+   * 
+   * For Codex (unified endpoint): providerId is optional, returns all active mappings
+   * For Claude Code: providerId required, returns mappings for specific provider
    */
   ipcMain.handle(
     'code-switch:get-historical-mappings',
-    async (_event, codeSwitchId: string, providerId: string) => {
-      const rows = modelMappingRepo.findByProvider(codeSwitchId, providerId)
+    async (_event, codeSwitchId: string, providerId?: string) => {
+      let rows: CodeModelMappingRow[]
+      
+      if (providerId) {
+        // Claude Code: Get mappings for specific provider
+        rows = modelMappingRepo.findByProvider(codeSwitchId, providerId)
+      } else {
+        // Codex: Get all active mappings
+        rows = modelMappingRepo.findActiveByCodeSwitchId(codeSwitchId)
+      }
+      
       return rows.map(toCodeModelMapping)
     }
   )
@@ -355,4 +385,141 @@ export function registerCodeSwitchHandlers(): void {
       }
     }
   )
+
+  // ============================================================================
+  // Codex Model Mapping & Selection
+  // ============================================================================
+
+  // Invalidate Codex model mapping cache (provider changed)
+  ipcMain.handle('code-switch:invalidate-codex-model-mapping-cache', async (_, codeSwitchId: string) => {
+    console.log('[IPC] Invalidating Codex model mapping cache:', codeSwitchId)
+    
+    try {
+      // Import dynamically to avoid circular dependency
+      const { invalidateModelMappingCache } = await import('../services/proxy-server/codex-unified-handler')
+      invalidateModelMappingCache(codeSwitchId)
+      
+      return { success: true }
+    } catch (error) {
+      console.error('[IPC] Failed to invalidate mapping cache:', error)
+      throw new Error(`Failed to invalidate mapping cache: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  })
+
+  // Get current Codex model from config.toml
+  ipcMain.handle('code-switch:get-codex-model', async (_, tomlPath: string) => {
+    console.log('[IPC] Getting current Codex model from:', tomlPath)
+    
+    try {
+      // Read directly from config.toml (no need to check if enabled)
+      const model = ConfigWriter.readCodexModel(tomlPath)
+      return model
+    } catch (error) {
+      console.error('[IPC] Failed to get Codex model:', error)
+      return 'gpt-5.2-codex' // Default fallback
+    }
+  })
+
+  // Update current Codex model in config.toml
+  ipcMain.handle('code-switch:update-codex-model', async (_, tomlPath: string, model: string) => {
+    console.log('[IPC] Updating Codex model to:', model)
+    console.log('[IPC] Config path:', tomlPath)
+    
+    try {
+      // Update directly to config.toml (works both when enabled and disabled)
+      await ConfigWriter.updateCodexModel(tomlPath, model)
+      return { success: true }
+    } catch (error) {
+      console.error('[IPC] Failed to update Codex model:', error)
+      throw new Error(`Failed to update Codex model: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  })
+
+  // Get aggregated models for UI dropdown (grouped by provider)
+  ipcMain.handle('code-switch:get-aggregated-models', async () => {
+    console.log('[IPC] Getting aggregated models for UI')
+    
+    try {
+      const providerRepo = getProviderRepository()
+      const allProviders = providerRepo.findAll()
+      const enabledProviders = allProviders.filter(p => p.enabled)
+      
+      console.log(`[IPC] Found ${enabledProviders.length} enabled providers`)
+      
+      const result = []
+      
+      for (const provider of enabledProviders) {
+        try {
+          // Parse models from database (stored as JSON string)
+          let modelList: Array<{ id: string; name: string }> = []
+          
+          if (provider.models) {
+            try {
+              const modelsData = JSON.parse(provider.models)
+              if (Array.isArray(modelsData)) {
+                modelList = modelsData.map((m: any) => ({
+                  id: typeof m === 'string' ? m : (m.id || m.name || m),
+                  name: typeof m === 'string' ? m : (m.name || m.id || m)
+                }))
+              }
+            } catch (parseError) {
+              console.error(`[IPC] Failed to parse models for provider ${provider.name}:`, parseError)
+            }
+          }
+          
+          console.log(`[IPC] Provider ${provider.name}: ${modelList.length} models from database`)
+          
+          result.push({
+            providerId: provider.id,
+            providerName: provider.name,
+            adapterType: provider.adapter_type,
+            models: modelList
+          })
+        } catch (error) {
+          console.error(`[IPC] Failed to process provider ${provider.name}:`, error)
+          // Still include provider with empty models
+          result.push({
+            providerId: provider.id,
+            providerName: provider.name,
+            adapterType: provider.adapter_type,
+            models: []
+          })
+        }
+      }
+      
+      console.log(`[IPC] Returning ${result.length} providers with models`)
+      return result
+    } catch (error) {
+      console.error('[IPC] Failed to get aggregated models:', error)
+      throw new Error(`Failed to get aggregated models: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  })
+
+  // ============================================================================
+  // Code Switch Preset Handlers
+  // ============================================================================
+
+  // Get CLI preset information
+  ipcMain.handle('code-switch:get-cli-preset', async (_, cliId: 'claudecode' | 'codex') => {
+    console.log('[IPC] Getting CLI preset for:', cliId)
+    try {
+      const preset = getCLIPreset(cliId)
+      return preset
+    } catch (error) {
+      console.error('[IPC] Failed to get CLI preset:', error)
+      throw new Error(`Failed to get CLI preset: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  })
+
+  // Get default models for a CLI
+  ipcMain.handle('code-switch:get-default-models', async (_, cliId: 'claudecode' | 'codex') => {
+    console.log('[IPC] Getting default models for:', cliId)
+    try {
+      const models = getDefaultModels(cliId)
+      return models
+    } catch (error) {
+      console.error('[IPC] Failed to get default models:', error)
+      throw new Error(`Failed to get default models: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  })
 }

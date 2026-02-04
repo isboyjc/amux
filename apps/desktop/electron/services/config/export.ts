@@ -8,7 +8,7 @@ import {
   getApiKeyRepository,
   getSettingsRepository
 } from '../database/repositories'
-import type { ExportOptions } from '../../src/types/ipc'
+import type { ExportOptions } from '../../../src/types/ipc'
 
 interface ExportData {
   version: string

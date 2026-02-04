@@ -185,7 +185,7 @@ export class TokenManager {
       const consecutiveFailures = account.consecutive_failures + 1
       const updates: Partial<OAuthAccountRow> = {
         consecutive_failures: consecutiveFailures,
-        error_message: error.message
+        error_message: error instanceof Error ? error.message : String(error)
       }
       
       // 如果连续失败3次，标记为 expired 状态并禁用账号

@@ -141,7 +141,7 @@ export class OAuthCallbackServer {
     // 支持多种路径格式
     if (path.includes('/oauth/')) {
       const match = path.match(/\/oauth\/([^/]+)\/callback/)
-      if (!match) {
+      if (!match || !match[1]) {
         throw new Error('Invalid callback path')
       }
       service = match[1]
@@ -181,7 +181,7 @@ export class OAuthCallbackServer {
     
     if (path.includes('/oauth/')) {
       const match = path.match(/\/oauth\/([^/]+)\/callback/)
-      if (!match) return
+      if (!match || !match[1]) return
       service = match[1]
     } else if (path.includes('/auth/callback')) {
       service = 'codex'

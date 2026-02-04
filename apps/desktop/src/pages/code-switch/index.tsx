@@ -16,9 +16,13 @@ import {
 import { CodeSwitchConfig } from './code-switch-config'
 import type { CodeSwitchConfig as CodeSwitchConfigType } from '@/types'
 import { useI18n } from '@/stores/i18n-store'
+import { ipc } from '@/lib/ipc'
 
 export default function CodeSwitch() {
   const { t } = useI18n()
+  
+  // CLI preset data (logo, color, etc.)
+  const [claudeCodeLogo, setClaudeCodeLogo] = useState<string>('')
   
   // 从 localStorage 读取上次选择的 CLI，默认为 'claudecode'
   const [activeTab, setActiveTab] = useState<'claudecode' | 'codex'>(() => {
@@ -42,12 +46,22 @@ export default function CodeSwitch() {
   const loadConfigs = async () => {
     try {
       setLoading(true)
+      
+      // Load configs
       const [claudeCode, codex] = await Promise.all([
         window.api.invoke('code-switch:get-config', 'claudecode') as Promise<CodeSwitchConfigType | null>,
         window.api.invoke('code-switch:get-config', 'codex') as Promise<CodeSwitchConfigType | null>
       ])
       setClaudeCodeConfig(claudeCode)
       setCodexConfig(codex)
+      
+      // Load preset (logo, color, etc.)
+      const claudeCodePreset = await ipc.invoke('code-switch:get-cli-preset', 'claudecode') as {
+        logo?: string
+      } | null
+      if (claudeCodePreset?.logo) {
+        setClaudeCodeLogo(claudeCodePreset.logo)
+      }
     } catch (error) {
       console.error('Failed to load Code Switch configs:', error)
     } finally {
@@ -134,13 +148,21 @@ export default function CodeSwitch() {
                 <TabsList className="inline-flex h-10 p-1 bg-muted">
                   <TabsTrigger 
                     value="claudecode"
-                    className="relative flex items-center gap-1.5 h-8 px-4 data-[state=active]:bg-white dark:data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                    className="relative flex items-center gap-2 h-8 px-4 data-[state=active]:bg-white dark:data-[state=active]:bg-background data-[state=active]:shadow-sm"
                   >
+                    {claudeCodeLogo && (
+                      <img 
+                        src={claudeCodeLogo} 
+                        alt="Claude Code" 
+                        className="w-4 h-4 rounded"
+                      />
+                    )}
                     <span className="text-sm font-medium">Claude Code</span>
                     {claudeCodeConfig?.enabled && (
                       <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border-2 border-white dark:border-background" />
                     )}
                   </TabsTrigger>
+                  {/* Codex tab temporarily hidden - needs more work
                   <TabsTrigger 
                     value="codex"
                     className="relative flex items-center gap-1.5 h-8 px-4 data-[state=active]:bg-white dark:data-[state=active]:bg-background data-[state=active]:shadow-sm"
@@ -150,6 +172,7 @@ export default function CodeSwitch() {
                       <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border-2 border-white dark:border-background" />
                     )}
                   </TabsTrigger>
+                  */}
                 </TabsList>
                 
                 {/* Enable/Disable Button */}
@@ -196,6 +219,7 @@ export default function CodeSwitch() {
               </div>
             </TabsContent>
 
+            {/* Codex content temporarily hidden - needs more work
             <TabsContent value="codex" className="mt-0 h-full">
               <div className="p-6 space-y-5">
                 <CodeSwitchConfig
@@ -206,6 +230,7 @@ export default function CodeSwitch() {
                 />
               </div>
             </TabsContent>
+            */}
           </div>
         </Tabs>
       </div>

@@ -489,6 +489,8 @@ const bridge = createBridge({
 
 ### From openaiAdapter to openaiResponsesAdapter
 
+When using the Bridge directly, the request format remains the same (IR format):
+
 ```typescript
 // Before: Using Chat Completions API
 import { openaiAdapter } from '@amux.ai/adapter-openai'
@@ -508,12 +510,42 @@ const bridge = createBridge({
   config: { apiKey: process.env.OPENAI_API_KEY }
 })
 
-// Request format remains the same!
+// Request format remains the same (IR format)!
 const response = await bridge.chat({
   model: 'gpt-4',
   messages: [{ role: 'user', content: 'Hello' }]
 })
 ```
+
+<Callout type="warn">
+**Important for Application Developers**: If you're building an application (web app, CLI, etc.) that sends HTTP requests directly to an endpoint using `openaiResponsesAdapter`, you MUST send requests in the Responses API format, not Chat Completions format.
+
+```typescript
+// ❌ Wrong: Sending Chat Completions format to Responses API endpoint
+fetch('/v1/responses', {
+  body: JSON.stringify({
+    model: 'gpt-4',
+    messages: [{ role: 'user', content: 'Hello' }]  // Wrong format!
+  })
+})
+
+// ✅ Correct: Sending Responses API format
+fetch('/v1/responses', {
+  body: JSON.stringify({
+    model: 'gpt-4',
+    input: [
+      {
+        type: 'message',
+        role: 'user',
+        content: [{ type: 'text', text: 'Hello' }]
+      }
+    ]
+  })
+})
+```
+
+Each adapter has its own standard format. Your application layer should adapt to the adapter's format, not the other way around.
+</Callout>
 
 ### Cross-API Conversion
 

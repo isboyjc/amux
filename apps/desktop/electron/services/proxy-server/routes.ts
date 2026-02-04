@@ -28,6 +28,7 @@ import { recordRequest as recordMetrics } from '../metrics'
 import { getBridge, getBridgeUsage, resolveProxyChain } from './bridge-manager'
 import { handleProviderPassthrough } from './provider-passthrough'
 import { handleCodeSwitch } from './code-switch-handler'
+import { handleChatCompletion as handleCodexChatCompletion } from './codex-unified-handler'
 import { ProxyErrorCode } from './types'
 import { 
   extractApiKey, 
@@ -56,19 +57,36 @@ export function registerRoutes(app: FastifyInstance): void {
   // ============================================================================
   console.log(`\n[Routes] 📋 Registering Code Switch routes`)
   
-  // Claude Code route: /code/claudecode/v1/messages
+  // Claude Code routes (Anthropic format with model mapping)
   app.post('/code/claudecode/v1/messages', async (request: FastifyRequest, reply: FastifyReply) => {
     console.log(`[Routes] 🎯 Code Switch route matched: claudecode`)
     return handleCodeSwitch(request, reply, 'claudecode')
   })
   console.log(`[Routes]   ✅ Registered route: POST /code/claudecode/v1/messages`)
   
-  // Codex route: /code/codex/v1/messages
-  app.post('/code/codex/v1/messages', async (request: FastifyRequest, reply: FastifyReply) => {
-    console.log(`[Routes] 🎯 Code Switch route matched: codex`)
-    return handleCodeSwitch(request, reply, 'codex')
+  /* Codex routes temporarily disabled - needs more work
+  // Codex routes (OpenAI format with unified endpoint)
+  // Support both /v1/* and /* paths for compatibility
+  
+  // Chat completions endpoints
+  app.post('/code/codex/v1/chat/completions', async (request: FastifyRequest, reply: FastifyReply) => {
+    console.log(`[Routes] 🎯 Codex unified endpoint: POST /v1/chat/completions`)
+    return handleCodexChatCompletion(request, reply)
   })
-  console.log(`[Routes]   ✅ Registered route: POST /code/codex/v1/messages\n`)
+  app.post('/code/codex/chat/completions', async (request: FastifyRequest, reply: FastifyReply) => {
+    console.log(`[Routes] 🎯 Codex unified endpoint: POST /chat/completions`)
+    return handleCodexChatCompletion(request, reply)
+  })
+  console.log(`[Routes]   ✅ Registered route: POST /code/codex/v1/chat/completions`)
+  console.log(`[Routes]   ✅ Registered route: POST /code/codex/chat/completions`)
+  
+  // Responses API endpoint (for wire_api = "responses")
+  app.post('/code/codex/responses', async (request: FastifyRequest, reply: FastifyReply) => {
+    console.log(`[Routes] 🎯 Codex unified endpoint: POST /responses`)
+    return handleCodexChatCompletion(request, reply)
+  })
+  console.log(`[Routes]   ✅ Registered route: POST /code/codex/responses\n`)
+  */
   
   // ============================================================================
   // 1. Provider Passthrough Proxy Routes

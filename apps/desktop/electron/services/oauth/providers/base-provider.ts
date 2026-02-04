@@ -196,21 +196,21 @@ export abstract class OAuthProviderService {
   /**
    * 获取配额信息（可选方法）
    */
-  async getQuotaInfo?(accessToken: string, ...args: any[]): Promise<any> {
+  async getQuotaInfo?(_accessToken: string, ..._args: any[]): Promise<any> {
     throw new Error(`Quota info not supported by ${this.constructor.name}`)
   }
 
   /**
    * 获取使用统计（可选方法）
    */
-  async getUsageStats?(accountId: string): Promise<any> {
+  async getUsageStats?(_accountId: string): Promise<any> {
     throw new Error(`Usage stats not supported by ${this.constructor.name}`)
   }
 
   /**
    * 更新使用统计（可选方法）
    */
-  async updateUsageStats?(accountId: string, stats: any): Promise<void> {
+  async updateUsageStats?(_accountId: string, _stats: any): Promise<void> {
     throw new Error(`Usage stats update not supported by ${this.constructor.name}`)
   }
 

@@ -10,6 +10,7 @@ import { Loader2, XCircle, RefreshCw } from 'lucide-react'
 import { toast as showToast } from 'sonner'
 import { ProviderSelector } from './provider-selector'
 import { ModelMappingEditor } from './model-mapping-editor'
+import { CodexModelSelector } from './codex-model-selector'
 import type { CodeSwitchConfig } from '@/types'
 import { useI18n } from '@/stores/i18n-store'
 
@@ -24,11 +25,12 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
   const { t } = useI18n()
   const [enabled, setEnabled] = useState(false)
   const [selectedProviderId, setSelectedProviderId] = useState<string>('')
-  const [modelMappings, setModelMappings] = useState<Array<{ claudeModel: string; targetModel: string }>>([])
-  const [originalMappings, setOriginalMappings] = useState<Array<{ claudeModel: string; targetModel: string }>>([])
+  const [modelMappings, setModelMappings] = useState<Array<{ sourceModel: string; targetModel: string }>>([])
+  const [originalMappings, setOriginalMappings] = useState<Array<{ sourceModel: string; targetModel: string }>>([])
   const [detectionStatus, setDetectionStatus] = useState<'idle' | 'detecting' | 'success' | 'error'>('idle')
   const [detectionError, setDetectionError] = useState<string>('')
   const [configPath, setConfigPath] = useState<string>('')
+  const [tomlPath, setTomlPath] = useState<string>('') // For Codex config.toml
   const [processing, setProcessing] = useState(false)
   const [currentConfigId, setCurrentConfigId] = useState<string>('') // Track current config ID
 
@@ -39,10 +41,17 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
       setSelectedProviderId(config.providerId)
       setConfigPath(config.configPath)
       setCurrentConfigId(config.id)
+      
+      // For Codex, derive tomlPath from configPath (auth.json → config.toml)
+      if (config.cliType === 'codex' && config.configPath) {
+        const derivedTomlPath = config.configPath.replace('auth.json', 'config.toml')
+        setTomlPath(derivedTomlPath)
+      }
     } else {
       setEnabled(false)
       setSelectedProviderId('')
       setConfigPath('')
+      setTomlPath('')
       setCurrentConfigId('')
     }
   }, [config])
@@ -74,6 +83,8 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
         detected: boolean
         valid: boolean
         configPath?: string
+        authPath?: string
+        tomlPath?: string
         error?: string
       }>
       const detection = detections.find((d) => d.cliType === cliType)
@@ -81,6 +92,29 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
       if (detection?.detected && detection.valid && detection.configPath) {
         setDetectionStatus('success')
         setConfigPath(detection.configPath)
+        
+        // For Codex, also save tomlPath
+        if (cliType === 'codex' && detection.tomlPath) {
+          setTomlPath(detection.tomlPath)
+          
+          // Initialize config for Codex to get codeSwitchId (for model mappings)
+          // Use 'default' as placeholder providerId
+          if (!config && !currentConfigId) {
+            try {
+              const initializedConfig = await window.api.invoke(
+                'code-switch:init-config',
+                cliType,
+                'default',
+                detection.configPath
+              ) as CodeSwitchConfig
+              setCurrentConfigId(initializedConfig.id)
+              console.log('[CodeSwitch] Initialized Codex config:', initializedConfig.id)
+            } catch (error) {
+              console.error('[CodeSwitch] Failed to initialize Codex config:', error)
+            }
+          }
+        }
+        
         // 只在手动检测时显示提示
         if (isManual) {
           showToast.success(t('codeSwitch.detectSuccess'), {
@@ -99,11 +133,33 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
 
   // Enable Code Switch
   const handleEnable = async () => {
-    if (!selectedProviderId) {
+    // For Claude Code, provider selection is required
+    if (cliType === 'claudecode' && !selectedProviderId) {
       showToast.error(t('codeSwitch.selectProviderRequired'), {
         description: t('codeSwitch.selectProviderRequiredDesc')
       })
       return
+    }
+
+    // For Codex, use the first enabled provider as placeholder (Codex uses unified endpoint, doesn't actually switch providers)
+    // For Claude Code, use the selected provider
+    let providerId = selectedProviderId
+    if (cliType === 'codex' && !providerId) {
+      try {
+        // Get first enabled provider as placeholder for database foreign key constraint
+        const providers = (await window.api.invoke('provider:list')) as Array<{ id: string; enabled: boolean }>
+        const enabledProvider = providers.find((p) => p.enabled)
+        if (!enabledProvider) {
+          showToast.error(t('codeSwitch.noEnabledProvider'))
+          return
+        }
+        providerId = enabledProvider.id
+        console.log('[CodeSwitch] Using first enabled provider as placeholder for Codex:', providerId)
+      } catch (error) {
+        console.error('[CodeSwitch] Failed to get enabled providers:', error)
+        showToast.error(t('codeSwitch.failedToGetProviders'))
+        return
+      }
     }
 
     setProcessing(true)
@@ -111,7 +167,7 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
     try {
       await window.api.invoke('code-switch:enable', {
         cliType,
-        providerId: selectedProviderId,
+        providerId,
         modelMappings
       })
 
@@ -201,7 +257,7 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
   }
 
   // Update model mappings (dynamic)
-  const handleModelMappingsChange = async (mappings: Array<{ claudeModel: string; targetModel: string }>) => {
+  const handleModelMappingsChange = async (mappings: Array<{ sourceModel: string; targetModel: string }>) => {
     setModelMappings(mappings)
     
     // 如果是首次加载（originalMappings 为空），设置 originalMappings，不触发保存
@@ -232,7 +288,7 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
   }, [])
 
   // Save model mappings (called when user finishes editing)
-  const saveModelMappings = async (mappings: Array<{ claudeModel: string; targetModel: string }>) => {
+  const saveModelMappings = async (mappings: Array<{ sourceModel: string; targetModel: string }>) => {
     // 需要有 config ID 和 provider 才能保存（不需要 enabled 状态）
     const configId = currentConfigId || config?.id
     if (!configId || !selectedProviderId) {
@@ -289,9 +345,32 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
         <div className="space-y-1.5">
           <Label className="text-sm font-medium">{t('codeSwitch.configPath')}</Label>
           <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/50 border">
-            <code className="flex-1 text-xs font-mono break-all">
-              {config?.configPath || configPath}
-            </code>
+            <div className="flex-1 space-y-1">
+              {/* For Codex: Show both auth.json and config.toml */}
+              {cliType === 'codex' ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground shrink-0">auth.json:</span>
+                    <code className="flex-1 text-xs font-mono break-all">
+                      {config?.configPath || configPath}
+                    </code>
+                  </div>
+                  {tomlPath && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground shrink-0">config.toml:</span>
+                      <code className="flex-1 text-xs font-mono break-all">
+                        {tomlPath}
+                      </code>
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* For Claude Code: Show single config.json */
+                <code className="text-xs font-mono break-all">
+                  {config?.configPath || configPath}
+                </code>
+              )}
+            </div>
             <Button
               variant="ghost"
               size="sm"
@@ -309,6 +388,22 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
       {/* Detection Status (only when no config) */}
       {!config && !configPath && (
         <div className="space-y-3">
+          {detectionStatus === 'idle' && (
+            <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+              <p className="text-sm text-muted-foreground">
+                {t('codeSwitch.needDetection')}
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => detectConfig(true)}
+                className="shrink-0"
+              >
+                {t('codeSwitch.detectConfig')}
+              </Button>
+            </div>
+          )}
+
           {detectionStatus === 'detecting' && (
             <div className="flex items-center gap-2 text-muted-foreground text-sm p-3 rounded-lg border bg-muted/30">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -341,18 +436,20 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
       {/* Configuration */}
       {(config || detectionStatus === 'success' || configPath) && (
         <div className="space-y-4">
-          {/* Provider Selector */}
-          <div className="space-y-1.5">
-            <Label className="text-sm font-medium">{t('codeSwitch.selectProvider')}</Label>
-            <ProviderSelector
-              value={selectedProviderId}
-              onChange={handleProviderChange}
-              disabled={processing}
-            />
-          </div>
+          {/* Provider Selector - Only for Claude Code */}
+          {cliType === 'claudecode' && (
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">{t('codeSwitch.selectProvider')}</Label>
+              <ProviderSelector
+                value={selectedProviderId}
+                onChange={handleProviderChange}
+                disabled={processing}
+              />
+            </div>
+          )}
 
-          {/* Model Mappings */}
-          {selectedProviderId && (
+          {/* Model Mappings - Only for Claude Code */}
+          {cliType === 'claudecode' && selectedProviderId && (
             <div className="space-y-2">
               <div>
                 <Label className="text-sm font-medium">{t('codeSwitch.modelMapping')}</Label>
@@ -369,6 +466,16 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
                 disabled={processing}
               />
             </div>
+          )}
+
+          {/* Codex Model Selector - Only for Codex (no provider selector needed) */}
+          {cliType === 'codex' && tomlPath && (
+            <CodexModelSelector
+              codeSwitchId={currentConfigId || config?.id || ''}
+              tomlPath={tomlPath}
+              enabled={enabled}
+              disabled={processing}
+            />
           )}
         </div>
       )}

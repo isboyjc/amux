@@ -175,8 +175,9 @@ export async function fetchRemotePresets(url?: string): Promise<PresetsConfig | 
 
 /**
  * Compare version strings (semver)
+ * @unused Reserved for future use
  */
-function compareVersions(v1: string, v2: string): number {
+function _compareVersions(v1: string, v2: string): number {
   const parts1 = v1.split('.').map(Number)
   const parts2 = v2.split('.').map(Number)
   

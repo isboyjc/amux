@@ -10,7 +10,7 @@ import {
   CheckCircle2
 } from 'lucide-react'
 import { useEffect, useState, useMemo, useRef } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { 
@@ -23,7 +23,6 @@ import {
 } from '@/components/icons'
 import type { AnimatedIconHandle } from '@/components/icons'
 import { ProviderLogo } from '@/components/providers/ProviderLogo'
-import { CodeSwitchProxyList } from '@/components/proxies/CodeSwitchProxyList'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -36,7 +35,7 @@ import { COPY_FEEDBACK_DURATION } from '@/lib/constants'
 import { ipc } from '@/lib/ipc'
 import { cn } from '@/lib/utils'
 import { useBridgeProxyStore, useProviderStore, useI18n } from '@/stores'
-import type { BridgeProxy, Provider, AdapterType, AdapterPreset, ProviderPreset } from '@/types'
+import type { BridgeProxy, Provider, AdapterType, AdapterPreset, ProviderPreset, CodeSwitchConfig } from '@/types'
 import type { CreateProxyDTO } from '@/types/ipc'
 
 // ==================== Helper Functions ====================
@@ -383,15 +382,6 @@ export function Proxies() {
 
   return (
     <div className="h-full flex flex-col gap-3 animate-fade-in">
-      {/* CLI Proxies Section */}
-      <div className="content-card p-4 shrink-0">
-        <div className="mb-3">
-          <h3 className="text-sm font-semibold">{t('proxies.cliProxies')}</h3>
-          <p className="text-xs text-muted-foreground">{t('proxies.cliProxiesDesc')}</p>
-        </div>
-        <CodeSwitchProxyList />
-      </div>
-
       {/* Main Proxy Management Section */}
       <div className="flex-1 flex gap-3 min-h-0">
         {/* Left Panel - Proxy List */}
@@ -467,10 +457,16 @@ function ProxyListPanel({
   loading,
   t
 }: ProxyListPanelProps) {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [showPassthrough, setShowPassthrough] = useState(true)
+  const [showCodeSwitch, setShowCodeSwitch] = useState(true)
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null)
   const { copy: copyUrl } = useCopyToClipboard({ duration: COPY_FEEDBACK_DURATION })
+  
+  // CS Proxies state
+  const [csConfigs, setCsConfigs] = useState<CodeSwitchConfig[]>([])
+  const [csProviders, setCsProviders] = useState<Map<string, Provider>>(new Map())
 
   const filteredProxies = proxies.filter(p =>
     p.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -483,6 +479,30 @@ function ProxyListPanel({
   const passthroughProviders = useMemo(() => {
     return providers.filter(p => p.enabled && p.enableAsProxy && p.proxyPath)
   }, [providers])
+  
+  // Load Code Switch configs
+  useEffect(() => {
+    loadCsConfigs()
+  }, [])
+  
+  const loadCsConfigs = async () => {
+    try {
+      const [claudeCode, codex] = await Promise.all([
+        window.api.invoke('code-switch:get-config', 'claudecode') as Promise<CodeSwitchConfig | null>,
+        window.api.invoke('code-switch:get-config', 'codex') as Promise<CodeSwitchConfig | null>
+      ])
+
+      const enabledConfigs = [claudeCode, codex].filter((c): c is CodeSwitchConfig => c !== null && c.enabled)
+      setCsConfigs(enabledConfigs)
+
+      // Create provider map
+      const providerMap = new Map<string, Provider>()
+      providers.forEach((p) => providerMap.set(p.id, p))
+      setCsProviders(providerMap)
+    } catch (error) {
+      console.error('Failed to load CS configs:', error)
+    }
+  }
 
   const getProviderName = (id: string) => {
     const provider = providers.find(p => p.id === id)
@@ -537,6 +557,103 @@ function ProxyListPanel({
 
       {/* Unified Scrollable Area */}
       <div className="flex-1 overflow-y-auto">
+        {/* Code Switch Proxies Section */}
+        {csConfigs.length > 0 && (
+          <div className="border-b">
+            <button
+              onClick={() => setShowCodeSwitch(!showCodeSwitch)}
+              className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-muted/50 transition-all group"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="p-1 rounded-md bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <TerminalIcon className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <span className="text-xs font-semibold">
+                  {t('proxies.cliProxies')}
+                </span>
+                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] font-semibold">
+                  {csConfigs.length}
+                </Badge>
+              </div>
+              {showCodeSwitch ? (
+                <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+              ) : (
+                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+              )}
+            </button>
+            
+            {showCodeSwitch && (
+              <div className="px-3 pb-3 pt-1 space-y-2 animate-in slide-in-from-top-1 duration-200">
+                {csConfigs.map((config) => {
+                  const provider = csProviders.get(config.providerId)
+                  const providerPreset = provider ? providerPresets.find(p => p.adapterType === provider.adapterType) : null
+                  const cliName = config.cliType === 'claudecode' ? 'Claude Code' : 'Codex'
+                  const proxyUrl = `http://127.0.0.1:9527/code/${config.cliType}`
+                  
+                  return (
+                    <div
+                      key={config.id}
+                      className="group/item p-3 rounded-lg bg-card border border-border hover:border-primary/50 hover:shadow-sm transition-all"
+                    >
+                      <div className="flex items-center gap-2.5 mb-2">
+                        {providerPreset?.logo && (
+                          <div className="w-6 h-6 shrink-0 rounded-md overflow-hidden ring-1 ring-border/50">
+                            <ProviderLogo
+                              logo={providerPreset.logo}
+                              name={provider?.name || ''}
+                              size={24}
+                            />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold truncate">
+                            {cliName}
+                          </div>
+                          {provider && (
+                            <div className="text-[10px] text-muted-foreground">
+                              {provider.name} · {provider.adapterType}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <TooltipProvider>
+                            <Tooltip delayDuration={200}>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 shrink-0 opacity-70 group-hover/item:opacity-100 hover:bg-muted"
+                                  onClick={() => {
+                                    copyUrl(proxyUrl)
+                                    setCopiedUrl(config.cliType)
+                                    setTimeout(() => setCopiedUrl(null), COPY_FEEDBACK_DURATION)
+                                  }}
+                                >
+                                  {copiedUrl === config.cliType ? (
+                                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                                  ) : (
+                                    <Copy className="h-3.5 w-3.5" />
+                                  )}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="left">
+                                {copiedUrl === config.cliType ? t('common.copied') : t('common.copy')}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </div>
+                      <code className="block text-[10px] font-mono text-muted-foreground truncate bg-muted/70 px-2 py-1.5 rounded border border-border/50">
+                        /code/{config.cliType}
+                      </code>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Passthrough Providers Section */}
         {passthroughProviders.length > 0 && (
           <div className="border-b">

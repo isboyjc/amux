@@ -246,7 +246,7 @@ export class AntigravityOAuthService extends OAuthProviderService {
    * 获取配额信息
    * 调用 /v1internal:fetchAvailableModels 获取每个模型的配额信息
    */
-  override async getQuotaInfo(accessToken: string, projectId?: string, subscriptionTier?: string): Promise<AntigravityQuotaInfo> {
+  override async getQuotaInfo(accessToken: string, _projectId?: string, subscriptionTier?: string): Promise<AntigravityQuotaInfo> {
     try {
       // 调用 fetchAvailableModels API 获取配额信息
       // 注意：即使没有 project_id，也尝试调用，因为 access token 可能就足够了

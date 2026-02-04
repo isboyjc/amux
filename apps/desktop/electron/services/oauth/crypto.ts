@@ -38,13 +38,14 @@ export function decryptToken(encryptedToken: string): string {
       return safeStorage.decryptString(buffer)
     } catch (error) {
       // safeStorage 解密失败，可能是在不同机器上加密的
-      console.warn('[Crypto] safeStorage decryption failed, trying fallback:', error.message)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      console.warn('[Crypto] safeStorage decryption failed, trying fallback:', errorMessage)
       // 尝试 fallback 解密
       try {
         return fallbackDecrypt(encryptedToken)
       } catch (fallbackError) {
         // 两种方式都失败了，抛出原始错误
-        throw new Error(`Failed to decrypt token: ${error.message}`)
+        throw new Error(`Failed to decrypt token: ${errorMessage}`)
       }
     }
   }
@@ -81,15 +82,14 @@ function fallbackDecrypt(encrypted: string): string {
     throw new Error('Invalid encrypted token format')
   }
   
-  const iv = Buffer.from(parts[0], 'hex')
-  const authTag = Buffer.from(parts[1], 'hex')
-  const encryptedText = parts[2]
+  const iv = Buffer.from(parts[0] || '', 'hex')
+  const authTag = Buffer.from(parts[1] || '', 'hex')
+  const encryptedText = parts[2] || ''
   
   const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv)
   decipher.setAuthTag(authTag)
   
-  let decrypted = decipher.update(encryptedText, 'hex', 'utf8')
-  decrypted += decipher.final('utf8')
+  const decrypted = decipher.update(encryptedText, 'hex', 'utf8') + decipher.final('utf8')
   
   return decrypted
 }
@@ -135,6 +135,6 @@ export function parseJWT(token: string): any {
     throw new Error('Invalid JWT format')
   }
   
-  const payload = Buffer.from(parts[1], 'base64url').toString('utf8')
+  const payload = Buffer.from(parts[1] || '', 'base64url').toString('utf8')
   return JSON.parse(payload)
 }

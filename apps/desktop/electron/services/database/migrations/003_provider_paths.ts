@@ -18,7 +18,7 @@ export const migration003ProviderPaths = {
     }
   },
   
-  down(db: Database): void {
+  down(_db: Database): void {
     // SQLite doesn't support DROP COLUMN easily, so we'll just leave the columns
     console.log('Migration 003 down - columns will remain')
   }

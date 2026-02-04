@@ -276,7 +276,7 @@ export function verifyPassword(password: string, storedHash: string): boolean {
   
   let result = 0
   for (let i = 0; i < hash.length; i++) {
-    result |= hash[i] ^ computedHash[i]
+    result |= (hash[i] || 0) ^ (computedHash[i] || 0)
   }
   
   return result === 0

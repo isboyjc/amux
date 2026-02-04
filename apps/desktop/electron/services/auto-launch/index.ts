@@ -10,7 +10,7 @@ import { getSettingsRepository } from '../database/repositories'
  */
 export function initializeAutoLaunch(): void {
   const settings = getSettingsRepository()
-  const autoLaunch = settings.get('app.autoLaunch') ?? false
+  const autoLaunch = settings.get('app.launchAtStartup') ?? false
   
   setAutoLaunch(autoLaunch)
   
@@ -33,7 +33,7 @@ export function setAutoLaunch(enabled: boolean): void {
   
   // Save to settings
   const settings = getSettingsRepository()
-  settings.set('app.autoLaunch', enabled)
+  settings.set('app.launchAtStartup', enabled)
   
   console.log(`[AutoLaunch] Set to: ${enabled}`)
 }

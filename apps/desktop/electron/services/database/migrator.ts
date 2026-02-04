@@ -16,6 +16,7 @@ import { migration008FixGeminiStreamEndpoint } from './migrations/008_fix_gemini
 import { migration009 } from './migrations/009_oauth_accounts'
 import { migration010FixHealthStatus } from './migrations/010_fix_health_status'
 import { migration011CodeSwitch } from './migrations/011_code_switch'
+import { migration012RenameClaudeModelToSourceModel } from './migrations/012_rename_claude_model_to_source_model'
 
 // Register all migrations here
 const migrations: Migration[] = [
@@ -29,7 +30,8 @@ const migrations: Migration[] = [
   migration008FixGeminiStreamEndpoint,
   migration009,
   migration010FixHealthStatus,
-  migration011CodeSwitch
+  migration011CodeSwitch,
+  migration012RenameClaudeModelToSourceModel
 ]
 
 /**
@@ -183,7 +185,7 @@ export function getMigrationStatus(db: DatabaseInstance): {
   
   return {
     currentVersion,
-    latestVersion: migrations.length > 0 ? migrations[migrations.length - 1].version : 0,
+    latestVersion: migrations.length > 0 ? (migrations[migrations.length - 1]?.version || 0) : 0,
     pendingCount: migrations.filter(m => m.version > currentVersion).length,
     migrations: migrations.map(m => ({
       version: m.version,
