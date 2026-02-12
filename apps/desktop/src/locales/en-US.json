@@ -304,6 +304,7 @@
     "view": "View",
     "copy": "Copy",
     "copied": "Copied",
+    "selectAll": "Select All",
     "optional": "Optional",
     "saved": "Saved successfully",
     "create": "Create",
