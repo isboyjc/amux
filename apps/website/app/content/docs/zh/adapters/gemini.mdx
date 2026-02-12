@@ -177,12 +177,21 @@ const bridge = createBridge({
 | 流式传输 | ✅ | 完全支持 |
 | 视觉 | ✅ | Gemini Pro Vision |
 | 超长上下文 | ✅ | 最长 2M tokens |
-| 函数调用 | ⚠️ | 部分支持 |
-| 系统提示 | ✅ | 完全支持 |
-| JSON 模式 | ✅ | 结构化输出 |
+| 函数调用 | ✅ | 完全支持（使用 `functionDeclarations` 格式） |
+| 系统提示 | ✅ | 通过 `systemInstruction` |
+| JSON 模式 | ✅ | 通过 `responseMimeType: 'application/json'` |
+| 双格式支持 | ✅ | 自动检测 OpenAI 格式或 Gemini 原生格式 |
+
+<Callout type="info">
+**双格式支持：** Gemini 适配器会自动检测传入请求使用的是 OpenAI 格式（`messages` 数组）还是 Gemini 原生格式（`contents` 数组）。这使它可以无缝地作为入站和出站适配器使用。
+</Callout>
+
+<Callout type="info">
+**聊天路径：** Gemini 适配器使用包含 `{model}` 占位符的聊天路径：`/v1beta/models/{model}:streamGenerateContent`。Bridge 会自动将 `{model}` 替换为实际的模型名称。
+</Callout>
 
 <Callout type="warn">
-Gemini 的函数调用格式与 OpenAI 不同，可能需要额外的格式转换。
+Gemini 的函数调用使用不同的格式（`functionDeclarations` 被分组在单个 `tools` 对象下），与 OpenAI 的每工具格式不同。当通过 Bridge 使用时，适配器会自动处理这种转换。
 </Callout>
 
 ## 最佳实践

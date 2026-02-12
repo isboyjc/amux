@@ -142,10 +142,15 @@ const bridge = createBridge({
 | Chat Completion | ✅ | Fully supported |
 | Streaming | ✅ | Fully supported |
 | Function Calling | ✅ | Fully supported |
-| Vision | ✅ | glm-4v supported |
+| Vision | ⚠️ | `glm-4v` inbound parsing supported; outbound builder currently extracts text only |
 | System Prompt | ✅ | Fully supported |
-| JSON Mode | ✅ | Fully supported |
+| JSON Mode | ✅ | `json_object` only |
 | Web Search | ✅ | Supported |
+| Tool Choice | ⚠️ | `required` is not supported (silently dropped) |
+
+<Callout type="info">
+**Zhipu-specific parameters:** The Zhipu API also supports `do_sample` (sampling control), `request_id` (request tracking), and `user_id` (user identification). These are available through the inbound parser when Zhipu is used as the inbound adapter.
+</Callout>
 
 ## Best Practices
 

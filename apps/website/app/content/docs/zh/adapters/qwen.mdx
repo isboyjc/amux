@@ -160,7 +160,7 @@ const bridge = createBridge({
   outbound: qwenAdapter,
   config: {
     apiKey: process.env.QWEN_API_KEY,
-    baseURL: 'https://dashscope.aliyuncs.com/api', // 默认值
+    baseURL: 'https://dashscope.aliyuncs.com/compatible-mode', // 默认值
     timeout: 60000
   }
 })
@@ -174,11 +174,19 @@ const bridge = createBridge({
 | 流式传输 | ✅ | 完全支持 |
 | 函数调用 | ✅ | 完全支持 |
 | 视觉 | ✅ | Qwen-VL 系列 |
-| 多模态 | ✅ | 支持文本+图像 |
+| 多模态 | ✅ | 支持文本+图像（也支持音频/视频） |
 | 系统提示 | ✅ | 完全支持 |
-| 推理能力 | ✅ | 高级推理 |
-| JSON 模式 | ✅ | 结构化输出 |
-| 网络搜索 | ✅ | 内置搜索 |
+| 推理能力 | ✅ | QwQ 模型使用 `enable_thinking: true`，`reasoning_content` 字段 |
+| JSON 模式 | ✅ | 仅支持 `json_object` |
+| 网络搜索 | ✅ | `enable_search: true` |
+| Seed | ✅ | 确定性生成 |
+
+<Callout type="info">
+**Qwen 特有参数：**
+- `enable_thinking` (boolean) -- 为 QwQ 推理模型启用深度思考模式
+- `enable_search` (boolean) -- 启用实时网络搜索
+- `fps` (number) -- 视频输入的帧率（存储在 `extensions.qwen.fps`）
+</Callout>
 
 ## 最佳实践
 

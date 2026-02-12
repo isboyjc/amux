@@ -64,7 +64,7 @@ function createBridge(options: BridgeOptions): Bridge
   <Tab value="BridgeConfig">
     ```typescript
     interface BridgeConfig {
-      apiKey?: string           // 出站提供商的 API 密钥
+      apiKey: string            // 出站提供商的 API 密钥（必填）
       baseURL?: string          // API 调用的基础 URL
       chatPath?: string         // 自定义聊天端点路径
       modelsPath?: string       // 自定义模型端点路径
@@ -78,15 +78,15 @@ function createBridge(options: BridgeOptions): Bridge
 
     | 属性 | 类型 | 默认值 | 描述 |
     |------|------|--------|------|
-    | `apiKey` | `string?` | - | 用于身份验证的 API 密钥 |
+    | `apiKey` | `string` | - | 用于身份验证的 API 密钥（必填） |
     | `baseURL` | `string?` | 自动检测 | 自定义 API 基础 URL |
     | `chatPath` | `string?` | 自动检测 | 自定义聊天端点路径（覆盖适配器默认值） |
     | `modelsPath` | `string?` | 自动检测 | 自定义模型端点路径（覆盖适配器默认值） |
-    | `timeout` | `number?` | `120000` | 请求超时时间（毫秒） |
+    | `timeout` | `number?` | `60000` | 请求超时时间（毫秒） |
     | `maxRetries` | `number?` | `3` | 最大重试次数 |
     | `headers` | `Record<string, string>?` | `{}` | 自定义 HTTP 请求头 |
     | `authHeaderName` | `string?` | `'Authorization'` | 认证请求头的名称 |
-    | `authHeaderPrefix` | `string?` | `'Bearer'` | 认证请求头值的前缀 |
+    | `authHeaderPrefix` | `string?` | `'Bearer'` | 认证请求头值的前缀。设置为空字符串 `''` 可以不添加前缀直接使用 API 密钥 |
   </Tab>
 </Tabs>
 
@@ -824,6 +824,22 @@ console.log(`出站：${adapters.outbound.name} v${adapters.outbound.version}`)
 // 输出：
 // 入站：openai v1.0.0
 // 出站：anthropic v1.0.0
+```
+
+### listModels
+
+列出出站提供商的可用模型。向提供商的 models 端点发送 GET 请求。
+
+```typescript
+listModels(): Promise<unknown>
+```
+
+#### 示例
+
+```typescript
+const models = await bridge.listModels()
+console.log(models)
+// 返回提供商特定格式的模型列表
 ```
 
 ## 模型映射
