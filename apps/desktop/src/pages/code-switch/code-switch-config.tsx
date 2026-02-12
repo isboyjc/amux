@@ -34,8 +34,27 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
   const [processing, setProcessing] = useState(false)
   const [currentConfigId, setCurrentConfigId] = useState<string>('') // Track current config ID
 
+  const summarizeMappings = (mappings: Array<{ sourceModel: string; targetModel: string }>) => {
+    const nonEmpty = mappings.filter((m) => Boolean(m.targetModel)).length
+    return {
+      total: mappings.length,
+      nonEmpty,
+      empty: mappings.length - nonEmpty,
+      preview: mappings.slice(0, 3)
+    }
+  }
+
   // Initialize from config
   useEffect(() => {
+    console.log('[CS-DIAG][Renderer] Config effect triggered', {
+      cliType,
+      hasConfig: Boolean(config),
+      configId: config?.id,
+      enabled: config?.enabled,
+      providerId: config?.providerId,
+      configPath: config?.configPath
+    })
+
     if (config) {
       setEnabled(config.enabled)
       setSelectedProviderId(config.providerId)
@@ -208,6 +227,16 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
 
   // Update provider (dynamic switch)
   const handleProviderChange = async (providerId: string) => {
+    console.log('[CS-DIAG][Renderer] handleProviderChange called', {
+      cliType,
+      fromProviderId: selectedProviderId,
+      toProviderId: providerId,
+      enabled,
+      currentConfigId,
+      configId: config?.id,
+      hasConfigPath: Boolean(configPath)
+    })
+
     setSelectedProviderId(providerId)
 
     // Initialize or update config to ensure we have a codeSwitchId for model mappings
@@ -221,6 +250,12 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
         ) as CodeSwitchConfig
         setCurrentConfigId(initializedConfig.id)
         console.log('[CodeSwitch] Initialized config:', initializedConfig.id)
+        console.log('[CS-DIAG][Renderer] init-config success', {
+          cliType,
+          providerId,
+          configId: initializedConfig.id,
+          enabled: initializedConfig.enabled
+        })
         // 不需要刷新整个配置，只是创建了一个 disabled 的记录
         // currentConfigId 已经设置，足够用于保存映射
         // onConfigChange() ← 移除，避免页面闪烁
@@ -238,6 +273,12 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
         // Only switch provider, don't pass current modelMappings
         // This prevents overwriting historical mappings of the new provider
         await window.api.invoke('code-switch:switch-provider', cliType, providerId)
+
+        console.log('[CS-DIAG][Renderer] switch-provider success', {
+          cliType,
+          providerId,
+          enabled
+        })
 
         showToast.success(t('codeSwitch.switchSuccess'), {
           description: t('codeSwitch.switchSuccessDesc')
@@ -258,10 +299,21 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
 
   // Update model mappings (dynamic)
   const handleModelMappingsChange = async (mappings: Array<{ sourceModel: string; targetModel: string }>) => {
+    console.log('[CS-DIAG][Renderer] handleModelMappingsChange', {
+      cliType,
+      selectedProviderId,
+      enabled,
+      currentConfigId,
+      configId: config?.id,
+      mappingSummary: summarizeMappings(mappings),
+      originalSummary: summarizeMappings(originalMappings)
+    })
+
     setModelMappings(mappings)
     
     // 如果是首次加载（originalMappings 为空），设置 originalMappings，不触发保存
     if (originalMappings.length === 0) {
+      console.log('[CS-DIAG][Renderer] originalMappings empty, treat as initialization (skip save)')
       setOriginalMappings(mappings)
       return
     }
@@ -272,6 +324,12 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
     }
     
     saveTimeoutRef.current = setTimeout(() => {
+      console.log('[CS-DIAG][Renderer] debounce saveModelMappings fired', {
+        cliType,
+        selectedProviderId,
+        enabled,
+        mappingSummary: summarizeMappings(mappings)
+      })
       saveModelMappings(mappings)
     }, 1000)
   }
@@ -291,14 +349,38 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
   const saveModelMappings = async (mappings: Array<{ sourceModel: string; targetModel: string }>) => {
     // 需要有 config ID 和 provider 才能保存（不需要 enabled 状态）
     const configId = currentConfigId || config?.id
+
+    console.log('[CS-DIAG][Renderer] saveModelMappings start', {
+      cliType,
+      enabled,
+      selectedProviderId,
+      currentConfigId,
+      configIdFromProps: config?.id,
+      resolvedConfigId: configId,
+      mappingSummary: summarizeMappings(mappings),
+      originalSummary: summarizeMappings(originalMappings)
+    })
+
     if (!configId || !selectedProviderId) {
       console.log('[CodeSwitch] Cannot save mappings: no config ID or provider ID')
+      console.log('[CS-DIAG][Renderer] saveModelMappings skipped: missing identifiers', {
+        cliType,
+        selectedProviderId,
+        currentConfigId,
+        configIdFromProps: config?.id,
+        resolvedConfigId: configId
+      })
       return
     }
 
     // 检查是否真的改变了
     const hasChanged = JSON.stringify(mappings) !== JSON.stringify(originalMappings)
+    console.log('[CS-DIAG][Renderer] saveModelMappings change detection', {
+      cliType,
+      hasChanged
+    })
     if (!hasChanged) {
+      console.log('[CS-DIAG][Renderer] saveModelMappings skipped: no diff detected')
       return // 没有改变，不保存
     }
 
@@ -308,6 +390,12 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
       await window.api.invoke('code-switch:update-provider', cliType, selectedProviderId, mappings)
 
       console.log('[CodeSwitch] Model mappings saved successfully (enabled:', enabled, ')')
+      console.log('[CS-DIAG][Renderer] saveModelMappings invoke success', {
+        cliType,
+        selectedProviderId,
+        enabled,
+        mappingSummary: summarizeMappings(mappings)
+      })
       
       // 只在启用状态下才显示成功提示，避免频繁打扰用户
       if (enabled) {
@@ -322,6 +410,12 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
       // onConfigChange() ← 移除，避免页面闪烁
     } catch (error) {
       console.error('[CodeSwitch] Failed to save mappings:', error)
+      console.error('[CS-DIAG][Renderer] saveModelMappings invoke failed', {
+        cliType,
+        selectedProviderId,
+        enabled,
+        error
+      })
       showToast.error(t('codeSwitch.updateFailed'), {
         description: error instanceof Error ? error.message : t('codeSwitch.updateFailed')
       })

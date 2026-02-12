@@ -114,6 +114,13 @@ export class CodeModelMappingRepository extends BaseRepository<CodeModelMappingR
     const { codeSwitchId, providerId, mappings } = data
     const now = this.now()
 
+    console.log('[CS-DIAG][Main][Repo] updateMappingsForProvider start', {
+      codeSwitchId,
+      providerId,
+      mappingsCount: mappings.length,
+      mappingsPreview: mappings.slice(0, 3)
+    })
+
     // Use transaction for atomicity
     const transaction = this.db.transaction(() => {
       // Step 1: Deactivate all mappings for this Code Switch
@@ -122,7 +129,12 @@ export class CodeModelMappingRepository extends BaseRepository<CodeModelMappingR
         SET is_active = 0, updated_at = ?
         WHERE code_switch_id = ?
       `)
-      deactivateStmt.run(now, codeSwitchId)
+      const deactivateResult = deactivateStmt.run(now, codeSwitchId)
+
+      console.log('[CS-DIAG][Main][Repo] updateMappingsForProvider deactivated old mappings', {
+        codeSwitchId,
+        affected: deactivateResult.changes
+      })
 
       // Step 2 & 3: Upsert new mappings and set as active
       const upsertStmt = this.db.prepare(`
@@ -148,9 +160,33 @@ export class CodeModelMappingRepository extends BaseRepository<CodeModelMappingR
           now
         )
       }
+
+      const activeCountStmt = this.db.prepare(`
+        SELECT COUNT(*) as count FROM code_model_mappings
+        WHERE code_switch_id = ? AND is_active = 1
+      `)
+      const providerActiveCountStmt = this.db.prepare(`
+        SELECT COUNT(*) as count FROM code_model_mappings
+        WHERE code_switch_id = ? AND provider_id = ? AND is_active = 1
+      `)
+
+      const activeCount = (activeCountStmt.get(codeSwitchId) as { count: number }).count
+      const providerActiveCount = (providerActiveCountStmt.get(codeSwitchId, providerId) as { count: number }).count
+
+      console.log('[CS-DIAG][Main][Repo] updateMappingsForProvider post-upsert counts', {
+        codeSwitchId,
+        providerId,
+        activeCount,
+        providerActiveCount
+      })
     })
 
     transaction()
+
+    console.log('[CS-DIAG][Main][Repo] updateMappingsForProvider done', {
+      codeSwitchId,
+      providerId
+    })
   }
 
   /**

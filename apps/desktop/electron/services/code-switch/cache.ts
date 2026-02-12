@@ -112,15 +112,35 @@ export class CodeSwitchCacheManager {
     if (cached) {
       // Check if expired
       if (Date.now() - cached.cachedAt < this.CACHE_TTL) {
+        console.log('[CS-DIAG][Main][Cache] getConfig hit', {
+          cliType,
+          configId: cached.config.id,
+          providerId: cached.config.provider_id,
+          enabled: cached.config.enabled,
+          mappingsCount: cached.modelMappings.size,
+          ageMs: Date.now() - cached.cachedAt
+        })
         return cached
       }
       // Expired, remove from cache
+      console.log('[CS-DIAG][Main][Cache] getConfig expired', {
+        cliType,
+        configId: cached.config.id,
+        ageMs: Date.now() - cached.cachedAt,
+        ttlMs: this.CACHE_TTL
+      })
       this.configCache.delete(cliType)
     }
 
     // Fetch from database
     const config = this.codeSwitchRepo.findByCLIType(cliType)
     if (!config || !config.enabled) {
+      console.log('[CS-DIAG][Main][Cache] getConfig miss/no-enabled-config', {
+        cliType,
+        hasConfig: Boolean(config),
+        configId: config?.id,
+        enabled: config?.enabled
+      })
       return null
     }
 
@@ -130,6 +150,20 @@ export class CodeSwitchCacheManager {
     for (const mapping of mappings) {
       modelMappings.set(mapping.source_model, mapping.target_model)
     }
+
+    console.log('[CS-DIAG][Main][Cache] getConfig db-load', {
+      cliType,
+      configId: config.id,
+      providerId: config.provider_id,
+      enabled: config.enabled,
+      mappingsCount: modelMappings.size,
+      mappingsPreview: mappings.slice(0, 3).map((row) => ({
+        providerId: row.provider_id,
+        sourceModel: row.source_model,
+        targetModel: row.target_model,
+        isActive: row.is_active
+      }))
+    })
 
     // Cache it
     const cachedConfig: CachedCodeSwitchConfig = {
@@ -155,6 +189,15 @@ export class CodeSwitchCacheManager {
     const config = this.codeSwitchRepo.findByCLIType(cliType)
     if (config) {
       this.modelMappingCache.delete(config.id)
+      console.log('[CS-DIAG][Main][Cache] invalidate', {
+        cliType,
+        configId: config.id,
+        providerId: config.provider_id
+      })
+    } else {
+      console.log('[CS-DIAG][Main][Cache] invalidate no config found', {
+        cliType
+      })
     }
   }
 

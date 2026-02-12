@@ -79,6 +79,14 @@ export async function handleCodeSwitch(
     console.log(`[CodeSwitch]   - Config ID: ${config.id}`)
     console.log(`[CodeSwitch]   - Provider ID: ${config.provider_id}`)
     console.log(`[CodeSwitch]   - Model mappings: ${modelMappings.size}`)
+    console.log('[CS-DIAG][Main][Runtime] active route snapshot', {
+      cliType,
+      configId: config.id,
+      providerId: config.provider_id,
+      enabled: config.enabled,
+      mappingsCount: modelMappings.size,
+      mappingsPreview: Array.from(modelMappings.entries()).slice(0, 3)
+    })
 
     // Step 2: Get provider configuration
     const providerRepo = getProviderRepository()
@@ -150,8 +158,18 @@ export async function handleCodeSwitch(
     if (modelMappings.has(requestModel)) {
       targetModel = modelMappings.get(requestModel)!
       console.log(`[CodeSwitch]   - Model mapped: ${requestModel} -> ${targetModel}`)
+      console.log('[CS-DIAG][Main][Runtime] mapping-hit', {
+        cliType,
+        requestModel,
+        targetModel
+      })
     } else {
       console.log(`[CodeSwitch]   - No mapping, using original model: ${requestModel}`)
+      console.log('[CS-DIAG][Main][Runtime] mapping-miss', {
+        cliType,
+        requestModel,
+        availableMappings: Array.from(modelMappings.keys()).slice(0, 10)
+      })
     }
 
     // Update request body with mapped model
