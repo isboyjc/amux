@@ -289,10 +289,23 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
 
   // Save model mappings (called when user finishes editing)
   const saveModelMappings = async (mappings: Array<{ sourceModel: string; targetModel: string }>) => {
+    // [DEBUG] 添加日志
+    console.log('[CodeSwitch] saveModelMappings called:', {
+      configId: currentConfigId,
+      configIdFromConfig: config?.id,
+      selectedProviderId,
+      enabled,
+      mappingsCount: mappings.length
+    })
+
     // 需要有 config ID 和 provider 才能保存（不需要 enabled 状态）
     const configId = currentConfigId || config?.id
     if (!configId || !selectedProviderId) {
-      console.log('[CodeSwitch] Cannot save mappings: no config ID or provider ID')
+      // [DEBUG] 添加日志
+      console.log('[CodeSwitch] Cannot save mappings: early return -', {
+        configIdEmpty: !configId,
+        providerIdEmpty: !selectedProviderId
+      })
       return
     }
 

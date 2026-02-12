@@ -283,6 +283,14 @@ export function registerCodeSwitchHandlers(): void {
       providerId: string,
       modelMappings: Array<{ sourceModel: string; targetModel: string }>
     ) => {
+      // [DEBUG] 添加日志
+      console.log('[IPC] code-switch:update-provider called:', {
+        cliType,
+        providerId,
+        mappingsCount: modelMappings.length,
+        mappings: modelMappings
+      })
+
       const config = codeSwitchRepo.findByCLIType(cliType)
 
       if (!config) {
@@ -309,8 +317,14 @@ export function registerCodeSwitchHandlers(): void {
 
       console.log(`[IPC] Updated ${cliType} mappings using provider ${actualProviderId}`)
 
+      // [DEBUG] 添加日志
+      console.log('[IPC] Before invalidate cache, config:', config ? { id: config.id, enabled: config.enabled } : 'null')
+
       // Invalidate cache for dynamic switching
       invalidateCodeSwitchCache(cliType as 'claudecode' | 'codex')
+
+      // [DEBUG] 添加日志
+      console.log('[IPC] After invalidate cache')
     }
   )
 
