@@ -79,8 +79,6 @@ export async function handleCodeSwitch(
     console.log(`[CodeSwitch]   - Config ID: ${config.id}`)
     console.log(`[CodeSwitch]   - Provider ID: ${config.provider_id}`)
     console.log(`[CodeSwitch]   - Model mappings: ${modelMappings.size}`)
-    // [DEBUG] 添加日志 - 打印所有映射
-    console.log(`[CodeSwitch]   - Model mappings detail:`, Array.from(modelMappings.entries()))
 
     // Step 2: Get provider configuration
     const providerRepo = getProviderRepository()

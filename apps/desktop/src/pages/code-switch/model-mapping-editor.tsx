@@ -52,6 +52,11 @@ export function ModelMappingEditor({
   const [loading, setLoading] = useState(true)
   const [localMappings, setLocalMappings] = useState<ModelMapping[]>(value)
 
+  // 监听 value 变化，同步更新 localMappings
+  useEffect(() => {
+    setLocalMappings(value)
+  }, [value])
+
   // Load provider details and initialize default mappings
   useEffect(() => {
     loadProviderAndMappings()
@@ -88,7 +93,6 @@ export function ModelMappingEditor({
               sourceModel: m.sourceModel,
               targetModel: m.targetModel
             }))
-            console.log('[ModelMappingEditor] Loaded historical mappings:', mappingsToUse)
           }
         } catch (err) {
           console.warn('[ModelMappingEditor] Failed to load historical mappings:', err)
@@ -101,7 +105,6 @@ export function ModelMappingEditor({
           sourceModel: model.value,
           targetModel: '' // Empty by default, user can fill or leave empty
         }))
-        console.log('[ModelMappingEditor] Using default mappings')
       }
 
       setLocalMappings(mappingsToUse)

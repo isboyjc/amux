@@ -258,28 +258,13 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
 
   // Update model mappings (dynamic)
   const handleModelMappingsChange = async (mappings: Array<{ sourceModel: string; targetModel: string }>) => {
-    // [DEBUG] 添加日志
-    console.log('[CodeSwitch] handleModelMappingsChange called:', {
-      mappings,
-      originalMappingsLength: originalMappings.length,
-      originalMappings
-    })
-
     setModelMappings(mappings)
 
-    // 如果是首次加载（originalMappings 为空），设置 originalMappings，不触发保存
-    if (originalMappings.length === 0) {
-      // [DEBUG] 添加日志
-      console.log('[CodeSwitch] First load, setting originalMappings')
-      setOriginalMappings(mappings)
-      return
-    }
-    
     // 防抖保存：用户停止编辑 1 秒后自动保存
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current)
     }
-    
+
     saveTimeoutRef.current = setTimeout(() => {
       saveModelMappings(mappings)
     }, 1000)
@@ -298,43 +283,16 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
 
   // Save model mappings (called when user finishes editing)
   const saveModelMappings = async (mappings: Array<{ sourceModel: string; targetModel: string }>) => {
-    // [DEBUG] 添加日志
-    console.log('[CodeSwitch] saveModelMappings called:', {
-      configId: currentConfigId,
-      configIdFromConfig: config?.id,
-      selectedProviderId,
-      enabled,
-      mappingsCount: mappings.length
-    })
-
     // 需要有 config ID 和 provider 才能保存（不需要 enabled 状态）
     const configId = currentConfigId || config?.id
     if (!configId || !selectedProviderId) {
-      // [DEBUG] 添加日志
-      console.log('[CodeSwitch] Cannot save mappings: early return -', {
-        configIdEmpty: !configId,
-        providerIdEmpty: !selectedProviderId
-      })
       return
-    }
-
-    // 检查是否真的改变了
-    const hasChanged = JSON.stringify(mappings) !== JSON.stringify(originalMappings)
-    // [DEBUG] 添加日志
-    console.log('[CodeSwitch] hasChanged check:', hasChanged, 'mappings:', mappings, 'originalMappings:', originalMappings)
-    if (!hasChanged) {
-      console.log('[CodeSwitch] No changes, skipping save')
-      return // 没有改变，不保存
     }
 
     setProcessing(true)
 
     try {
-      // [DEBUG] 添加日志 - IPC 调用前
-      console.log('[CodeSwitch] Calling IPC update-provider, enabled:', enabled)
       await window.api.invoke('code-switch:update-provider', cliType, selectedProviderId, mappings)
-
-      console.log('[CodeSwitch] Model mappings saved successfully (enabled:', enabled, ')')
 
       // 只在启用状态下才显示成功提示，避免频繁打扰用户
       if (enabled) {
@@ -342,13 +300,7 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
           description: t('codeSwitch.updateSuccessDesc')
         })
       }
-
-      // 更新原始映射
-      setOriginalMappings(mappings)
-      // 不需要刷新整个配置，映射已经在本地状态中了
-      // onConfigChange() ← 移除，避免页面闪烁
     } catch (error) {
-      // [DEBUG] 添加日志 - 错误捕获
       console.error('[CodeSwitch] Failed to save mappings:', error)
       showToast.error(t('codeSwitch.updateFailed'), {
         description: error instanceof Error ? error.message : t('codeSwitch.updateFailed')

@@ -283,14 +283,6 @@ export function registerCodeSwitchHandlers(): void {
       providerId: string,
       modelMappings: Array<{ sourceModel: string; targetModel: string }>
     ) => {
-      // [DEBUG] 添加日志
-      console.log('[IPC] code-switch:update-provider called:', {
-        cliType,
-        providerId,
-        mappingsCount: modelMappings.length,
-        mappings: modelMappings
-      })
-
       const config = codeSwitchRepo.findByCLIType(cliType)
 
       if (!config) {
@@ -310,29 +302,13 @@ export function registerCodeSwitchHandlers(): void {
       if (modelMappings.length > 0) {
         modelMappingRepo.updateMappingsForProvider({
           codeSwitchId: config.id,
-          providerId: actualProviderId, // Use actual provider ID from config for Codex
+          providerId: actualProviderId,
           mappings: modelMappings
         })
-
-        // [DEBUG] 添加日志 - 验证数据库中的数据
-        const savedMappings = modelMappingRepo.findActiveByCodeSwitchId(config.id)
-        console.log('[IPC] Verified mappings in DB after update:', savedMappings.map(m => ({
-          sourceModel: m.source_model,
-          targetModel: m.target_model,
-          isActive: m.is_active
-        })))
       }
-
-      console.log(`[IPC] Updated ${cliType} mappings using provider ${actualProviderId}`)
-
-      // [DEBUG] 添加日志
-      console.log('[IPC] Before invalidate cache, config:', config ? { id: config.id, enabled: config.enabled } : 'null')
 
       // Invalidate cache for dynamic switching
       invalidateCodeSwitchCache(cliType as 'claudecode' | 'codex')
-
-      // [DEBUG] 添加日志
-      console.log('[IPC] After invalidate cache')
     }
   )
 

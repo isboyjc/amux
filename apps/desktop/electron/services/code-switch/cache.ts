@@ -107,16 +107,11 @@ export class CodeSwitchCacheManager {
    * Uses cache if available and not expired
    */
   getConfig(cliType: 'claudecode' | 'codex'): CachedCodeSwitchConfig | null {
-    // [DEBUG] 添加日志
-    console.log('[Cache] getConfig called for:', cliType)
-
     // Check cache first
     const cached = this.configCache.get(cliType)
     if (cached) {
       // Check if expired
       if (Date.now() - cached.cachedAt < this.CACHE_TTL) {
-        // [DEBUG] 添加日志 - 使用缓存
-        console.log('[Cache] Using cached config, mappings:', Array.from(cached.modelMappings.entries()))
         return cached
       }
       // Expired, remove from cache
@@ -125,18 +120,12 @@ export class CodeSwitchCacheManager {
 
     // Fetch from database
     const config = this.codeSwitchRepo.findByCLIType(cliType)
-    // [DEBUG] 添加日志
-    console.log('[Cache] Fetched config from DB:', config ? { id: config.id, enabled: config.enabled } : 'null')
-
     if (!config || !config.enabled) {
       return null
     }
 
     // Fetch active model mappings
     const mappings = this.modelMappingRepo.findActiveByCodeSwitchId(config.id)
-    // [DEBUG] 添加日志
-    console.log('[Cache] Fetched mappings from DB, count:', mappings.length, 'mappings:', mappings.map(m => ({ source: m.source_model, target: m.target_model, active: m.is_active })))
-
     const modelMappings = new Map<string, string>()
     for (const mapping of mappings) {
       modelMappings.set(mapping.source_model, mapping.target_model)
@@ -160,10 +149,6 @@ export class CodeSwitchCacheManager {
    * Called when configuration is updated
    */
   invalidate(cliType: 'claudecode' | 'codex'): void {
-    // [DEBUG] 添加日志
-    console.log('[Cache] invalidate called for:', cliType)
-    console.log('[Cache] Cache size before invalidate:', this.configCache.size())
-
     this.configCache.delete(cliType)
 
     // Also clean up model mapping cache
@@ -171,9 +156,6 @@ export class CodeSwitchCacheManager {
     if (config) {
       this.modelMappingCache.delete(config.id)
     }
-
-    // [DEBUG] 添加日志
-    console.log('[Cache] Cache size after invalidate:', this.configCache.size())
   }
 
   /**
