@@ -313,6 +313,14 @@ export function registerCodeSwitchHandlers(): void {
           providerId: actualProviderId, // Use actual provider ID from config for Codex
           mappings: modelMappings
         })
+
+        // [DEBUG] 添加日志 - 验证数据库中的数据
+        const savedMappings = modelMappingRepo.findActiveByCodeSwitchId(config.id)
+        console.log('[IPC] Verified mappings in DB after update:', savedMappings.map(m => ({
+          sourceModel: m.source_model,
+          targetModel: m.target_model,
+          isActive: m.is_active
+        })))
       }
 
       console.log(`[IPC] Updated ${cliType} mappings using provider ${actualProviderId}`)

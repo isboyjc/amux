@@ -258,10 +258,19 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
 
   // Update model mappings (dynamic)
   const handleModelMappingsChange = async (mappings: Array<{ sourceModel: string; targetModel: string }>) => {
+    // [DEBUG] 添加日志
+    console.log('[CodeSwitch] handleModelMappingsChange called:', {
+      mappings,
+      originalMappingsLength: originalMappings.length,
+      originalMappings
+    })
+
     setModelMappings(mappings)
-    
+
     // 如果是首次加载（originalMappings 为空），设置 originalMappings，不触发保存
     if (originalMappings.length === 0) {
+      // [DEBUG] 添加日志
+      console.log('[CodeSwitch] First load, setting originalMappings')
       setOriginalMappings(mappings)
       return
     }
@@ -311,17 +320,22 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
 
     // 检查是否真的改变了
     const hasChanged = JSON.stringify(mappings) !== JSON.stringify(originalMappings)
+    // [DEBUG] 添加日志
+    console.log('[CodeSwitch] hasChanged check:', hasChanged, 'mappings:', mappings, 'originalMappings:', originalMappings)
     if (!hasChanged) {
+      console.log('[CodeSwitch] No changes, skipping save')
       return // 没有改变，不保存
     }
 
     setProcessing(true)
 
     try {
+      // [DEBUG] 添加日志 - IPC 调用前
+      console.log('[CodeSwitch] Calling IPC update-provider, enabled:', enabled)
       await window.api.invoke('code-switch:update-provider', cliType, selectedProviderId, mappings)
 
       console.log('[CodeSwitch] Model mappings saved successfully (enabled:', enabled, ')')
-      
+
       // 只在启用状态下才显示成功提示，避免频繁打扰用户
       if (enabled) {
         showToast.success(t('codeSwitch.updateSuccess'), {
@@ -334,6 +348,7 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
       // 不需要刷新整个配置，映射已经在本地状态中了
       // onConfigChange() ← 移除，避免页面闪烁
     } catch (error) {
+      // [DEBUG] 添加日志 - 错误捕获
       console.error('[CodeSwitch] Failed to save mappings:', error)
       showToast.error(t('codeSwitch.updateFailed'), {
         description: error instanceof Error ? error.message : t('codeSwitch.updateFailed')
