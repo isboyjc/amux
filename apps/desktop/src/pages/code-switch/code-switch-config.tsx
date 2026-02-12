@@ -208,6 +208,15 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
 
   // Update provider (dynamic switch)
   const handleProviderChange = async (providerId: string) => {
+    console.log('[DEBUG-CS] handleProviderChange called', {
+      newProviderId: providerId,
+      oldProviderId: selectedProviderId,
+      enabled,
+      currentConfigId,
+      'config?.id': config?.id,
+      configPath,
+      originalMappingsLength: originalMappings.length,
+    })
     setSelectedProviderId(providerId)
 
     // Initialize or update config to ensure we have a codeSwitchId for model mappings
@@ -258,19 +267,30 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
 
   // Update model mappings (dynamic)
   const handleModelMappingsChange = async (mappings: Array<{ sourceModel: string; targetModel: string }>) => {
+    console.log('[DEBUG-CS] handleModelMappingsChange called', {
+      mappingsCount: mappings.length,
+      mappings: mappings.map(m => `${m.sourceModel} -> ${m.targetModel || '(empty)'}`),
+      originalMappingsLength: originalMappings.length,
+      currentConfigId,
+      configId: config?.id,
+      selectedProviderId,
+      enabled,
+    })
     setModelMappings(mappings)
-    
+
     // 如果是首次加载（originalMappings 为空），设置 originalMappings，不触发保存
     if (originalMappings.length === 0) {
+      console.log('[DEBUG-CS] First load detected (originalMappings empty), setting originalMappings, NOT saving')
       setOriginalMappings(mappings)
       return
     }
-    
+
     // 防抖保存：用户停止编辑 1 秒后自动保存
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current)
     }
-    
+
+    console.log('[DEBUG-CS] Setting debounced save (1s)')
     saveTimeoutRef.current = setTimeout(() => {
       saveModelMappings(mappings)
     }, 1000)
@@ -291,24 +311,37 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
   const saveModelMappings = async (mappings: Array<{ sourceModel: string; targetModel: string }>) => {
     // 需要有 config ID 和 provider 才能保存（不需要 enabled 状态）
     const configId = currentConfigId || config?.id
+    console.log('[DEBUG-CS] saveModelMappings called', {
+      configId,
+      currentConfigId,
+      'config?.id': config?.id,
+      selectedProviderId,
+      enabled,
+      mappings: mappings.map(m => `${m.sourceModel} -> ${m.targetModel || '(empty)'}`),
+      originalMappings: originalMappings.map(m => `${m.sourceModel} -> ${m.targetModel || '(empty)'}`),
+    })
+
     if (!configId || !selectedProviderId) {
-      console.log('[CodeSwitch] Cannot save mappings: no config ID or provider ID')
+      console.log('[DEBUG-CS] ABORT save: no configId or no selectedProviderId', { configId, selectedProviderId })
       return
     }
 
     // 检查是否真的改变了
     const hasChanged = JSON.stringify(mappings) !== JSON.stringify(originalMappings)
+    console.log('[DEBUG-CS] hasChanged:', hasChanged)
     if (!hasChanged) {
+      console.log('[DEBUG-CS] ABORT save: no changes detected')
       return // 没有改变，不保存
     }
 
     setProcessing(true)
 
     try {
+      console.log('[DEBUG-CS] Invoking IPC code-switch:update-provider', { cliType, selectedProviderId, mappings })
       await window.api.invoke('code-switch:update-provider', cliType, selectedProviderId, mappings)
 
-      console.log('[CodeSwitch] Model mappings saved successfully (enabled:', enabled, ')')
-      
+      console.log('[DEBUG-CS] IPC call succeeded (enabled:', enabled, ')')
+
       // 只在启用状态下才显示成功提示，避免频繁打扰用户
       if (enabled) {
         showToast.success(t('codeSwitch.updateSuccess'), {
@@ -321,7 +354,7 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
       // 不需要刷新整个配置，映射已经在本地状态中了
       // onConfigChange() ← 移除，避免页面闪烁
     } catch (error) {
-      console.error('[CodeSwitch] Failed to save mappings:', error)
+      console.error('[DEBUG-CS] IPC call FAILED:', error)
       showToast.error(t('codeSwitch.updateFailed'), {
         description: error instanceof Error ? error.message : t('codeSwitch.updateFailed')
       })

@@ -96,6 +96,11 @@ export default function CodeSwitch() {
 
       setProcessing(true)
       try {
+        console.log('[DEBUG-INDEX] Enabling code-switch', {
+          cliType: activeTab,
+          providerId: currentConfig.providerId,
+          modelMappingsPassedToEnable: '[] (empty - mappings managed by child component)'
+        })
         await window.api.invoke('code-switch:enable', {
           cliType: activeTab,
           providerId: currentConfig.providerId,
