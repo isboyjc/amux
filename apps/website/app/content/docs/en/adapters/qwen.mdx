@@ -25,16 +25,16 @@ const bridge = createBridge({
   inbound: qwenAdapter,
   outbound: qwenAdapter,
   config: {
-    apiKey: process.env.QWEN_API_KEY
-  }
+    apiKey: process.env.QWEN_API_KEY,
+  },
 })
 
 const response = await bridge.chat({
   model: 'qwen-turbo',
   messages: [
     { role: 'system', content: 'You are a helpful assistant.' },
-    { role: 'user', content: 'What is Amux?' }
-  ]
+    { role: 'user', content: 'What is Amux?' },
+  ],
 })
 
 console.log(response.choices[0].message.content)
@@ -42,13 +42,13 @@ console.log(response.choices[0].message.content)
 
 ## Supported Models
 
-| Model | Description | Features |
-|-------|-------------|----------|
-| `qwen-turbo` | Fast model | Quick response, low cost |
-| `qwen-plus` | Enhanced model | Better performance |
-| `qwen-max` | Flagship model | Best performance |
-| `qwen-vl-plus` | Vision model | Image understanding |
-| `qwen-vl-max` | Vision flagship | Best vision capabilities |
+| Model          | Description     | Features                 |
+| -------------- | --------------- | ------------------------ |
+| `qwen-turbo`   | Fast model      | Quick response, low cost |
+| `qwen-plus`    | Enhanced model  | Better performance       |
+| `qwen-max`     | Flagship model  | Best performance         |
+| `qwen-vl-plus` | Vision model    | Image understanding      |
+| `qwen-vl-max`  | Vision flagship | Best vision capabilities |
 
 ## Key Features
 
@@ -73,6 +73,7 @@ console.log(response.choices[0].message.content)
       max_tokens: 2000
     })
     ```
+
   </Tab>
 
   <Tab value="Vision">
@@ -102,6 +103,7 @@ console.log(response.choices[0].message.content)
     <Callout type="info">
     Qwen-VL supports multiple image formats including URL and Base64 encoding.
     </Callout>
+
   </Tab>
 
   <Tab value="Function Calling">
@@ -129,13 +131,14 @@ console.log(response.choices[0].message.content)
       }]
     })
     ```
+
   </Tab>
 
   <Tab value="Streaming">
     ### Streaming
 
     ```typescript
-    const stream = bridge.chatStream({
+    const stream = bridge.chatStreamRaw({
       model: 'qwen-turbo',
       messages: [
         { role: 'user', content: 'Tell me a story' }
@@ -143,12 +146,13 @@ console.log(response.choices[0].message.content)
       stream: true
     })
 
-    for await (const chunk of stream) {
-      if (chunk.choices[0]?.delta?.content) {
-        process.stdout.write(chunk.choices[0].delta.content)
+    for await (const event of stream) {
+      if (event.type === 'content') {
+        process.stdout.write(event.content.delta)
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -160,25 +164,37 @@ const bridge = createBridge({
   outbound: qwenAdapter,
   config: {
     apiKey: process.env.QWEN_API_KEY,
-    baseURL: 'https://dashscope.aliyuncs.com/api', // Default
-    timeout: 60000
-  }
+    baseURL: 'https://dashscope.aliyuncs.com/compatible-mode', // Default
+    timeout: 60000,
+  },
 })
 ```
 
 ## Feature Support
 
-| Feature | Supported | Notes |
-|---------|-----------|-------|
-| Chat Completion | ✅ | Fully supported |
-| Streaming | ✅ | Fully supported |
-| Function Calling | ✅ | Fully supported |
-| Vision | ✅ | Qwen-VL series |
-| Multimodal | ✅ | Text + Image |
-| System Prompt | ✅ | Fully supported |
-| Reasoning | ✅ | Advanced reasoning |
-| JSON Mode | ✅ | Structured output |
-| Web Search | ✅ | Built-in search |
+| Feature          | Supported | Notes              |
+| ---------------- | --------- | ------------------ |
+| Chat Completion  | ✅        | Fully supported    |
+| Streaming        | ✅        | Fully supported    |
+| Function Calling | ✅        | Fully supported    |
+| Vision           | ✅        | Qwen-VL series     |
+| Multimodal       | ✅        | Text + Image       |
+| System Prompt    | ✅        | Fully supported    |
+| Reasoning        | ✅        | Advanced reasoning |
+| JSON Mode        | ✅        | Structured output  |
+| Web Search       | ✅        | Built-in search    |
+
+## Qwen-Specific Parameter Mapping
+
+- `generation.thinking.enabled` → `enable_thinking`
+- `generation.enableSearch` → `enable_search`
+- `extensions.qwen.fps` → `fps`
+
+<Callout type="warn">
+  Qwen supports audio/video in provider-native format, but current IR conversion
+  path may downgrade unsupported content parts to text in some parse/build
+  paths.
+</Callout>
 
 ## Best Practices
 
@@ -213,13 +229,14 @@ const response = await bridge.chat({
   messages: [
     {
       role: 'system',
-      content: 'You are an assistant fluent in Chinese. Use natural Chinese expressions.'
+      content:
+        'You are an assistant fluent in Chinese. Use natural Chinese expressions.',
     },
     {
       role: 'user',
-      content: 'Explain the principles of quantum computing in Chinese'
-    }
-  ]
+      content: 'Explain the principles of quantum computing in Chinese',
+    },
+  ],
 })
 ```
 
@@ -228,13 +245,21 @@ const response = await bridge.chat({
 ```typescript
 const response = await bridge.chat({
   model: 'qwen-vl-max',
-  messages: [{
-    role: 'user',
-    content: [
-      { type: 'text', text: 'Analyze this chart and summarize the key points' },
-      { type: 'image', image: 'https://example.com/chart.png' }
-    ]
-  }]
+  messages: [
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: 'Analyze this chart and summarize the key points',
+        },
+        {
+          type: 'image',
+          source: { type: 'url', url: 'https://example.com/chart.png' },
+        },
+      ],
+    },
+  ],
 })
 ```
 
@@ -248,14 +273,14 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: qwenAdapter,
   config: {
-    apiKey: process.env.QWEN_API_KEY
-  }
+    apiKey: process.env.QWEN_API_KEY,
+  },
 })
 
 // Send request in OpenAI format
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [{ role: 'user', content: 'Hello' }]
+  messages: [{ role: 'user', content: 'Hello' }],
 })
 ```
 

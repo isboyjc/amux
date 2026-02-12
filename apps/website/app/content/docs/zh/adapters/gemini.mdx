@@ -25,36 +25,39 @@ const bridge = createBridge({
   inbound: googleAdapter,
   outbound: googleAdapter,
   config: {
-    apiKey: process.env.GEMINI_API_KEY
-  }
+    apiKey: process.env.GEMINI_API_KEY,
+  },
 })
 
 const response = await bridge.chat({
   model: 'gemini-pro',
-  contents: [{
-    role: 'user',
-    parts: [{ text: '什么是 Amux？' }]
-  }]
+  contents: [
+    {
+      role: 'user',
+      parts: [{ text: '什么是 Amux？' }],
+    },
+  ],
 })
 
 console.log(response.candidates[0].content.parts[0].text)
 ```
 
 <Callout type="warn">
-Gemini API 使用不同的请求格式（`contents` 而不是 `messages`）。Amux 会自动处理格式转换。
+  Gemini API 使用不同的请求格式（`contents` 而不是 `messages`）。Amux
+  会自动处理格式转换。
 </Callout>
 
 ## 支持的模型
 
-| 模型 | 上下文长度 | 描述 |
-|------|-----------|------|
-| `gemini-pro` | 1M | 文本生成模型 |
-| `gemini-pro-vision` | 1M | 支持视觉的模型 |
-| `gemini-1.5-pro` | 2M | 最新版本，更长上下文 |
-| `gemini-1.5-flash` | 1M | 快速响应版本 |
+| 模型                | 上下文长度 | 描述                 |
+| ------------------- | ---------- | -------------------- |
+| `gemini-pro`        | 1M         | 文本生成模型         |
+| `gemini-pro-vision` | 1M         | 支持视觉的模型       |
+| `gemini-1.5-pro`    | 2M         | 最新版本，更长上下文 |
+| `gemini-1.5-flash`  | 1M         | 快速响应版本         |
 
 <Callout type="info">
-Gemini 的最大特点是超长上下文（最长 2M tokens），远超其他模型。
+  Gemini 的最大特点是超长上下文（最长 2M tokens），远超其他模型。
 </Callout>
 
 ## 主要功能
@@ -78,6 +81,7 @@ Gemini 的最大特点是超长上下文（最长 2M tokens），远超其他模
       }
     })
     ```
+
   </Tab>
 
   <Tab value="视觉理解">
@@ -106,6 +110,7 @@ Gemini 的最大特点是超长上下文（最长 2M tokens），远超其他模
     **支持的图像格式：**
     - Base64 编码（推荐）
     - 需要指定 mimeType（image/jpeg, image/png 等）
+
   </Tab>
 
   <Tab value="超长上下文">
@@ -130,13 +135,14 @@ Gemini 的最大特点是超长上下文（最长 2M tokens），远超其他模
     - 大型代码库理解
     - 长视频转录分析
     - 多文档对比
+
   </Tab>
 
   <Tab value="流式传输">
     ### 流式传输
 
     ```typescript
-    const stream = bridge.chatStream({
+    const stream = bridge.chatStreamRaw({
       model: 'gemini-pro',
       contents: [{
         role: 'user',
@@ -145,13 +151,13 @@ Gemini 的最大特点是超长上下文（最长 2M tokens），远超其他模
       stream: true
     })
 
-    for await (const chunk of stream) {
-      const text = chunk.candidates[0]?.content?.parts[0]?.text
-      if (text) {
-        process.stdout.write(text)
+    for await (const event of stream) {
+      if (event.type === 'content') {
+        process.stdout.write(event.content.delta)
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -164,25 +170,25 @@ const bridge = createBridge({
   config: {
     apiKey: process.env.GEMINI_API_KEY,
     baseURL: 'https://generativelanguage.googleapis.com', // 默认值
-    timeout: 60000
-  }
+    timeout: 60000,
+  },
 })
 ```
 
 ## 功能支持
 
-| 功能 | 支持 | 说明 |
-|------|------|------|
-| 文本生成 | ✅ | 完全支持 |
-| 流式传输 | ✅ | 完全支持 |
-| 视觉 | ✅ | Gemini Pro Vision |
-| 超长上下文 | ✅ | 最长 2M tokens |
-| 函数调用 | ⚠️ | 部分支持 |
-| 系统提示 | ✅ | 完全支持 |
-| JSON 模式 | ✅ | 结构化输出 |
+| 功能       | 支持 | 说明              |
+| ---------- | ---- | ----------------- |
+| 文本生成   | ✅   | 完全支持          |
+| 流式传输   | ✅   | 完全支持          |
+| 视觉       | ✅   | Gemini Pro Vision |
+| 超长上下文 | ✅   | 最长 2M tokens    |
+| 函数调用   | ⚠️   | 部分支持          |
+| 系统提示   | ✅   | 完全支持          |
+| JSON 模式  | ✅   | 结构化输出        |
 
 <Callout type="warn">
-Gemini 的函数调用格式与 OpenAI 不同，可能需要额外的格式转换。
+  Gemini 的函数调用格式与 OpenAI 不同，可能需要额外的格式转换。
 </Callout>
 
 ## 最佳实践
@@ -214,17 +220,19 @@ const longContextResponse = await bridge.chat({
 ```typescript
 const response = await bridge.chat({
   model: 'gemini-pro',
-  contents: [{
-    role: 'user',
-    parts: [{ text: '写一篇技术文章' }]
-  }],
+  contents: [
+    {
+      role: 'user',
+      parts: [{ text: '写一篇技术文章' }],
+    },
+  ],
   generationConfig: {
     temperature: 0.7, // 控制随机性
     topK: 40, // Top-K 采样
     topP: 0.95, // Top-P 采样
     maxOutputTokens: 2048, // 最大输出长度
-    stopSequences: ['\n\n'] // 停止序列
-  }
+    stopSequences: ['\n\n'], // 停止序列
+  },
 })
 ```
 
@@ -239,18 +247,20 @@ const base64Image = imageData.toString('base64')
 
 const response = await bridge.chat({
   model: 'gemini-pro-vision',
-  contents: [{
-    role: 'user',
-    parts: [
-      { text: '分析这张图片' },
-      {
-        inlineData: {
-          mimeType: 'image/jpeg',
-          data: base64Image
-        }
-      }
-    ]
-  }]
+  contents: [
+    {
+      role: 'user',
+      parts: [
+        { text: '分析这张图片' },
+        {
+          inlineData: {
+            mimeType: 'image/jpeg',
+            data: base64Image,
+          },
+        },
+      ],
+    },
+  ],
 })
 ```
 
@@ -260,15 +270,19 @@ const response = await bridge.chat({
 // Gemini 可以处理整本书
 const bookAnalysis = await bridge.chat({
   model: 'gemini-1.5-pro',
-  contents: [{
-    role: 'user',
-    parts: [{
-      text: `请总结这本书的主要内容和核心观点：\n\n${entireBook}`
-    }]
-  }],
+  contents: [
+    {
+      role: 'user',
+      parts: [
+        {
+          text: `请总结这本书的主要内容和核心观点：\n\n${entireBook}`,
+        },
+      ],
+    },
+  ],
   generationConfig: {
-    maxOutputTokens: 4096 // 生成详细的总结
-  }
+    maxOutputTokens: 4096, // 生成详细的总结
+  },
 })
 ```
 
@@ -282,15 +296,15 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: googleAdapter,
   config: {
-    apiKey: process.env.GEMINI_API_KEY
-  }
+    apiKey: process.env.GEMINI_API_KEY,
+  },
 })
 
 // 使用 OpenAI 格式发送请求
 // Amux 会自动转换为 Gemini 格式
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [{ role: 'user', content: '你好' }]
+  messages: [{ role: 'user', content: '你好' }],
 })
 ```
 
@@ -301,22 +315,30 @@ Gemini 支持内容安全过滤：
 ```typescript
 const response = await bridge.chat({
   model: 'gemini-pro',
-  contents: [{
-    role: 'user',
-    parts: [{ text: '...' }]
-  }],
+  contents: [
+    {
+      role: 'user',
+      parts: [{ text: '...' }],
+    },
+  ],
   safetySettings: [
     {
       category: 'HARM_CATEGORY_HARASSMENT',
-      threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+      threshold: 'BLOCK_MEDIUM_AND_ABOVE',
     },
     {
       category: 'HARM_CATEGORY_HATE_SPEECH',
-      threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-    }
-  ]
+      threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+    },
+  ],
 })
 ```
+
+<Callout type="warn">
+  虽然 Gemini 请求类型包含
+  `safetySettings`，但当前适配器出站请求构建器不会直接从 IR
+  层示例字段映射该参数。
+</Callout>
 
 ## 相关资源
 

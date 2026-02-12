@@ -31,7 +31,7 @@ sequenceDiagram
 创建一个新的 Bridge 实例。
 
 ```typescript
-function createBridge(options: BridgeOptions): Bridge
+function createBridge(options: BridgeOptions): LLMBridge
 ```
 
 ### 参数
@@ -43,6 +43,7 @@ function createBridge(options: BridgeOptions): Bridge
       inbound: LLMAdapter   // 入站适配器（解析传入格式）
       outbound: LLMAdapter  // 出站适配器（构建传出格式）
       config: BridgeConfig  // 配置
+      hooks?: BridgeHooks   // 生命周期钩子（IR 级可观测）
 
       // 模型映射选项（可选）
       targetModel?: string  // 固定目标模型
@@ -56,15 +57,17 @@ function createBridge(options: BridgeOptions): Bridge
     | `inbound` | `LLMAdapter` | 解析传入请求的适配器 |
     | `outbound` | `LLMAdapter` | 调用目标提供商的适配器 |
     | `config` | `BridgeConfig` | Bridge 配置 |
+    | `hooks` | `BridgeHooks?` | IR 级请求/响应/流/错误生命周期钩子 |
     | `targetModel` | `string?` | 固定使用的目标模型（优先级最高） |
     | `modelMapper` | `function?` | 模型映射函数（优先级第二） |
     | `modelMapping` | `object?` | 模型映射表（优先级第三） |
+
   </Tab>
 
   <Tab value="BridgeConfig">
     ```typescript
     interface BridgeConfig {
-      apiKey?: string           // 出站提供商的 API 密钥
+      apiKey: string            // 出站提供商的 API 密钥
       baseURL?: string          // API 调用的基础 URL
       chatPath?: string         // 自定义聊天端点路径
       modelsPath?: string       // 自定义模型端点路径
@@ -78,15 +81,16 @@ function createBridge(options: BridgeOptions): Bridge
 
     | 属性 | 类型 | 默认值 | 描述 |
     |------|------|--------|------|
-    | `apiKey` | `string?` | - | 用于身份验证的 API 密钥 |
+    | `apiKey` | `string` | - | 用于身份验证的 API 密钥 |
     | `baseURL` | `string?` | 自动检测 | 自定义 API 基础 URL |
     | `chatPath` | `string?` | 自动检测 | 自定义聊天端点路径（覆盖适配器默认值） |
     | `modelsPath` | `string?` | 自动检测 | 自定义模型端点路径（覆盖适配器默认值） |
-    | `timeout` | `number?` | `120000` | 请求超时时间（毫秒） |
+    | `timeout` | `number?` | `60000` | 请求超时时间（毫秒） |
     | `maxRetries` | `number?` | `3` | 最大重试次数 |
     | `headers` | `Record<string, string>?` | `{}` | 自定义 HTTP 请求头 |
     | `authHeaderName` | `string?` | `'Authorization'` | 认证请求头的名称 |
     | `authHeaderPrefix` | `string?` | `'Bearer'` | 认证请求头值的前缀 |
+
   </Tab>
 </Tabs>
 
@@ -107,6 +111,7 @@ function createBridge(options: BridgeOptions): Bridge
       }
     })
     ```
+
   </Tab>
 
   <Tab value="完整配置">
@@ -183,6 +188,7 @@ function createBridge(options: BridgeOptions): Bridge
     2. `modelMapper` - 使用函数动态映射
     3. `modelMapping` - 查找映射表
     4. 原模型 - 如果都没配置，使用原模型（可能失败）
+
   </Tab>
 
   <Tab value="多提供商">
@@ -208,13 +214,15 @@ function createBridge(options: BridgeOptions): Bridge
       config: { apiKey: process.env.OPENAI_API_KEY }
     })
     ```
+
   </Tab>
 </Tabs>
 
 ## 生命周期钩子
 
 <Callout type="info">
-**v0.1.0 新特性**: Bridge 现在支持生命周期钩子，用于在 IR (中间表示层) 进行监控、日志记录和自定义处理。
+  **v0.1.0 新特性**: Bridge 现在支持生命周期钩子，用于在 IR (中间表示层)
+  进行监控、日志记录和自定义处理。
 </Callout>
 
 生命周期钩子允许您在所有数据都以统一格式呈现的关键点拦截和观察 Bridge 的请求/响应流程。这非常适合日志记录、监控、成本追踪和调试。
@@ -225,14 +233,14 @@ function createBridge(options: BridgeOptions): Bridge
 interface BridgeHooks {
   // 在解析入站请求为 IR 后调用
   onRequest?: (ir: LLMRequestIR) => void | Promise<void>
-  
+
   // 在解析提供商响应为 IR 后调用
   // ⭐ 提取 Token 用量的最佳位置 - 所有提供商使用相同格式
   onResponse?: (ir: LLMResponseIR) => void | Promise<void>
-  
+
   // 在每个流式事件解析为 IR 后调用
   onStreamEvent?: (event: LLMStreamEvent) => void | Promise<void>
-  
+
   // 发生错误时调用
   onError?: (error: LLMErrorIR) => void | Promise<void>
 }
@@ -241,6 +249,7 @@ interface BridgeHooks {
 ### 为什么需要钩子？
 
 **问题**: 不同的 LLM 提供商以不同的格式返回 Token 用量：
+
 - OpenAI: `{ usage: { prompt_tokens, completion_tokens } }`
 - Anthropic: `{ usage: { input_tokens, output_tokens } }`
 - DeepSeek、Moonshot: 各种不同的变体
@@ -252,7 +261,7 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
   config: { apiKey: '...' },
-  
+
   hooks: {
     onResponse: async (ir) => {
       // ✅ 无论哪个提供商，格式都相同！
@@ -260,15 +269,15 @@ const bridge = createBridge({
         console.log(`输入 Token: ${ir.usage.promptTokens}`)
         console.log(`输出 Token: ${ir.usage.completionTokens}`)
         console.log(`总 Token: ${ir.usage.totalTokens}`)
-        
+
         // 保存到数据库、追踪成本等
         await saveTokenMetrics({
           input: ir.usage.promptTokens,
-          output: ir.usage.completionTokens
+          output: ir.usage.completionTokens,
         })
       }
-    }
-  }
+    },
+  },
 })
 ```
 
@@ -285,7 +294,7 @@ const bridge = createBridge({
       inbound: openaiAdapter,
       outbound: anthropicAdapter, // 或任何提供商
       config: { apiKey: process.env.ANTHROPIC_API_KEY },
-      
+
       hooks: {
         // 非流式响应
         onResponse: async (ir) => {
@@ -299,7 +308,7 @@ const bridge = createBridge({
             })
           }
         },
-        
+
         // 流式响应
         onStreamEvent: async (event) => {
           if (event.type === 'end' && event.usage) {
@@ -320,6 +329,7 @@ const bridge = createBridge({
     - ✅ 无需处理不同提供商的格式
     - ✅ 自动支持所有适配器
     - ✅ 流式和非流式使用相同代码
+
   </Tab>
 
   <Tab value="成本监控">
@@ -339,16 +349,16 @@ const bridge = createBridge({
       inbound: openaiAdapter,
       outbound: openaiAdapter,
       config: { apiKey: process.env.OPENAI_API_KEY },
-      
+
       hooks: {
         onResponse: async (ir) => {
           if (ir.usage && ir.model) {
             const modelPricing = pricing[ir.model]
             if (modelPricing) {
-              const cost = 
+              const cost =
                 (ir.usage.promptTokens / 1000) * modelPricing.input +
                 (ir.usage.completionTokens / 1000) * modelPricing.output
-              
+
               await recordCost({
                 model: ir.model,
                 inputTokens: ir.usage.promptTokens,
@@ -357,7 +367,7 @@ const bridge = createBridge({
                 currency: 'USD',
                 timestamp: Date.now()
               })
-              
+
               console.log(`请求成本: $${cost.toFixed(4)}`)
             }
           }
@@ -365,6 +375,7 @@ const bridge = createBridge({
       }
     })
     ```
+
   </Tab>
 
   <Tab value="请求日志">
@@ -377,7 +388,7 @@ const bridge = createBridge({
       inbound: openaiAdapter,
       outbound: anthropicAdapter,
       config: { apiKey: process.env.ANTHROPIC_API_KEY },
-      
+
       hooks: {
         onRequest: async (ir) => {
           console.log('[Bridge] 请求:', {
@@ -388,7 +399,7 @@ const bridge = createBridge({
             stream: ir.stream
           })
         },
-        
+
         onResponse: async (ir) => {
           console.log('[Bridge] 响应:', {
             model: ir.model,
@@ -396,7 +407,7 @@ const bridge = createBridge({
             finishReason: ir.choices[0]?.finishReason,
             usage: ir.usage
           })
-          
+
           // 保存到数据库
           await saveRequestLog({
             requestId: ir.id,
@@ -406,7 +417,7 @@ const bridge = createBridge({
             timestamp: Date.now()
           })
         },
-        
+
         onError: async (error) => {
           console.error('[Bridge] 错误:', {
             type: error.type,
@@ -414,7 +425,7 @@ const bridge = createBridge({
             code: error.code,
             status: error.status
           })
-          
+
           // 记录错误到监控服务
           await logError({
             type: error.type,
@@ -425,6 +436,7 @@ const bridge = createBridge({
       }
     })
     ```
+
   </Tab>
 
   <Tab value="速率限制">
@@ -440,25 +452,25 @@ const bridge = createBridge({
       inbound: openaiAdapter,
       outbound: openaiAdapter,
       config: { apiKey: process.env.OPENAI_API_KEY },
-      
+
       hooks: {
         onRequest: async (ir) => {
           // 检查是否接近限制
           if (dailyTokens > DAILY_LIMIT * 0.9) {
             console.warn(`警告: 已达到每日 Token 限制的 90%`)
           }
-          
+
           if (dailyTokens >= DAILY_LIMIT) {
             throw new Error('已超出每日 Token 限制')
           }
         },
-        
+
         onResponse: async (ir) => {
           if (ir.usage) {
             dailyTokens += ir.usage.totalTokens
-            
+
             console.log(`每日用量: ${dailyTokens}/${DAILY_LIMIT} Token`)
-            
+
             // 80% 时发送警报
             if (dailyTokens > DAILY_LIMIT * 0.8) {
               await sendAlert({
@@ -472,6 +484,7 @@ const bridge = createBridge({
       }
     })
     ```
+
   </Tab>
 </Tabs>
 
@@ -483,18 +496,18 @@ sequenceDiagram
     participant Bridge
     participant Hook as 钩子
     participant API as 提供商 API
-    
+
     App->>Bridge: chat(request)
     Bridge->>Bridge: 解析请求为 IR
     Bridge->>Hook: onRequest(ir)
-    Hook-->>Bridge: 
+    Hook-->>Bridge:
     Bridge->>API: 发送请求
     API-->>Bridge: 响应
     Bridge->>Bridge: 解析响应为 IR
     Bridge->>Hook: onResponse(ir)
-    Hook-->>Bridge: 
+    Hook-->>Bridge:
     Bridge->>App: 返回响应
-    
+
     Note over Bridge,Hook: 钩子访问统一的 IR<br/>无需处理提供商特定格式
 ```
 
@@ -539,57 +552,57 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
   config: { apiKey: process.env.ANTHROPIC_API_KEY },
-  
+
   hooks: {
     onRequest: async (ir) => {
       // 记录传入请求
       logger.info('收到请求', {
         model: ir.model,
-        messageCount: ir.messages.length
+        messageCount: ir.messages.length,
       })
     },
-    
+
     onResponse: async (ir) => {
       // 追踪 Token
       metrics.recordTokens(ir.usage)
-      
+
       // 计算成本
       const cost = calculateCost(ir.model, ir.usage)
       metrics.recordCost(cost)
-      
+
       // 记录成功
       logger.info('请求完成', {
         model: ir.model,
         tokens: ir.usage?.totalTokens,
-        cost
+        cost,
       })
     },
-    
+
     onStreamEvent: async (event) => {
       // 追踪流式进度
       if (event.type === 'content' && event.content?.delta) {
         metrics.incrementStreamChunks()
       }
-      
+
       if (event.type === 'end' && event.usage) {
         metrics.recordTokens(event.usage)
       }
     },
-    
+
     onError: async (error) => {
       // 记录和警报错误
       logger.error('请求失败', {
         type: error.type,
         message: error.message,
-        code: error.code
+        code: error.code,
       })
-      
+
       await alerting.sendAlert({
         severity: 'error',
-        message: `Bridge 错误: ${error.message}`
+        message: `Bridge 错误: ${error.message}`,
       })
-    }
-  }
+    },
+  },
 })
 ```
 
@@ -604,7 +617,8 @@ async chat(request: unknown): Promise<unknown>
 ```
 
 <Callout type="warn">
-请求必须使用**入站适配器的格式**。响应也将使用入站适配器的格式，即使内部调用的是不同的提供商 API。
+  请求必须使用**入站适配器的格式**。响应也将使用入站适配器的格式，即使内部调用的是不同的提供商
+  API。
 </Callout>
 
 #### 示例
@@ -621,6 +635,7 @@ async chat(request: unknown): Promise<unknown>
 
     console.log(response.choices[0].message.content)
     ```
+
   </Tab>
 
   <Tab value="工具调用">
@@ -654,6 +669,7 @@ async chat(request: unknown): Promise<unknown>
       console.log('参数：', toolCall.function.arguments)
     }
     ```
+
   </Tab>
 
   <Tab value="多模态">
@@ -691,7 +707,7 @@ async chatRaw(request: unknown): Promise<LLMResponseIR>
 // 获取原始 IR 响应用于自定义处理
 const ir = await bridge.chatRaw({
   model: 'gpt-4',
-  messages: [{ role: 'user', content: '你好！' }]
+  messages: [{ role: 'user', content: '你好！' }],
 })
 
 // 直接访问 IR 字段
@@ -718,10 +734,16 @@ async *chatStream(request: unknown): AsyncIterable<SSEEvent>
 
 ```typescript
 interface SSEEvent {
-  event: string  // 事件类型（如 'message_start', 'content_block_delta', 'data'）
-  data: unknown  // 事件数据
+  event: string // 事件类型（如 'message_start', 'content_block_delta', 'data'）
+  data: unknown // 事件数据
 }
 ```
+
+<Callout type="info">
+  当你希望拿到提供商格式 SSE（`event` + `data`）并直接写回 HTTP 响应时，使用
+  `chatStream()`；当你需要统一 IR
+  事件（`event.type`、`event.content.delta`）时，使用 `chatStreamRaw()`。
+</Callout>
 
 #### 示例
 
@@ -730,7 +752,7 @@ interface SSEEvent {
 const stream = bridge.chatStream({
   model: 'gpt-4',
   messages: [{ role: 'user', content: '讲个故事' }],
-  stream: true
+  stream: true,
 })
 
 // 直接将 SSE 事件写入 HTTP 响应
@@ -765,6 +787,32 @@ for await (const event of bridge.chatStreamRaw(request)) {
 }
 ```
 
+<Callout type="info">
+  `chatStreamRaw()` 会在内部强制 `stream = true`，并过滤重复 `end` 事件；Bridge
+  级别的 `chatStream()` 会过滤协议标记 `[DONE]`，避免把它作为业务数据继续输出。
+</Callout>
+
+### listModels
+
+列出出站提供商可用模型。
+
+```typescript
+listModels(): Promise<unknown>
+```
+
+#### 示例
+
+```typescript
+const models = await bridge.listModels()
+console.log(models)
+```
+
+<Callout type="warn">
+  `listModels()` 依赖适配器的 `endpoint.modelsPath` 或显式配置
+  `config.modelsPath`。部分提供商（例如 MiniMax
+  适配器默认配置）不提供模型列表端点。
+</Callout>
+
 ### checkCompatibility
 
 检查入站和出站适配器之间的兼容性。
@@ -774,7 +822,7 @@ checkCompatibility(): CompatibilityReport
 ```
 
 <Callout type="info">
-使用此方法在发出请求之前验证您的适配器组合是否支持所需的所有功能。
+  使用此方法在发出请求之前验证您的适配器组合是否支持所需的所有功能。
 </Callout>
 
 #### 返回
@@ -833,6 +881,7 @@ console.log(`出站：${adapters.outbound.name} v${adapters.outbound.version}`)
 ### 为什么需要模型映射？
 
 不同提供商使用不同的模型名称：
+
 - OpenAI: `gpt-4`, `gpt-3.5-turbo`
 - Anthropic: `claude-3-5-sonnet-20241022`, `claude-3-haiku-20240307`
 - DeepSeek: `deepseek-chat`, `deepseek-coder`
@@ -890,6 +939,7 @@ await bridge.chat({
     **适用场景**:
     - 固定的模型映射关系
     - 模型数量较少
+
   </Tab>
 
   <Tab value="映射函数">
@@ -935,6 +985,7 @@ await bridge.chat({
     - 需要动态映射
     - 模型名称有规律
     - 需要特殊处理逻辑
+
   </Tab>
 
   <Tab value="固定模型">
@@ -969,6 +1020,7 @@ await bridge.chat({
     - 只想使用一个模型
     - 成本控制
     - 简化配置
+
   </Tab>
 </Tabs>
 
@@ -986,11 +1038,12 @@ const bridge = createBridge({
   outbound: openaiAdapter,
   config: { apiKey: process.env.OPENAI_API_KEY },
 
-  targetModel: 'gpt-4',  // 优先级 1（最高）
-  modelMapper: (model) => 'gpt-3.5-turbo',  // 优先级 2
-  modelMapping: {  // 优先级 3
-    'claude-3-5-sonnet-20241022': 'gpt-4-turbo'
-  }
+  targetModel: 'gpt-4', // 优先级 1（最高）
+  modelMapper: (model) => 'gpt-3.5-turbo', // 优先级 2
+  modelMapping: {
+    // 优先级 3
+    'claude-3-5-sonnet-20241022': 'gpt-4-turbo',
+  },
 })
 
 // 结果：总是使用 'gpt-4'（targetModel 优先级最高）
@@ -1031,6 +1084,7 @@ const bridge = createBridge({
       messages: [{ role: 'user', content: '你好' }]
     })
     ```
+
   </Tab>
 
   <Tab value="成本优化">
@@ -1062,6 +1116,7 @@ const bridge = createBridge({
       })
     }
     ```
+
   </Tab>
 
   <Tab value="多租户">
@@ -1106,6 +1161,7 @@ const bridge = createBridge({
       modelMapping: { 'gpt-4': 'claude-3-5-sonnet-20241022' }
     })
     ```
+
   </Tab>
 </Tabs>
 
@@ -1133,8 +1189,8 @@ const bridge = createBridge({
     'claude-3-opus-20240229': 'gpt-4',
 
     // Claude Haiku → GPT-3.5 (经济型)
-    'claude-3-haiku-20240307': 'gpt-3.5-turbo'
-  }
+    'claude-3-haiku-20240307': 'gpt-3.5-turbo',
+  },
 })
 ```
 
@@ -1176,6 +1232,7 @@ graph TD
     - 响应解析失败
     - 内部编排错误
     - 配置问题
+
   </Tab>
 
   <Tab value="AdapterError">
@@ -1196,6 +1253,7 @@ graph TD
     - 不支持的功能
     - 格式转换失败
     - 缺少必需字段
+
   </Tab>
 
   <Tab value="APIError">
@@ -1218,6 +1276,7 @@ graph TD
     - 速率限制
     - 网络问题
     - 提供商服务错误
+
   </Tab>
 
   <Tab value="ValidationError">
@@ -1238,6 +1297,7 @@ graph TD
     - 缺少必需字段
     - 无效的字段类型
     - 约束违规
+
   </Tab>
 </Tabs>
 
@@ -1256,8 +1316,8 @@ const bridge = createBridge({
   outbound: anthropicAdapter,
   config: {
     apiKey: process.env.ANTHROPIC_API_KEY,
-    timeout: 30000
-  }
+    timeout: 30000,
+  },
 })
 
 // 检查兼容性
@@ -1273,10 +1333,10 @@ try {
     model: 'gpt-4',
     messages: [
       { role: 'system', content: '你是一个有帮助的助手。' },
-      { role: 'user', content: '用简单的术语解释量子计算。' }
+      { role: 'user', content: '用简单的术语解释量子计算。' },
     ],
     temperature: 0.7,
-    max_tokens: 500
+    max_tokens: 500,
   })
 
   console.log(response.choices[0].message.content)

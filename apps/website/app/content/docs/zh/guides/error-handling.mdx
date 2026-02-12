@@ -15,7 +15,7 @@ import {
   TimeoutError,
   ValidationError,
   AdapterError,
-  BridgeError
+  BridgeError,
 } from '@amux.ai/llm-bridge'
 ```
 
@@ -37,6 +37,7 @@ try {
 ```
 
 **属性：**
+
 - `code` - 错误代码（例如 'API_ERROR'、'NETWORK_ERROR'）
 - `message` - 人类可读的错误消息
 - `retryable` - 操作是否可以重试
@@ -68,6 +69,7 @@ try {
 ```
 
 **属性：**
+
 - `status` - HTTP 状态码（401、429、500 等）
 - `provider` - 提供商名称（'openai'、'anthropic' 等）
 - `data` - 来自提供商的原始错误响应
@@ -94,6 +96,7 @@ try {
 ```
 
 **属性：**
+
 - `cause` - 底层网络错误
 - `retryable` - 始终为 `true`
 
@@ -113,6 +116,7 @@ try {
 ```
 
 **属性：**
+
 - `timeout` - 超时持续时间（毫秒）
 - `retryable` - 始终为 `true`
 
@@ -126,12 +130,13 @@ try {
 } catch (error) {
   if (error instanceof ValidationError) {
     console.error('验证错误:')
-    error.errors.forEach(err => console.error('-', err))
+    error.errors.forEach((err) => console.error('-', err))
   }
 }
 ```
 
 **属性：**
+
 - `errors` - 验证错误消息数组
 - `retryable` - 始终为 `false`
 
@@ -151,6 +156,7 @@ try {
 ```
 
 **属性：**
+
 - `adapterName` - 失败的适配器名称
 - `details` - 错误详情
 - `retryable` - 始终为 `false`
@@ -187,8 +193,8 @@ try {
     inbound: openaiAdapter,
     outbound: anthropicAdapter,
     config: {
-      apiKey: process.env.ANTHROPIC_API_KEY
-    }
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    },
   })
 
   const response = await bridge.chat(request)
@@ -219,10 +225,12 @@ async function chatWithRetry(bridge, request, maxRetries = 3) {
       if (error instanceof APIError && error.status === 429) {
         // 速率受限 - 等待并重试
         const retryAfter = error.response?.headers?.['retry-after']
-        const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, i) * 1000
+        const waitTime = retryAfter
+          ? parseInt(retryAfter) * 1000
+          : Math.pow(2, i) * 1000
 
         console.log(`速率受限。${waitTime}ms 后重试...`)
-        await new Promise(resolve => setTimeout(resolve, waitTime))
+        await new Promise((resolve) => setTimeout(resolve, waitTime))
         continue
       }
 
@@ -259,7 +267,7 @@ async function chatWithNetworkRetry(bridge, request) {
 
         const delay = Math.min(1000 * Math.pow(2, attempt), 10000)
         console.log(`网络错误。重试 ${attempt}/${maxRetries}，${delay}ms 后`)
-        await new Promise(resolve => setTimeout(resolve, delay))
+        await new Promise((resolve) => setTimeout(resolve, delay))
       } else {
         throw error
       }
@@ -278,16 +286,21 @@ import { APIError } from '@amux.ai/llm-bridge'
 try {
   const response = await bridge.chat(request)
 } catch (error) {
-  if (error instanceof APIError && error.data?.error?.code === 'content_filter') {
+  if (
+    error instanceof APIError &&
+    error.data?.error?.code === 'content_filter'
+  ) {
     console.error('内容被提供商政策过滤')
     // 返回安全的默认响应或通知用户
     return {
-      choices: [{
-        message: {
-          role: 'assistant',
-          content: '由于内容政策，我无法回应该请求。'
-        }
-      }]
+      choices: [
+        {
+          message: {
+            role: 'assistant',
+            content: '由于内容政策，我无法回应该请求。',
+          },
+        },
+      ],
     }
   }
 }
@@ -299,9 +312,9 @@ try {
 
 ```typescript
 try {
-  const stream = await bridge.chat({
+  const stream = bridge.chatStreamRaw({
     ...request,
-    stream: true
+    stream: true,
   })
 
   for await (const event of stream) {
@@ -337,7 +350,7 @@ async function simpleRetry(fn, maxRetries = 3) {
 
       if (error instanceof LLMBridgeError && error.retryable) {
         console.log(`重试 ${i + 1}/${maxRetries}`)
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await new Promise((resolve) => setTimeout(resolve, 1000))
         continue
       }
 
@@ -369,7 +382,7 @@ async function exponentialBackoff(fn, maxRetries = 5) {
       if (error instanceof LLMBridgeError && error.retryable) {
         const delay = Math.min(1000 * Math.pow(2, i), 30000) // 最多 30 秒
         console.log(`重试 ${i + 1}/${maxRetries}，${delay}ms 后`)
-        await new Promise(resolve => setTimeout(resolve, delay))
+        await new Promise((resolve) => setTimeout(resolve, delay))
         continue
       }
 
@@ -484,8 +497,8 @@ try {
     details: error.details,
     request: {
       model: request.model,
-      messageCount: request.messages.length
-    }
+      messageCount: request.messages.length,
+    },
   })
 }
 ```
@@ -500,8 +513,8 @@ const bridge = createBridge({
   outbound: anthropicAdapter,
   config: {
     apiKey: process.env.ANTHROPIC_API_KEY,
-    timeout: 30000  // 30 秒
-  }
+    timeout: 30000, // 30 秒
+  },
 })
 ```
 
@@ -547,12 +560,12 @@ try {
   Sentry.captureException(error, {
     tags: {
       provider: error.provider,
-      retryable: error.retryable
+      retryable: error.retryable,
     },
     extra: {
       requestModel: request.model,
-      errorCode: error.code
-    }
+      errorCode: error.code,
+    },
   })
 
   throw error

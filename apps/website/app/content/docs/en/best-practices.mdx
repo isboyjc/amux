@@ -6,7 +6,8 @@ description: Production-ready patterns and recommendations for using Amux
 ## API Key Management
 
 <Callout type="warn">
-Never hardcode API keys in your source code. Always use environment variables or secret management services.
+  Never hardcode API keys in your source code. Always use environment variables
+  or secret management services.
 </Callout>
 
 ### Use Environment Variables
@@ -17,8 +18,8 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
   config: {
-    apiKey: process.env.ANTHROPIC_API_KEY
-  }
+    apiKey: process.env.ANTHROPIC_API_KEY,
+  },
 })
 
 // ❌ Bad
@@ -26,8 +27,8 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
   config: {
-    apiKey: 'sk-ant-1234567890'  // Never do this!
-  }
+    apiKey: 'sk-ant-1234567890', // Never do this!
+  },
 })
 ```
 
@@ -43,7 +44,10 @@ For production deployments, use dedicated secret management:
 
 ```typescript
 // Example with AWS Secrets Manager
-import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager'
+import {
+  SecretsManagerClient,
+  GetSecretValueCommand,
+} from '@aws-sdk/client-secrets-manager'
 
 const client = new SecretsManagerClient({ region: 'us-east-1' })
 const response = await client.send(
@@ -54,7 +58,7 @@ const apiKey = response.SecretString
 const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
-  config: { apiKey }
+  config: { apiKey },
 })
 ```
 
@@ -68,7 +72,7 @@ import { LLMBridgeError } from '@amux.ai/llm-bridge'
 try {
   const response = await bridge.chat({
     model: 'gpt-4',
-    messages: [{ role: 'user', content: 'Hello' }]
+    messages: [{ role: 'user', content: 'Hello' }],
   })
 } catch (error) {
   if (error instanceof LLMBridgeError) {
@@ -100,7 +104,7 @@ async function chatWithRetry(bridge, request, maxRetries = 3) {
       if (error instanceof LLMBridgeError && error.retryable) {
         // Exponential backoff
         const delay = Math.min(1000 * Math.pow(2, i), 10000)
-        await new Promise(resolve => setTimeout(resolve, delay))
+        await new Promise((resolve) => setTimeout(resolve, delay))
         continue
       }
 
@@ -147,10 +151,10 @@ Streaming reduces perceived latency:
 
 ```typescript
 // For long-form content, always use streaming
-const stream = await bridge.chat({
+const stream = bridge.chatStreamRaw({
   model: 'gpt-4',
   messages: [{ role: 'user', content: 'Write a long essay' }],
-  stream: true  // Much better UX
+  stream: true, // Much better UX
 })
 ```
 
@@ -162,8 +166,8 @@ const bridge = createBridge({
   outbound: anthropicAdapter,
   config: {
     apiKey: process.env.ANTHROPIC_API_KEY,
-    timeout: 30000  // 30 seconds (adjust based on use case)
-  }
+    timeout: 30000, // 30 seconds (adjust based on use case)
+  },
 })
 ```
 
@@ -211,7 +215,7 @@ import { createBridge } from '@amux.ai/llm-bridge'
 const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
-  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
 })
 
 async function chat(request) {
@@ -221,7 +225,7 @@ async function chat(request) {
     console.log('Chat request:', {
       model: request.model,
       messageCount: request.messages.length,
-      stream: request.stream
+      stream: request.stream,
     })
 
     const response = await bridge.chat(request)
@@ -229,7 +233,7 @@ async function chat(request) {
     const duration = Date.now() - startTime
     console.log('Chat success:', {
       duration,
-      tokens: response.usage?.totalTokens
+      tokens: response.usage?.totalTokens,
     })
 
     return response
@@ -238,7 +242,7 @@ async function chat(request) {
     console.error('Chat failed:', {
       duration,
       error: error.message,
-      type: error.type
+      type: error.type,
     })
     throw error
   }
@@ -260,7 +264,9 @@ async function chatWithTracking(bridge, request) {
 
   if (response.usage) {
     totalTokens += response.usage.totalTokens
-    console.log(`Total tokens used: ${totalTokens} across ${totalRequests} requests`)
+    console.log(
+      `Total tokens used: ${totalTokens} across ${totalRequests} requests`
+    )
   }
 
   return response
@@ -282,10 +288,12 @@ function sanitizeMessage(content: string): string {
 
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [{
-    role: 'user',
-    content: sanitizeMessage(userInput)
-  }]
+  messages: [
+    {
+      role: 'user',
+      content: sanitizeMessage(userInput),
+    },
+  ],
 })
 ```
 
@@ -297,9 +305,9 @@ Implement rate limiting to prevent abuse:
 import rateLimit from 'express-rate-limit'
 
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,  // 15 minutes
-  max: 100,  // Limit each IP to 100 requests per window
-  message: 'Too many requests, please try again later'
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per window
+  message: 'Too many requests, please try again later',
 })
 
 app.use('/api/chat', limiter)
@@ -317,32 +325,34 @@ const mockAdapter = {
   capabilities: {
     streaming: true,
     tools: true,
-    vision: false
+    vision: false,
   },
   inbound: {
     parseRequest: (req) => req,
-    parseResponse: (res) => res
+    parseResponse: (res) => res,
   },
   outbound: {
     buildRequest: (ir) => ir,
     buildResponse: (ir) => ({
-      choices: [{
-        message: { role: 'assistant', content: 'Mock response' }
-      }]
-    })
+      choices: [
+        {
+          message: { role: 'assistant', content: 'Mock response' },
+        },
+      ],
+    }),
   },
   getInfo: () => ({
     name: 'mock',
     version: '1.0.0',
     capabilities: mockAdapter.capabilities,
-    endpoint: { baseURL: 'http://mock', chatPath: '/chat' }
-  })
+    endpoint: { baseURL: 'http://mock', chatPath: '/chat' },
+  }),
 }
 
 // Use in tests
 const bridge = createBridge({
   inbound: mockAdapter,
-  outbound: mockAdapter
+  outbound: mockAdapter,
 })
 ```
 

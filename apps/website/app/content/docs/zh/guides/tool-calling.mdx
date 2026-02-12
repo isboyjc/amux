@@ -13,7 +13,8 @@ description: 使用函数调用跨提供商扩展模型能力
 - 与外部系统交互
 
 <Callout type="info">
-Amux 统一了所有提供商的工具调用格式，允许你使用相同的代码调用 OpenAI、Anthropic、DeepSeek 等不同提供商。
+  Amux 统一了所有提供商的工具调用格式，允许你使用相同的代码调用
+  OpenAI、Anthropic、DeepSeek 等不同提供商。
 </Callout>
 
 ## 定义工具
@@ -28,7 +29,7 @@ import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
-  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
 })
 
 const tools = [
@@ -42,26 +43,24 @@ const tools = [
         properties: {
           location: {
             type: 'string',
-            description: '城市名称，例如：北京'
+            description: '城市名称，例如：北京',
           },
           unit: {
             type: 'string',
             enum: ['celsius', 'fahrenheit'],
-            description: '温度单位'
-          }
+            description: '温度单位',
+          },
         },
-        required: ['location']
-      }
-    }
-  }
+        required: ['location'],
+      },
+    },
+  },
 ]
 
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [
-    { role: 'user', content: '东京现在的天气怎么样？' }
-  ],
-  tools
+  messages: [{ role: 'user', content: '东京现在的天气怎么样？' }],
+  tools,
 })
 ```
 
@@ -78,7 +77,7 @@ const response = await bridge.chat({
   model: 'gpt-4',
   messages: [{ role: 'user', content: '你好！' }],
   tools,
-  tool_choice: 'auto'  // 模型自行决定
+  tool_choice: 'auto', // 模型自行决定
 })
 ```
 
@@ -91,7 +90,7 @@ const response = await bridge.chat({
   model: 'gpt-4',
   messages: [{ role: 'user', content: '天气怎么样？' }],
   tools,
-  tool_choice: 'none'  // 不允许使用工具
+  tool_choice: 'none', // 不允许使用工具
 })
 ```
 
@@ -104,7 +103,7 @@ const response = await bridge.chat({
   model: 'gpt-4',
   messages: [{ role: 'user', content: '获取天气数据' }],
   tools,
-  tool_choice: 'required'  // 必须使用工具
+  tool_choice: 'required', // 必须使用工具
 })
 ```
 
@@ -119,8 +118,8 @@ const response = await bridge.chat({
   tools,
   tool_choice: {
     type: 'function',
-    function: { name: 'get_weather' }
-  }
+    function: { name: 'get_weather' },
+  },
 })
 ```
 
@@ -131,10 +130,8 @@ const response = await bridge.chat({
 ```typescript
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [
-    { role: 'user', content: '巴黎和伦敦的天气怎么样？' }
-  ],
-  tools
+  messages: [{ role: 'user', content: '巴黎和伦敦的天气怎么样？' }],
+  tools,
 })
 
 // 检查模型是否想要调用工具
@@ -159,14 +156,14 @@ if (response.choices[0].message.tool_calls) {
       model: 'gpt-4',
       messages: [
         { role: 'user', content: '巴黎和伦敦的天气怎么样？' },
-        response.choices[0].message,  // 助手的工具调用
+        response.choices[0].message, // 助手的工具调用
         {
           role: 'tool',
           tool_call_id: toolCall.id,
-          content: JSON.stringify(result)
-        }
+          content: JSON.stringify(result),
+        },
       ],
-      tools
+      tools,
     })
 
     console.log(finalResponse.choices[0].message.content)
@@ -193,11 +190,11 @@ const tools = [
       parameters: {
         type: 'object',
         properties: {
-          location: { type: 'string' }
+          location: { type: 'string' },
         },
-        required: ['location']
-      }
-    }
+        required: ['location'],
+      },
+    },
   },
   {
     type: 'function',
@@ -207,12 +204,12 @@ const tools = [
       parameters: {
         type: 'object',
         properties: {
-          expression: { type: 'string', description: '数学表达式' }
+          expression: { type: 'string', description: '数学表达式' },
         },
-        required: ['expression']
-      }
-    }
-  }
+        required: ['expression'],
+      },
+    },
+  },
 ]
 
 // 实现工具函数
@@ -230,7 +227,7 @@ function calculate(expression: string) {
 const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
-  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
 })
 
 // 使用工具聊天
@@ -241,7 +238,7 @@ async function chatWithTools(userMessage: string) {
     const response = await bridge.chat({
       model: 'gpt-4',
       messages,
-      tools
+      tools,
     })
 
     const message = response.choices[0].message
@@ -269,7 +266,7 @@ async function chatWithTools(userMessage: string) {
       messages.push({
         role: 'tool',
         tool_call_id: toolCall.id,
-        content: JSON.stringify(result)
+        content: JSON.stringify(result),
       })
     }
   }
@@ -285,11 +282,11 @@ console.log(answer)
 在流式响应中处理工具调用：
 
 ```typescript
-const stream = await bridge.chat({
+const stream = bridge.chatStreamRaw({
   model: 'gpt-4',
   messages: [{ role: 'user', content: '获取纽约的天气' }],
   tools,
-  stream: true
+  stream: true,
 })
 
 let toolCalls = []
@@ -302,7 +299,7 @@ for await (const event of stream) {
       toolCalls[index] = {
         id: event.toolCall.id,
         type: 'function',
-        function: { name: '', arguments: '' }
+        function: { name: '', arguments: '' },
       }
     }
 
@@ -327,18 +324,18 @@ for await (const event of stream) {
 
 各提供商的工具调用支持：
 
-| 提供商 | 工具调用 | 工具选择 | 并行工具 | 流式工具 |
-|----------|-------------|-------------|----------------|-----------------|
-| OpenAI | ✅ | ✅ | ✅ | ✅ |
-| Anthropic | ✅ | ✅ | ✅ | ✅ |
-| DeepSeek | ✅ | ✅ | ✅ | ✅ |
-| Moonshot | ✅ | ✅ | ✅ | ✅ |
-| Zhipu | ✅ | ✅ | ✅ | ✅ |
-| Qwen | ✅ | ✅ | ✅ | ✅ |
-| Gemini | ✅ | ⚠️ | ✅ | ✅ |
+| 提供商    | 工具调用 | 工具选择 | 并行工具 | 流式工具 |
+| --------- | -------- | -------- | -------- | -------- |
+| OpenAI    | ✅       | ✅       | ✅       | ✅       |
+| Anthropic | ✅       | ✅       | ✅       | ✅       |
+| DeepSeek  | ✅       | ✅       | ✅       | ✅       |
+| Moonshot  | ✅       | ✅       | ✅       | ✅       |
+| Zhipu     | ✅       | ✅       | ✅       | ✅       |
+| Qwen      | ✅       | ✅       | ✅       | ✅       |
+| Gemini    | ✅       | ⚠️       | ✅       | ✅       |
 
 <Callout type="warn">
-某些提供商可能对工具选择选项的支持有限。使用高级功能前请检查适配器功能。
+  某些提供商可能对工具选择选项的支持有限。使用高级功能前请检查适配器功能。
 </Callout>
 
 ## 最佳实践
@@ -390,15 +387,15 @@ try {
   messages.push({
     role: 'tool',
     tool_call_id: toolCall.id,
-    content: JSON.stringify(result)
+    content: JSON.stringify(result),
   })
 } catch (error) {
   messages.push({
     role: 'tool',
     tool_call_id: toolCall.id,
     content: JSON.stringify({
-      error: error.message
-    })
+      error: error.message,
+    }),
   })
 }
 ```

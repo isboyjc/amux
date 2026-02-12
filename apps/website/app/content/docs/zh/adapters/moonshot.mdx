@@ -25,16 +25,19 @@ const bridge = createBridge({
   inbound: moonshotAdapter,
   outbound: moonshotAdapter,
   config: {
-    apiKey: process.env.MOONSHOT_API_KEY
-  }
+    apiKey: process.env.MOONSHOT_API_KEY,
+  },
 })
 
 const response = await bridge.chat({
   model: 'moonshot-v1-8k',
   messages: [
-    { role: 'system', content: '你是 Kimi，由月之暗面科技提供的人工智能助手。' },
-    { role: 'user', content: '什么是 Amux？' }
-  ]
+    {
+      role: 'system',
+      content: '你是 Kimi，由月之暗面科技提供的人工智能助手。',
+    },
+    { role: 'user', content: '什么是 Amux？' },
+  ],
 })
 
 console.log(response.choices[0].message.content)
@@ -42,14 +45,14 @@ console.log(response.choices[0].message.content)
 
 ## 支持的模型
 
-| 模型 | 上下文长度 | 描述 |
-|------|-----------|------|
-| `moonshot-v1-8k` | 8K | 标准上下文模型 |
-| `kimi-k2-0905-preview` | - | Kimi K2 预览版 |
-| `kimi-k2-thinking` | - | Kimi K2 思考模型 |
+| 模型                   | 上下文长度 | 描述             |
+| ---------------------- | ---------- | ---------------- |
+| `moonshot-v1-8k`       | 8K         | 标准上下文模型   |
+| `kimi-k2-0905-preview` | -          | Kimi K2 预览版   |
+| `kimi-k2-thinking`     | -          | Kimi K2 思考模型 |
 
 <Callout type="info">
-Moonshot 的最大特点是支持超长上下文，适合处理长文档、长对话等场景。
+  Moonshot 的最大特点是支持超长上下文，适合处理长文档、长对话等场景。
 </Callout>
 
 ## 主要功能
@@ -77,6 +80,7 @@ Moonshot 的最大特点是支持超长上下文，适合处理长文档、长�
     - 多轮长对话
     - 代码库分析
     - 学术论文阅读
+
   </Tab>
 
   <Tab value="函数调用">
@@ -104,13 +108,14 @@ Moonshot 的最大特点是支持超长上下文，适合处理长文档、长�
       }]
     })
     ```
+
   </Tab>
 
   <Tab value="流式传输">
     ### 流式传输
 
     ```typescript
-    const stream = bridge.chatStream({
+    const stream = bridge.chatStreamRaw({
       model: 'moonshot-v1-8k',
       messages: [
         { role: 'user', content: '讲一个故事' }
@@ -118,12 +123,13 @@ Moonshot 的最大特点是支持超长上下文，适合处理长文档、长�
       stream: true
     })
 
-    for await (const chunk of stream) {
-      if (chunk.choices[0]?.delta?.content) {
-        process.stdout.write(chunk.choices[0].delta.content)
+    for await (const event of stream) {
+      if (event.type === 'content') {
+        process.stdout.write(event.content.delta)
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -136,22 +142,26 @@ const bridge = createBridge({
   config: {
     apiKey: process.env.MOONSHOT_API_KEY,
     baseURL: 'https://api.moonshot.cn', // 默认值
-    timeout: 60000
-  }
+    timeout: 60000,
+  },
 })
 ```
 
 ## 功能支持
 
-| 功能 | 支持 | 说明 |
-|------|------|------|
-| 聊天补全 | ✅ | 完全支持 |
-| 流式传输 | ✅ | 完全支持 |
-| 函数调用 | ✅ | 完全支持 |
-| 长上下文 | ✅ | 支持超长上下文 |
-| 视觉 | ❌ | 不支持 |
-| 系统提示 | ✅ | 完全支持 |
-| JSON 模式 | ✅ | 结构化输出 |
+| 功能      | 支持 | 说明           |
+| --------- | ---- | -------------- |
+| 聊天补全  | ✅   | 完全支持       |
+| 流式传输  | ✅   | 完全支持       |
+| 函数调用  | ✅   | 完全支持       |
+| 长上下文  | ✅   | 支持超长上下文 |
+| 视觉      | ❌   | 不支持         |
+| 系统提示  | ✅   | 完全支持       |
+| JSON 模式 | ✅   | 结构化输出     |
+
+<Callout type="warn">
+  当前 Moonshot 出站请求构建器不会透传 `tool_choice = 'required'`。
+</Callout>
 
 ## 最佳实践
 
@@ -161,15 +171,13 @@ const bridge = createBridge({
 // 短对话使用 8K 模型（更快更便宜）
 const shortChat = await bridge.chat({
   model: 'moonshot-v1-8k',
-  messages: [{ role: 'user', content: '你好' }]
+  messages: [{ role: 'user', content: '你好' }],
 })
 
 // 复杂推理使用 thinking 模型
 const complexTask = await bridge.chat({
   model: 'kimi-k2-thinking',
-  messages: [
-    { role: 'user', content: '请分析这个复杂问题...' }
-  ]
+  messages: [{ role: 'user', content: '请分析这个复杂问题...' }],
 })
 ```
 
@@ -181,14 +189,14 @@ const response = await bridge.chat({
   messages: [
     {
       role: 'system',
-      content: '你是一个专业的文档分析助手。提供简洁、结构化的总结。'
+      content: '你是一个专业的文档分析助手。提供简洁、结构化的总结。',
     },
     {
       role: 'user',
-      content: `请总结以下文档的要点：\n\n${document}`
-    }
+      content: `请总结以下文档的要点：\n\n${document}`,
+    },
   ],
-  temperature: 0.3 // 降低温度以获得更准确的总结
+  temperature: 0.3, // 降低温度以获得更准确的总结
 })
 ```
 
@@ -200,12 +208,12 @@ const messages = [
   { role: 'user', content: '第一个问题' },
   { role: 'assistant', content: '第一个回答' },
   // ... 可以有很多轮
-  { role: 'user', content: '最新的问题' }
+  { role: 'user', content: '最新的问题' },
 ]
 
 const response = await bridge.chat({
   model: 'moonshot-v1-8k',
-  messages
+  messages,
 })
 ```
 
@@ -221,14 +229,14 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: moonshotAdapter,
   config: {
-    apiKey: process.env.MOONSHOT_API_KEY
-  }
+    apiKey: process.env.MOONSHOT_API_KEY,
+  },
 })
 
 // 使用 OpenAI 格式发送请求
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [{ role: 'user', content: '你好' }]
+  messages: [{ role: 'user', content: '你好' }],
 })
 ```
 

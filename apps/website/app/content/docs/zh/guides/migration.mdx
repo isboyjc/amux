@@ -14,7 +14,7 @@ Amux 相比使用特定提供商的 SDK 具有以下几个优势：
 - **类型安全** - 所有适配器的完整 TypeScript 支持
 
 <Callout type="info">
-迁移到 Amux 非常简单。大多数代码更改都是机械替换。
+  迁移到 Amux 非常简单。大多数代码更改都是机械替换。
 </Callout>
 
 ## 从 OpenAI SDK 迁移
@@ -25,17 +25,17 @@ Amux 相比使用特定提供商的 SDK 具有以下几个优势：
 import OpenAI from 'openai'
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  apiKey: process.env.OPENAI_API_KEY,
 })
 
 const response = await openai.chat.completions.create({
   model: 'gpt-4',
   messages: [
     { role: 'system', content: '你是一个有帮助的助手。' },
-    { role: 'user', content: '你好！' }
+    { role: 'user', content: '你好！' },
   ],
   temperature: 0.7,
-  max_tokens: 100
+  max_tokens: 100,
 })
 
 console.log(response.choices[0].message.content)
@@ -51,24 +51,25 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: openaiAdapter,
   config: {
-    apiKey: process.env.OPENAI_API_KEY
-  }
+    apiKey: process.env.OPENAI_API_KEY,
+  },
 })
 
 const response = await bridge.chat({
   model: 'gpt-4',
   messages: [
     { role: 'system', content: '你是一个有帮助的助手。' },
-    { role: 'user', content: '你好！' }
+    { role: 'user', content: '你好！' },
   ],
   temperature: 0.7,
-  max_tokens: 100
+  max_tokens: 100,
 })
 
 console.log(response.choices[0].message.content)
 ```
 
 **关键变化：**
+
 1. 用 Amux 导入替换 `import OpenAI`
 2. 用 `createBridge()` 替换 `new OpenAI()`
 3. 用 `bridge.chat()` 替换 `openai.chat.completions.create()`
@@ -82,7 +83,7 @@ console.log(response.choices[0].message.content)
 const stream = await openai.chat.completions.create({
   model: 'gpt-4',
   messages: [{ role: 'user', content: '给我讲个故事' }],
-  stream: true
+  stream: true,
 })
 
 for await (const chunk of stream) {
@@ -96,10 +97,10 @@ for await (const chunk of stream) {
 之后（Amux）：
 
 ```typescript
-const stream = await bridge.chat({
+const stream = bridge.chatStreamRaw({
   model: 'gpt-4',
   messages: [{ role: 'user', content: '给我讲个故事' }],
-  stream: true
+  stream: true,
 })
 
 for await (const event of stream) {
@@ -110,7 +111,8 @@ for await (const event of stream) {
 ```
 
 **关键变化：**
-- 使用 `bridge.chat()` 并设置 `stream: true`
+
+- 使用 `bridge.chatStreamRaw()` 获取流式 IR 事件
 - 事件通过 `type` 字段规范化
 - 内容在 `event.content.delta` 中
 
@@ -131,12 +133,12 @@ const response = await openai.chat.completions.create({
         parameters: {
           type: 'object',
           properties: {
-            location: { type: 'string' }
-          }
-        }
-      }
-    }
-  ]
+            location: { type: 'string' },
+          },
+        },
+      },
+    },
+  ],
 })
 
 if (response.choices[0].message.tool_calls) {
@@ -159,12 +161,12 @@ const response = await bridge.chat({
         parameters: {
           type: 'object',
           properties: {
-            location: { type: 'string' }
-          }
-        }
-      }
-    }
-  ]
+            location: { type: 'string' },
+          },
+        },
+      },
+    },
+  ],
 })
 
 if (response.choices[0].message.tool_calls) {
@@ -182,15 +184,13 @@ if (response.choices[0].message.tool_calls) {
 import Anthropic from '@anthropic-ai/sdk'
 
 const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY
+  apiKey: process.env.ANTHROPIC_API_KEY,
 })
 
 const response = await anthropic.messages.create({
   model: 'claude-3-5-sonnet-20241022',
   max_tokens: 1024,
-  messages: [
-    { role: 'user', content: '你好！' }
-  ]
+  messages: [{ role: 'user', content: '你好！' }],
 })
 
 console.log(response.content[0].text)
@@ -206,22 +206,21 @@ const bridge = createBridge({
   inbound: anthropicAdapter,
   outbound: anthropicAdapter,
   config: {
-    apiKey: process.env.ANTHROPIC_API_KEY
-  }
+    apiKey: process.env.ANTHROPIC_API_KEY,
+  },
 })
 
 const response = await bridge.chat({
   model: 'claude-3-5-sonnet-20241022',
   max_tokens: 1024,
-  messages: [
-    { role: 'user', content: '你好！' }
-  ]
+  messages: [{ role: 'user', content: '你好！' }],
 })
 
 console.log(response.content[0].text)
 ```
 
 **关键变化：**
+
 1. 用 Amux 导入替换 `import Anthropic`
 2. 用 `createBridge()` 替换 `new Anthropic()`
 3. 用 `bridge.chat()` 替换 `anthropic.messages.create()`
@@ -236,7 +235,7 @@ const stream = await anthropic.messages.create({
   model: 'claude-3-5-sonnet-20241022',
   max_tokens: 1024,
   messages: [{ role: 'user', content: '给我讲个故事' }],
-  stream: true
+  stream: true,
 })
 
 for await (const event of stream) {
@@ -249,11 +248,11 @@ for await (const event of stream) {
 之后（Amux）：
 
 ```typescript
-const stream = await bridge.chat({
+const stream = bridge.chatStreamRaw({
   model: 'claude-3-5-sonnet-20241022',
   max_tokens: 1024,
   messages: [{ role: 'user', content: '给我讲个故事' }],
-  stream: true
+  stream: true,
 })
 
 for await (const event of stream) {
@@ -264,6 +263,7 @@ for await (const event of stream) {
 ```
 
 **关键变化：**
+
 - 事件规范化为 `type: 'content'`
 - 文本在 `event.content.delta` 中（而不是 `event.delta.text`）
 
@@ -283,11 +283,11 @@ const response = await anthropic.messages.create({
       input_schema: {
         type: 'object',
         properties: {
-          location: { type: 'string' }
-        }
-      }
-    }
-  ]
+          location: { type: 'string' },
+        },
+      },
+    },
+  ],
 })
 ```
 
@@ -307,16 +307,17 @@ const response = await bridge.chat({
         parameters: {
           type: 'object',
           properties: {
-            location: { type: 'string' }
-          }
-        }
-      }
-    }
-  ]
+            location: { type: 'string' },
+          },
+        },
+      },
+    },
+  ],
 })
 ```
 
 **关键变化：**
+
 - 工具使用 OpenAI 风格格式（可由适配器规范化）
 - `input_schema` 变为 `parameters`
 - 包装在 `function` 对象中
@@ -334,7 +335,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 const response = await openai.chat.completions.create({
   model: 'gpt-4',
-  messages: [{ role: 'user', content: '你好！' }]
+  messages: [{ role: 'user', content: '你好！' }],
 })
 
 // 之后：相同代码，不同提供商
@@ -347,14 +348,14 @@ const bridge = createBridge({
   outbound: anthropicAdapter,
   config: { apiKey: process.env.ANTHROPIC_API_KEY },
   modelMapping: {
-    'gpt-4': 'claude-3-5-sonnet-20241022'
-  }
+    'gpt-4': 'claude-3-5-sonnet-20241022',
+  },
 })
 
 // 相同的请求格式！
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [{ role: 'user', content: '你好！' }]
+  messages: [{ role: 'user', content: '你好！' }],
 })
 ```
 
@@ -370,15 +371,15 @@ const bridge = createBridge({
   outbound: deepseekAdapter,
   config: { apiKey: process.env.DEEPSEEK_API_KEY },
   modelMapping: {
-    'claude-3-5-sonnet-20241022': 'deepseek-chat'
-  }
+    'claude-3-5-sonnet-20241022': 'deepseek-chat',
+  },
 })
 
 // 使用 Anthropic 格式，调用 DeepSeek
 const response = await bridge.chat({
   model: 'claude-3-5-sonnet-20241022',
   max_tokens: 1024,
-  messages: [{ role: 'user', content: '你好！' }]
+  messages: [{ role: 'user', content: '你好！' }],
 })
 ```
 
@@ -400,7 +401,7 @@ import { openaiAdapter } from '@amux.ai/adapter-openai'
 const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: openaiAdapter,
-  config: { apiKey: process.env.OPENAI_API_KEY }
+  config: { apiKey: process.env.OPENAI_API_KEY },
 })
 
 // 步骤 3：逐个迁移路由
@@ -439,7 +440,7 @@ async function chat(request) {
 async function chatWithComparison(request) {
   const [openaiResponse, claudeResponse] = await Promise.all([
     bridgeOpenAI.chat(request),
-    bridgeClaude.chat(request)
+    bridgeClaude.chat(request),
   ])
 
   // 记录以进行比较
@@ -456,14 +457,16 @@ async function chatWithComparison(request) {
 ### 系统消息
 
 **OpenAI SDK：**
+
 ```typescript
 messages: [
   { role: 'system', content: '你很有帮助。' },
-  { role: 'user', content: '你好！' }
+  { role: 'user', content: '你好！' },
 ]
 ```
 
 **Anthropic SDK：**
+
 ```typescript
 system: '你很有帮助。',
 messages: [
@@ -478,26 +481,28 @@ messages: [
 const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
-  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
 })
 
 await bridge.chat({
   model: 'gpt-4',
   messages: [
-    { role: 'system', content: '你很有帮助。' },  // 自动转换
-    { role: 'user', content: '你好！' }
-  ]
+    { role: 'system', content: '你很有帮助。' }, // 自动转换
+    { role: 'user', content: '你好！' },
+  ],
 })
 ```
 
 ### 响应格式
 
 **OpenAI SDK：**
+
 ```typescript
 response.choices[0].message.content
 ```
 
 **Anthropic SDK：**
+
 ```typescript
 response.content[0].text
 ```
@@ -574,7 +579,7 @@ describe('迁移测试', () => {
   it('应返回相同格式', async () => {
     const request = {
       model: 'gpt-4',
-      messages: [{ role: 'user', content: '你好！' }]
+      messages: [{ role: 'user', content: '你好！' }],
     }
 
     const response = await bridge.chat(request)
@@ -596,13 +601,13 @@ import type { LLMBridge } from '@amux.ai/llm-bridge'
 const bridge: LLMBridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
-  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
 })
 
 // TypeScript 确保正确使用
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [{ role: 'user', content: '你好！' }]
+  messages: [{ role: 'user', content: '你好！' }],
 })
 ```
 

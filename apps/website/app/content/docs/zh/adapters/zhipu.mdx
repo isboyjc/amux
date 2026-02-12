@@ -25,16 +25,16 @@ const bridge = createBridge({
   inbound: zhipuAdapter,
   outbound: zhipuAdapter,
   config: {
-    apiKey: process.env.ZHIPU_API_KEY
-  }
+    apiKey: process.env.ZHIPU_API_KEY,
+  },
 })
 
 const response = await bridge.chat({
   model: 'glm-4.7',
   messages: [
     { role: 'system', content: '你是一个智能助手。' },
-    { role: 'user', content: '什么是 Amux？' }
-  ]
+    { role: 'user', content: '什么是 Amux？' },
+  ],
 })
 
 console.log(response.choices[0].message.content)
@@ -44,15 +44,15 @@ console.log(response.choices[0].message.content)
 
 智谱 AI 提供多种 GLM 模型：
 
-| 模型 | 描述 |
-|------|------|
+| 模型    | 描述                       |
+| ------- | -------------------------- |
 | glm-4.7 | 最新一代旗舰模型，性能最强 |
 | glm-4.6 | 高性能模型，平衡性能与成本 |
 | glm-4.5 | 高性价比模型，适合日常任务 |
-| glm-4v | 支持视觉理解的多模态模型 |
+| glm-4v  | 支持视觉理解的多模态模型   |
 
 <Callout type="info">
-智谱 AI 的模型持续更新，请参考官方文档获取最新的模型列表。
+  智谱 AI 的模型持续更新，请参考官方文档获取最新的模型列表。
 </Callout>
 
 ## 主要功能
@@ -71,6 +71,7 @@ console.log(response.choices[0].message.content)
       max_tokens: 1000
     })
     ```
+
   </Tab>
 
   <Tab value="函数调用">
@@ -98,13 +99,14 @@ console.log(response.choices[0].message.content)
       }]
     })
     ```
+
   </Tab>
 
   <Tab value="流式传输">
     ### 流式传输
 
     ```typescript
-    const stream = bridge.chatStream({
+    const stream = bridge.chatStreamRaw({
       model: 'glm-4.7',
       messages: [
         { role: 'user', content: '讲一个故事' }
@@ -112,12 +114,13 @@ console.log(response.choices[0].message.content)
       stream: true
     })
 
-    for await (const chunk of stream) {
-      if (chunk.choices[0]?.delta?.content) {
-        process.stdout.write(chunk.choices[0].delta.content)
+    for await (const event of stream) {
+      if (event.type === 'content') {
+        process.stdout.write(event.content.delta)
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -130,22 +133,29 @@ const bridge = createBridge({
   config: {
     apiKey: process.env.ZHIPU_API_KEY,
     baseURL: 'https://open.bigmodel.cn/api/paas', // 默认值
-    timeout: 60000
-  }
+    timeout: 60000,
+  },
 })
 ```
 
 ## 功能支持
 
-| 功能 | 支持 | 说明 |
-|------|------|------|
-| 聊天补全 | ✅ | 完全支持 |
-| 流式传输 | ✅ | 完全支持 |
-| 函数调用 | ✅ | 完全支持 |
-| 视觉 | ✅ | glm-4v 支持 |
-| 系统提示 | ✅ | 完全支持 |
-| JSON 模式 | ✅ | 完全支持 |
-| 网络搜索 | ✅ | 支持 |
+| 功能      | 支持 | 说明                                           |
+| --------- | ---- | ---------------------------------------------- |
+| 聊天补全  | ✅   | 完全支持                                       |
+| 流式传输  | ✅   | 完全支持                                       |
+| 函数调用  | ✅   | 完全支持                                       |
+| 视觉      | ⚠️   | 已声明能力；当前出站适配器路径主要拼接文本分片 |
+| 系统提示  | ✅   | 完全支持                                       |
+| JSON 模式 | ✅   | 完全支持                                       |
+| 网络搜索  | ⚠️   | 已声明能力；当前适配器暂无专用请求字段映射     |
+
+<Callout type="warn">
+  当前适配器边界说明：
+
+- 构建 Zhipu 出站请求时会过滤 `tool_choice = 'required'`。
+- 出站消息构建器目前会将多模态分片压平为文本。
+  </Callout>
 
 ## 最佳实践
 
@@ -155,15 +165,13 @@ const bridge = createBridge({
 // 日常任务使用性价比模型
 const quickResponse = await bridge.chat({
   model: 'glm-4.5',
-  messages: [{ role: 'user', content: '你好' }]
+  messages: [{ role: 'user', content: '你好' }],
 })
 
 // 复杂任务使用旗舰模型
 const complexTask = await bridge.chat({
   model: 'glm-4.7',
-  messages: [
-    { role: 'user', content: '请分析这段代码的性能问题...' }
-  ]
+  messages: [{ role: 'user', content: '请分析这段代码的性能问题...' }],
 })
 ```
 
@@ -175,13 +183,13 @@ const response = await bridge.chat({
   messages: [
     {
       role: 'system',
-      content: '你是一个专业的技术文档撰写助手。请用简洁、专业的语言回答问题。'
+      content: '你是一个专业的技术文档撰写助手。请用简洁、专业的语言回答问题。',
     },
     {
       role: 'user',
-      content: '什么是 RESTful API？'
-    }
-  ]
+      content: '什么是 RESTful API？',
+    },
+  ],
 })
 ```
 
@@ -191,12 +199,12 @@ const response = await bridge.chat({
 const messages = [
   { role: 'user', content: '第一个问题' },
   { role: 'assistant', content: '第一个回答' },
-  { role: 'user', content: '继续追问' }
+  { role: 'user', content: '继续追问' },
 ]
 
 const response = await bridge.chat({
   model: 'glm-4.7',
-  messages
+  messages,
 })
 ```
 
@@ -212,14 +220,14 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: zhipuAdapter,
   config: {
-    apiKey: process.env.ZHIPU_API_KEY
-  }
+    apiKey: process.env.ZHIPU_API_KEY,
+  },
 })
 
 // 使用 OpenAI 格式发送请求
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [{ role: 'user', content: '你好' }]
+  messages: [{ role: 'user', content: '你好' }],
 })
 ```
 

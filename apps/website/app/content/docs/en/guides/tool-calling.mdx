@@ -13,7 +13,8 @@ Tool calling (also known as function calling) allows LLM models to invoke extern
 - Interact with external systems
 
 <Callout type="info">
-Amux normalizes tool calling formats across all providers, allowing you to use the same code with OpenAI, Anthropic, DeepSeek, and others.
+  Amux normalizes tool calling formats across all providers, allowing you to use
+  the same code with OpenAI, Anthropic, DeepSeek, and others.
 </Callout>
 
 ## Defining Tools
@@ -28,7 +29,7 @@ import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
-  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
 })
 
 const tools = [
@@ -42,26 +43,24 @@ const tools = [
         properties: {
           location: {
             type: 'string',
-            description: 'City name, e.g. San Francisco'
+            description: 'City name, e.g. San Francisco',
           },
           unit: {
             type: 'string',
             enum: ['celsius', 'fahrenheit'],
-            description: 'Temperature unit'
-          }
+            description: 'Temperature unit',
+          },
         },
-        required: ['location']
-      }
-    }
-  }
+        required: ['location'],
+      },
+    },
+  },
 ]
 
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [
-    { role: 'user', content: 'What is the weather in Tokyo?' }
-  ],
-  tools
+  messages: [{ role: 'user', content: 'What is the weather in Tokyo?' }],
+  tools,
 })
 ```
 
@@ -78,7 +77,7 @@ const response = await bridge.chat({
   model: 'gpt-4',
   messages: [{ role: 'user', content: 'Hello!' }],
   tools,
-  tool_choice: 'auto'  // Model decides
+  tool_choice: 'auto', // Model decides
 })
 ```
 
@@ -91,7 +90,7 @@ const response = await bridge.chat({
   model: 'gpt-4',
   messages: [{ role: 'user', content: 'What is the weather?' }],
   tools,
-  tool_choice: 'none'  // No tools allowed
+  tool_choice: 'none', // No tools allowed
 })
 ```
 
@@ -104,7 +103,7 @@ const response = await bridge.chat({
   model: 'gpt-4',
   messages: [{ role: 'user', content: 'Get weather data' }],
   tools,
-  tool_choice: 'required'  // Must use a tool
+  tool_choice: 'required', // Must use a tool
 })
 ```
 
@@ -119,8 +118,8 @@ const response = await bridge.chat({
   tools,
   tool_choice: {
     type: 'function',
-    function: { name: 'get_weather' }
-  }
+    function: { name: 'get_weather' },
+  },
 })
 ```
 
@@ -132,9 +131,9 @@ When the model wants to call a tool, it returns tool calls in the response:
 const response = await bridge.chat({
   model: 'gpt-4',
   messages: [
-    { role: 'user', content: 'What is the weather in Paris and London?' }
+    { role: 'user', content: 'What is the weather in Paris and London?' },
   ],
-  tools
+  tools,
 })
 
 // Check if the model wants to call tools
@@ -159,14 +158,14 @@ if (response.choices[0].message.tool_calls) {
       model: 'gpt-4',
       messages: [
         { role: 'user', content: 'What is the weather in Paris and London?' },
-        response.choices[0].message,  // Assistant's tool call
+        response.choices[0].message, // Assistant's tool call
         {
           role: 'tool',
           tool_call_id: toolCall.id,
-          content: JSON.stringify(result)
-        }
+          content: JSON.stringify(result),
+        },
       ],
-      tools
+      tools,
     })
 
     console.log(finalResponse.choices[0].message.content)
@@ -193,11 +192,11 @@ const tools = [
       parameters: {
         type: 'object',
         properties: {
-          location: { type: 'string' }
+          location: { type: 'string' },
         },
-        required: ['location']
-      }
-    }
+        required: ['location'],
+      },
+    },
   },
   {
     type: 'function',
@@ -207,12 +206,12 @@ const tools = [
       parameters: {
         type: 'object',
         properties: {
-          expression: { type: 'string', description: 'Math expression' }
+          expression: { type: 'string', description: 'Math expression' },
         },
-        required: ['expression']
-      }
-    }
-  }
+        required: ['expression'],
+      },
+    },
+  },
 ]
 
 // Implement tool functions
@@ -230,7 +229,7 @@ function calculate(expression: string) {
 const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
-  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
 })
 
 // Chat with tools
@@ -241,7 +240,7 @@ async function chatWithTools(userMessage: string) {
     const response = await bridge.chat({
       model: 'gpt-4',
       messages,
-      tools
+      tools,
     })
 
     const message = response.choices[0].message
@@ -269,14 +268,16 @@ async function chatWithTools(userMessage: string) {
       messages.push({
         role: 'tool',
         tool_call_id: toolCall.id,
-        content: JSON.stringify(result)
+        content: JSON.stringify(result),
       })
     }
   }
 }
 
 // Use it
-const answer = await chatWithTools('What is the weather in Tokyo? Also calculate 15 * 24.')
+const answer = await chatWithTools(
+  'What is the weather in Tokyo? Also calculate 15 * 24.'
+)
 console.log(answer)
 ```
 
@@ -285,11 +286,11 @@ console.log(answer)
 Handle tool calls in streaming responses:
 
 ```typescript
-const stream = await bridge.chat({
+const stream = bridge.chatStreamRaw({
   model: 'gpt-4',
   messages: [{ role: 'user', content: 'Get weather for NYC' }],
   tools,
-  stream: true
+  stream: true,
 })
 
 let toolCalls = []
@@ -302,7 +303,7 @@ for await (const event of stream) {
       toolCalls[index] = {
         id: event.toolCall.id,
         type: 'function',
-        function: { name: '', arguments: '' }
+        function: { name: '', arguments: '' },
       }
     }
 
@@ -327,18 +328,19 @@ for await (const event of stream) {
 
 Tool calling support across providers:
 
-| Provider | Tool Calling | Tool Choice | Parallel Tools | Streaming Tools |
-|----------|-------------|-------------|----------------|-----------------|
-| OpenAI | ✅ | ✅ | ✅ | ✅ |
-| Anthropic | ✅ | ✅ | ✅ | ✅ |
-| DeepSeek | ✅ | ✅ | ✅ | ✅ |
-| Moonshot | ✅ | ✅ | ✅ | ✅ |
-| Zhipu | ✅ | ✅ | ✅ | ✅ |
-| Qwen | ✅ | ✅ | ✅ | ✅ |
-| Gemini | ✅ | ⚠️ | ✅ | ✅ |
+| Provider  | Tool Calling | Tool Choice | Parallel Tools | Streaming Tools |
+| --------- | ------------ | ----------- | -------------- | --------------- |
+| OpenAI    | ✅           | ✅          | ✅             | ✅              |
+| Anthropic | ✅           | ✅          | ✅             | ✅              |
+| DeepSeek  | ✅           | ✅          | ✅             | ✅              |
+| Moonshot  | ✅           | ✅          | ✅             | ✅              |
+| Zhipu     | ✅           | ✅          | ✅             | ✅              |
+| Qwen      | ✅           | ✅          | ✅             | ✅              |
+| Gemini    | ✅           | ⚠️          | ✅             | ✅              |
 
 <Callout type="warn">
-Some providers may have limited tool choice options. Check adapter capabilities before using advanced features.
+  Some providers may have limited tool choice options. Check adapter
+  capabilities before using advanced features.
 </Callout>
 
 ## Best Practices
@@ -390,15 +392,15 @@ try {
   messages.push({
     role: 'tool',
     tool_call_id: toolCall.id,
-    content: JSON.stringify(result)
+    content: JSON.stringify(result),
   })
 } catch (error) {
   messages.push({
     role: 'tool',
     tool_call_id: toolCall.id,
     content: JSON.stringify({
-      error: error.message
-    })
+      error: error.message,
+    }),
   })
 }
 ```

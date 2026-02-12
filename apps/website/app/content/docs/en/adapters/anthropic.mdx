@@ -25,23 +25,22 @@ const bridge = createBridge({
   inbound: anthropicAdapter,
   outbound: anthropicAdapter,
   config: {
-    apiKey: process.env.ANTHROPIC_API_KEY
-  }
+    apiKey: process.env.ANTHROPIC_API_KEY,
+  },
 })
 
 const response = await bridge.chat({
   model: 'claude-3-5-sonnet-20241022',
   max_tokens: 1024,
-  messages: [
-    { role: 'user', content: 'What is Amux?' }
-  ]
+  messages: [{ role: 'user', content: 'What is Amux?' }],
 })
 
 console.log(response.content[0].text)
 ```
 
-<Callout type="warn">
-The Anthropic API requires the `max_tokens` parameter to be specified.
+<Callout type="info">
+  If `max_tokens` is not provided, the adapter defaults it to `4096` when
+  building outbound Anthropic requests.
 </Callout>
 
 ## Supported Features
@@ -80,6 +79,7 @@ The Anthropic API requires the `max_tokens` parameter to be specified.
       console.log('Input:', toolUse.input)
     }
     ```
+
   </Tab>
 
   <Tab value="Vision">
@@ -111,6 +111,7 @@ The Anthropic API requires the `max_tokens` parameter to be specified.
     **Supported Image Formats:**
     - URL (https://)
     - Base64 encoded (requires media_type)
+
   </Tab>
 
   <Tab value="System Prompt">
@@ -128,13 +129,14 @@ The Anthropic API requires the `max_tokens` parameter to be specified.
       ]
     })
     ```
+
   </Tab>
 
   <Tab value="Streaming">
     ### Streaming
 
     ```typescript
-    const stream = bridge.chatStream({
+    const stream = bridge.chatStreamRaw({
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 1024,
       messages: [
@@ -144,19 +146,18 @@ The Anthropic API requires the `max_tokens` parameter to be specified.
     })
 
     for await (const event of stream) {
-      if (event.type === 'content_block_delta') {
-        if (event.delta.type === 'text_delta') {
-          process.stdout.write(event.delta.text)
-        }
+      if (event.type === 'content') {
+        process.stdout.write(event.content.delta)
       }
     }
     ```
+
   </Tab>
 
   <Tab value="Extended Thinking">
     ### Extended Thinking (Reasoning)
 
-    Claude supports extended thinking for complex reasoning tasks:
+    Claude adapter exposes reasoning capability at the Bridge capability level, but the current outbound request builder does not pass a `thinking` request field directly.
 
     ```typescript
     const response = await bridge.chat({
@@ -165,32 +166,23 @@ The Anthropic API requires the `max_tokens` parameter to be specified.
       messages: [
         { role: 'user', content: 'Solve this complex problem step by step...' }
       ],
-      thinking: {
-        type: 'enabled',
-        budget_tokens: 2000
-      }
+      // thinking request fields are not directly mapped in current adapter request builder
     })
 
-    // Access reasoning content
-    for (const block of response.content) {
-      if (block.type === 'thinking') {
-        console.log('Reasoning:', block.thinking)
-      } else if (block.type === 'text') {
-        console.log('Answer:', block.text)
-      }
-    }
+    // Use Bridge hooks or IR stream/response fields to observe normalized reasoning events where available
     ```
+
   </Tab>
 </Tabs>
 
 ## Supported Models
 
-| Model | Context Length | Description |
-|-------|----------------|-------------|
-| `claude-3-5-sonnet-20241022` | 200K | Latest and most capable |
-| `claude-3-opus-20240229` | 200K | Most intelligent model |
-| `claude-3-sonnet-20240229` | 200K | Balanced performance and speed |
-| `claude-3-haiku-20240307` | 200K | Fastest and most economical |
+| Model                        | Context Length | Description                    |
+| ---------------------------- | -------------- | ------------------------------ |
+| `claude-3-5-sonnet-20241022` | 200K           | Latest and most capable        |
+| `claude-3-opus-20240229`     | 200K           | Most intelligent model         |
+| `claude-3-sonnet-20240229`   | 200K           | Balanced performance and speed |
+| `claude-3-haiku-20240307`    | 200K           | Fastest and most economical    |
 
 ## Configuration Options
 
@@ -203,9 +195,9 @@ const bridge = createBridge({
     baseURL: 'https://api.anthropic.com', // Optional
     timeout: 60000, // Optional
     headers: {
-      'anthropic-version': '2023-06-01' // API version
-    }
-  }
+      'anthropic-version': '2023-06-01', // API version
+    },
+  },
 })
 ```
 
@@ -221,14 +213,14 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
   config: {
-    apiKey: process.env.ANTHROPIC_API_KEY
-  }
+    apiKey: process.env.ANTHROPIC_API_KEY,
+  },
 })
 
 // Send request in OpenAI format
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [{ role: 'user', content: 'Hello' }]
+  messages: [{ role: 'user', content: 'Hello' }],
 })
 // Returns OpenAI format response
 ```
@@ -240,47 +232,47 @@ const bridge = createBridge({
   inbound: anthropicAdapter,
   outbound: openaiAdapter,
   config: {
-    apiKey: process.env.OPENAI_API_KEY
-  }
+    apiKey: process.env.OPENAI_API_KEY,
+  },
 })
 
 // Send request in Anthropic format
 const response = await bridge.chat({
   model: 'claude-3-5-sonnet-20241022',
   max_tokens: 1024,
-  messages: [{ role: 'user', content: 'Hello' }]
+  messages: [{ role: 'user', content: 'Hello' }],
 })
 // Returns Anthropic format response
 ```
 
 ## Feature Support
 
-| Feature | Supported | Notes |
-|---------|-----------|-------|
-| Messages API | ✅ | Fully supported |
-| Streaming | ✅ | Fully supported |
-| Tool Use | ✅ | Fully supported |
-| Vision | ✅ | Claude 3 series |
-| System Prompt | ✅ | Separate system parameter |
-| Long Context | ✅ | 200K tokens |
-| Extended Thinking | ✅ | Reasoning support |
+| Feature           | Supported | Notes                                                                           |
+| ----------------- | --------- | ------------------------------------------------------------------------------- |
+| Messages API      | ✅        | Fully supported                                                                 |
+| Streaming         | ✅        | Fully supported                                                                 |
+| Tool Use          | ✅        | Fully supported                                                                 |
+| Vision            | ✅        | Claude 3 series                                                                 |
+| System Prompt     | ✅        | Separate system parameter                                                       |
+| Long Context      | ✅        | 200K tokens                                                                     |
+| Extended Thinking | ✅        | Capability declared; direct `thinking` request passthrough is currently limited |
 
 ## Best Practices
 
-### 1. Always Set max_tokens
+### 1. Prefer Setting max_tokens Explicitly
 
 ```typescript
 // ✅ Correct
 const response = await bridge.chat({
   model: 'claude-3-5-sonnet-20241022',
-  max_tokens: 1024, // Required
+  max_tokens: 1024, // Recommended
   messages: [...]
 })
 
-// ❌ Wrong - will error
+// ✅ Also valid - adapter defaults to 4096
 const response = await bridge.chat({
   model: 'claude-3-5-sonnet-20241022',
-  messages: [...] // Missing max_tokens
+  messages: [...] // max_tokens omitted
 })
 ```
 
@@ -290,10 +282,9 @@ const response = await bridge.chat({
 const response = await bridge.chat({
   model: 'claude-3-5-sonnet-20241022',
   max_tokens: 1024,
-  system: 'You are a professional technical documentation writer. Use clear, concise language.',
-  messages: [
-    { role: 'user', content: 'Explain what a REST API is' }
-  ]
+  system:
+    'You are a professional technical documentation writer. Use clear, concise language.',
+  messages: [{ role: 'user', content: 'Explain what a REST API is' }],
 })
 ```
 
@@ -310,8 +301,8 @@ const response = await bridge.chat({
     { role: 'user', content: 'Second question' },
     { role: 'assistant', content: 'Second answer' },
     // ... can have many turns
-    { role: 'user', content: 'Latest question' }
-  ]
+    { role: 'user', content: 'Latest question' },
+  ],
 })
 ```
 

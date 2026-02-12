@@ -31,7 +31,7 @@ sequenceDiagram
 Creates a new Bridge instance.
 
 ```typescript
-function createBridge(options: BridgeOptions): Bridge
+function createBridge(options: BridgeOptions): LLMBridge
 ```
 
 ### Parameters
@@ -43,6 +43,7 @@ function createBridge(options: BridgeOptions): Bridge
       inbound: LLMAdapter   // Inbound adapter (parses incoming format)
       outbound: LLMAdapter  // Outbound adapter (builds outgoing format)
       config: BridgeConfig  // Configuration
+      hooks?: BridgeHooks   // Lifecycle hooks (IR-level observability)
 
       // Model mapping options (optional)
       targetModel?: string  // Fixed target model
@@ -56,15 +57,17 @@ function createBridge(options: BridgeOptions): Bridge
     | `inbound` | `LLMAdapter` | Adapter that parses incoming requests |
     | `outbound` | `LLMAdapter` | Adapter that calls the target provider |
     | `config` | `BridgeConfig` | Bridge configuration |
+    | `hooks` | `BridgeHooks?` | Lifecycle hooks for IR-level request/response/stream/error events |
     | `targetModel` | `string?` | Fixed target model to use (highest priority) |
     | `modelMapper` | `function?` | Model mapping function (second priority) |
     | `modelMapping` | `object?` | Model mapping table (third priority) |
+
   </Tab>
 
   <Tab value="BridgeConfig">
     ```typescript
     interface BridgeConfig {
-      apiKey?: string           // API key for the outbound provider
+      apiKey: string            // API key for the outbound provider
       baseURL?: string          // Base URL for API calls
       chatPath?: string         // Custom chat endpoint path
       modelsPath?: string       // Custom models endpoint path
@@ -78,15 +81,16 @@ function createBridge(options: BridgeOptions): Bridge
 
     | Property | Type | Default | Description |
     |----------|------|---------|-------------|
-    | `apiKey` | `string?` | - | API key for authentication |
+    | `apiKey` | `string` | - | API key for authentication |
     | `baseURL` | `string?` | Auto-detected | Custom API base URL |
     | `chatPath` | `string?` | Auto-detected | Custom chat endpoint path (overrides adapter default) |
     | `modelsPath` | `string?` | Auto-detected | Custom models endpoint path (overrides adapter default) |
-    | `timeout` | `number?` | `120000` | Request timeout (ms) |
+    | `timeout` | `number?` | `60000` | Request timeout (ms) |
     | `maxRetries` | `number?` | `3` | Max retry attempts |
     | `headers` | `Record<string, string>?` | `{}` | Custom HTTP headers |
     | `authHeaderName` | `string?` | `'Authorization'` | Name of the authentication header |
     | `authHeaderPrefix` | `string?` | `'Bearer'` | Prefix for the authentication header value |
+
   </Tab>
 </Tabs>
 
@@ -107,6 +111,7 @@ function createBridge(options: BridgeOptions): Bridge
       }
     })
     ```
+
   </Tab>
 
   <Tab value="With Config">
@@ -183,6 +188,7 @@ function createBridge(options: BridgeOptions): Bridge
     2. `modelMapper` - Use function for dynamic mapping
     3. `modelMapping` - Look up mapping table
     4. Original model - If none configured, use original (may fail)
+
   </Tab>
 
   <Tab value="Multiple Providers">
@@ -208,13 +214,15 @@ function createBridge(options: BridgeOptions): Bridge
       config: { apiKey: process.env.OPENAI_API_KEY }
     })
     ```
+
   </Tab>
 </Tabs>
 
 ## Lifecycle Hooks
 
 <Callout type="info">
-**New in v0.1.0**: Bridge now supports lifecycle hooks for monitoring, logging, and custom processing at the IR (Intermediate Representation) layer.
+  **New in v0.1.0**: Bridge now supports lifecycle hooks for monitoring,
+  logging, and custom processing at the IR (Intermediate Representation) layer.
 </Callout>
 
 Lifecycle hooks allow you to intercept and observe the Bridge's request/response flow at key points where all data is in a unified format. This is perfect for logging, monitoring, cost tracking, and debugging.
@@ -225,14 +233,14 @@ Lifecycle hooks allow you to intercept and observe the Bridge's request/response
 interface BridgeHooks {
   // Called after parsing the inbound request into IR
   onRequest?: (ir: LLMRequestIR) => void | Promise<void>
-  
+
   // Called after parsing the provider response into IR
   // ⭐ Best place to extract token usage - all providers use same format
   onResponse?: (ir: LLMResponseIR) => void | Promise<void>
-  
+
   // Called for each streaming event after parsing into IR
   onStreamEvent?: (event: LLMStreamEvent) => void | Promise<void>
-  
+
   // Called when an error occurs
   onError?: (error: LLMErrorIR) => void | Promise<void>
 }
@@ -241,6 +249,7 @@ interface BridgeHooks {
 ### Why Hooks?
 
 **Problem**: Different LLM providers return token usage in different formats:
+
 - OpenAI: `{ usage: { prompt_tokens, completion_tokens } }`
 - Anthropic: `{ usage: { input_tokens, output_tokens } }`
 - DeepSeek, Moonshot: Different variations
@@ -252,7 +261,7 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
   config: { apiKey: '...' },
-  
+
   hooks: {
     onResponse: async (ir) => {
       // ✅ Always the same format, regardless of provider!
@@ -260,15 +269,15 @@ const bridge = createBridge({
         console.log(`Input tokens: ${ir.usage.promptTokens}`)
         console.log(`Output tokens: ${ir.usage.completionTokens}`)
         console.log(`Total tokens: ${ir.usage.totalTokens}`)
-        
+
         // Save to database, track costs, etc.
         await saveTokenMetrics({
           input: ir.usage.promptTokens,
-          output: ir.usage.completionTokens
+          output: ir.usage.completionTokens,
         })
       }
-    }
-  }
+    },
+  },
 })
 ```
 
@@ -285,7 +294,7 @@ const bridge = createBridge({
       inbound: openaiAdapter,
       outbound: anthropicAdapter, // Or any provider
       config: { apiKey: process.env.ANTHROPIC_API_KEY },
-      
+
       hooks: {
         // Non-streaming responses
         onResponse: async (ir) => {
@@ -299,7 +308,7 @@ const bridge = createBridge({
             })
           }
         },
-        
+
         // Streaming responses
         onStreamEvent: async (event) => {
           if (event.type === 'end' && event.usage) {
@@ -320,6 +329,7 @@ const bridge = createBridge({
     - ✅ No need to handle different provider formats
     - ✅ Works with all adapters automatically
     - ✅ Same code for streaming and non-streaming
+
   </Tab>
 
   <Tab value="Cost Monitoring">
@@ -339,16 +349,16 @@ const bridge = createBridge({
       inbound: openaiAdapter,
       outbound: openaiAdapter,
       config: { apiKey: process.env.OPENAI_API_KEY },
-      
+
       hooks: {
         onResponse: async (ir) => {
           if (ir.usage && ir.model) {
             const modelPricing = pricing[ir.model]
             if (modelPricing) {
-              const cost = 
+              const cost =
                 (ir.usage.promptTokens / 1000) * modelPricing.input +
                 (ir.usage.completionTokens / 1000) * modelPricing.output
-              
+
               await recordCost({
                 model: ir.model,
                 inputTokens: ir.usage.promptTokens,
@@ -357,7 +367,7 @@ const bridge = createBridge({
                 currency: 'USD',
                 timestamp: Date.now()
               })
-              
+
               console.log(`Request cost: $${cost.toFixed(4)}`)
             }
           }
@@ -365,6 +375,7 @@ const bridge = createBridge({
       }
     })
     ```
+
   </Tab>
 
   <Tab value="Request Logging">
@@ -377,7 +388,7 @@ const bridge = createBridge({
       inbound: openaiAdapter,
       outbound: anthropicAdapter,
       config: { apiKey: process.env.ANTHROPIC_API_KEY },
-      
+
       hooks: {
         onRequest: async (ir) => {
           console.log('[Bridge] Request:', {
@@ -388,7 +399,7 @@ const bridge = createBridge({
             stream: ir.stream
           })
         },
-        
+
         onResponse: async (ir) => {
           console.log('[Bridge] Response:', {
             model: ir.model,
@@ -396,7 +407,7 @@ const bridge = createBridge({
             finishReason: ir.choices[0]?.finishReason,
             usage: ir.usage
           })
-          
+
           // Save to database
           await saveRequestLog({
             requestId: ir.id,
@@ -406,7 +417,7 @@ const bridge = createBridge({
             timestamp: Date.now()
           })
         },
-        
+
         onError: async (error) => {
           console.error('[Bridge] Error:', {
             type: error.type,
@@ -414,7 +425,7 @@ const bridge = createBridge({
             code: error.code,
             status: error.status
           })
-          
+
           // Log error to monitoring service
           await logError({
             type: error.type,
@@ -425,6 +436,7 @@ const bridge = createBridge({
       }
     })
     ```
+
   </Tab>
 
   <Tab value="Rate Limiting">
@@ -440,25 +452,25 @@ const bridge = createBridge({
       inbound: openaiAdapter,
       outbound: openaiAdapter,
       config: { apiKey: process.env.OPENAI_API_KEY },
-      
+
       hooks: {
         onRequest: async (ir) => {
           // Check if approaching limit
           if (dailyTokens > DAILY_LIMIT * 0.9) {
             console.warn(`Warning: 90% of daily token limit reached`)
           }
-          
+
           if (dailyTokens >= DAILY_LIMIT) {
             throw new Error('Daily token limit exceeded')
           }
         },
-        
+
         onResponse: async (ir) => {
           if (ir.usage) {
             dailyTokens += ir.usage.totalTokens
-            
+
             console.log(`Daily usage: ${dailyTokens}/${DAILY_LIMIT} tokens`)
-            
+
             // Send alert at 80%
             if (dailyTokens > DAILY_LIMIT * 0.8) {
               await sendAlert({
@@ -472,6 +484,7 @@ const bridge = createBridge({
       }
     })
     ```
+
   </Tab>
 </Tabs>
 
@@ -483,18 +496,18 @@ sequenceDiagram
     participant Bridge
     participant Hook as Hooks
     participant API as Provider API
-    
+
     App->>Bridge: chat(request)
     Bridge->>Bridge: Parse request to IR
     Bridge->>Hook: onRequest(ir)
-    Hook-->>Bridge: 
+    Hook-->>Bridge:
     Bridge->>API: Send request
     API-->>Bridge: Response
     Bridge->>Bridge: Parse response to IR
     Bridge->>Hook: onResponse(ir)
-    Hook-->>Bridge: 
+    Hook-->>Bridge:
     Bridge->>App: Return response
-    
+
     Note over Bridge,Hook: Hooks access unified IR<br/>No provider-specific handling needed
 ```
 
@@ -539,57 +552,57 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
   config: { apiKey: process.env.ANTHROPIC_API_KEY },
-  
+
   hooks: {
     onRequest: async (ir) => {
       // Log incoming request
       logger.info('Request received', {
         model: ir.model,
-        messageCount: ir.messages.length
+        messageCount: ir.messages.length,
       })
     },
-    
+
     onResponse: async (ir) => {
       // Track tokens
       metrics.recordTokens(ir.usage)
-      
+
       // Calculate cost
       const cost = calculateCost(ir.model, ir.usage)
       metrics.recordCost(cost)
-      
+
       // Log success
       logger.info('Request completed', {
         model: ir.model,
         tokens: ir.usage?.totalTokens,
-        cost
+        cost,
       })
     },
-    
+
     onStreamEvent: async (event) => {
       // Track streaming progress
       if (event.type === 'content' && event.content?.delta) {
         metrics.incrementStreamChunks()
       }
-      
+
       if (event.type === 'end' && event.usage) {
         metrics.recordTokens(event.usage)
       }
     },
-    
+
     onError: async (error) => {
       // Log and alert on errors
       logger.error('Request failed', {
         type: error.type,
         message: error.message,
-        code: error.code
+        code: error.code,
       })
-      
+
       await alerting.sendAlert({
         severity: 'error',
-        message: `Bridge error: ${error.message}`
+        message: `Bridge error: ${error.message}`,
       })
-    }
-  }
+    },
+  },
 })
 ```
 
@@ -604,7 +617,9 @@ async chat(request: unknown): Promise<unknown>
 ```
 
 <Callout type="warn">
-The request must be in the **inbound adapter's format**. The response will also be in the inbound adapter's format, even though a different provider API is called internally.
+  The request must be in the **inbound adapter's format**. The response will
+  also be in the inbound adapter's format, even though a different provider API
+  is called internally.
 </Callout>
 
 #### Example
@@ -621,6 +636,7 @@ The request must be in the **inbound adapter's format**. The response will also 
 
     console.log(response.choices[0].message.content)
     ```
+
   </Tab>
 
   <Tab value="With Tools">
@@ -654,6 +670,7 @@ The request must be in the **inbound adapter's format**. The response will also 
       console.log('Args:', toolCall.function.arguments)
     }
     ```
+
   </Tab>
 
   <Tab value="Multimodal">
@@ -691,7 +708,7 @@ async chatRaw(request: unknown): Promise<LLMResponseIR>
 // Get raw IR response for custom processing
 const ir = await bridge.chatRaw({
   model: 'gpt-4',
-  messages: [{ role: 'user', content: 'Hello!' }]
+  messages: [{ role: 'user', content: 'Hello!' }],
 })
 
 // Access IR fields directly
@@ -718,10 +735,16 @@ The `SSEEvent` interface:
 
 ```typescript
 interface SSEEvent {
-  event: string  // Event type (e.g., 'message_start', 'content_block_delta', 'data')
-  data: unknown  // Event data payload
+  event: string // Event type (e.g., 'message_start', 'content_block_delta', 'data')
+  data: unknown // Event data payload
 }
 ```
+
+<Callout type="info">
+  Use `chatStream()` when you want provider-formatted SSE events (`event` +
+  `data`) that can be written directly to HTTP responses. Use `chatStreamRaw()`
+  if you need normalized IR events (`event.type`, `event.content.delta`, etc.).
+</Callout>
 
 #### Example
 
@@ -730,7 +753,7 @@ interface SSEEvent {
 const stream = bridge.chatStream({
   model: 'gpt-4',
   messages: [{ role: 'user', content: 'Tell me a story' }],
-  stream: true
+  stream: true,
 })
 
 // Write SSE events directly to HTTP response
@@ -765,6 +788,33 @@ for await (const event of bridge.chatStreamRaw(request)) {
 }
 ```
 
+<Callout type="info">
+  `chatStreamRaw()` enforces `stream = true` internally, filters duplicate `end`
+  events, and Bridge-level `chatStream()` filters protocol marker `[DONE]` from
+  final emitted events.
+</Callout>
+
+### listModels
+
+Lists available models from the outbound provider.
+
+```typescript
+listModels(): Promise<unknown>
+```
+
+#### Example
+
+```typescript
+const models = await bridge.listModels()
+console.log(models)
+```
+
+<Callout type="warn">
+  `listModels()` requires either adapter `endpoint.modelsPath` or explicit
+  `config.modelsPath`. Some providers (for example MiniMax adapter default
+  config) don't define a models endpoint by default.
+</Callout>
+
 ### checkCompatibility
 
 Checks compatibility between inbound and outbound adapters.
@@ -774,7 +824,8 @@ checkCompatibility(): CompatibilityReport
 ```
 
 <Callout type="info">
-Use this method to verify that your adapter combination supports all the features you need before making requests.
+  Use this method to verify that your adapter combination supports all the
+  features you need before making requests.
 </Callout>
 
 #### Returns
@@ -833,6 +884,7 @@ When inbound and outbound adapters use different providers, model names need to 
 ### Why Model Mapping?
 
 Different providers use different model names:
+
 - OpenAI: `gpt-4`, `gpt-3.5-turbo`
 - Anthropic: `claude-3-5-sonnet-20241022`, `claude-3-haiku-20240307`
 - DeepSeek: `deepseek-chat`, `deepseek-coder`
@@ -890,6 +942,7 @@ await bridge.chat({
     **Use Cases**:
     - Fixed mapping relationships
     - Small number of models
+
   </Tab>
 
   <Tab value="Mapping Function">
@@ -935,6 +988,7 @@ await bridge.chat({
     - Dynamic mapping needed
     - Model names follow patterns
     - Special handling required
+
   </Tab>
 
   <Tab value="Fixed Model">
@@ -969,6 +1023,7 @@ await bridge.chat({
     - Only want to use one model
     - Cost control
     - Simplified configuration
+
   </Tab>
 </Tabs>
 
@@ -986,11 +1041,12 @@ const bridge = createBridge({
   outbound: openaiAdapter,
   config: { apiKey: process.env.OPENAI_API_KEY },
 
-  targetModel: 'gpt-4',  // Priority 1 (highest)
-  modelMapper: (model) => 'gpt-3.5-turbo',  // Priority 2
-  modelMapping: {  // Priority 3
-    'claude-3-5-sonnet-20241022': 'gpt-4-turbo'
-  }
+  targetModel: 'gpt-4', // Priority 1 (highest)
+  modelMapper: (model) => 'gpt-3.5-turbo', // Priority 2
+  modelMapping: {
+    // Priority 3
+    'claude-3-5-sonnet-20241022': 'gpt-4-turbo',
+  },
 })
 
 // Result: Always uses 'gpt-4' (targetModel has highest priority)
@@ -1031,6 +1087,7 @@ const bridge = createBridge({
       messages: [{ role: 'user', content: 'Hello' }]
     })
     ```
+
   </Tab>
 
   <Tab value="Cost Optimization">
@@ -1062,6 +1119,7 @@ const bridge = createBridge({
       })
     }
     ```
+
   </Tab>
 
   <Tab value="Multi-Tenant">
@@ -1106,6 +1164,7 @@ const bridge = createBridge({
       modelMapping: { 'gpt-4': 'claude-3-5-sonnet-20241022' }
     })
     ```
+
   </Tab>
 </Tabs>
 
@@ -1133,8 +1192,8 @@ const bridge = createBridge({
     'claude-3-opus-20240229': 'gpt-4',
 
     // Claude Haiku → GPT-3.5 (economical)
-    'claude-3-haiku-20240307': 'gpt-3.5-turbo'
-  }
+    'claude-3-haiku-20240307': 'gpt-3.5-turbo',
+  },
 })
 ```
 
@@ -1176,6 +1235,7 @@ graph TD
     - Response parsing failures
     - Internal orchestration errors
     - Configuration issues
+
   </Tab>
 
   <Tab value="AdapterError">
@@ -1196,6 +1256,7 @@ graph TD
     - Unsupported features
     - Format conversion failures
     - Missing required fields
+
   </Tab>
 
   <Tab value="APIError">
@@ -1218,6 +1279,7 @@ graph TD
     - Rate limiting
     - Network issues
     - Provider service errors
+
   </Tab>
 
   <Tab value="ValidationError">
@@ -1238,6 +1300,7 @@ graph TD
     - Missing required fields
     - Invalid field types
     - Constraint violations
+
   </Tab>
 </Tabs>
 
@@ -1256,8 +1319,8 @@ const bridge = createBridge({
   outbound: anthropicAdapter,
   config: {
     apiKey: process.env.ANTHROPIC_API_KEY,
-    timeout: 30000
-  }
+    timeout: 30000,
+  },
 })
 
 // Check compatibility
@@ -1273,10 +1336,10 @@ try {
     model: 'gpt-4',
     messages: [
       { role: 'system', content: 'You are a helpful assistant.' },
-      { role: 'user', content: 'Explain quantum computing in simple terms.' }
+      { role: 'user', content: 'Explain quantum computing in simple terms.' },
     ],
     temperature: 0.7,
-    max_tokens: 500
+    max_tokens: 500,
   })
 
   console.log(response.choices[0].message.content)

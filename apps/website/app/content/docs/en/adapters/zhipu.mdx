@@ -25,16 +25,16 @@ const bridge = createBridge({
   inbound: zhipuAdapter,
   outbound: zhipuAdapter,
   config: {
-    apiKey: process.env.ZHIPU_API_KEY
-  }
+    apiKey: process.env.ZHIPU_API_KEY,
+  },
 })
 
 const response = await bridge.chat({
   model: 'glm-4.7',
   messages: [
     { role: 'system', content: 'You are a helpful assistant.' },
-    { role: 'user', content: 'What is Amux?' }
-  ]
+    { role: 'user', content: 'What is Amux?' },
+  ],
 })
 
 console.log(response.choices[0].message.content)
@@ -44,15 +44,16 @@ console.log(response.choices[0].message.content)
 
 Zhipu AI offers various GLM models:
 
-| Model | Description |
-|-------|-------------|
-| glm-4.7 | Latest flagship model with best performance |
+| Model   | Description                                          |
+| ------- | ---------------------------------------------------- |
+| glm-4.7 | Latest flagship model with best performance          |
 | glm-4.6 | High-performance model balancing capability and cost |
-| glm-4.5 | Cost-effective model for everyday tasks |
-| glm-4v | Multimodal model supporting visual understanding |
+| glm-4.5 | Cost-effective model for everyday tasks              |
+| glm-4v  | Multimodal model supporting visual understanding     |
 
 <Callout type="info">
-Zhipu AI models are continuously updated. Please refer to the official documentation for the latest model list.
+  Zhipu AI models are continuously updated. Please refer to the official
+  documentation for the latest model list.
 </Callout>
 
 ## Key Features
@@ -71,6 +72,7 @@ Zhipu AI models are continuously updated. Please refer to the official documenta
       max_tokens: 1000
     })
     ```
+
   </Tab>
 
   <Tab value="Function Calling">
@@ -98,13 +100,14 @@ Zhipu AI models are continuously updated. Please refer to the official documenta
       }]
     })
     ```
+
   </Tab>
 
   <Tab value="Streaming">
     ### Streaming
 
     ```typescript
-    const stream = bridge.chatStream({
+    const stream = bridge.chatStreamRaw({
       model: 'glm-4.7',
       messages: [
         { role: 'user', content: 'Tell me a story' }
@@ -112,12 +115,13 @@ Zhipu AI models are continuously updated. Please refer to the official documenta
       stream: true
     })
 
-    for await (const chunk of stream) {
-      if (chunk.choices[0]?.delta?.content) {
-        process.stdout.write(chunk.choices[0].delta.content)
+    for await (const event of stream) {
+      if (event.type === 'content') {
+        process.stdout.write(event.content.delta)
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -130,22 +134,31 @@ const bridge = createBridge({
   config: {
     apiKey: process.env.ZHIPU_API_KEY,
     baseURL: 'https://open.bigmodel.cn/api/paas', // Default value
-    timeout: 60000
-  }
+    timeout: 60000,
+  },
 })
 ```
 
 ## Feature Support
 
-| Feature | Supported | Notes |
-|---------|-----------|-------|
-| Chat Completion | ✅ | Fully supported |
-| Streaming | ✅ | Fully supported |
-| Function Calling | ✅ | Fully supported |
-| Vision | ✅ | glm-4v supported |
-| System Prompt | ✅ | Fully supported |
-| JSON Mode | ✅ | Fully supported |
-| Web Search | ✅ | Supported |
+| Feature          | Supported | Notes                                                                             |
+| ---------------- | --------- | --------------------------------------------------------------------------------- |
+| Chat Completion  | ✅        | Fully supported                                                                   |
+| Streaming        | ✅        | Fully supported                                                                   |
+| Function Calling | ✅        | Fully supported                                                                   |
+| Vision           | ⚠️        | Capability declared; current outbound adapter path mainly concatenates text parts |
+| System Prompt    | ✅        | Fully supported                                                                   |
+| JSON Mode        | ✅        | Fully supported                                                                   |
+| Web Search       | ⚠️        | Capability declared; no dedicated request-field mapping in current adapter        |
+
+<Callout type="warn">
+  Current adapter boundary notes:
+
+- `tool_choice = 'required'` is filtered out when building outbound Zhipu
+  requests.
+- Multimodal content parts are currently flattened to text in outbound
+  message content builder.
+  </Callout>
 
 ## Best Practices
 
@@ -155,15 +168,18 @@ const bridge = createBridge({
 // Use cost-effective model for everyday tasks
 const quickResponse = await bridge.chat({
   model: 'glm-4.5',
-  messages: [{ role: 'user', content: 'Hello' }]
+  messages: [{ role: 'user', content: 'Hello' }],
 })
 
 // Use flagship model for complex tasks
 const complexTask = await bridge.chat({
   model: 'glm-4.7',
   messages: [
-    { role: 'user', content: 'Please analyze the performance issues in this code...' }
-  ]
+    {
+      role: 'user',
+      content: 'Please analyze the performance issues in this code...',
+    },
+  ],
 })
 ```
 
@@ -175,13 +191,14 @@ const response = await bridge.chat({
   messages: [
     {
       role: 'system',
-      content: 'You are a professional technical documentation writer. Please answer questions in concise, professional language.'
+      content:
+        'You are a professional technical documentation writer. Please answer questions in concise, professional language.',
     },
     {
       role: 'user',
-      content: 'What is a RESTful API?'
-    }
-  ]
+      content: 'What is a RESTful API?',
+    },
+  ],
 })
 ```
 
@@ -191,12 +208,12 @@ const response = await bridge.chat({
 const messages = [
   { role: 'user', content: 'First question' },
   { role: 'assistant', content: 'First answer' },
-  { role: 'user', content: 'Follow-up question' }
+  { role: 'user', content: 'Follow-up question' },
 ]
 
 const response = await bridge.chat({
   model: 'glm-4.7',
-  messages
+  messages,
 })
 ```
 
@@ -212,14 +229,14 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: zhipuAdapter,
   config: {
-    apiKey: process.env.ZHIPU_API_KEY
-  }
+    apiKey: process.env.ZHIPU_API_KEY,
+  },
 })
 
 // Send requests using OpenAI format
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [{ role: 'user', content: 'Hello' }]
+  messages: [{ role: 'user', content: 'Hello' }],
 })
 ```
 

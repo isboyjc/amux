@@ -25,16 +25,16 @@ const bridge = createBridge({
   inbound: minimaxAdapter,
   outbound: minimaxAdapter,
   config: {
-    apiKey: process.env.MINIMAX_API_KEY
-  }
+    apiKey: process.env.MINIMAX_API_KEY,
+  },
 })
 
 const response = await bridge.chat({
   model: 'MiniMax-M2.1',
   messages: [
     { role: 'system', content: 'You are a helpful assistant.' },
-    { role: 'user', content: 'Hello, how are you?' }
-  ]
+    { role: 'user', content: 'Hello, how are you?' },
+  ],
 })
 
 console.log(response.choices[0].message.content)
@@ -42,11 +42,11 @@ console.log(response.choices[0].message.content)
 
 ## Supported Models
 
-| Model | Description | Output Speed |
-|-------|-------------|--------------|
-| `MiniMax-M2.1` | Strong multilingual programming capabilities | ~60 tps |
-| `MiniMax-M2.1-lightning` | Lightning version: faster and more agile | ~100 tps |
-| `MiniMax-M2` | Designed for efficient coding and Agent workflows | ~60 tps |
+| Model                    | Description                                       | Output Speed |
+| ------------------------ | ------------------------------------------------- | ------------ |
+| `MiniMax-M2.1`           | Strong multilingual programming capabilities      | ~60 tps      |
+| `MiniMax-M2.1-lightning` | Lightning version: faster and more agile          | ~100 tps     |
+| `MiniMax-M2`             | Designed for efficient coding and Agent workflows | ~60 tps      |
 
 ## Key Features
 
@@ -55,12 +55,12 @@ console.log(response.choices[0].message.content)
     ### Interleaved Thinking
 
     MiniMax M2.1 supports Interleaved Thinking, which provides transparent reasoning process.
-    
+
     **`reasoning_split` is enabled by default** - thinking content is automatically separated:
 
     ```typescript
     // reasoning_split is enabled by default
-    const stream = bridge.chatStream({
+    const stream = bridge.chatStreamRaw({
       model: 'MiniMax-M2.1',
       messages: [
         { role: 'user', content: 'Solve: What is 15 * 24?' }
@@ -76,6 +76,7 @@ console.log(response.choices[0].message.content)
       }
     }
     ```
+
   </Tab>
 
   <Tab value="Multilingual Programming">
@@ -103,6 +104,7 @@ console.log(response.choices[0].message.content)
     - Kotlin, Objective-C
     - TypeScript, JavaScript
     - Python and more
+
   </Tab>
 
   <Tab value="Function Calling">
@@ -130,13 +132,14 @@ console.log(response.choices[0].message.content)
       }]
     })
     ```
+
   </Tab>
 
   <Tab value="Streaming">
     ### Streaming
 
     ```typescript
-    const stream = bridge.chatStream({
+    const stream = bridge.chatStreamRaw({
       model: 'MiniMax-M2.1-lightning',
       messages: [
         { role: 'user', content: 'Tell me a story about AI' }
@@ -144,12 +147,13 @@ console.log(response.choices[0].message.content)
       stream: true
     })
 
-    for await (const chunk of stream) {
-      if (chunk.choices[0]?.delta?.content) {
-        process.stdout.write(chunk.choices[0].delta.content)
+    for await (const event of stream) {
+      if (event.type === 'content') {
+        process.stdout.write(event.content.delta)
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -161,11 +165,16 @@ const bridge = createBridge({
   outbound: minimaxAdapter,
   config: {
     apiKey: process.env.MINIMAX_API_KEY,
-    baseURL: 'https://api.minimaxi.com', // Default
-    timeout: 60000
-  }
+    baseURL: 'https://api.minimaxi.com/v1', // Default
+    timeout: 60000,
+  },
 })
 ```
+
+<Callout type="warn">
+  MiniMax adapter does not define a default models endpoint. If you need
+  `bridge.listModels()`, set `config.modelsPath` explicitly.
+</Callout>
 
 ## Converting with OpenAI
 
@@ -180,28 +189,28 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: minimaxAdapter,
   config: {
-    apiKey: process.env.MINIMAX_API_KEY
-  }
+    apiKey: process.env.MINIMAX_API_KEY,
+  },
 })
 
 // Send request in OpenAI format
 const response = await bridge.chat({
   model: 'gpt-4', // Will be mapped to MiniMax-M2.1
-  messages: [{ role: 'user', content: 'Hello' }]
+  messages: [{ role: 'user', content: 'Hello' }],
 })
 ```
 
 ## Feature Support
 
-| Feature | Supported | Notes |
-|---------|-----------|-------|
-| Chat Completion | ✅ | Fully supported |
-| Streaming | ✅ | With usage tracking |
-| Function Calling | ✅ | Fully supported |
-| Vision | ❌ | Not supported in text models |
-| System Prompt | ✅ | Fully supported |
-| Reasoning | ✅ | Interleaved Thinking |
-| JSON Mode | ✅ | Structured output |
+| Feature          | Supported | Notes                        |
+| ---------------- | --------- | ---------------------------- |
+| Chat Completion  | ✅        | Fully supported              |
+| Streaming        | ✅        | With usage tracking          |
+| Function Calling | ✅        | Fully supported              |
+| Vision           | ❌        | Not supported in text models |
+| System Prompt    | ✅        | Fully supported              |
+| Reasoning        | ✅        | Interleaved Thinking         |
+| JSON Mode        | ✅        | Structured output            |
 
 ## Special Features
 
@@ -213,12 +222,10 @@ MiniMax M2.1 supports Interleaved Thinking, which allows you to see the model's 
 
 ```typescript
 // reasoning_split is enabled by default
-const stream = bridge.chatStream({
+const stream = bridge.chatStreamRaw({
   model: 'MiniMax-M2.1',
-  messages: [
-    { role: 'user', content: 'Solve this complex problem...' }
-  ],
-  stream: true
+  messages: [{ role: 'user', content: 'Solve this complex problem...' }],
+  stream: true,
 })
 
 for await (const event of stream) {
@@ -237,18 +244,16 @@ for await (const event of stream) {
 ```typescript
 const ir = {
   model: 'MiniMax-M2.1',
-  messages: [
-    { role: 'user', content: 'Solve this complex problem...' }
-  ],
+  messages: [{ role: 'user', content: 'Solve this complex problem...' }],
   stream: true,
   extensions: {
     minimax: {
-      reasoning_split: false  // Disable reasoning split
-    }
-  }
+      reasoning_split: false, // Disable reasoning split
+    },
+  },
 }
 
-const stream = await bridge.chatStream(ir)
+const stream = bridge.chatStreamRaw(ir)
 // Now thinking content will be included in content with <think> tags
 ```
 
@@ -260,7 +265,7 @@ MiniMax has a strict temperature range of (0.0, 1.0]:
 const response = await bridge.chat({
   model: 'MiniMax-M2.1',
   messages: [{ role: 'user', content: 'Hello' }],
-  temperature: 1.0 // Recommended: 1.0
+  temperature: 1.0, // Recommended: 1.0
 })
 ```
 
@@ -284,19 +289,19 @@ const response = await bridge.chat({
 // For general tasks with good balance
 const response = await bridge.chat({
   model: 'MiniMax-M2.1',
-  messages: [{ role: 'user', content: 'Explain quantum computing' }]
+  messages: [{ role: 'user', content: 'Explain quantum computing' }],
 })
 
 // For high-speed responses
 const fastResponse = await bridge.chat({
   model: 'MiniMax-M2.1-lightning',
-  messages: [{ role: 'user', content: 'Quick summary of this article' }]
+  messages: [{ role: 'user', content: 'Quick summary of this article' }],
 })
 
 // For Agent workflows
 const agentResponse = await bridge.chat({
   model: 'MiniMax-M2',
-  messages: [{ role: 'user', content: 'Help me debug this code' }]
+  messages: [{ role: 'user', content: 'Help me debug this code' }],
 })
 ```
 
@@ -309,19 +314,19 @@ const ir = {
   messages: [
     {
       role: 'system',
-      content: 'You are a professional problem solver. Think step by step.'
+      content: 'You are a professional problem solver. Think step by step.',
     },
     {
       role: 'user',
-      content: 'Design a distributed cache system with high availability'
-    }
+      content: 'Design a distributed cache system with high availability',
+    },
   ],
   stream: true,
   extensions: {
     minimax: {
-      reasoning_split: true
-    }
-  }
+      reasoning_split: true,
+    },
+  },
 }
 ```
 
@@ -333,14 +338,14 @@ const response = await bridge.chat({
   messages: [
     {
       role: 'system',
-      content: 'You are an expert in multiple programming languages.'
+      content: 'You are an expert in multiple programming languages.',
     },
     {
       role: 'user',
-      content: 'Convert this Python code to Rust and optimize for performance'
-    }
+      content: 'Convert this Python code to Rust and optimize for performance',
+    },
   ],
-  temperature: 1.0
+  temperature: 1.0,
 })
 ```
 

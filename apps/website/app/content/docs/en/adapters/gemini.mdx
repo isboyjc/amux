@@ -25,36 +25,40 @@ const bridge = createBridge({
   inbound: googleAdapter,
   outbound: googleAdapter,
   config: {
-    apiKey: process.env.GEMINI_API_KEY
-  }
+    apiKey: process.env.GEMINI_API_KEY,
+  },
 })
 
 const response = await bridge.chat({
   model: 'gemini-pro',
-  contents: [{
-    role: 'user',
-    parts: [{ text: 'What is Amux?' }]
-  }]
+  contents: [
+    {
+      role: 'user',
+      parts: [{ text: 'What is Amux?' }],
+    },
+  ],
 })
 
 console.log(response.candidates[0].content.parts[0].text)
 ```
 
 <Callout type="warn">
-Gemini API uses a different request format (`contents` instead of `messages`). Amux handles format conversion automatically.
+  Gemini API uses a different request format (`contents` instead of `messages`).
+  Amux handles format conversion automatically.
 </Callout>
 
 ## Supported Models
 
-| Model | Context Length | Description |
-|-------|----------------|-------------|
-| `gemini-pro` | 1M | Text generation model |
-| `gemini-pro-vision` | 1M | Vision-enabled model |
-| `gemini-1.5-pro` | 2M | Latest version, longer context |
-| `gemini-1.5-flash` | 1M | Fast response version |
+| Model               | Context Length | Description                    |
+| ------------------- | -------------- | ------------------------------ |
+| `gemini-pro`        | 1M             | Text generation model          |
+| `gemini-pro-vision` | 1M             | Vision-enabled model           |
+| `gemini-1.5-pro`    | 2M             | Latest version, longer context |
+| `gemini-1.5-flash`  | 1M             | Fast response version          |
 
 <Callout type="info">
-Gemini's key feature is ultra-long context (up to 2M tokens), far exceeding other models.
+  Gemini's key feature is ultra-long context (up to 2M tokens), far exceeding
+  other models.
 </Callout>
 
 ## Key Features
@@ -78,6 +82,7 @@ Gemini's key feature is ultra-long context (up to 2M tokens), far exceeding othe
       }
     })
     ```
+
   </Tab>
 
   <Tab value="Vision">
@@ -106,6 +111,7 @@ Gemini's key feature is ultra-long context (up to 2M tokens), far exceeding othe
     **Supported Image Formats:**
     - Base64 encoded (recommended)
     - Requires mimeType (image/jpeg, image/png, etc.)
+
   </Tab>
 
   <Tab value="Ultra-Long Context">
@@ -130,13 +136,14 @@ Gemini's key feature is ultra-long context (up to 2M tokens), far exceeding othe
     - Large codebase understanding
     - Long video transcript analysis
     - Multi-document comparison
+
   </Tab>
 
   <Tab value="Streaming">
     ### Streaming
 
     ```typescript
-    const stream = bridge.chatStream({
+    const stream = bridge.chatStreamRaw({
       model: 'gemini-pro',
       contents: [{
         role: 'user',
@@ -145,13 +152,13 @@ Gemini's key feature is ultra-long context (up to 2M tokens), far exceeding othe
       stream: true
     })
 
-    for await (const chunk of stream) {
-      const text = chunk.candidates[0]?.content?.parts[0]?.text
-      if (text) {
-        process.stdout.write(text)
+    for await (const event of stream) {
+      if (event.type === 'content') {
+        process.stdout.write(event.content.delta)
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -164,25 +171,26 @@ const bridge = createBridge({
   config: {
     apiKey: process.env.GEMINI_API_KEY,
     baseURL: 'https://generativelanguage.googleapis.com', // Default
-    timeout: 60000
-  }
+    timeout: 60000,
+  },
 })
 ```
 
 ## Feature Support
 
-| Feature | Supported | Notes |
-|---------|-----------|-------|
-| Text Generation | ✅ | Fully supported |
-| Streaming | ✅ | Fully supported |
-| Vision | ✅ | Gemini Pro Vision |
-| Ultra-Long Context | ✅ | Up to 2M tokens |
-| Function Calling | ⚠️ | Partial support |
-| System Prompt | ✅ | Fully supported |
-| JSON Mode | ✅ | Structured output |
+| Feature            | Supported | Notes             |
+| ------------------ | --------- | ----------------- |
+| Text Generation    | ✅        | Fully supported   |
+| Streaming          | ✅        | Fully supported   |
+| Vision             | ✅        | Gemini Pro Vision |
+| Ultra-Long Context | ✅        | Up to 2M tokens   |
+| Function Calling   | ⚠️        | Partial support   |
+| System Prompt      | ✅        | Fully supported   |
+| JSON Mode          | ✅        | Structured output |
 
 <Callout type="warn">
-Gemini's function calling format differs from OpenAI and may require additional format conversion.
+  Gemini's function calling format differs from OpenAI and may require
+  additional format conversion.
 </Callout>
 
 ## Best Practices
@@ -214,17 +222,19 @@ const longContextResponse = await bridge.chat({
 ```typescript
 const response = await bridge.chat({
   model: 'gemini-pro',
-  contents: [{
-    role: 'user',
-    parts: [{ text: 'Write a technical article' }]
-  }],
+  contents: [
+    {
+      role: 'user',
+      parts: [{ text: 'Write a technical article' }],
+    },
+  ],
   generationConfig: {
     temperature: 0.7, // Control randomness
     topK: 40, // Top-K sampling
     topP: 0.95, // Top-P sampling
     maxOutputTokens: 2048, // Maximum output length
-    stopSequences: ['\n\n'] // Stop sequences
-  }
+    stopSequences: ['\n\n'], // Stop sequences
+  },
 })
 ```
 
@@ -239,18 +249,20 @@ const base64Image = imageData.toString('base64')
 
 const response = await bridge.chat({
   model: 'gemini-pro-vision',
-  contents: [{
-    role: 'user',
-    parts: [
-      { text: 'Analyze this image' },
-      {
-        inlineData: {
-          mimeType: 'image/jpeg',
-          data: base64Image
-        }
-      }
-    ]
-  }]
+  contents: [
+    {
+      role: 'user',
+      parts: [
+        { text: 'Analyze this image' },
+        {
+          inlineData: {
+            mimeType: 'image/jpeg',
+            data: base64Image,
+          },
+        },
+      ],
+    },
+  ],
 })
 ```
 
@@ -260,15 +272,19 @@ const response = await bridge.chat({
 // Gemini can process entire books
 const bookAnalysis = await bridge.chat({
   model: 'gemini-1.5-pro',
-  contents: [{
-    role: 'user',
-    parts: [{
-      text: `Please summarize the main content and key points of this book:\n\n${entireBook}`
-    }]
-  }],
+  contents: [
+    {
+      role: 'user',
+      parts: [
+        {
+          text: `Please summarize the main content and key points of this book:\n\n${entireBook}`,
+        },
+      ],
+    },
+  ],
   generationConfig: {
-    maxOutputTokens: 4096 // Generate detailed summary
-  }
+    maxOutputTokens: 4096, // Generate detailed summary
+  },
 })
 ```
 
@@ -282,15 +298,15 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: googleAdapter,
   config: {
-    apiKey: process.env.GEMINI_API_KEY
-  }
+    apiKey: process.env.GEMINI_API_KEY,
+  },
 })
 
 // Send request in OpenAI format
 // Amux automatically converts to Gemini format
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [{ role: 'user', content: 'Hello' }]
+  messages: [{ role: 'user', content: 'Hello' }],
 })
 ```
 
@@ -301,22 +317,30 @@ Gemini supports content safety filtering:
 ```typescript
 const response = await bridge.chat({
   model: 'gemini-pro',
-  contents: [{
-    role: 'user',
-    parts: [{ text: '...' }]
-  }],
+  contents: [
+    {
+      role: 'user',
+      parts: [{ text: '...' }],
+    },
+  ],
   safetySettings: [
     {
       category: 'HARM_CATEGORY_HARASSMENT',
-      threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+      threshold: 'BLOCK_MEDIUM_AND_ABOVE',
     },
     {
       category: 'HARM_CATEGORY_HATE_SPEECH',
-      threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-    }
-  ]
+      threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+    },
+  ],
 })
 ```
+
+<Callout type="warn">
+  Although Gemini request types include `safetySettings`, the current adapter
+  outbound request builder does not map this field from IR-level request
+  examples directly.
+</Callout>
 
 ## Related Resources
 

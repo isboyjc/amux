@@ -6,7 +6,7 @@ description: 使用 Amux 的生产环境模式和建议
 ## API 密钥管理
 
 <Callout type="warn">
-永远不要在源代码中硬编码 API 密钥。始终使用环境变量或密钥管理服务。
+  永远不要在源代码中硬编码 API 密钥。始终使用环境变量或密钥管理服务。
 </Callout>
 
 ### 使用环境变量
@@ -17,8 +17,8 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
   config: {
-    apiKey: process.env.ANTHROPIC_API_KEY
-  }
+    apiKey: process.env.ANTHROPIC_API_KEY,
+  },
 })
 
 // ❌ 错误
@@ -26,8 +26,8 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
   config: {
-    apiKey: 'sk-ant-1234567890'  // 永远不要这样做！
-  }
+    apiKey: 'sk-ant-1234567890', // 永远不要这样做！
+  },
 })
 ```
 
@@ -43,7 +43,10 @@ const bridge = createBridge({
 
 ```typescript
 // 使用 AWS Secrets Manager 的示例
-import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager'
+import {
+  SecretsManagerClient,
+  GetSecretValueCommand,
+} from '@aws-sdk/client-secrets-manager'
 
 const client = new SecretsManagerClient({ region: 'us-east-1' })
 const response = await client.send(
@@ -54,7 +57,7 @@ const apiKey = response.SecretString
 const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
-  config: { apiKey }
+  config: { apiKey },
 })
 ```
 
@@ -68,7 +71,7 @@ import { LLMBridgeError } from '@amux.ai/llm-bridge'
 try {
   const response = await bridge.chat({
     model: 'gpt-4',
-    messages: [{ role: 'user', content: '你好' }]
+    messages: [{ role: 'user', content: '你好' }],
   })
 } catch (error) {
   if (error instanceof LLMBridgeError) {
@@ -100,7 +103,7 @@ async function chatWithRetry(bridge, request, maxRetries = 3) {
       if (error instanceof LLMBridgeError && error.retryable) {
         // 指数退避
         const delay = Math.min(1000 * Math.pow(2, i), 10000)
-        await new Promise(resolve => setTimeout(resolve, delay))
+        await new Promise((resolve) => setTimeout(resolve, delay))
         continue
       }
 
@@ -147,10 +150,10 @@ app.post('/chat', async (req, res) => {
 
 ```typescript
 // 对于长文本内容，始终使用流式传输
-const stream = await bridge.chat({
+const stream = bridge.chatStreamRaw({
   model: 'gpt-4',
   messages: [{ role: 'user', content: '写一篇长文章' }],
-  stream: true  // 更好的用户体验
+  stream: true, // 更好的用户体验
 })
 ```
 
@@ -162,8 +165,8 @@ const bridge = createBridge({
   outbound: anthropicAdapter,
   config: {
     apiKey: process.env.ANTHROPIC_API_KEY,
-    timeout: 30000  // 30 秒（根据用例调整）
-  }
+    timeout: 30000, // 30 秒（根据用例调整）
+  },
 })
 ```
 
@@ -211,7 +214,7 @@ import { createBridge } from '@amux.ai/llm-bridge'
 const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
-  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
 })
 
 async function chat(request) {
@@ -221,7 +224,7 @@ async function chat(request) {
     console.log('聊天请求:', {
       model: request.model,
       messageCount: request.messages.length,
-      stream: request.stream
+      stream: request.stream,
     })
 
     const response = await bridge.chat(request)
@@ -229,7 +232,7 @@ async function chat(request) {
     const duration = Date.now() - startTime
     console.log('聊天成功:', {
       duration,
-      tokens: response.usage?.totalTokens
+      tokens: response.usage?.totalTokens,
     })
 
     return response
@@ -238,7 +241,7 @@ async function chat(request) {
     console.error('聊天失败:', {
       duration,
       error: error.message,
-      type: error.type
+      type: error.type,
     })
     throw error
   }
@@ -282,10 +285,12 @@ function sanitizeMessage(content: string): string {
 
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [{
-    role: 'user',
-    content: sanitizeMessage(userInput)
-  }]
+  messages: [
+    {
+      role: 'user',
+      content: sanitizeMessage(userInput),
+    },
+  ],
 })
 ```
 
@@ -297,9 +302,9 @@ const response = await bridge.chat({
 import rateLimit from 'express-rate-limit'
 
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,  // 15 分钟
-  max: 100,  // 每个窗口期限制每个 IP 100 个请求
-  message: '请求过多，请稍后再试'
+  windowMs: 15 * 60 * 1000, // 15 分钟
+  max: 100, // 每个窗口期限制每个 IP 100 个请求
+  message: '请求过多，请稍后再试',
 })
 
 app.use('/api/chat', limiter)
@@ -317,32 +322,34 @@ const mockAdapter = {
   capabilities: {
     streaming: true,
     tools: true,
-    vision: false
+    vision: false,
   },
   inbound: {
     parseRequest: (req) => req,
-    parseResponse: (res) => res
+    parseResponse: (res) => res,
   },
   outbound: {
     buildRequest: (ir) => ir,
     buildResponse: (ir) => ({
-      choices: [{
-        message: { role: 'assistant', content: '模拟响应' }
-      }]
-    })
+      choices: [
+        {
+          message: { role: 'assistant', content: '模拟响应' },
+        },
+      ],
+    }),
   },
   getInfo: () => ({
     name: 'mock',
     version: '1.0.0',
     capabilities: mockAdapter.capabilities,
-    endpoint: { baseURL: 'http://mock', chatPath: '/chat' }
-  })
+    endpoint: { baseURL: 'http://mock', chatPath: '/chat' },
+  }),
 }
 
 // 在测试中使用
 const bridge = createBridge({
   inbound: mockAdapter,
-  outbound: mockAdapter
+  outbound: mockAdapter,
 })
 ```
 

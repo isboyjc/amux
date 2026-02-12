@@ -71,6 +71,7 @@ interface LLMAdapter {
     ```typescript
     console.log(openaiAdapter.name) // "openai"
     ```
+
   </Tab>
 
   <Tab value="version">
@@ -84,6 +85,7 @@ interface LLMAdapter {
     ```typescript
     console.log(openaiAdapter.version) // "1.0.0"
     ```
+
   </Tab>
 
   <Tab value="capabilities">
@@ -103,6 +105,7 @@ interface LLMAdapter {
     //   ...
     // }
     ```
+
   </Tab>
 </Tabs>
 
@@ -120,7 +123,8 @@ interface InboundAdapter {
 ```
 
 <Callout type="warn">
-All `parse*` methods convert **from provider format to IR**. They are used when receiving data from a provider.
+  All `parse*` methods convert **from provider format to IR**. They are used
+  when receiving data from a provider.
 </Callout>
 
 ### Methods
@@ -146,6 +150,7 @@ All `parse*` methods convert **from provider format to IR**. They are used when 
     })
     // Returns: { messages: [...], model: 'gpt-4', ... }
     ```
+
   </Tab>
 
   <Tab value="parseResponse">
@@ -167,6 +172,7 @@ All `parse*` methods convert **from provider format to IR**. They are used when 
       choices: [{ message: { role: 'assistant', content: 'Hi!' } }]
     })
     ```
+
   </Tab>
 
   <Tab value="parseStream">
@@ -188,6 +194,7 @@ All `parse*` methods convert **from provider format to IR**. They are used when 
     })
     // Returns: { type: 'content', content: { delta: 'Hello' } }
     ```
+
   </Tab>
 
   <Tab value="parseError">
@@ -209,6 +216,7 @@ All `parse*` methods convert **from provider format to IR**. They are used when 
     })
     // Returns: { type: 'rate_limit', message: '...', retryable: true }
     ```
+
   </Tab>
 </Tabs>
 
@@ -220,6 +228,7 @@ Handles conversion from IR to provider format.
 interface OutboundAdapter {
   buildRequest(ir: LLMRequestIR): unknown
   buildResponse?(ir: LLMResponseIR): unknown
+  buildStreamEvent?(ir: LLMStreamEvent): unknown
   createStreamBuilder?(): StreamEventBuilder
   buildStreamHandler?(): StreamHandler
   buildErrorHandler?(): ErrorHandler
@@ -227,7 +236,8 @@ interface OutboundAdapter {
 ```
 
 <Callout type="warn">
-All `build*` methods convert **from IR to provider format**. They are used when sending data to a provider.
+  All `build*` methods convert **from IR to provider format**. They are used
+  when sending data to a provider.
 </Callout>
 
 ### Methods
@@ -253,6 +263,7 @@ All `build*` methods convert **from IR to provider format**. They are used when 
     })
     // Returns provider-specific format
     ```
+
   </Tab>
 
   <Tab value="buildResponse">
@@ -266,6 +277,7 @@ All `build*` methods convert **from IR to provider format**. They are used when 
     - `ir` - Response in IR format
 
     **Returns:** Response in provider's format
+
   </Tab>
 
   <Tab value="createStreamBuilder">
@@ -326,6 +338,7 @@ All `build*` methods convert **from IR to provider format**. They are used when 
       }
     }
     ```
+
   </Tab>
 
   <Tab value="buildStreamHandler">
@@ -340,6 +353,7 @@ All `build*` methods convert **from IR to provider format**. They are used when 
     ```typescript
     type StreamHandler = (chunk: unknown) => LLMStreamEvent | LLMStreamEvent[] | null
     ```
+
   </Tab>
 
   <Tab value="buildErrorHandler">
@@ -354,6 +368,7 @@ All `build*` methods convert **from IR to provider format**. They are used when 
     ```typescript
     type ErrorHandler = (error: unknown) => LLMErrorIR
     ```
+
   </Tab>
 </Tabs>
 
@@ -369,32 +384,33 @@ interface AdapterCapabilities {
   multimodal: boolean
   systemPrompt: boolean
   toolChoice: boolean
-  reasoning?: boolean          // Supports reasoning/thinking mode
-  webSearch?: boolean          // Supports web search
-  jsonMode?: boolean           // Supports JSON mode/structured output
-  logprobs?: boolean           // Supports log probabilities
-  seed?: boolean               // Supports seed for reproducibility
+  reasoning?: boolean // Supports reasoning/thinking mode
+  webSearch?: boolean // Supports web search
+  jsonMode?: boolean // Supports JSON mode/structured output
+  logprobs?: boolean // Supports log probabilities
+  seed?: boolean // Supports seed for reproducibility
 }
 ```
 
 ### Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `streaming` | `boolean` | Supports streaming responses |
-| `tools` | `boolean` | Supports function/tool calling |
-| `vision` | `boolean` | Supports image inputs |
-| `multimodal` | `boolean` | Supports multiple content types |
-| `systemPrompt` | `boolean` | Supports system prompts |
-| `toolChoice` | `boolean` | Supports tool choice control |
-| `reasoning` | `boolean?` | Supports reasoning/thinking mode (DeepSeek, Qwen, Anthropic) |
-| `webSearch` | `boolean?` | Supports web search (Qwen) |
-| `jsonMode` | `boolean?` | Supports JSON mode and structured output |
-| `logprobs` | `boolean?` | Supports log probabilities |
-| `seed` | `boolean?` | Supports seed for reproducible generation |
+| Property       | Type       | Description                                                  |
+| -------------- | ---------- | ------------------------------------------------------------ |
+| `streaming`    | `boolean`  | Supports streaming responses                                 |
+| `tools`        | `boolean`  | Supports function/tool calling                               |
+| `vision`       | `boolean`  | Supports image inputs                                        |
+| `multimodal`   | `boolean`  | Supports multiple content types                              |
+| `systemPrompt` | `boolean`  | Supports system prompts                                      |
+| `toolChoice`   | `boolean`  | Supports tool choice control                                 |
+| `reasoning`    | `boolean?` | Supports reasoning/thinking mode (DeepSeek, Qwen, Anthropic) |
+| `webSearch`    | `boolean?` | Supports web search (Qwen)                                   |
+| `jsonMode`     | `boolean?` | Supports JSON mode and structured output                     |
+| `logprobs`     | `boolean?` | Supports log probabilities                                   |
+| `seed`         | `boolean?` | Supports seed for reproducible generation                    |
 
 <Callout type="info">
-Use capabilities to check if an adapter supports the features you need before using it in a Bridge.
+  Use capabilities to check if an adapter supports the features you need before
+  using it in a Bridge.
 </Callout>
 
 ### Example
@@ -406,7 +422,7 @@ const capabilities: AdapterCapabilities = {
   vision: true,
   multimodal: true,
   systemPrompt: true,
-  toolChoice: true
+  toolChoice: true,
 }
 
 // Check specific capability
@@ -452,15 +468,13 @@ interface AdapterInfo {
   name: string
   version: string
   capabilities: AdapterCapabilities
-  description?: string
-  provider?: string
   endpoint?: ProviderEndpoint
 }
 
 interface ProviderEndpoint {
-  baseUrl: string             // Base URL for the API
-  chatPath?: string          // Chat completions path (default: '/v1/chat/completions')
-  modelsPath?: string        // Models list path (default: '/v1/models')
+  baseUrl: string // Base URL for the API
+  chatPath?: string // Chat completions path (default: '/v1/chat/completions')
+  modelsPath?: string // Models list path (default: '/v1/models')
 }
 ```
 
@@ -470,8 +484,6 @@ interface ProviderEndpoint {
 const info = adapter.getInfo()
 
 console.log(`${info.name} v${info.version}`)
-console.log(`Provider: ${info.provider}`)
-console.log(`Description: ${info.description}`)
 console.log(`Capabilities:`, info.capabilities)
 
 // Endpoint information
@@ -487,7 +499,7 @@ if (info.endpoint) {
 To create a custom adapter, implement the `LLMAdapter` interface.
 
 <Callout type="info">
-Follow this pattern to ensure your adapter works seamlessly with Amux.
+  Follow this pattern to ensure your adapter works seamlessly with Amux.
 </Callout>
 
 ### Step-by-Step Guide
@@ -529,6 +541,7 @@ Follow this pattern to ensure your adapter works seamlessly with Amux.
       }
     }
     ```
+
   </Tab>
 
   <Tab value="2. Implement Inbound">
@@ -567,6 +580,7 @@ Follow this pattern to ensure your adapter works seamlessly with Amux.
       }
     }
     ```
+
   </Tab>
 
   <Tab value="3. Implement Outbound">
@@ -597,6 +611,7 @@ Follow this pattern to ensure your adapter works seamlessly with Amux.
       }
     }
     ```
+
   </Tab>
 
   <Tab value="4. Add Metadata">
@@ -626,13 +641,18 @@ Follow this pattern to ensure your adapter works seamlessly with Amux.
       return this.capabilities[capability]
     }
     ```
+
   </Tab>
 </Tabs>
 
 ### Complete Example
 
 ```typescript
-import type { LLMAdapter, LLMRequestIR, LLMResponseIR } from '@amux.ai/llm-bridge'
+import type {
+  LLMAdapter,
+  LLMRequestIR,
+  LLMResponseIR,
+} from '@amux.ai/llm-bridge'
 
 export const myAdapter: LLMAdapter = {
   name: 'my-provider',
@@ -644,7 +664,7 @@ export const myAdapter: LLMAdapter = {
     vision: false,
     multimodal: false,
     systemPrompt: true,
-    toolChoice: true
+    toolChoice: true,
   },
 
   inbound: {
@@ -656,8 +676,8 @@ export const myAdapter: LLMAdapter = {
         tools: req.tools,
         generation: {
           temperature: req.temperature,
-          maxTokens: req.max_tokens
-        }
+          maxTokens: req.max_tokens,
+        },
       }
     },
 
@@ -666,9 +686,9 @@ export const myAdapter: LLMAdapter = {
       return {
         id: res.id,
         model: res.model,
-        choices: res.choices
+        choices: res.choices,
       }
-    }
+    },
   },
 
   outbound: {
@@ -678,7 +698,7 @@ export const myAdapter: LLMAdapter = {
         messages: ir.messages,
         tools: ir.tools,
         temperature: ir.generation?.temperature,
-        max_tokens: ir.generation?.maxTokens
+        max_tokens: ir.generation?.maxTokens,
       }
     },
 
@@ -686,9 +706,9 @@ export const myAdapter: LLMAdapter = {
       return {
         id: ir.id,
         model: ir.model,
-        choices: ir.choices
+        choices: ir.choices,
       }
-    }
+    },
   },
 
   getInfo() {
@@ -697,9 +717,9 @@ export const myAdapter: LLMAdapter = {
       version: this.version,
       capabilities: this.capabilities,
       description: 'My custom adapter',
-      provider: 'my-provider'
+      provider: 'my-provider',
     }
-  }
+  },
 }
 ```
 

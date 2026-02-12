@@ -15,7 +15,7 @@ import {
   TimeoutError,
   ValidationError,
   AdapterError,
-  BridgeError
+  BridgeError,
 } from '@amux.ai/llm-bridge'
 ```
 
@@ -37,6 +37,7 @@ try {
 ```
 
 **Properties:**
+
 - `code` - Error code (e.g., 'API_ERROR', 'NETWORK_ERROR')
 - `message` - Human-readable error message
 - `retryable` - Whether the operation can be retried
@@ -68,6 +69,7 @@ try {
 ```
 
 **Properties:**
+
 - `status` - HTTP status code (401, 429, 500, etc.)
 - `provider` - Provider name ('openai', 'anthropic', etc.)
 - `data` - Raw error response from provider
@@ -94,6 +96,7 @@ try {
 ```
 
 **Properties:**
+
 - `cause` - Underlying network error
 - `retryable` - Always `true`
 
@@ -113,6 +116,7 @@ try {
 ```
 
 **Properties:**
+
 - `timeout` - Timeout duration in milliseconds
 - `retryable` - Always `true`
 
@@ -126,12 +130,13 @@ try {
 } catch (error) {
   if (error instanceof ValidationError) {
     console.error('Validation errors:')
-    error.errors.forEach(err => console.error('-', err))
+    error.errors.forEach((err) => console.error('-', err))
   }
 }
 ```
 
 **Properties:**
+
 - `errors` - Array of validation error messages
 - `retryable` - Always `false`
 
@@ -151,6 +156,7 @@ try {
 ```
 
 **Properties:**
+
 - `adapterName` - Name of the adapter that failed
 - `details` - Error details
 - `retryable` - Always `false`
@@ -187,8 +193,8 @@ try {
     inbound: openaiAdapter,
     outbound: anthropicAdapter,
     config: {
-      apiKey: process.env.ANTHROPIC_API_KEY
-    }
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    },
   })
 
   const response = await bridge.chat(request)
@@ -219,10 +225,12 @@ async function chatWithRetry(bridge, request, maxRetries = 3) {
       if (error instanceof APIError && error.status === 429) {
         // Rate limited - wait and retry
         const retryAfter = error.response?.headers?.['retry-after']
-        const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, i) * 1000
+        const waitTime = retryAfter
+          ? parseInt(retryAfter) * 1000
+          : Math.pow(2, i) * 1000
 
         console.log(`Rate limited. Retrying in ${waitTime}ms...`)
-        await new Promise(resolve => setTimeout(resolve, waitTime))
+        await new Promise((resolve) => setTimeout(resolve, waitTime))
         continue
       }
 
@@ -258,8 +266,10 @@ async function chatWithNetworkRetry(bridge, request) {
         if (attempt >= maxRetries) throw error
 
         const delay = Math.min(1000 * Math.pow(2, attempt), 10000)
-        console.log(`Network error. Retry ${attempt}/${maxRetries} in ${delay}ms`)
-        await new Promise(resolve => setTimeout(resolve, delay))
+        console.log(
+          `Network error. Retry ${attempt}/${maxRetries} in ${delay}ms`
+        )
+        await new Promise((resolve) => setTimeout(resolve, delay))
       } else {
         throw error
       }
@@ -278,16 +288,21 @@ import { APIError } from '@amux.ai/llm-bridge'
 try {
   const response = await bridge.chat(request)
 } catch (error) {
-  if (error instanceof APIError && error.data?.error?.code === 'content_filter') {
+  if (
+    error instanceof APIError &&
+    error.data?.error?.code === 'content_filter'
+  ) {
     console.error('Content was filtered by provider policy')
     // Return a safe default response or notify user
     return {
-      choices: [{
-        message: {
-          role: 'assistant',
-          content: 'I cannot respond to that request due to content policy.'
-        }
-      }]
+      choices: [
+        {
+          message: {
+            role: 'assistant',
+            content: 'I cannot respond to that request due to content policy.',
+          },
+        },
+      ],
     }
   }
 }
@@ -299,9 +314,9 @@ Handle errors in streaming responses:
 
 ```typescript
 try {
-  const stream = await bridge.chat({
+  const stream = bridge.chatStreamRaw({
     ...request,
-    stream: true
+    stream: true,
   })
 
   for await (const event of stream) {
@@ -337,7 +352,7 @@ async function simpleRetry(fn, maxRetries = 3) {
 
       if (error instanceof LLMBridgeError && error.retryable) {
         console.log(`Retry ${i + 1}/${maxRetries}`)
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await new Promise((resolve) => setTimeout(resolve, 1000))
         continue
       }
 
@@ -369,7 +384,7 @@ async function exponentialBackoff(fn, maxRetries = 5) {
       if (error instanceof LLMBridgeError && error.retryable) {
         const delay = Math.min(1000 * Math.pow(2, i), 30000) // Max 30s
         console.log(`Retry ${i + 1}/${maxRetries} in ${delay}ms`)
-        await new Promise(resolve => setTimeout(resolve, delay))
+        await new Promise((resolve) => setTimeout(resolve, delay))
         continue
       }
 
@@ -484,8 +499,8 @@ try {
     details: error.details,
     request: {
       model: request.model,
-      messageCount: request.messages.length
-    }
+      messageCount: request.messages.length,
+    },
   })
 }
 ```
@@ -500,8 +515,8 @@ const bridge = createBridge({
   outbound: anthropicAdapter,
   config: {
     apiKey: process.env.ANTHROPIC_API_KEY,
-    timeout: 30000  // 30 seconds
-  }
+    timeout: 30000, // 30 seconds
+  },
 })
 ```
 
@@ -547,12 +562,12 @@ try {
   Sentry.captureException(error, {
     tags: {
       provider: error.provider,
-      retryable: error.retryable
+      retryable: error.retryable,
     },
     extra: {
       requestModel: request.model,
-      errorCode: error.code
-    }
+      errorCode: error.code,
+    },
   })
 
   throw error

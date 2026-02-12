@@ -4,7 +4,8 @@ description: 在 5 分钟内构建您的第一个 Amux 桥接
 ---
 
 <Callout type="info">
-本指南将引导您创建第一个桥接。您将学习如何在几分钟内在 OpenAI 和 Anthropic 格式之间进行转换。
+  本指南将引导您创建第一个桥接。您将学习如何在几分钟内在 OpenAI 和 Anthropic
+  格式之间进行转换。
 </Callout>
 
 ## 步骤 1：安装包
@@ -34,7 +35,7 @@ ANTHROPIC_API_KEY=your_key_here
 ```
 
 <Callout type="warn">
-永远不要将 `.env` 文件提交到版本控制。将其添加到 `.gitignore`。
+  永远不要将 `.env` 文件提交到版本控制。将其添加到 `.gitignore`。
 </Callout>
 
 ## 步骤 3：创建您的第一个桥接
@@ -51,22 +52,21 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
   config: {
-    apiKey: process.env.ANTHROPIC_API_KEY
-  }
+    apiKey: process.env.ANTHROPIC_API_KEY,
+  },
 })
 
 // 发送 OpenAI 格式的请求
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [
-    { role: 'user', content: '说你好！' }
-  ]
+  messages: [{ role: 'user', content: '说你好！' }],
 })
 
 console.log(response.choices[0].message.content)
 ```
 
 **发生了什么：**
+
 1. 您发送了一个 OpenAI 格式的请求
 2. Amux 将其转换为 Anthropic 格式
 3. 调用 Claude API
@@ -97,17 +97,15 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
   config: {
-    apiKey: process.env.ANTHROPIC_API_KEY
-  }
+    apiKey: process.env.ANTHROPIC_API_KEY,
+  },
 })
 
 // 启用流式传输
-const stream = await bridge.chat({
+const stream = bridge.chatStreamRaw({
   model: 'gpt-4',
-  messages: [
-    { role: 'user', content: '讲一个短故事' }
-  ],
-  stream: true
+  messages: [{ role: 'user', content: '讲一个短故事' }],
+  stream: true,
 })
 
 // 处理流事件
@@ -130,14 +128,14 @@ const bridge = createBridge({
   inbound: anthropicAdapter,
   outbound: openaiAdapter,
   config: {
-    apiKey: process.env.OPENAI_API_KEY
-  }
+    apiKey: process.env.OPENAI_API_KEY,
+  },
 })
 
 const response = await bridge.chat({
   model: 'claude-3-5-sonnet-20241022',
   messages: [{ role: 'user', content: '你好！' }],
-  max_tokens: 100
+  max_tokens: 100,
 })
 
 console.log(response.content[0].text)
@@ -150,23 +148,23 @@ console.log(response.content[0].text)
 ```typescript
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [
-    { role: 'user', content: '北京的天气怎么样？' }
-  ],
-  tools: [{
-    type: 'function',
-    function: {
-      name: 'get_weather',
-      description: '获取某个位置的天气',
-      parameters: {
-        type: 'object',
-        properties: {
-          location: { type: 'string' }
+  messages: [{ role: 'user', content: '北京的天气怎么样？' }],
+  tools: [
+    {
+      type: 'function',
+      function: {
+        name: 'get_weather',
+        description: '获取某个位置的天气',
+        parameters: {
+          type: 'object',
+          properties: {
+            location: { type: 'string' },
+          },
+          required: ['location'],
         },
-        required: ['location']
-      }
-    }
-  }]
+      },
+    },
+  ],
 })
 
 // 检查工具调用

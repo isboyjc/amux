@@ -25,16 +25,16 @@ const bridge = createBridge({
   inbound: minimaxAdapter,
   outbound: minimaxAdapter,
   config: {
-    apiKey: process.env.MINIMAX_API_KEY
-  }
+    apiKey: process.env.MINIMAX_API_KEY,
+  },
 })
 
 const response = await bridge.chat({
   model: 'MiniMax-M2.1',
   messages: [
     { role: 'system', content: '你是一个有帮助的助手。' },
-    { role: 'user', content: '你好,你好吗?' }
-  ]
+    { role: 'user', content: '你好,你好吗?' },
+  ],
 })
 
 console.log(response.choices[0].message.content)
@@ -42,11 +42,11 @@ console.log(response.choices[0].message.content)
 
 ## 支持的模型
 
-| 模型 | 说明 | 输出速度 |
-|------|------|----------|
-| `MiniMax-M2.1` | 强大多语言编程能力,全面升级编程体验 | 约 60 tps |
-| `MiniMax-M2.1-lightning` | M2.1 极速版:效果不变,更快,更敏捷 | 约 100 tps |
-| `MiniMax-M2` | 专为高效编码与 Agent 工作流而生 | 约 60 tps |
+| 模型                     | 说明                                | 输出速度   |
+| ------------------------ | ----------------------------------- | ---------- |
+| `MiniMax-M2.1`           | 强大多语言编程能力,全面升级编程体验 | 约 60 tps  |
+| `MiniMax-M2.1-lightning` | M2.1 极速版:效果不变,更快,更敏捷    | 约 100 tps |
+| `MiniMax-M2`             | 专为高效编码与 Agent 工作流而生     | 约 60 tps  |
 
 ## 核心特性
 
@@ -55,12 +55,12 @@ console.log(response.choices[0].message.content)
     ### Interleaved Thinking
 
     MiniMax M2.1 支持 Interleaved Thinking,提供透明的推理过程。
-    
+
     **`reasoning_split` 默认已启用** - 思考内容会自动分离:
 
     ```typescript
     // reasoning_split 默认已启用
-    const stream = bridge.chatStream({
+    const stream = bridge.chatStreamRaw({
       model: 'MiniMax-M2.1',
       messages: [
         { role: 'user', content: '计算: 15 * 24 等于多少?' }
@@ -76,6 +76,7 @@ console.log(response.choices[0].message.content)
       }
     }
     ```
+
   </Tab>
 
   <Tab value="多语言编程">
@@ -103,6 +104,7 @@ console.log(response.choices[0].message.content)
     - Kotlin、Objective-C
     - TypeScript、JavaScript
     - Python 等
+
   </Tab>
 
   <Tab value="函数调用">
@@ -130,13 +132,14 @@ console.log(response.choices[0].message.content)
       }]
     })
     ```
+
   </Tab>
 
   <Tab value="流式输出">
     ### 流式输出
 
     ```typescript
-    const stream = bridge.chatStream({
+    const stream = bridge.chatStreamRaw({
       model: 'MiniMax-M2.1-lightning',
       messages: [
         { role: 'user', content: '给我讲一个关于 AI 的故事' }
@@ -144,12 +147,13 @@ console.log(response.choices[0].message.content)
       stream: true
     })
 
-    for await (const chunk of stream) {
-      if (chunk.choices[0]?.delta?.content) {
-        process.stdout.write(chunk.choices[0].delta.content)
+    for await (const event of stream) {
+      if (event.type === 'content') {
+        process.stdout.write(event.content.delta)
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -161,11 +165,16 @@ const bridge = createBridge({
   outbound: minimaxAdapter,
   config: {
     apiKey: process.env.MINIMAX_API_KEY,
-    baseURL: 'https://api.minimaxi.com', // 默认值
-    timeout: 60000
-  }
+    baseURL: 'https://api.minimaxi.com/v1', // 默认值
+    timeout: 60000,
+  },
 })
 ```
+
+<Callout type="warn">
+  MiniMax 适配器默认未定义 models 端点。如果需要使用
+  `bridge.listModels()`，请显式配置 `config.modelsPath`。
+</Callout>
 
 ## 与 OpenAI 格式转换
 
@@ -180,28 +189,28 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: minimaxAdapter,
   config: {
-    apiKey: process.env.MINIMAX_API_KEY
-  }
+    apiKey: process.env.MINIMAX_API_KEY,
+  },
 })
 
 // 使用 OpenAI 格式发送请求
 const response = await bridge.chat({
   model: 'gpt-4', // 将被映射到 MiniMax-M2.1
-  messages: [{ role: 'user', content: '你好' }]
+  messages: [{ role: 'user', content: '你好' }],
 })
 ```
 
 ## 功能支持
 
-| 功能 | 支持 | 备注 |
-|------|------|------|
-| 对话补全 | ✅ | 完全支持 |
-| 流式输出 | ✅ | 支持 usage 追踪 |
-| 函数调用 | ✅ | 完全支持 |
-| 视觉理解 | ❌ | 文本模型暂不支持 |
-| 系统提示词 | ✅ | 完全支持 |
-| 推理能力 | ✅ | Interleaved Thinking |
-| JSON 模式 | ✅ | 结构化输出 |
+| 功能       | 支持 | 备注                 |
+| ---------- | ---- | -------------------- |
+| 对话补全   | ✅   | 完全支持             |
+| 流式输出   | ✅   | 支持 usage 追踪      |
+| 函数调用   | ✅   | 完全支持             |
+| 视觉理解   | ❌   | 文本模型暂不支持     |
+| 系统提示词 | ✅   | 完全支持             |
+| 推理能力   | ✅   | Interleaved Thinking |
+| JSON 模式  | ✅   | 结构化输出           |
 
 ## 特色功能
 
@@ -213,12 +222,10 @@ MiniMax M2.1 支持 Interleaved Thinking,可以看到模型的推理过程。
 
 ```typescript
 // reasoning_split 默认启用
-const stream = bridge.chatStream({
+const stream = bridge.chatStreamRaw({
   model: 'MiniMax-M2.1',
-  messages: [
-    { role: 'user', content: '解决这个复杂问题...' }
-  ],
-  stream: true
+  messages: [{ role: 'user', content: '解决这个复杂问题...' }],
+  stream: true,
 })
 
 for await (const event of stream) {
@@ -237,18 +244,16 @@ for await (const event of stream) {
 ```typescript
 const ir = {
   model: 'MiniMax-M2.1',
-  messages: [
-    { role: 'user', content: '解决这个复杂问题...' }
-  ],
+  messages: [{ role: 'user', content: '解决这个复杂问题...' }],
   stream: true,
   extensions: {
     minimax: {
-      reasoning_split: false  // 禁用推理分离
-    }
-  }
+      reasoning_split: false, // 禁用推理分离
+    },
+  },
 }
 
-const stream = await bridge.chatStream(ir)
+const stream = bridge.chatStreamRaw(ir)
 // 现在思考内容会包含在 content 中,带有 <think> 标签
 ```
 
@@ -260,7 +265,7 @@ MiniMax 的温度参数范围为 (0.0, 1.0]:
 const response = await bridge.chat({
   model: 'MiniMax-M2.1',
   messages: [{ role: 'user', content: '你好' }],
-  temperature: 1.0 // 推荐值: 1.0
+  temperature: 1.0, // 推荐值: 1.0
 })
 ```
 
@@ -284,19 +289,19 @@ const response = await bridge.chat({
 // 通用任务,平衡性能
 const response = await bridge.chat({
   model: 'MiniMax-M2.1',
-  messages: [{ role: 'user', content: '解释量子计算' }]
+  messages: [{ role: 'user', content: '解释量子计算' }],
 })
 
 // 需要快速响应
 const fastResponse = await bridge.chat({
   model: 'MiniMax-M2.1-lightning',
-  messages: [{ role: 'user', content: '快速总结这篇文章' }]
+  messages: [{ role: 'user', content: '快速总结这篇文章' }],
 })
 
 // Agent 工作流
 const agentResponse = await bridge.chat({
   model: 'MiniMax-M2',
-  messages: [{ role: 'user', content: '帮我调试这段代码' }]
+  messages: [{ role: 'user', content: '帮我调试这段代码' }],
 })
 ```
 
@@ -309,19 +314,19 @@ const ir = {
   messages: [
     {
       role: 'system',
-      content: '你是一个专业的问题解决专家。请一步步思考。'
+      content: '你是一个专业的问题解决专家。请一步步思考。',
     },
     {
       role: 'user',
-      content: '设计一个高可用的分布式缓存系统'
-    }
+      content: '设计一个高可用的分布式缓存系统',
+    },
   ],
   stream: true,
   extensions: {
     minimax: {
-      reasoning_split: true
-    }
-  }
+      reasoning_split: true,
+    },
+  },
 }
 ```
 
@@ -333,14 +338,14 @@ const response = await bridge.chat({
   messages: [
     {
       role: 'system',
-      content: '你是一个精通多种编程语言的专家。'
+      content: '你是一个精通多种编程语言的专家。',
     },
     {
       role: 'user',
-      content: '将这段 Python 代码转换为 Rust 并优化性能'
-    }
+      content: '将这段 Python 代码转换为 Rust 并优化性能',
+    },
   ],
-  temperature: 1.0
+  temperature: 1.0,
 })
 ```
 

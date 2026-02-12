@@ -20,19 +20,20 @@ Most LLM libraries provide a **unified interface** (one format for all providers
 // Accept OpenAI format, call Claude, return OpenAI format
 const bridge = createBridge({
   inbound: openaiAdapter,
-  outbound: anthropicAdapter
+  outbound: anthropicAdapter,
 })
 
 // Accept Claude format, call OpenAI, return Claude format
 const bridge = createBridge({
   inbound: anthropicAdapter,
-  outbound: openaiAdapter
+  outbound: openaiAdapter,
 })
 ```
 
 ### Is Amux production-ready?
 
 Yes! Amux is designed for production use with:
+
 - Zero runtime dependencies
 - Comprehensive error handling
 - Full TypeScript support
@@ -64,10 +65,10 @@ Yes! Many providers (like DeepSeek, Moonshot, Zhipu, Qwen) are OpenAI-compatible
 ```typescript
 const bridge = createBridge({
   inbound: openaiAdapter,
-  outbound: deepseekAdapter,  // OpenAI-compatible
+  outbound: deepseekAdapter, // OpenAI-compatible
   config: {
-    apiKey: process.env.DEEPSEEK_API_KEY
-  }
+    apiKey: process.env.DEEPSEEK_API_KEY,
+  },
 })
 ```
 
@@ -76,10 +77,10 @@ const bridge = createBridge({
 Yes! All adapters support streaming:
 
 ```typescript
-const stream = await bridge.chat({
+const stream = bridge.chatStreamRaw({
   model: 'gpt-4',
   messages: [{ role: 'user', content: 'Hello' }],
-  stream: true
+  stream: true,
 })
 
 for await (const event of stream) {
@@ -97,13 +98,18 @@ Yes! Tool/function calling is supported across all compatible providers:
 const response = await bridge.chat({
   model: 'gpt-4',
   messages: [{ role: 'user', content: 'What is the weather?' }],
-  tools: [{
-    type: 'function',
-    function: {
-      name: 'get_weather',
-      parameters: { type: 'object', properties: { location: { type: 'string' } } }
-    }
-  }]
+  tools: [
+    {
+      type: 'function',
+      function: {
+        name: 'get_weather',
+        parameters: {
+          type: 'object',
+          properties: { location: { type: 'string' } },
+        },
+      },
+    },
+  ],
 })
 ```
 
@@ -118,8 +124,8 @@ Yes. The inbound adapter defines your request/response format, and the outbound 
 
 ```typescript
 const bridge = createBridge({
-  inbound: openaiAdapter,      // I want to use OpenAI format
-  outbound: anthropicAdapter   // But call Claude API
+  inbound: openaiAdapter, // I want to use OpenAI format
+  outbound: anthropicAdapter, // But call Claude API
 })
 ```
 
@@ -130,8 +136,8 @@ Yes! This is useful if you just want Amux's error handling, logging, or model ma
 ```typescript
 const bridge = createBridge({
   inbound: openaiAdapter,
-  outbound: openaiAdapter,  // Same adapter
-  config: { apiKey: process.env.OPENAI_API_KEY }
+  outbound: openaiAdapter, // Same adapter
+  config: { apiKey: process.env.OPENAI_API_KEY },
 })
 ```
 
@@ -168,8 +174,8 @@ const bridge = createBridge({
   config: { apiKey: process.env.ANTHROPIC_API_KEY },
   modelMapping: {
     'gpt-4': 'claude-3-5-sonnet-20241022',
-    'gpt-3.5-turbo': 'claude-3-haiku-20240307'
-  }
+    'gpt-3.5-turbo': 'claude-3-haiku-20240307',
+  },
 })
 
 // Request with 'gpt-4' will call Claude Sonnet
@@ -195,18 +201,28 @@ export const myAdapter: LLMAdapter = {
     // ...
   },
   inbound: {
-    parseRequest: (request) => { /* Convert to IR */ },
-    parseResponse: (response) => { /* Convert to IR */ }
+    parseRequest: (request) => {
+      /* Convert to IR */
+    },
+    parseResponse: (response) => {
+      /* Convert to IR */
+    },
   },
   outbound: {
-    buildRequest: (ir) => { /* Convert from IR */ },
-    buildResponse: (ir) => { /* Convert from IR */ }
+    buildRequest: (ir) => {
+      /* Convert from IR */
+    },
+    buildResponse: (ir) => {
+      /* Convert from IR */
+    },
   },
-  getInfo() { /* Return adapter metadata */ }
+  getInfo() {
+    /* Return adapter metadata */
+  },
 }
 ```
 
-See the [Custom Adapter Guide](/docs/en/adapters/custom-adapter) for a complete tutorial.
+See the [Custom Adapter Guide](/en/docs/adapters/custom-adapter) for a complete tutorial.
 
 ### Can I contribute to Amux?
 
@@ -239,20 +255,21 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
   config: {
-    apiKey: process.env.ANTHROPIC_API_KEY
-  }
+    apiKey: process.env.ANTHROPIC_API_KEY,
+  },
 })
 ```
 
 ### Streaming isn't working
 
 Make sure you:
+
 1. Set `stream: true` in your request
 2. Use `for await...of` to iterate
 3. Check that the adapter supports streaming
 
 ```typescript
-const stream = await bridge.chat({
+const stream = bridge.chatStreamRaw({
   model: 'gpt-4',
   messages: [...],
   stream: true  // Must be true
@@ -275,7 +292,7 @@ async function chatWithRetry(bridge, request, maxRetries = 3) {
     } catch (error) {
       if (error.type === 'rate_limit' && i < maxRetries - 1) {
         const delay = Math.min(1000 * Math.pow(2, i), 10000)
-        await new Promise(resolve => setTimeout(resolve, delay))
+        await new Promise((resolve) => setTimeout(resolve, delay))
         continue
       }
       throw error

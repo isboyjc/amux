@@ -25,16 +25,19 @@ const bridge = createBridge({
   inbound: moonshotAdapter,
   outbound: moonshotAdapter,
   config: {
-    apiKey: process.env.MOONSHOT_API_KEY
-  }
+    apiKey: process.env.MOONSHOT_API_KEY,
+  },
 })
 
 const response = await bridge.chat({
   model: 'moonshot-v1-8k',
   messages: [
-    { role: 'system', content: 'You are Kimi, an AI assistant provided by Moonshot AI.' },
-    { role: 'user', content: 'What is Amux?' }
-  ]
+    {
+      role: 'system',
+      content: 'You are Kimi, an AI assistant provided by Moonshot AI.',
+    },
+    { role: 'user', content: 'What is Amux?' },
+  ],
 })
 
 console.log(response.choices[0].message.content)
@@ -42,14 +45,15 @@ console.log(response.choices[0].message.content)
 
 ## Supported Models
 
-| Model | Context Length | Description |
-|-------|----------------|-------------|
-| `moonshot-v1-8k` | 8K | Standard context model |
-| `kimi-k2-0905-preview` | - | Kimi K2 preview |
-| `kimi-k2-thinking` | - | Kimi K2 thinking model |
+| Model                  | Context Length | Description            |
+| ---------------------- | -------------- | ---------------------- |
+| `moonshot-v1-8k`       | 8K             | Standard context model |
+| `kimi-k2-0905-preview` | -              | Kimi K2 preview        |
+| `kimi-k2-thinking`     | -              | Kimi K2 thinking model |
 
 <Callout type="info">
-Moonshot's key feature is ultra-long context support, ideal for processing long documents and conversations.
+  Moonshot's key feature is ultra-long context support, ideal for processing
+  long documents and conversations.
 </Callout>
 
 ## Key Features
@@ -77,6 +81,7 @@ Moonshot's key feature is ultra-long context support, ideal for processing long 
     - Multi-turn long conversations
     - Codebase analysis
     - Academic paper reading
+
   </Tab>
 
   <Tab value="Function Calling">
@@ -104,13 +109,14 @@ Moonshot's key feature is ultra-long context support, ideal for processing long 
       }]
     })
     ```
+
   </Tab>
 
   <Tab value="Streaming">
     ### Streaming
 
     ```typescript
-    const stream = bridge.chatStream({
+    const stream = bridge.chatStreamRaw({
       model: 'moonshot-v1-8k',
       messages: [
         { role: 'user', content: 'Tell me a story' }
@@ -118,12 +124,13 @@ Moonshot's key feature is ultra-long context support, ideal for processing long 
       stream: true
     })
 
-    for await (const chunk of stream) {
-      if (chunk.choices[0]?.delta?.content) {
-        process.stdout.write(chunk.choices[0].delta.content)
+    for await (const event of stream) {
+      if (event.type === 'content') {
+        process.stdout.write(event.content.delta)
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -136,22 +143,27 @@ const bridge = createBridge({
   config: {
     apiKey: process.env.MOONSHOT_API_KEY,
     baseURL: 'https://api.moonshot.cn', // Default
-    timeout: 60000
-  }
+    timeout: 60000,
+  },
 })
 ```
 
 ## Feature Support
 
-| Feature | Supported | Notes |
-|---------|-----------|-------|
-| Chat Completion | ✅ | Fully supported |
-| Streaming | ✅ | Fully supported |
-| Function Calling | ✅ | Fully supported |
-| Long Context | ✅ | Ultra-long context support |
-| Vision | ❌ | Not supported |
-| System Prompt | ✅ | Fully supported |
-| JSON Mode | ✅ | Structured output |
+| Feature          | Supported | Notes                      |
+| ---------------- | --------- | -------------------------- |
+| Chat Completion  | ✅        | Fully supported            |
+| Streaming        | ✅        | Fully supported            |
+| Function Calling | ✅        | Fully supported            |
+| Long Context     | ✅        | Ultra-long context support |
+| Vision           | ❌        | Not supported              |
+| System Prompt    | ✅        | Fully supported            |
+| JSON Mode        | ✅        | Structured output          |
+
+<Callout type="warn">
+  `tool_choice = 'required'` is not forwarded by current Moonshot outbound
+  request builder.
+</Callout>
 
 ## Best Practices
 
@@ -161,15 +173,15 @@ const bridge = createBridge({
 // Short conversations use 8K model (faster and cheaper)
 const shortChat = await bridge.chat({
   model: 'moonshot-v1-8k',
-  messages: [{ role: 'user', content: 'Hello' }]
+  messages: [{ role: 'user', content: 'Hello' }],
 })
 
 // Complex reasoning use thinking model
 const complexTask = await bridge.chat({
   model: 'kimi-k2-thinking',
   messages: [
-    { role: 'user', content: 'Please analyze this complex problem...' }
-  ]
+    { role: 'user', content: 'Please analyze this complex problem...' },
+  ],
 })
 ```
 
@@ -181,14 +193,15 @@ const response = await bridge.chat({
   messages: [
     {
       role: 'system',
-      content: 'You are a professional document analysis assistant. Provide concise, structured summaries.'
+      content:
+        'You are a professional document analysis assistant. Provide concise, structured summaries.',
     },
     {
       role: 'user',
-      content: `Please summarize the key points of this document:\n\n${document}`
-    }
+      content: `Please summarize the key points of this document:\n\n${document}`,
+    },
   ],
-  temperature: 0.3 // Lower temperature for more accurate summaries
+  temperature: 0.3, // Lower temperature for more accurate summaries
 })
 ```
 
@@ -200,12 +213,12 @@ const messages = [
   { role: 'user', content: 'First question' },
   { role: 'assistant', content: 'First answer' },
   // ... can have many turns
-  { role: 'user', content: 'Latest question' }
+  { role: 'user', content: 'Latest question' },
 ]
 
 const response = await bridge.chat({
   model: 'moonshot-v1-8k',
-  messages
+  messages,
 })
 ```
 
@@ -221,14 +234,14 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: moonshotAdapter,
   config: {
-    apiKey: process.env.MOONSHOT_API_KEY
-  }
+    apiKey: process.env.MOONSHOT_API_KEY,
+  },
 })
 
 // Send request in OpenAI format
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [{ role: 'user', content: 'Hello' }]
+  messages: [{ role: 'user', content: 'Hello' }],
 })
 ```
 

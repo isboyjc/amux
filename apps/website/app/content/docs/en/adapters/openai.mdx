@@ -24,24 +24,29 @@ yarn add @amux.ai/llm-bridge @amux.ai/adapter-openai
 
 ## Choosing an Adapter
 
-| Feature | openaiAdapter | openaiResponsesAdapter |
-|---------|---------------|------------------------|
-| Endpoint | `/v1/chat/completions` | `/v1/responses` |
-| Stability | Stable, widely used | Newer API |
-| Reasoning | ❌ | ✅ (o3, o4-mini) |
-| Web Search | ❌ | ✅ (built-in tool) |
-| File Search | ❌ | ✅ (built-in tool) |
-| Code Interpreter | ❌ | ✅ (built-in tool) |
-| Stateful Context | ❌ | ✅ (previous_response_id) |
-| JSON Mode | ✅ | ✅ |
-| Compatibility | Maximum compatibility | Latest features |
+| Feature          | openaiAdapter          | openaiResponsesAdapter    |
+| ---------------- | ---------------------- | ------------------------- |
+| Endpoint         | `/v1/chat/completions` | `/v1/responses`           |
+| Stability        | Stable, widely used    | Newer API                 |
+| Reasoning        | ❌                     | ✅ (o3, o4-mini)          |
+| Web Search       | ❌                     | ✅ (built-in tool)        |
+| File Search      | ❌                     | ✅ (built-in tool)        |
+| Code Interpreter | ❌                     | ✅ (built-in tool)        |
+| Stateful Context | ❌                     | ✅ (previous_response_id) |
+| JSON Mode        | ✅                     | ✅                        |
+| Compatibility    | Maximum compatibility  | Latest features           |
 
 <Callout type="info">
-**Recommendation**: Use `openaiAdapter` for production applications requiring stability. Use `openaiResponsesAdapter` when you need the latest features like built-in web search, reasoning models (o3, o4-mini), or stateful multi-turn conversations.
+  **Recommendation**: Use `openaiAdapter` for production applications requiring
+  stability. Use `openaiResponsesAdapter` when you need the latest features like
+  built-in web search, reasoning models (o3, o4-mini), or stateful multi-turn
+  conversations.
 </Callout>
 
 <Callout type="warn">
-**Important**: The standard `openaiAdapter` does NOT support reasoning models (o3, o4-mini). Reasoning capabilities are ONLY available through `openaiResponsesAdapter`.
+  **Important**: The standard `openaiAdapter` does NOT support reasoning models
+  (o3, o4-mini). Reasoning capabilities are ONLY available through
+  `openaiResponsesAdapter`.
 </Callout>
 
 ## Basic Usage
@@ -56,16 +61,16 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: openaiAdapter,
   config: {
-    apiKey: process.env.OPENAI_API_KEY
-  }
+    apiKey: process.env.OPENAI_API_KEY,
+  },
 })
 
 const response = await bridge.chat({
   model: 'gpt-4',
   messages: [
     { role: 'system', content: 'You are a helpful assistant.' },
-    { role: 'user', content: 'What is Amux?' }
-  ]
+    { role: 'user', content: 'What is Amux?' },
+  ],
 })
 
 console.log(response.choices[0].message.content)
@@ -81,15 +86,13 @@ const bridge = createBridge({
   inbound: openaiResponsesAdapter,
   outbound: openaiResponsesAdapter,
   config: {
-    apiKey: process.env.OPENAI_API_KEY
-  }
+    apiKey: process.env.OPENAI_API_KEY,
+  },
 })
 
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [
-    { role: 'user', content: 'What is Amux?' }
-  ]
+  messages: [{ role: 'user', content: 'What is Amux?' }],
 })
 
 console.log(response.choices[0].message.content)
@@ -98,17 +101,15 @@ console.log(response.choices[0].message.content)
 ### Streaming Response
 
 ```typescript
-const stream = bridge.chatStream({
+const stream = bridge.chatStreamRaw({
   model: 'gpt-4',
-  messages: [
-    { role: 'user', content: 'Tell me a story about AI' }
-  ],
-  stream: true
+  messages: [{ role: 'user', content: 'Tell me a story about AI' }],
+  stream: true,
 })
 
-for await (const chunk of stream) {
-  if (chunk.choices[0]?.delta?.content) {
-    process.stdout.write(chunk.choices[0].delta.content)
+for await (const event of stream) {
+  if (event.type === 'content') {
+    process.stdout.write(event.content.delta)
   }
 }
 ```
@@ -162,6 +163,7 @@ for await (const chunk of stream) {
     - `none` - Force the model not to call functions
     - `required` - Force the model to call a function
     - `{ type: 'function', function: { name: 'function_name' } }` - Force a specific function
+
   </Tab>
 
   <Tab value="Vision">
@@ -202,6 +204,7 @@ for await (const chunk of stream) {
     - `low` - Lower resolution, faster and cheaper
     - `high` - Higher resolution, more detailed but more expensive
     - `auto` - Automatic selection (default)
+
   </Tab>
 
   <Tab value="JSON Mode">
@@ -233,6 +236,7 @@ for await (const chunk of stream) {
     <Callout type="warn">
     When using JSON mode, you must explicitly instruct the model to generate JSON in the system or user message.
     </Callout>
+
   </Tab>
 
   <Tab value="Responses API Features">
@@ -360,6 +364,7 @@ for await (const chunk of stream) {
       }
     })
     ```
+
   </Tab>
 
   <Tab value="Advanced Parameters">
@@ -401,6 +406,7 @@ for await (const chunk of stream) {
       top_logprobs: 3
     })
     ```
+
   </Tab>
 </Tabs>
 
@@ -408,54 +414,57 @@ for await (const chunk of stream) {
 
 ### GPT-5 Series (Latest)
 
-| Model | Context Length | Description |
-|-------|----------------|-------------|
-| `gpt-5.2-pro` | 400K | Most advanced model, ARC-AGI-1 >90% |
-| `gpt-5.2` | 400K | Flagship model, GDPval 70.9% |
-| `gpt-5.1` | 128K | Balanced intelligence and speed, SWE-bench 76.3% |
-| `gpt-5` | 128K | Flagship stable version |
-| `gpt-5-mini` | 128K | Lightweight GPT-5 |
-| `gpt-5-nano` | 128K | Ultra-lightweight GPT-5 |
+| Model         | Context Length | Description                                      |
+| ------------- | -------------- | ------------------------------------------------ |
+| `gpt-5.2-pro` | 400K           | Most advanced model, ARC-AGI-1 >90%              |
+| `gpt-5.2`     | 400K           | Flagship model, GDPval 70.9%                     |
+| `gpt-5.1`     | 128K           | Balanced intelligence and speed, SWE-bench 76.3% |
+| `gpt-5`       | 128K           | Flagship stable version                          |
+| `gpt-5-mini`  | 128K           | Lightweight GPT-5                                |
+| `gpt-5-nano`  | 128K           | Ultra-lightweight GPT-5                          |
 
 ### GPT-4 Series
 
-| Model | Context Length | Description |
-|-------|----------------|-------------|
-| `gpt-4.1` | 128K | Fast, main workhorse model |
-| `gpt-4.1-mini` | 128K | Cheaper lightweight version |
-| `gpt-4o` | 128K | Balanced multimodal capabilities |
-| `gpt-4o-mini` | 128K | Fast lightweight version |
+| Model          | Context Length | Description                      |
+| -------------- | -------------- | -------------------------------- |
+| `gpt-4.1`      | 128K           | Fast, main workhorse model       |
+| `gpt-4.1-mini` | 128K           | Cheaper lightweight version      |
+| `gpt-4o`       | 128K           | Balanced multimodal capabilities |
+| `gpt-4o-mini`  | 128K           | Fast lightweight version         |
 
 ### Reasoning Models (Responses API only)
 
-| Model | Description |
-|-------|-------------|
-| `o3` | Latest reasoning model for complex tasks |
-| `o4-mini` | Lightweight reasoning model |
+| Model     | Description                              |
+| --------- | ---------------------------------------- |
+| `o3`      | Latest reasoning model for complex tasks |
+| `o4-mini` | Lightweight reasoning model              |
 
 <Callout type="info">
-Reasoning models (o3, o4-mini) are only available through the Responses API (`openaiResponsesAdapter`). They support reasoning effort control via the `reasoning.effort` parameter.
+  Reasoning models (o3, o4-mini) are only available through the Responses API
+  (`openaiResponsesAdapter`). They support reasoning effort control via the
+  `reasoning.effort` parameter.
 </Callout>
 
 ### Codex Series (Programming)
 
-| Model | Description |
-|-------|-------------|
-| `gpt-5.1-codex` | SWE-bench 76.3%, for long programming tasks |
-| `gpt-5.1-codex-mini` | Lightweight programming version |
-| `gpt-5-codex-high` | Strongest programming capability |
-| `gpt-5-codex-medium` | Medium performance |
-| `gpt-5-codex-low` | Lightweight version |
+| Model                | Description                                 |
+| -------------------- | ------------------------------------------- |
+| `gpt-5.1-codex`      | SWE-bench 76.3%, for long programming tasks |
+| `gpt-5.1-codex-mini` | Lightweight programming version             |
+| `gpt-5-codex-high`   | Strongest programming capability            |
+| `gpt-5-codex-medium` | Medium performance                          |
+| `gpt-5-codex-low`    | Lightweight version                         |
 
 <Callout type="warn">
-**GPT-5 Series Special Requirements:**
-- Temperature parameter must be set to 1
-- Use `max_completion_tokens` instead of `max_tokens`
-- Do not pass `top_p` parameter
+  **GPT-5 Series Special Requirements:** - Temperature parameter must be set to
+  1 - Use `max_completion_tokens` instead of `max_tokens` - Do not pass `top_p`
+  parameter
 </Callout>
 
 <Callout type="info">
-Model list may be updated. Check the [OpenAI documentation](https://platform.openai.com/docs/models) for the latest information.
+  Model list may be updated. Check the [OpenAI
+  documentation](https://platform.openai.com/docs/models) for the latest
+  information.
 </Callout>
 
 ## Configuration Options
@@ -479,9 +488,9 @@ const bridge = createBridge({
 
     // Optional: Custom headers
     headers: {
-      'Custom-Header': 'value'
-    }
-  }
+      'Custom-Header': 'value',
+    },
+  },
 })
 ```
 
@@ -498,7 +507,7 @@ import { openaiAdapter } from '@amux.ai/adapter-openai'
 const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: openaiAdapter,
-  config: { apiKey: process.env.OPENAI_API_KEY }
+  config: { apiKey: process.env.OPENAI_API_KEY },
 })
 
 // After: Using Responses API
@@ -507,13 +516,13 @@ import { openaiResponsesAdapter } from '@amux.ai/adapter-openai'
 const bridge = createBridge({
   inbound: openaiResponsesAdapter,
   outbound: openaiResponsesAdapter,
-  config: { apiKey: process.env.OPENAI_API_KEY }
+  config: { apiKey: process.env.OPENAI_API_KEY },
 })
 
 // Request format remains the same (IR format)!
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [{ role: 'user', content: 'Hello' }]
+  messages: [{ role: 'user', content: 'Hello' }],
 })
 ```
 
@@ -525,8 +534,8 @@ const response = await bridge.chat({
 fetch('/v1/responses', {
   body: JSON.stringify({
     model: 'gpt-4',
-    messages: [{ role: 'user', content: 'Hello' }]  // Wrong format!
-  })
+    messages: [{ role: 'user', content: 'Hello' }], // Wrong format!
+  }),
 })
 
 // ✅ Correct: Sending Responses API format
@@ -537,14 +546,15 @@ fetch('/v1/responses', {
       {
         type: 'message',
         role: 'user',
-        content: [{ type: 'text', text: 'Hello' }]
-      }
-    ]
-  })
+        content: [{ type: 'text', text: 'Hello' }],
+      },
+    ],
+  }),
 })
 ```
 
 Each adapter has its own standard format. Your application layer should adapt to the adapter's format, not the other way around.
+
 </Callout>
 
 ### Cross-API Conversion
@@ -554,9 +564,9 @@ import { openaiAdapter, openaiResponsesAdapter } from '@amux.ai/adapter-openai'
 
 // Accept old format requests, call new API
 const bridge = createBridge({
-  inbound: openaiAdapter,           // Accept Chat Completions format
+  inbound: openaiAdapter, // Accept Chat Completions format
   outbound: openaiResponsesAdapter, // Call Responses API
-  config: { apiKey: process.env.OPENAI_API_KEY }
+  config: { apiKey: process.env.OPENAI_API_KEY },
 })
 ```
 
@@ -566,7 +576,7 @@ const bridge = createBridge({
 try {
   const response = await bridge.chat({
     model: 'gpt-4',
-    messages: [{ role: 'user', content: 'Hello' }]
+    messages: [{ role: 'user', content: 'Hello' }],
   })
 } catch (error) {
   if (error.response) {
@@ -612,8 +622,8 @@ const bridge = createBridge({
   outbound: openaiAdapter,
   config: {
     apiKey: process.env.OPENAI_API_KEY,
-    organization: process.env.OPENAI_ORG_ID
-  }
+    organization: process.env.OPENAI_ORG_ID,
+  },
 })
 ```
 
@@ -639,7 +649,7 @@ async function chatWithRetry(request, maxRetries = 3) {
       if (error.response?.data?.error?.type === 'rate_limit_error') {
         const waitTime = Math.pow(2, i) * 1000 // Exponential backoff
         console.log(`Rate limited, waiting ${waitTime}ms...`)
-        await new Promise(resolve => setTimeout(resolve, waitTime))
+        await new Promise((resolve) => setTimeout(resolve, waitTime))
         continue
       }
       throw error
@@ -662,14 +672,14 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
   config: {
-    apiKey: process.env.ANTHROPIC_API_KEY
-  }
+    apiKey: process.env.ANTHROPIC_API_KEY,
+  },
 })
 
 // Send request in OpenAI format
 const response = await bridge.chat({
   model: 'gpt-4', // Will be mapped to Claude
-  messages: [{ role: 'user', content: 'Hello' }]
+  messages: [{ role: 'user', content: 'Hello' }],
 })
 ```
 
@@ -684,30 +694,30 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: deepseekAdapter,
   config: {
-    apiKey: process.env.DEEPSEEK_API_KEY
-  }
+    apiKey: process.env.DEEPSEEK_API_KEY,
+  },
 })
 ```
 
 ## Feature Support Comparison
 
-| Feature | openaiAdapter | openaiResponsesAdapter |
-|---------|---------------|------------------------|
-| Chat Completion | ✅ | ✅ |
-| Streaming | ✅ | ✅ |
-| Function Calling | ✅ | ✅ |
-| Vision | ✅ | ✅ |
-| JSON Mode | ✅ | ✅ (via text.format) |
-| System Prompt | ✅ | ✅ (via instructions) |
-| Tool Choice | ✅ | ✅ |
-| Logprobs | ✅ | ❌ |
-| Seed | ✅ | ❌ |
-| Reasoning | ❌ | ✅ (o3, o4-mini) |
-| Web Search | ❌ | ✅ (built-in tool) |
-| File Search | ❌ | ✅ (built-in tool) |
-| Code Interpreter | ❌ | ✅ (built-in tool) |
-| Stateful Context | ❌ | ✅ (previous_response_id) |
-| Parallel Tool Calls | ✅ | ✅ |
+| Feature             | openaiAdapter | openaiResponsesAdapter    |
+| ------------------- | ------------- | ------------------------- |
+| Chat Completion     | ✅            | ✅                        |
+| Streaming           | ✅            | ✅                        |
+| Function Calling    | ✅            | ✅                        |
+| Vision              | ✅            | ✅                        |
+| JSON Mode           | ✅            | ✅ (via text.format)      |
+| System Prompt       | ✅            | ✅ (via instructions)     |
+| Tool Choice         | ✅            | ✅                        |
+| Logprobs            | ✅            | ❌                        |
+| Seed                | ✅            | ❌                        |
+| Reasoning           | ❌            | ✅ (o3, o4-mini)          |
+| Web Search          | ❌            | ✅ (built-in tool)        |
+| File Search         | ❌            | ✅ (built-in tool)        |
+| Code Interpreter    | ❌            | ✅ (built-in tool)        |
+| Stateful Context    | ❌            | ✅ (previous_response_id) |
+| Parallel Tool Calls | ✅            | ✅                        |
 
 ## Limitations
 

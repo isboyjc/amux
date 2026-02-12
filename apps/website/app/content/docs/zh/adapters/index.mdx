@@ -36,31 +36,35 @@ Amux 提供了 8 个官方适配器,支持主流的 LLM 提供商。每个适配
 
 ## 功能对比
 
-| 适配器 | 流式传输 | 工具调用 | 视觉 | 多模态 | 推理 | JSON 模式 |
-|--------|---------|---------|------|--------|------|----------|
-| OpenAI | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Anthropic | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| DeepSeek | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
-| Moonshot | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
-| Zhipu | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Qwen | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Gemini | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
-| MiniMax | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| 适配器    | 流式传输 | 工具调用 | 视觉 | 多模态 | 推理 | JSON 模式 |
+| --------- | -------- | -------- | ---- | ------ | ---- | --------- |
+| OpenAI    | ✅       | ✅       | ✅   | ✅     | ❌   | ✅        |
+| Anthropic | ✅       | ✅       | ✅   | ✅     | ✅   | ❌        |
+| DeepSeek  | ✅       | ✅       | ❌   | ❌     | ✅   | ✅        |
+| Moonshot  | ✅       | ✅       | ❌   | ❌     | ✅   | ✅        |
+| Zhipu     | ✅       | ✅       | ✅   | ✅     | ❌   | ✅        |
+| Qwen      | ✅       | ✅       | ✅   | ✅     | ✅   | ✅        |
+| Gemini    | ✅       | ✅       | ✅   | ✅     | ❌   | ✅        |
+| MiniMax   | ✅       | ✅       | ❌   | ❌     | ✅   | ✅        |
 
 ## 选择适配器
 
 ### 按功能选择
 
 **视觉和多模态**
+
 - OpenAI (GPT-4o)、Anthropic (Claude 3)、Qwen (通义千问 VL)、Gemini (Gemini Pro Vision)、Zhipu (GLM-4V)
 
 **长上下文**
+
 - Gemini (1M+ tokens)、Anthropic (200K)、Moonshot (200K)
 
 **编程能力**
+
 - MiniMax (MiniMax-M2.1)、DeepSeek (DeepSeek Coder)、OpenAI (GPT-4)、Anthropic (Claude 3.5 Sonnet)
 
 **推理能力**
+
 - MiniMax (Interleaved Thinking)、OpenAI (o3、o4-mini)、DeepSeek (DeepSeek Reasoner)、Moonshot (Kimi K2 Thinking)
 
 ### 按价格选择
@@ -74,6 +78,7 @@ Amux 提供了 8 个官方适配器,支持主流的 LLM 提供商。每个适配
 ### 按 OpenAI 兼容性
 
 以下适配器兼容 OpenAI 格式,可以无缝替换:
+
 - DeepSeek (完全兼容)
 - MiniMax (完全兼容)
 - Moonshot (完全兼容)
@@ -107,13 +112,13 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
   config: {
-    apiKey: process.env.ANTHROPIC_API_KEY
-  }
+    apiKey: process.env.ANTHROPIC_API_KEY,
+  },
 })
 
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [{ role: 'user', content: '你好!' }]
+  messages: [{ role: 'user', content: '你好!' }],
 })
 ```
 
@@ -133,17 +138,29 @@ export const myAdapter: LLMAdapter = {
     vision: false,
     multimodal: false,
     systemPrompt: true,
-    toolChoice: true
+    toolChoice: true,
   },
   inbound: {
-    parseRequest: (request) => { /* ... */ },
-    parseResponse: (response) => { /* ... */ },
-    parseStream: (stream) => { /* ... */ },
-    parseError: (error) => { /* ... */ }
+    parseRequest: (request) => {
+      /* ... */
+    },
+    parseResponse: (response) => {
+      /* ... */
+    },
+    parseStream: (stream) => {
+      /* ... */
+    },
+    parseError: (error) => {
+      /* ... */
+    },
   },
   outbound: {
-    buildRequest: (ir) => { /* ... */ },
-    buildResponse: (ir) => { /* ... */ }
+    buildRequest: (ir) => {
+      /* ... */
+    },
+    buildResponse: (ir) => {
+      /* ... */
+    },
   },
   getInfo() {
     return {
@@ -151,15 +168,15 @@ export const myAdapter: LLMAdapter = {
       version: this.version,
       capabilities: this.capabilities,
       endpoint: {
-        baseURL: 'https://api.my-provider.com',
-        chatPath: '/v1/chat'
-      }
+        baseUrl: 'https://api.my-provider.com',
+        chatPath: '/v1/chat',
+      },
     }
-  }
+  },
 }
 ```
 
-查看[自定义适配器指南](/docs/zh/adapters/custom-adapter)获取完整教程。
+查看[自定义适配器指南](/zh/docs/adapters/custom-adapter)获取完整教程。
 
 ## 下一步
 

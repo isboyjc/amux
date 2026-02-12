@@ -25,23 +25,21 @@ const bridge = createBridge({
   inbound: anthropicAdapter,
   outbound: anthropicAdapter,
   config: {
-    apiKey: process.env.ANTHROPIC_API_KEY
-  }
+    apiKey: process.env.ANTHROPIC_API_KEY,
+  },
 })
 
 const response = await bridge.chat({
   model: 'claude-3-5-sonnet-20241022',
   max_tokens: 1024,
-  messages: [
-    { role: 'user', content: '什么是 Amux？' }
-  ]
+  messages: [{ role: 'user', content: '什么是 Amux？' }],
 })
 
 console.log(response.content[0].text)
 ```
 
-<Callout type="warn">
-Anthropic API 要求必须指定 `max_tokens` 参数。
+<Callout type="info">
+  如果未提供 `max_tokens`，适配器在构建出站 Anthropic 请求时会默认使用 `4096`。
 </Callout>
 
 ## 支持的功能
@@ -80,6 +78,7 @@ Anthropic API 要求必须指定 `max_tokens` 参数。
       console.log('参数:', toolUse.input)
     }
     ```
+
   </Tab>
 
   <Tab value="视觉">
@@ -111,6 +110,7 @@ Anthropic API 要求必须指定 `max_tokens` 参数。
     **支持的图像格式：**
     - URL（https://）
     - Base64 编码（需要指定 media_type）
+
   </Tab>
 
   <Tab value="系统提示">
@@ -128,13 +128,14 @@ Anthropic API 要求必须指定 `max_tokens` 参数。
       ]
     })
     ```
+
   </Tab>
 
   <Tab value="流式传输">
     ### 流式传输
 
     ```typescript
-    const stream = bridge.chatStream({
+    const stream = bridge.chatStreamRaw({
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 1024,
       messages: [
@@ -144,19 +145,18 @@ Anthropic API 要求必须指定 `max_tokens` 参数。
     })
 
     for await (const event of stream) {
-      if (event.type === 'content_block_delta') {
-        if (event.delta.type === 'text_delta') {
-          process.stdout.write(event.delta.text)
-        }
+      if (event.type === 'content') {
+        process.stdout.write(event.content.delta)
       }
     }
     ```
+
   </Tab>
 
   <Tab value="扩展思考">
     ### 扩展思考（推理）
 
-    Claude 支持扩展思考功能，用于复杂推理任务：
+    Claude 适配器在 Bridge 能力层声明了推理能力，但当前出站请求构建器不会直接透传 `thinking` 请求字段。
 
     ```typescript
     const response = await bridge.chat({
@@ -165,32 +165,23 @@ Anthropic API 要求必须指定 `max_tokens` 参数。
       messages: [
         { role: 'user', content: '逐步解决这个复杂问题...' }
       ],
-      thinking: {
-        type: 'enabled',
-        budget_tokens: 2000
-      }
+      // 当前适配器请求构建器不直接映射 thinking 请求字段
     })
 
-    // 访问推理内容
-    for (const block of response.content) {
-      if (block.type === 'thinking') {
-        console.log('推理过程:', block.thinking)
-      } else if (block.type === 'text') {
-        console.log('答案:', block.text)
-      }
-    }
+    // 可通过 Bridge hooks 或 IR 流/响应字段观察统一后的推理事件
     ```
+
   </Tab>
 </Tabs>
 
 ## 支持的模型
 
-| 模型 | 上下文长度 | 描述 |
-|------|-----------|------|
-| `claude-3-5-sonnet-20241022` | 200K | 最新最强大的模型 |
-| `claude-3-opus-20240229` | 200K | 最智能的模型 |
-| `claude-3-sonnet-20240229` | 200K | 平衡性能和速度 |
-| `claude-3-haiku-20240307` | 200K | 最快最经济 |
+| 模型                         | 上下文长度 | 描述             |
+| ---------------------------- | ---------- | ---------------- |
+| `claude-3-5-sonnet-20241022` | 200K       | 最新最强大的模型 |
+| `claude-3-opus-20240229`     | 200K       | 最智能的模型     |
+| `claude-3-sonnet-20240229`   | 200K       | 平衡性能和速度   |
+| `claude-3-haiku-20240307`    | 200K       | 最快最经济       |
 
 ## 配置选项
 
@@ -203,9 +194,9 @@ const bridge = createBridge({
     baseURL: 'https://api.anthropic.com', // 可选
     timeout: 60000, // 可选
     headers: {
-      'anthropic-version': '2023-06-01' // API 版本
-    }
-  }
+      'anthropic-version': '2023-06-01', // API 版本
+    },
+  },
 })
 ```
 
@@ -221,14 +212,14 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
   config: {
-    apiKey: process.env.ANTHROPIC_API_KEY
-  }
+    apiKey: process.env.ANTHROPIC_API_KEY,
+  },
 })
 
 // 使用 OpenAI 格式发送请求
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [{ role: 'user', content: '你好' }]
+  messages: [{ role: 'user', content: '你好' }],
 })
 // 返回 OpenAI 格式的响应
 ```
@@ -240,47 +231,47 @@ const bridge = createBridge({
   inbound: anthropicAdapter,
   outbound: openaiAdapter,
   config: {
-    apiKey: process.env.OPENAI_API_KEY
-  }
+    apiKey: process.env.OPENAI_API_KEY,
+  },
 })
 
 // 使用 Anthropic 格式发送请求
 const response = await bridge.chat({
   model: 'claude-3-5-sonnet-20241022',
   max_tokens: 1024,
-  messages: [{ role: 'user', content: '你好' }]
+  messages: [{ role: 'user', content: '你好' }],
 })
 // 返回 Anthropic 格式的响应
 ```
 
 ## 功能支持
 
-| 功能 | 支持 | 说明 |
-|------|------|------|
-| Messages API | ✅ | 完全支持 |
-| 流式传输 | ✅ | 完全支持 |
-| 工具使用 | ✅ | 完全支持 |
-| 视觉 | ✅ | Claude 3 系列 |
-| 系统提示 | ✅ | 单独的 system 参数 |
-| 长上下文 | ✅ | 200K tokens |
-| 扩展思考 | ✅ | 推理支持 |
+| 功能         | 支持 | 说明                                              |
+| ------------ | ---- | ------------------------------------------------- |
+| Messages API | ✅   | 完全支持                                          |
+| 流式传输     | ✅   | 完全支持                                          |
+| 工具使用     | ✅   | 完全支持                                          |
+| 视觉         | ✅   | Claude 3 系列                                     |
+| 系统提示     | ✅   | 单独的 system 参数                                |
+| 长上下文     | ✅   | 200K tokens                                       |
+| 扩展思考     | ✅   | 已声明能力；`thinking` 请求字段的直接透传目前受限 |
 
 ## 最佳实践
 
-### 1. 始终设置 max_tokens
+### 1. 建议显式设置 max_tokens
 
 ```typescript
 // ✅ 正确
 const response = await bridge.chat({
   model: 'claude-3-5-sonnet-20241022',
-  max_tokens: 1024, // 必需
+  max_tokens: 1024, // 推荐
   messages: [...]
 })
 
-// ❌ 错误 - 会报错
+// ✅ 同样可用 - 适配器默认 4096
 const response = await bridge.chat({
   model: 'claude-3-5-sonnet-20241022',
-  messages: [...] // 缺少 max_tokens
+  messages: [...] // 省略 max_tokens
 })
 ```
 
@@ -291,9 +282,7 @@ const response = await bridge.chat({
   model: 'claude-3-5-sonnet-20241022',
   max_tokens: 1024,
   system: '你是一个专业的技术文档编写者。使用清晰、简洁的语言。',
-  messages: [
-    { role: 'user', content: '解释什么是 REST API' }
-  ]
+  messages: [{ role: 'user', content: '解释什么是 REST API' }],
 })
 ```
 
@@ -310,8 +299,8 @@ const response = await bridge.chat({
     { role: 'user', content: '第二个问题' },
     { role: 'assistant', content: '第二个回答' },
     // ... 可以有很多轮对话
-    { role: 'user', content: '最新的问题' }
-  ]
+    { role: 'user', content: '最新的问题' },
+  ],
 })
 ```
 

@@ -71,6 +71,7 @@ interface LLMAdapter {
     ```typescript
     console.log(openaiAdapter.name) // "openai"
     ```
+
   </Tab>
 
   <Tab value="version">
@@ -84,6 +85,7 @@ interface LLMAdapter {
     ```typescript
     console.log(openaiAdapter.version) // "1.0.0"
     ```
+
   </Tab>
 
   <Tab value="capabilities">
@@ -103,6 +105,7 @@ interface LLMAdapter {
     //   ...
     // }
     ```
+
   </Tab>
 </Tabs>
 
@@ -120,7 +123,7 @@ interface InboundAdapter {
 ```
 
 <Callout type="warn">
-所有 `parse*` 方法将**从提供商格式转换为 IR**。它们在从提供商接收数据时使用。
+  所有 `parse*` 方法将**从提供商格式转换为 IR**。它们在从提供商接收数据时使用。
 </Callout>
 
 ### 方法
@@ -146,6 +149,7 @@ interface InboundAdapter {
     })
     // 返回：{ messages: [...], model: 'gpt-4', ... }
     ```
+
   </Tab>
 
   <Tab value="parseResponse">
@@ -167,6 +171,7 @@ interface InboundAdapter {
       choices: [{ message: { role: 'assistant', content: 'Hi!' } }]
     })
     ```
+
   </Tab>
 
   <Tab value="parseStream">
@@ -188,6 +193,7 @@ interface InboundAdapter {
     })
     // 返回：{ type: 'content', content: { delta: 'Hello' } }
     ```
+
   </Tab>
 
   <Tab value="parseError">
@@ -209,6 +215,7 @@ interface InboundAdapter {
     })
     // 返回：{ type: 'rate_limit', message: '...', retryable: true }
     ```
+
   </Tab>
 </Tabs>
 
@@ -220,6 +227,7 @@ interface InboundAdapter {
 interface OutboundAdapter {
   buildRequest(ir: LLMRequestIR): unknown
   buildResponse?(ir: LLMResponseIR): unknown
+  buildStreamEvent?(ir: LLMStreamEvent): unknown
   createStreamBuilder?(): StreamEventBuilder
   buildStreamHandler?(): StreamHandler
   buildErrorHandler?(): ErrorHandler
@@ -227,7 +235,7 @@ interface OutboundAdapter {
 ```
 
 <Callout type="warn">
-所有 `build*` 方法将**从 IR 转换为提供商格式**。它们在向提供商发送数据时使用。
+  所有 `build*` 方法将**从 IR 转换为提供商格式**。它们在向提供商发送数据时使用。
 </Callout>
 
 ### 方法
@@ -253,6 +261,7 @@ interface OutboundAdapter {
     })
     // 返回提供商特定格式
     ```
+
   </Tab>
 
   <Tab value="buildResponse">
@@ -266,6 +275,7 @@ interface OutboundAdapter {
     - `ir` - IR 格式的响应
 
     **返回：** 提供商格式的响应
+
   </Tab>
 
   <Tab value="createStreamBuilder">
@@ -326,6 +336,7 @@ interface OutboundAdapter {
       }
     }
     ```
+
   </Tab>
 
   <Tab value="buildStreamHandler">
@@ -340,6 +351,7 @@ interface OutboundAdapter {
     ```typescript
     type StreamHandler = (chunk: unknown) => LLMStreamEvent | LLMStreamEvent[] | null
     ```
+
   </Tab>
 
   <Tab value="buildErrorHandler">
@@ -354,6 +366,7 @@ interface OutboundAdapter {
     ```typescript
     type ErrorHandler = (error: unknown) => LLMErrorIR
     ```
+
   </Tab>
 </Tabs>
 
@@ -369,32 +382,32 @@ interface AdapterCapabilities {
   multimodal: boolean
   systemPrompt: boolean
   toolChoice: boolean
-  reasoning?: boolean          // 支持推理/思考模式
-  webSearch?: boolean          // 支持网页搜索
-  jsonMode?: boolean           // 支持 JSON 模式/结构化输出
-  logprobs?: boolean           // 支持对数概率
-  seed?: boolean               // 支持种子以实现可复现性
+  reasoning?: boolean // 支持推理/思考模式
+  webSearch?: boolean // 支持网页搜索
+  jsonMode?: boolean // 支持 JSON 模式/结构化输出
+  logprobs?: boolean // 支持对数概率
+  seed?: boolean // 支持种子以实现可复现性
 }
 ```
 
 ### 属性
 
-| 属性 | 类型 | 描述 |
-|------|------|------|
-| `streaming` | `boolean` | 支持流式响应 |
-| `tools` | `boolean` | 支持函数/工具调用 |
-| `vision` | `boolean` | 支持图像输入 |
-| `multimodal` | `boolean` | 支持多种内容类型 |
-| `systemPrompt` | `boolean` | 支持系统提示词 |
-| `toolChoice` | `boolean` | 支持工具选择控制 |
-| `reasoning` | `boolean?` | 支持推理/思考模式（DeepSeek, Qwen, Anthropic） |
-| `webSearch` | `boolean?` | 支持网页搜索（Qwen） |
-| `jsonMode` | `boolean?` | 支持 JSON 模式和结构化输出 |
-| `logprobs` | `boolean?` | 支持对数概率 |
-| `seed` | `boolean?` | 支持种子以实现可复现生成 |
+| 属性           | 类型       | 描述                                           |
+| -------------- | ---------- | ---------------------------------------------- |
+| `streaming`    | `boolean`  | 支持流式响应                                   |
+| `tools`        | `boolean`  | 支持函数/工具调用                              |
+| `vision`       | `boolean`  | 支持图像输入                                   |
+| `multimodal`   | `boolean`  | 支持多种内容类型                               |
+| `systemPrompt` | `boolean`  | 支持系统提示词                                 |
+| `toolChoice`   | `boolean`  | 支持工具选择控制                               |
+| `reasoning`    | `boolean?` | 支持推理/思考模式（DeepSeek, Qwen, Anthropic） |
+| `webSearch`    | `boolean?` | 支持网页搜索（Qwen）                           |
+| `jsonMode`     | `boolean?` | 支持 JSON 模式和结构化输出                     |
+| `logprobs`     | `boolean?` | 支持对数概率                                   |
+| `seed`         | `boolean?` | 支持种子以实现可复现生成                       |
 
 <Callout type="info">
-使用功能声明在 Bridge 中使用适配器之前检查它是否支持您需要的功能。
+  使用功能声明在 Bridge 中使用适配器之前检查它是否支持您需要的功能。
 </Callout>
 
 ### 示例
@@ -406,7 +419,7 @@ const capabilities: AdapterCapabilities = {
   vision: true,
   multimodal: true,
   systemPrompt: true,
-  toolChoice: true
+  toolChoice: true,
 }
 
 // 检查特定功能
@@ -452,15 +465,13 @@ interface AdapterInfo {
   name: string
   version: string
   capabilities: AdapterCapabilities
-  description?: string
-  provider?: string
   endpoint?: ProviderEndpoint
 }
 
 interface ProviderEndpoint {
-  baseUrl: string             // API 的基础 URL
-  chatPath?: string          // 聊天完成路径（默认：'/v1/chat/completions'）
-  modelsPath?: string        // 模型列表路径（默认：'/v1/models'）
+  baseUrl: string // API 的基础 URL
+  chatPath?: string // 聊天完成路径（默认：'/v1/chat/completions'）
+  modelsPath?: string // 模型列表路径（默认：'/v1/models'）
 }
 ```
 
@@ -470,8 +481,6 @@ interface ProviderEndpoint {
 const info = adapter.getInfo()
 
 console.log(`${info.name} v${info.version}`)
-console.log(`提供商：${info.provider}`)
-console.log(`描述：${info.description}`)
 console.log(`功能：`, info.capabilities)
 
 // 端点信息
@@ -486,9 +495,7 @@ if (info.endpoint) {
 
 要创建自定义适配器，请实现 `LLMAdapter` 接口。
 
-<Callout type="info">
-遵循此模式以确保您的适配器与 Amux 无缝协作。
-</Callout>
+<Callout type="info">遵循此模式以确保您的适配器与 Amux 无缝协作。</Callout>
 
 ### 分步指南
 
@@ -529,6 +536,7 @@ if (info.endpoint) {
       }
     }
     ```
+
   </Tab>
 
   <Tab value="2. 实现入站">
@@ -567,6 +575,7 @@ if (info.endpoint) {
       }
     }
     ```
+
   </Tab>
 
   <Tab value="3. 实现出站">
@@ -597,6 +606,7 @@ if (info.endpoint) {
       }
     }
     ```
+
   </Tab>
 
   <Tab value="4. 添加元数据">
@@ -626,13 +636,18 @@ if (info.endpoint) {
       return this.capabilities[capability]
     }
     ```
+
   </Tab>
 </Tabs>
 
 ### 完整示例
 
 ```typescript
-import type { LLMAdapter, LLMRequestIR, LLMResponseIR } from '@amux.ai/llm-bridge'
+import type {
+  LLMAdapter,
+  LLMRequestIR,
+  LLMResponseIR,
+} from '@amux.ai/llm-bridge'
 
 export const myAdapter: LLMAdapter = {
   name: 'my-provider',
@@ -644,7 +659,7 @@ export const myAdapter: LLMAdapter = {
     vision: false,
     multimodal: false,
     systemPrompt: true,
-    toolChoice: true
+    toolChoice: true,
   },
 
   inbound: {
@@ -656,8 +671,8 @@ export const myAdapter: LLMAdapter = {
         tools: req.tools,
         generation: {
           temperature: req.temperature,
-          maxTokens: req.max_tokens
-        }
+          maxTokens: req.max_tokens,
+        },
       }
     },
 
@@ -666,9 +681,9 @@ export const myAdapter: LLMAdapter = {
       return {
         id: res.id,
         model: res.model,
-        choices: res.choices
+        choices: res.choices,
       }
-    }
+    },
   },
 
   outbound: {
@@ -678,7 +693,7 @@ export const myAdapter: LLMAdapter = {
         messages: ir.messages,
         tools: ir.tools,
         temperature: ir.generation?.temperature,
-        max_tokens: ir.generation?.maxTokens
+        max_tokens: ir.generation?.maxTokens,
       }
     },
 
@@ -686,9 +701,9 @@ export const myAdapter: LLMAdapter = {
       return {
         id: ir.id,
         model: ir.model,
-        choices: ir.choices
+        choices: ir.choices,
       }
-    }
+    },
   },
 
   getInfo() {
@@ -697,9 +712,9 @@ export const myAdapter: LLMAdapter = {
       version: this.version,
       capabilities: this.capabilities,
       description: '我的自定义适配器',
-      provider: 'my-provider'
+      provider: 'my-provider',
     }
-  }
+  },
 }
 ```
 

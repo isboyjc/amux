@@ -36,31 +36,35 @@ Amux provides 8 official adapters supporting mainstream LLM providers. Each adap
 
 ## Feature Comparison
 
-| Adapter | Streaming | Tools | Vision | Multimodal | Reasoning | JSON Mode |
-|---------|-----------|-------|--------|------------|-----------|-----------|
-| OpenAI | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Anthropic | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| DeepSeek | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
-| Moonshot | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
-| Zhipu | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Qwen | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Gemini | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
-| MiniMax | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Adapter   | Streaming | Tools | Vision | Multimodal | Reasoning | JSON Mode |
+| --------- | --------- | ----- | ------ | ---------- | --------- | --------- |
+| OpenAI    | ✅        | ✅    | ✅     | ✅         | ❌        | ✅        |
+| Anthropic | ✅        | ✅    | ✅     | ✅         | ✅        | ❌        |
+| DeepSeek  | ✅        | ✅    | ❌     | ❌         | ✅        | ✅        |
+| Moonshot  | ✅        | ✅    | ❌     | ❌         | ✅        | ✅        |
+| Zhipu     | ✅        | ✅    | ✅     | ✅         | ❌        | ✅        |
+| Qwen      | ✅        | ✅    | ✅     | ✅         | ✅        | ✅        |
+| Gemini    | ✅        | ✅    | ✅     | ✅         | ❌        | ✅        |
+| MiniMax   | ✅        | ✅    | ❌     | ❌         | ✅        | ✅        |
 
 ## Choosing an Adapter
 
 ### By Feature
 
 **Vision & Multimodal**
+
 - OpenAI (GPT-4o), Anthropic (Claude 3), Qwen (Qwen-VL), Gemini (Gemini Pro Vision), Zhipu (GLM-4V)
 
 **Long Context**
+
 - Gemini (1M+ tokens), Anthropic (200K), Moonshot (200K)
 
 **Coding**
+
 - MiniMax (MiniMax-M2.1), DeepSeek (DeepSeek Coder), OpenAI (GPT-4), Anthropic (Claude 3.5 Sonnet)
 
 **Reasoning**
+
 - MiniMax (Interleaved Thinking), OpenAI (o3, o4-mini), DeepSeek (DeepSeek Reasoner), Moonshot (Kimi K2 Thinking)
 
 ### By Price
@@ -74,6 +78,7 @@ Amux provides 8 official adapters supporting mainstream LLM providers. Each adap
 ### By OpenAI Compatibility
 
 These adapters are OpenAI-compatible and can be seamlessly swapped:
+
 - DeepSeek (fully compatible)
 - MiniMax (fully compatible)
 - Moonshot (fully compatible)
@@ -107,13 +112,13 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
   config: {
-    apiKey: process.env.ANTHROPIC_API_KEY
-  }
+    apiKey: process.env.ANTHROPIC_API_KEY,
+  },
 })
 
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [{ role: 'user', content: 'Hello!' }]
+  messages: [{ role: 'user', content: 'Hello!' }],
 })
 ```
 
@@ -133,17 +138,29 @@ export const myAdapter: LLMAdapter = {
     vision: false,
     multimodal: false,
     systemPrompt: true,
-    toolChoice: true
+    toolChoice: true,
   },
   inbound: {
-    parseRequest: (request) => { /* ... */ },
-    parseResponse: (response) => { /* ... */ },
-    parseStream: (stream) => { /* ... */ },
-    parseError: (error) => { /* ... */ }
+    parseRequest: (request) => {
+      /* ... */
+    },
+    parseResponse: (response) => {
+      /* ... */
+    },
+    parseStream: (stream) => {
+      /* ... */
+    },
+    parseError: (error) => {
+      /* ... */
+    },
   },
   outbound: {
-    buildRequest: (ir) => { /* ... */ },
-    buildResponse: (ir) => { /* ... */ }
+    buildRequest: (ir) => {
+      /* ... */
+    },
+    buildResponse: (ir) => {
+      /* ... */
+    },
   },
   getInfo() {
     return {
@@ -151,15 +168,15 @@ export const myAdapter: LLMAdapter = {
       version: this.version,
       capabilities: this.capabilities,
       endpoint: {
-        baseURL: 'https://api.my-provider.com',
-        chatPath: '/v1/chat'
-      }
+        baseUrl: 'https://api.my-provider.com',
+        chatPath: '/v1/chat',
+      },
     }
-  }
+  },
 }
 ```
 
-See the [Custom Adapter Guide](/docs/en/adapters/custom-adapter) for a complete tutorial.
+See the [Custom Adapter Guide](/en/docs/adapters/custom-adapter) for a complete tutorial.
 
 ## Next Steps
 

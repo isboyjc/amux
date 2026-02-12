@@ -13,7 +13,8 @@ Multimodal capabilities allow LLM models to process and understand different typ
 - Documents (PDFs, spreadsheets)
 
 <Callout type="info">
-Amux normalizes multimodal content formats across providers, allowing you to use the same code with different vision and multimodal models.
+  Amux normalizes multimodal content formats across providers, allowing you to
+  use the same code with different vision and multimodal models.
 </Callout>
 
 ## Working with Images
@@ -30,7 +31,7 @@ import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
-  config: { apiKey: process.env.ANTHROPIC_API_KEY }
+  config: { apiKey: process.env.ANTHROPIC_API_KEY },
 })
 
 const response = await bridge.chat({
@@ -41,24 +42,25 @@ const response = await bridge.chat({
       content: [
         {
           type: 'text',
-          text: 'What is in this image?'
+          text: 'What is in this image?',
         },
         {
           type: 'image_url',
           image_url: {
-            url: 'https://example.com/image.jpg'
-          }
-        }
-      ]
-    }
-  ]
+            url: 'https://example.com/image.jpg',
+          },
+        },
+      ],
+    },
+  ],
 })
 
 console.log(response.choices[0].message.content)
 ```
 
 <Callout type="warn">
-The URL must be publicly accessible. For private images, use base64 encoding instead.
+  The URL must be publicly accessible. For private images, use base64 encoding
+  instead.
 </Callout>
 
 ### Image from Base64
@@ -80,17 +82,17 @@ const response = await bridge.chat({
       content: [
         {
           type: 'text',
-          text: 'Describe this image in detail'
+          text: 'Describe this image in detail',
         },
         {
           type: 'image_url',
           image_url: {
-            url: `data:image/jpeg;base64,${base64Image}`
-          }
-        }
-      ]
-    }
-  ]
+            url: `data:image/jpeg;base64,${base64Image}`,
+          },
+        },
+      ],
+    },
+  ],
 })
 ```
 
@@ -108,15 +110,15 @@ const response = await bridge.chat({
         { type: 'text', text: 'Compare these two images' },
         {
           type: 'image_url',
-          image_url: { url: 'https://example.com/image1.jpg' }
+          image_url: { url: 'https://example.com/image1.jpg' },
         },
         {
           type: 'image_url',
-          image_url: { url: 'https://example.com/image2.jpg' }
-        }
-      ]
-    }
-  ]
+          image_url: { url: 'https://example.com/image2.jpg' },
+        },
+      ],
+    },
+  ],
 })
 ```
 
@@ -132,10 +134,10 @@ const response = await bridge.chat({
       role: 'user',
       content: [
         { type: 'text', text: 'What objects are in this image?' },
-        { type: 'image_url', image_url: { url: imageUrl } }
-      ]
-    }
-  ]
+        { type: 'image_url', image_url: { url: imageUrl } },
+      ],
+    },
+  ],
 })
 ```
 
@@ -149,10 +151,10 @@ const response = await bridge.chat({
       role: 'user',
       content: [
         { type: 'text', text: 'Extract all text from this image' },
-        { type: 'image_url', image_url: { url: screenshotUrl } }
-      ]
-    }
-  ]
+        { type: 'image_url', image_url: { url: screenshotUrl } },
+      ],
+    },
+  ],
 })
 ```
 
@@ -166,10 +168,10 @@ const response = await bridge.chat({
       role: 'user',
       content: [
         { type: 'text', text: 'How many people are in this photo?' },
-        { type: 'image_url', image_url: { url: photoUrl } }
-      ]
-    }
-  ]
+        { type: 'image_url', image_url: { url: photoUrl } },
+      ],
+    },
+  ],
 })
 ```
 
@@ -183,10 +185,10 @@ const response = await bridge.chat({
       role: 'user',
       content: [
         { type: 'text', text: 'Convert this UI screenshot to React code' },
-        { type: 'image_url', image_url: { url: uiScreenshotUrl } }
-      ]
-    }
-  ]
+        { type: 'image_url', image_url: { url: uiScreenshotUrl } },
+      ],
+    },
+  ],
 })
 ```
 
@@ -202,7 +204,7 @@ import { qwenAdapter } from '@amux.ai/adapter-qwen'
 const bridge = createBridge({
   inbound: qwenAdapter,
   outbound: qwenAdapter,
-  config: { apiKey: process.env.QWEN_API_KEY }
+  config: { apiKey: process.env.QWEN_API_KEY },
 })
 
 const response = await bridge.chat({
@@ -214,11 +216,11 @@ const response = await bridge.chat({
         { type: 'text', text: 'Transcribe this audio' },
         {
           type: 'audio_url',
-          audio_url: { url: 'https://example.com/audio.mp3' }
-        }
-      ]
-    }
-  ]
+          audio_url: { url: 'https://example.com/audio.mp3' },
+        },
+      ],
+    },
+  ],
 })
 ```
 
@@ -230,7 +232,7 @@ import { geminiAdapter } from '@amux.ai/adapter-gemini'
 const bridge = createBridge({
   inbound: geminiAdapter,
   outbound: geminiAdapter,
-  config: { apiKey: process.env.GEMINI_API_KEY }
+  config: { apiKey: process.env.GEMINI_API_KEY },
 })
 
 const response = await bridge.chat({
@@ -242,11 +244,11 @@ const response = await bridge.chat({
         { type: 'text', text: 'Summarize what happens in this video' },
         {
           type: 'video_url',
-          video_url: { url: 'https://example.com/video.mp4' }
-        }
-      ]
-    }
-  ]
+          video_url: { url: 'https://example.com/video.mp4' },
+        },
+      ],
+    },
+  ],
 })
 ```
 
@@ -255,18 +257,18 @@ const response = await bridge.chat({
 Vision and multimodal requests support streaming:
 
 ```typescript
-const stream = await bridge.chat({
+const stream = bridge.chatStreamRaw({
   model: 'gpt-4o',
   messages: [
     {
       role: 'user',
       content: [
         { type: 'text', text: 'Describe this image in detail' },
-        { type: 'image_url', image_url: { url: imageUrl } }
-      ]
-    }
+        { type: 'image_url', image_url: { url: imageUrl } },
+      ],
+    },
   ],
-  stream: true
+  stream: true,
 })
 
 for await (const event of stream) {
@@ -280,44 +282,50 @@ for await (const event of stream) {
 
 Multimodal support across providers:
 
-| Provider | Vision (Images) | Audio | Video | Documents |
-|----------|----------------|-------|-------|-----------|
-| OpenAI | ✅ GPT-4o, GPT-4 Turbo | ❌ | ❌ | ❌ |
-| Anthropic | ✅ Claude 3.5, Claude 3 | ❌ | ❌ | ✅ |
-| DeepSeek | ❌ | ❌ | ❌ | ❌ |
-| Moonshot | ❌ | ❌ | ❌ | ❌ |
-| Zhipu | ✅ GLM-4V | ❌ | ❌ | ❌ |
-| Qwen | ✅ Qwen-VL | ✅ Qwen-Audio | ✅ Qwen2-VL | ❌ |
-| Gemini | ✅ Gemini 1.5 | ✅ | ✅ | ✅ |
+| Provider  | Vision (Images)         | Audio         | Video       | Documents |
+| --------- | ----------------------- | ------------- | ----------- | --------- |
+| OpenAI    | ✅ GPT-4o, GPT-4 Turbo  | ❌            | ❌          | ❌        |
+| Anthropic | ✅ Claude 3.5, Claude 3 | ❌            | ❌          | ✅        |
+| DeepSeek  | ❌                      | ❌            | ❌          | ❌        |
+| Moonshot  | ❌                      | ❌            | ❌          | ❌        |
+| Zhipu     | ✅ GLM-4V               | ❌            | ❌          | ❌        |
+| Qwen      | ✅ Qwen-VL              | ✅ Qwen-Audio | ✅ Qwen2-VL | ❌        |
+| Gemini    | ✅ Gemini 1.5           | ✅            | ✅          | ✅        |
 
 <Callout type="warn">
-Not all models from a provider support multimodal. Check specific model capabilities before use.
+  Not all models from a provider support multimodal. Check specific model
+  capabilities before use.
 </Callout>
 
 ## Vision-Capable Models
 
 ### OpenAI
+
 - `gpt-4o` - Latest multimodal model
 - `gpt-4o-mini` - Smaller, faster vision model
 - `gpt-4-turbo` - Previous generation vision
 - `gpt-4-vision-preview` - Earlier preview
 
 ### Anthropic
+
 - `claude-3-5-sonnet-20241022` - Best vision capabilities
 - `claude-3-opus-20240229` - High accuracy vision
 - `claude-3-sonnet-20240229` - Balanced vision
 - `claude-3-haiku-20240307` - Fast vision
 
 ### Zhipu
+
 - `glm-4v` - Vision model
 
 ### Qwen
+
 - `qwen-vl-plus` - Vision understanding
 - `qwen-vl-max` - Advanced vision
 - `qwen2-vl-7b` - Open source vision
 - `qwen-audio-turbo` - Audio understanding
 
 ### Gemini
+
 - `gemini-1.5-pro` - Multimodal (vision, audio, video)
 - `gemini-1.5-flash` - Fast multimodal
 
@@ -332,7 +340,7 @@ Optimize images before sending:
 // Recommended: JPEG for photos, PNG for screenshots
 
 // Keep file size reasonable (< 20MB)
-const maxSize = 20 * 1024 * 1024  // 20MB
+const maxSize = 20 * 1024 * 1024 // 20MB
 ```
 
 ### 2. Image Quality vs Cost
@@ -373,10 +381,10 @@ try {
         role: 'user',
         content: [
           { type: 'text', text: 'Describe this image' },
-          { type: 'image_url', image_url: { url: imageUrl } }
-        ]
-      }
-    ]
+          { type: 'image_url', image_url: { url: imageUrl } },
+        ],
+      },
+    ],
   })
 } catch (error) {
   if (error.message.includes('image')) {
@@ -396,9 +404,9 @@ const messages = [
     role: 'user',
     content: [
       { type: 'text', text: 'What is in this image?' },
-      { type: 'image_url', image_url: { url: imageUrl } }
-    ]
-  }
+      { type: 'image_url', image_url: { url: imageUrl } },
+    ],
+  },
 ]
 
 const response1 = await bridge.chat({ model: 'gpt-4o', messages })
@@ -407,7 +415,7 @@ messages.push(response1.choices[0].message)
 // Ask follow-up question
 messages.push({
   role: 'user',
-  content: 'What color is the car in the image?'
+  content: 'What color is the car in the image?',
 })
 
 const response2 = await bridge.chat({ model: 'gpt-4o', messages })
@@ -418,6 +426,7 @@ const response2 = await bridge.chat({ model: 'gpt-4o', messages })
 ### Token Costs
 
 Images consume significant tokens:
+
 - Small image (512x512): ~85 tokens
 - Medium image (1024x1024): ~255 tokens
 - Large image (2048x2048): ~765 tokens
@@ -429,6 +438,7 @@ Vision requests may have lower rate limits than text-only requests. Check provid
 ### Content Policies
 
 All providers have content safety policies. Avoid sending:
+
 - Inappropriate or explicit content
 - Personal/sensitive information
 - Copyrighted material without permission

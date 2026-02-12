@@ -4,7 +4,8 @@ description: Build your first Amux bridge in 5 minutes
 ---
 
 <Callout type="info">
-This guide will walk you through creating your first bridge. You'll learn how to convert between OpenAI and Anthropic formats in just a few minutes.
+  This guide will walk you through creating your first bridge. You'll learn how
+  to convert between OpenAI and Anthropic formats in just a few minutes.
 </Callout>
 
 ## Step 1: Install Packages
@@ -34,7 +35,7 @@ ANTHROPIC_API_KEY=your_key_here
 ```
 
 <Callout type="warn">
-Never commit your `.env` file to version control. Add it to `.gitignore`.
+  Never commit your `.env` file to version control. Add it to `.gitignore`.
 </Callout>
 
 ## Step 3: Create Your First Bridge
@@ -51,22 +52,21 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
   config: {
-    apiKey: process.env.ANTHROPIC_API_KEY
-  }
+    apiKey: process.env.ANTHROPIC_API_KEY,
+  },
 })
 
 // Send OpenAI-format request
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [
-    { role: 'user', content: 'Say hello!' }
-  ]
+  messages: [{ role: 'user', content: 'Say hello!' }],
 })
 
 console.log(response.choices[0].message.content)
 ```
 
 **What happens:**
+
 1. You send a request in OpenAI format
 2. Amux converts it to Anthropic format
 3. Claude API is called
@@ -97,17 +97,15 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
   config: {
-    apiKey: process.env.ANTHROPIC_API_KEY
-  }
+    apiKey: process.env.ANTHROPIC_API_KEY,
+  },
 })
 
 // Enable streaming
-const stream = await bridge.chat({
+const stream = bridge.chatStreamRaw({
   model: 'gpt-4',
-  messages: [
-    { role: 'user', content: 'Tell me a short story' }
-  ],
-  stream: true
+  messages: [{ role: 'user', content: 'Tell me a short story' }],
+  stream: true,
 })
 
 // Process stream events
@@ -130,14 +128,14 @@ const bridge = createBridge({
   inbound: anthropicAdapter,
   outbound: openaiAdapter,
   config: {
-    apiKey: process.env.OPENAI_API_KEY
-  }
+    apiKey: process.env.OPENAI_API_KEY,
+  },
 })
 
 const response = await bridge.chat({
   model: 'claude-3-5-sonnet-20241022',
   messages: [{ role: 'user', content: 'Hello!' }],
-  max_tokens: 100
+  max_tokens: 100,
 })
 
 console.log(response.content[0].text)
@@ -150,23 +148,23 @@ Use tools with any provider:
 ```typescript
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [
-    { role: 'user', content: 'What is the weather in Beijing?' }
-  ],
-  tools: [{
-    type: 'function',
-    function: {
-      name: 'get_weather',
-      description: 'Get the weather for a location',
-      parameters: {
-        type: 'object',
-        properties: {
-          location: { type: 'string' }
+  messages: [{ role: 'user', content: 'What is the weather in Beijing?' }],
+  tools: [
+    {
+      type: 'function',
+      function: {
+        name: 'get_weather',
+        description: 'Get the weather for a location',
+        parameters: {
+          type: 'object',
+          properties: {
+            location: { type: 'string' },
+          },
+          required: ['location'],
         },
-        required: ['location']
-      }
-    }
-  }]
+      },
+    },
+  ],
 })
 
 // Check for tool calls

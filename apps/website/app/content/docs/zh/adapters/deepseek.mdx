@@ -25,16 +25,16 @@ const bridge = createBridge({
   inbound: deepseekAdapter,
   outbound: deepseekAdapter,
   config: {
-    apiKey: process.env.DEEPSEEK_API_KEY
-  }
+    apiKey: process.env.DEEPSEEK_API_KEY,
+  },
 })
 
 const response = await bridge.chat({
   model: 'deepseek-chat',
   messages: [
     { role: 'system', content: '你是一个有帮助的助手。' },
-    { role: 'user', content: '什么是 Amux？' }
-  ]
+    { role: 'user', content: '什么是 Amux？' },
+  ],
 })
 
 console.log(response.choices[0].message.content)
@@ -42,10 +42,10 @@ console.log(response.choices[0].message.content)
 
 ## 支持的模型
 
-| 模型 | 描述 | 特点 |
-|------|------|------|
-| `deepseek-chat` | 通用对话模型 | 高性价比，适合日常对话 |
-| `deepseek-coder` | 代码专用模型 | 专注于代码生成和理解 |
+| 模型             | 描述         | 特点                   |
+| ---------------- | ------------ | ---------------------- |
+| `deepseek-chat`  | 通用对话模型 | 高性价比，适合日常对话 |
+| `deepseek-coder` | 代码专用模型 | 专注于代码生成和理解   |
 
 ## 主要功能
 
@@ -69,6 +69,7 @@ console.log(response.choices[0].message.content)
 
     console.log(response.choices[0].message.content)
     ```
+
   </Tab>
 
   <Tab value="函数调用">
@@ -96,13 +97,14 @@ console.log(response.choices[0].message.content)
       }]
     })
     ```
+
   </Tab>
 
   <Tab value="流式传输">
     ### 流式传输
 
     ```typescript
-    const stream = bridge.chatStream({
+    const stream = bridge.chatStreamRaw({
       model: 'deepseek-chat',
       messages: [
         { role: 'user', content: '讲一个故事' }
@@ -110,12 +112,13 @@ console.log(response.choices[0].message.content)
       stream: true
     })
 
-    for await (const chunk of stream) {
-      if (chunk.choices[0]?.delta?.content) {
-        process.stdout.write(chunk.choices[0].delta.content)
+    for await (const event of stream) {
+      if (event.type === 'content') {
+        process.stdout.write(event.content.delta)
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -128,8 +131,8 @@ const bridge = createBridge({
   config: {
     apiKey: process.env.DEEPSEEK_API_KEY,
     baseURL: 'https://api.deepseek.com', // 默认值
-    timeout: 60000
-  }
+    timeout: 60000,
+  },
 })
 ```
 
@@ -146,28 +149,36 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: deepseekAdapter,
   config: {
-    apiKey: process.env.DEEPSEEK_API_KEY
-  }
+    apiKey: process.env.DEEPSEEK_API_KEY,
+  },
 })
 
 // 使用 OpenAI 格式发送请求
 const response = await bridge.chat({
   model: 'gpt-4', // 会被映射到 deepseek-chat
-  messages: [{ role: 'user', content: '你好' }]
+  messages: [{ role: 'user', content: '你好' }],
 })
 ```
 
 ## 功能支持
 
-| 功能 | 支持 | 说明 |
-|------|------|------|
-| 聊天补全 | ✅ | 完全支持 |
-| 流式传输 | ✅ | 完全支持 |
-| 函数调用 | ✅ | 完全支持 |
-| 视觉 | ❌ | 不支持 |
-| 系统提示 | ✅ | 完全支持 |
-| 推理能力 | ✅ | deepseek-reasoner 模型 |
-| JSON 模式 | ✅ | 结构化输出 |
+| 功能      | 支持 | 说明                   |
+| --------- | ---- | ---------------------- |
+| 聊天补全  | ✅   | 完全支持               |
+| 流式传输  | ✅   | 完全支持               |
+| 函数调用  | ✅   | 完全支持               |
+| 视觉      | ❌   | 不支持                 |
+| 系统提示  | ✅   | 完全支持               |
+| 推理能力  | ✅   | deepseek-reasoner 模型 |
+| JSON 模式 | ✅   | 结构化输出             |
+
+## Reasoner 模型边界
+
+使用 `deepseek-reasoner` 时，请注意以下适配器侧约束：
+
+- 对 reasoner 模型会跳过 system 消息。
+- 输入中的 `reasoning_content` 不会透传到 reasoner 请求。
+- 构建出站请求时，`generation.maxTokens` 会被夹紧到 `1..8192`。
 
 ## 优势
 
@@ -184,13 +195,13 @@ const response = await bridge.chat({
 // 日常对话使用 deepseek-chat
 const chatResponse = await bridge.chat({
   model: 'deepseek-chat',
-  messages: [{ role: 'user', content: '介绍一下你自己' }]
+  messages: [{ role: 'user', content: '介绍一下你自己' }],
 })
 
 // 代码任务使用 deepseek-coder
 const codeResponse = await bridge.chat({
   model: 'deepseek-coder',
-  messages: [{ role: 'user', content: '写一个二分查找算法' }]
+  messages: [{ role: 'user', content: '写一个二分查找算法' }],
 })
 ```
 
@@ -202,15 +213,15 @@ const response = await bridge.chat({
   messages: [
     {
       role: 'system',
-      content: '你是一个专业的程序员。生成简洁、高效、有注释的代码。'
+      content: '你是一个专业的程序员。生成简洁、高效、有注释的代码。',
     },
     {
       role: 'user',
-      content: '用 Python 实现一个 LRU 缓存'
-    }
+      content: '用 Python 实现一个 LRU 缓存',
+    },
   ],
   temperature: 0.2, // 低温度获得更确定的代码
-  max_tokens: 1000
+  max_tokens: 1000,
 })
 ```
 

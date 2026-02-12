@@ -25,16 +25,16 @@ const bridge = createBridge({
   inbound: qwenAdapter,
   outbound: qwenAdapter,
   config: {
-    apiKey: process.env.QWEN_API_KEY
-  }
+    apiKey: process.env.QWEN_API_KEY,
+  },
 })
 
 const response = await bridge.chat({
   model: 'qwen-turbo',
   messages: [
     { role: 'system', content: '你是一个有帮助的助手。' },
-    { role: 'user', content: '什么是 Amux？' }
-  ]
+    { role: 'user', content: '什么是 Amux？' },
+  ],
 })
 
 console.log(response.choices[0].message.content)
@@ -42,13 +42,13 @@ console.log(response.choices[0].message.content)
 
 ## 支持的模型
 
-| 模型 | 描述 | 特点 |
-|------|------|------|
-| `qwen-turbo` | 快速模型 | 响应快，成本低 |
-| `qwen-plus` | 增强模型 | 性能更强 |
-| `qwen-max` | 旗舰模型 | 最强性能 |
-| `qwen-vl-plus` | 视觉模型 | 支持图像理解 |
-| `qwen-vl-max` | 视觉旗舰 | 最强视觉能力 |
+| 模型           | 描述     | 特点           |
+| -------------- | -------- | -------------- |
+| `qwen-turbo`   | 快速模型 | 响应快，成本低 |
+| `qwen-plus`    | 增强模型 | 性能更强       |
+| `qwen-max`     | 旗舰模型 | 最强性能       |
+| `qwen-vl-plus` | 视觉模型 | 支持图像理解   |
+| `qwen-vl-max`  | 视觉旗舰 | 最强视觉能力   |
 
 ## 主要功能
 
@@ -73,6 +73,7 @@ console.log(response.choices[0].message.content)
       max_tokens: 2000
     })
     ```
+
   </Tab>
 
   <Tab value="视觉理解">
@@ -102,6 +103,7 @@ console.log(response.choices[0].message.content)
     <Callout type="info">
     Qwen-VL 支持多种图像格式，包括 URL 和 Base64 编码。
     </Callout>
+
   </Tab>
 
   <Tab value="函数调用">
@@ -129,13 +131,14 @@ console.log(response.choices[0].message.content)
       }]
     })
     ```
+
   </Tab>
 
   <Tab value="流式传输">
     ### 流式传输
 
     ```typescript
-    const stream = bridge.chatStream({
+    const stream = bridge.chatStreamRaw({
       model: 'qwen-turbo',
       messages: [
         { role: 'user', content: '讲一个故事' }
@@ -143,12 +146,13 @@ console.log(response.choices[0].message.content)
       stream: true
     })
 
-    for await (const chunk of stream) {
-      if (chunk.choices[0]?.delta?.content) {
-        process.stdout.write(chunk.choices[0].delta.content)
+    for await (const event of stream) {
+      if (event.type === 'content') {
+        process.stdout.write(event.content.delta)
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -160,25 +164,36 @@ const bridge = createBridge({
   outbound: qwenAdapter,
   config: {
     apiKey: process.env.QWEN_API_KEY,
-    baseURL: 'https://dashscope.aliyuncs.com/api', // 默认值
-    timeout: 60000
-  }
+    baseURL: 'https://dashscope.aliyuncs.com/compatible-mode', // 默认值
+    timeout: 60000,
+  },
 })
 ```
 
 ## 功能支持
 
-| 功能 | 支持 | 说明 |
-|------|------|------|
-| 聊天补全 | ✅ | 完全支持 |
-| 流式传输 | ✅ | 完全支持 |
-| 函数调用 | ✅ | 完全支持 |
-| 视觉 | ✅ | Qwen-VL 系列 |
-| 多模态 | ✅ | 支持文本+图像 |
-| 系统提示 | ✅ | 完全支持 |
-| 推理能力 | ✅ | 高级推理 |
-| JSON 模式 | ✅ | 结构化输出 |
-| 网络搜索 | ✅ | 内置搜索 |
+| 功能      | 支持 | 说明          |
+| --------- | ---- | ------------- |
+| 聊天补全  | ✅   | 完全支持      |
+| 流式传输  | ✅   | 完全支持      |
+| 函数调用  | ✅   | 完全支持      |
+| 视觉      | ✅   | Qwen-VL 系列  |
+| 多模态    | ✅   | 支持文本+图像 |
+| 系统提示  | ✅   | 完全支持      |
+| 推理能力  | ✅   | 高级推理      |
+| JSON 模式 | ✅   | 结构化输出    |
+| 网络搜索  | ✅   | 内置搜索      |
+
+## Qwen 特有参数映射
+
+- `generation.thinking.enabled` → `enable_thinking`
+- `generation.enableSearch` → `enable_search`
+- `extensions.qwen.fps` → `fps`
+
+<Callout type="warn">
+  Qwen 在提供商原生格式支持音频/视频，但当前 IR 转换路径在部分 parse/build
+  场景下会将不支持的内容分片降级为文本。
+</Callout>
 
 ## 最佳实践
 
@@ -213,13 +228,13 @@ const response = await bridge.chat({
   messages: [
     {
       role: 'system',
-      content: '你是一个精通中文的助手，使用地道的中文表达。'
+      content: '你是一个精通中文的助手，使用地道的中文表达。',
     },
     {
       role: 'user',
-      content: '用中文解释量子计算的原理'
-    }
-  ]
+      content: '用中文解释量子计算的原理',
+    },
+  ],
 })
 ```
 
@@ -228,13 +243,18 @@ const response = await bridge.chat({
 ```typescript
 const response = await bridge.chat({
   model: 'qwen-vl-max',
-  messages: [{
-    role: 'user',
-    content: [
-      { type: 'text', text: '分析这张图表并总结要点' },
-      { type: 'image', image: 'https://example.com/chart.png' }
-    ]
-  }]
+  messages: [
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: '分析这张图表并总结要点' },
+        {
+          type: 'image',
+          source: { type: 'url', url: 'https://example.com/chart.png' },
+        },
+      ],
+    },
+  ],
 })
 ```
 
@@ -248,14 +268,14 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: qwenAdapter,
   config: {
-    apiKey: process.env.QWEN_API_KEY
-  }
+    apiKey: process.env.QWEN_API_KEY,
+  },
 })
 
 // 使用 OpenAI 格式发送请求
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [{ role: 'user', content: '你好' }]
+  messages: [{ role: 'user', content: '你好' }],
 })
 ```
 

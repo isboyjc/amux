@@ -90,6 +90,7 @@ graph TD
       }
     }
     ```
+
   </Tab>
 
   <Tab value="Response">
@@ -129,6 +130,7 @@ graph TD
       }
     }
     ```
+
   </Tab>
 
   <Tab value="Message">
@@ -196,6 +198,7 @@ graph TD
       reasoningContent: '让我一步步思考这个问题...'
     }
     ```
+
   </Tab>
 
   <Tab value="Tool">
@@ -257,6 +260,7 @@ graph TD
           function: { name: string }
         }
     ```
+
   </Tab>
 
   <Tab value="Stream">
@@ -339,6 +343,7 @@ graph TD
       }
     }
     ```
+
   </Tab>
 
   <Tab value="Error">
@@ -382,6 +387,7 @@ graph TD
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -422,6 +428,7 @@ graph TD
       text: '这张图片里有什么？'
     }
     ```
+
   </Tab>
 
   <Tab value="Image">
@@ -459,11 +466,13 @@ graph TD
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
 <Callout type="info">
-**关于工具调用：** 工具调用使用 Message 对象上的 `toolCalls` 字段（OpenAI 风格）表示，而不是 ContentPart 类型。详见[工具调用流程](#工具调用流程)部分。
+  **关于工具调用：** 工具调用使用 Message 对象上的 `toolCalls` 字段（OpenAI
+  风格）表示，而不是 ContentPart 类型。详见[工具调用流程](#工具调用流程)部分。
 </Callout>
 
 ## 生成参数
@@ -472,20 +481,20 @@ graph TD
 
 ```typescript
 interface GenerationConfig {
-  temperature?: number          // 0-2：随机性
-  topP?: number                // 0-1：核采样
-  topK?: number                // >0：Top-k 采样
-  maxTokens?: number           // >0：生成的最大令牌数
-  stopSequences?: string[]     // 在这些序列处停止
-  presencePenalty?: number     // -2 到 2：惩罚存在性
-  frequencyPenalty?: number    // -2 到 2：惩罚频率
-  n?: number                   // >0：完成数量
-  seed?: number                // 确定性生成的种子
-  responseFormat?: ResponseFormat  // 响应格式配置
-  thinking?: ThinkingConfig    // 思考/推理配置
-  enableSearch?: boolean       // 启用网页搜索（Qwen）
-  logprobs?: boolean           // 对数概率
-  topLogprobs?: number         // 返回的 top 对数概率数量
+  temperature?: number // 0-2：随机性
+  topP?: number // 0-1：核采样
+  topK?: number // >0：Top-k 采样
+  maxTokens?: number // >0：生成的最大令牌数
+  stopSequences?: string[] // 在这些序列处停止
+  presencePenalty?: number // -2 到 2：惩罚存在性
+  frequencyPenalty?: number // -2 到 2：惩罚频率
+  n?: number // >0：完成数量
+  seed?: number // 确定性生成的种子
+  responseFormat?: ResponseFormat // 响应格式配置
+  thinking?: ThinkingConfig // 思考/推理配置
+  enableSearch?: boolean // 启用网页搜索（Qwen）
+  logprobs?: boolean // 对数概率
+  topLogprobs?: number // 返回的 top 对数概率数量
 }
 
 interface ResponseFormat {
@@ -500,7 +509,7 @@ interface ResponseFormat {
 
 interface ThinkingConfig {
   enabled: boolean
-  budgetTokens?: number        // 思考的预算令牌数（Anthropic）
+  budgetTokens?: number // 思考的预算令牌数（Anthropic）
 }
 ```
 
@@ -521,6 +530,7 @@ interface ThinkingConfig {
     - `0.4-0.7`：平衡（适合一般使用）
     - `0.8-1.0`：创造性（适合头脑风暴）
     - `1.0+`：非常创造性（实验性）
+
   </Tab>
 
   <Tab value="Sampling">
@@ -542,6 +552,7 @@ interface ThinkingConfig {
     - 只考虑前 K 个令牌
     - `40-50` 是典型值
     - 可以与 top-P 结合使用
+
   </Tab>
 
   <Tab value="Limits">
@@ -562,6 +573,7 @@ interface ThinkingConfig {
     **停止序列：**
     - 遇到任何序列时停止生成
     - 对结构化输出有用
+
   </Tab>
 
   <Tab value="Penalties">
@@ -583,6 +595,7 @@ interface ThinkingConfig {
     - 正值：减少重复
     - 负值：鼓励重复
     - 适合减少冗余
+
   </Tab>
 
   <Tab value="Response Format">
@@ -624,6 +637,7 @@ interface ThinkingConfig {
       }
     }
     ```
+
   </Tab>
 
   <Tab value="Thinking">
@@ -649,6 +663,7 @@ interface ThinkingConfig {
     - 模型生成内部推理步骤
     - 推理内容在 `reasoningContent` 字段中可用
     - 最终答案在 `content` 字段中
+
   </Tab>
 
   <Tab value="Advanced">
@@ -674,6 +689,7 @@ interface ThinkingConfig {
     - 获取令牌的概率分布
     - 对不确定性估计有用
     - 在响应的 `logprobs` 字段中可用
+
   </Tab>
 </Tabs>
 
@@ -695,7 +711,9 @@ sequenceDiagram
 ```
 
 <Callout type="info">
-**统一的工具调用格式：** IR 使用 OpenAI 风格的工具调用作为统一格式。当从 Anthropic 格式转换时，适配器会自动将 `tool_use` 内容块转换为 `toolCalls`，将 `tool_result` 内容块转换为 tool 角色消息。
+  **统一的工具调用格式：** IR 使用 OpenAI 风格的工具调用作为统一格式。当从
+  Anthropic 格式转换时，适配器会自动将 `tool_use` 内容块转换为 `toolCalls`，将
+  `tool_result` 内容块转换为 tool 角色消息。
 </Callout>
 
 ### IR 中的工具调用
@@ -777,6 +795,7 @@ sequenceDiagram
       }
     }
     ```
+
   </Tab>
 
   <Tab value="工具调用">
@@ -813,7 +832,7 @@ sequenceDiagram
         index: 0,
         message: {
           role: 'assistant',
-          content: null,
+          content: '',
           toolCalls: [
             {
               id: 'call_1',
@@ -837,6 +856,7 @@ sequenceDiagram
       }]
     }
     ```
+
   </Tab>
 
   <Tab value="多模态">
@@ -876,6 +896,7 @@ sequenceDiagram
       }]
     }
     ```
+
   </Tab>
 
   <Tab value="流式传输">
@@ -918,6 +939,7 @@ sequenceDiagram
       }
     ]
     ```
+
   </Tab>
 </Tabs>
 

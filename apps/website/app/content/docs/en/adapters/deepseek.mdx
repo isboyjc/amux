@@ -25,16 +25,16 @@ const bridge = createBridge({
   inbound: deepseekAdapter,
   outbound: deepseekAdapter,
   config: {
-    apiKey: process.env.DEEPSEEK_API_KEY
-  }
+    apiKey: process.env.DEEPSEEK_API_KEY,
+  },
 })
 
 const response = await bridge.chat({
   model: 'deepseek-chat',
   messages: [
     { role: 'system', content: 'You are a helpful assistant.' },
-    { role: 'user', content: 'What is Amux?' }
-  ]
+    { role: 'user', content: 'What is Amux?' },
+  ],
 })
 
 console.log(response.choices[0].message.content)
@@ -42,11 +42,11 @@ console.log(response.choices[0].message.content)
 
 ## Supported Models
 
-| Model | Description | Features |
-|-------|-------------|----------|
-| `deepseek-chat` | General chat model | High value, suitable for daily conversations |
-| `deepseek-coder` | Code-specialized model | Focused on code generation and understanding |
-| `deepseek-reasoner` | Reasoning model | Advanced reasoning capabilities |
+| Model               | Description            | Features                                     |
+| ------------------- | ---------------------- | -------------------------------------------- |
+| `deepseek-chat`     | General chat model     | High value, suitable for daily conversations |
+| `deepseek-coder`    | Code-specialized model | Focused on code generation and understanding |
+| `deepseek-reasoner` | Reasoning model        | Advanced reasoning capabilities              |
 
 ## Key Features
 
@@ -70,6 +70,7 @@ console.log(response.choices[0].message.content)
 
     console.log(response.choices[0].message.content)
     ```
+
   </Tab>
 
   <Tab value="Function Calling">
@@ -97,13 +98,14 @@ console.log(response.choices[0].message.content)
       }]
     })
     ```
+
   </Tab>
 
   <Tab value="Streaming">
     ### Streaming
 
     ```typescript
-    const stream = bridge.chatStream({
+    const stream = bridge.chatStreamRaw({
       model: 'deepseek-chat',
       messages: [
         { role: 'user', content: 'Tell me a story' }
@@ -111,12 +113,13 @@ console.log(response.choices[0].message.content)
       stream: true
     })
 
-    for await (const chunk of stream) {
-      if (chunk.choices[0]?.delta?.content) {
-        process.stdout.write(chunk.choices[0].delta.content)
+    for await (const event of stream) {
+      if (event.type === 'content') {
+        process.stdout.write(event.content.delta)
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -129,8 +132,8 @@ const bridge = createBridge({
   config: {
     apiKey: process.env.DEEPSEEK_API_KEY,
     baseURL: 'https://api.deepseek.com', // Default
-    timeout: 60000
-  }
+    timeout: 60000,
+  },
 })
 ```
 
@@ -147,28 +150,36 @@ const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: deepseekAdapter,
   config: {
-    apiKey: process.env.DEEPSEEK_API_KEY
-  }
+    apiKey: process.env.DEEPSEEK_API_KEY,
+  },
 })
 
 // Send request in OpenAI format
 const response = await bridge.chat({
   model: 'gpt-4', // Will be mapped to deepseek-chat
-  messages: [{ role: 'user', content: 'Hello' }]
+  messages: [{ role: 'user', content: 'Hello' }],
 })
 ```
 
 ## Feature Support
 
-| Feature | Supported | Notes |
-|---------|-----------|-------|
-| Chat Completion | ✅ | Fully supported |
-| Streaming | ✅ | Fully supported |
-| Function Calling | ✅ | Fully supported |
-| Vision | ❌ | Not supported |
-| System Prompt | ✅ | Fully supported |
-| Reasoning | ✅ | deepseek-reasoner model |
-| JSON Mode | ✅ | Structured output |
+| Feature          | Supported | Notes                   |
+| ---------------- | --------- | ----------------------- |
+| Chat Completion  | ✅        | Fully supported         |
+| Streaming        | ✅        | Fully supported         |
+| Function Calling | ✅        | Fully supported         |
+| Vision           | ❌        | Not supported           |
+| System Prompt    | ✅        | Fully supported         |
+| Reasoning        | ✅        | deepseek-reasoner model |
+| JSON Mode        | ✅        | Structured output       |
+
+## Reasoner Model Boundaries
+
+When using `deepseek-reasoner`, note the following adapter-side guardrails:
+
+- System messages are skipped for reasoner models.
+- Input `reasoning_content` is not passed through for reasoner inputs.
+- `generation.maxTokens` is clamped to `1..8192` when building outbound requests.
 
 ## Advantages
 
@@ -185,19 +196,19 @@ const response = await bridge.chat({
 // Daily conversations use deepseek-chat
 const chatResponse = await bridge.chat({
   model: 'deepseek-chat',
-  messages: [{ role: 'user', content: 'Tell me about yourself' }]
+  messages: [{ role: 'user', content: 'Tell me about yourself' }],
 })
 
 // Coding tasks use deepseek-coder
 const codeResponse = await bridge.chat({
   model: 'deepseek-coder',
-  messages: [{ role: 'user', content: 'Write a binary search algorithm' }]
+  messages: [{ role: 'user', content: 'Write a binary search algorithm' }],
 })
 
 // Complex reasoning use deepseek-reasoner
 const reasoningResponse = await bridge.chat({
   model: 'deepseek-reasoner',
-  messages: [{ role: 'user', content: 'Solve this complex problem...' }]
+  messages: [{ role: 'user', content: 'Solve this complex problem...' }],
 })
 ```
 
@@ -209,15 +220,16 @@ const response = await bridge.chat({
   messages: [
     {
       role: 'system',
-      content: 'You are a professional programmer. Generate clean, efficient, well-commented code.'
+      content:
+        'You are a professional programmer. Generate clean, efficient, well-commented code.',
     },
     {
       role: 'user',
-      content: 'Implement an LRU cache in Python'
-    }
+      content: 'Implement an LRU cache in Python',
+    },
   ],
   temperature: 0.2, // Low temperature for more deterministic code
-  max_tokens: 1000
+  max_tokens: 1000,
 })
 ```
 
