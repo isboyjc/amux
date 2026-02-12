@@ -1,291 +1,266 @@
 # Amux
 
-> Bidirectional LLM API Adapter - A unified infrastructure for converting between different LLM provider APIs
+> Bidirectional LLM API bridge and local AI gateway toolkit.
+
+[中文文档](./README_ZH.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-8.15-orange)](https://pnpm.io/)
 
-## 🌟 Features
+## What Amux Is
 
-- **🔄 Bidirectional Conversion**: Convert between any LLM provider API formats
-- **🎯 Type-Safe**: Full TypeScript support with comprehensive type definitions
-- **🔌 Extensible**: Easy to add custom adapters for new providers
-- **⚡ Zero Dependencies**: Core package has zero runtime dependencies
-- **🧪 Well-Tested**: High test coverage with comprehensive test suites
-- **📦 Tree-Shakable**: Optimized for modern bundlers
-- **🚀 8 Official Adapters**: OpenAI, Anthropic, DeepSeek, Moonshot, Zhipu, Qwen, Gemini, MiniMax
+Amux is a monorepo that includes:
 
-## 🚀 Quick Start
+- A reusable core bridge (`@amux.ai/llm-bridge`) built around a provider-agnostic IR
+- Official provider adapters
+- A full Electron desktop product (`apps/desktop`) with local proxying and management UI
+- Supporting applications (`apps/proxy`, `apps/tunnel-api`, `apps/website`)
+- SDK usage examples (`examples/basic`, `examples/streaming`)
 
-### Installation
+Core architecture pattern:
+
+`Provider Format -> Inbound Adapter -> IR -> Outbound Adapter -> Provider API`
+
+## Monorepo Layout
+
+This repository uses pnpm workspaces and Nx task orchestration.
+
+### packages/
+
+- `@amux.ai/llm-bridge` (`packages/llm-bridge`)
+  - Core bridge orchestration, IR types, adapter contracts, HTTP client, capability checks
+  - Exposes `createBridge`, `Bridge`, IR/adapter types
+- Provider adapters (all depend on `@amux.ai/llm-bridge`)
+  - `@amux.ai/adapter-openai`
+  - `@amux.ai/adapter-anthropic`
+  - `@amux.ai/adapter-deepseek`
+  - `@amux.ai/adapter-google`
+  - `@amux.ai/adapter-minimax`
+  - `@amux.ai/adapter-moonshot`
+  - `@amux.ai/adapter-qwen`
+  - `@amux.ai/adapter-zhipu`
+- `@amux.ai/utils` (`packages/utils`)
+  - Lightweight helpers (`parseSSE`, `createSSE`, `normalizeError`, `LLMBridgeError`)
+
+Notes:
+
+- `@amux.ai/adapter-openai` exports both `openaiAdapter` (`/v1/chat/completions`) and `openaiResponsesAdapter` (`/v1/responses`).
+- There are 8 provider adapter packages in `packages/adapter-*`.
+
+### apps/
+
+- `apps/desktop` (`@amux.ai/desktop`, private)
+  - Main product: Electron + React desktop app with local proxy, database, OAuth, tunnel, logs/metrics, code-switch, updater
+- `apps/proxy` (`@amux.ai/proxy`, private)
+  - Express sample gateway with predefined conversion routes and model mappings
+- `apps/tunnel-api` (`@amux.ai/tunnel-api`, private)
+  - Cloudflare Workers backend used by Desktop tunnel management
+- `apps/website` (`@amux.ai/website`, private)
+  - Next.js/Fumadocs documentation site (`en` + `zh`)
+
+### examples/
+
+- `examples/basic`: bridge/adapters basic usage
+- `examples/streaming`: streaming and event handling examples
+
+## Core Bridge Behavior
+
+Implementation reference: `packages/llm-bridge/src/bridge/bridge.ts`.
+
+- `chat()` flow: inbound parse -> model mapping -> validate/hooks -> outbound build -> HTTP -> outbound parse -> inbound build response
+- Model mapping priority: `targetModel > modelMapper > modelMapping > original`
+- Streaming pipeline:
+  - `chatStreamRaw()` filters duplicate `end` events
+  - Bridge ignores incoming SSE marker `data: [DONE]` before JSON parse
+  - `chatStream()` filters final SSE payloads where `data === '[DONE]'`
+- Endpoint resolution:
+  - chat path: `config.chatPath` > adapter default path
+  - models path: `config.modelsPath` > adapter default path
+  - supports `{model}` replacement in endpoint templates
+
+## Amux Desktop (apps/desktop)
+
+Amux Desktop is a local-first AI gateway and control plane built with Electron.
+
+### Product role
+
+- Runs a local proxy service (Fastify) and exposes proxy endpoints
+- Stores providers/proxies/mappings/logs/settings in SQLite
+- Provides UI for provider management, proxy chain management, logs, dashboard, tunnel, OAuth, code-switch
+- Integrates with `@amux.ai/llm-bridge` + all official adapters
+
+### Startup sequence (main process)
+
+Reference: `apps/desktop/electron/main.ts`.
+
+Initialization order:
+
+1. Crypto service initialization
+2. Database initialization
+3. Database migrations
+4. Presets initialization
+5. Default provider bootstrap (if providers table is empty)
+6. Analytics initialization
+7. OAuth manager initialization
+8. Logger initialization
+9. IPC handler registration
+10. Browser window creation
+
+### Local proxy architecture
+
+References:
+
+- `apps/desktop/electron/services/proxy-server/index.ts`
+- `apps/desktop/electron/services/proxy-server/routes.ts`
+- `apps/desktop/electron/services/proxy-server/bridge-manager.ts`
+- `apps/desktop/electron/ipc/proxy-service.ts`
+
+Facts from implementation:
+
+- Fastify server defaults to `127.0.0.1:9527` (settings-backed)
+- OAuth translation routes are registered before main proxy routes
+- Dynamic route categories:
+  - Provider passthrough routes: `/providers/{proxy_path}...`
+  - Conversion proxy routes: `/proxies/{proxy_path}{endpoint}`
+  - List routes: `/v1/proxies`, and per-proxy models routes
+- Code Switch route currently registered:
+  - `POST /code/claudecode/v1/messages`
+- Codex Code Switch HTTP routes exist in source but are currently commented out in `routes.ts` (implemented but not enabled in current route registration)
+
+### Data and migrations
+
+References:
+
+- `apps/desktop/electron/services/database/index.ts`
+- `apps/desktop/electron/services/database/migrator.ts`
+- `apps/desktop/electron/services/database/migrations/*`
+
+Facts:
+
+- Uses SQLite (`amux.db`) under Electron `userData`
+- Migration tracking uses `user_version` + `schema_migrations`
+- Current migrations include versions `001` through `012`
+
+### Tunnel subsystem
+
+References:
+
+- `apps/desktop/electron/services/tunnel/tunnel-service.ts`
+- `apps/desktop/electron/services/tunnel/cloudflared-manager.ts`
+- `apps/tunnel-api/src/index.ts`
+
+Facts:
+
+- Desktop manages local `cloudflared` process
+- If missing, Desktop can download `cloudflared`
+- Tunnel backend default URL in desktop service: `https://tunnel-api.amux.ai`
+- Tunnel API supports create/delete/status/list endpoints
+
+### OAuth subsystem
+
+References:
+
+- `apps/desktop/electron/services/oauth/*`
+- `apps/desktop/electron/services/proxy-server/oauth/index.ts`
+- `apps/desktop/electron/services/proxy-server/oauth/key-manager.ts`
+
+Facts:
+
+- OAuth provider types include `codex` and `antigravity`
+- Translation routes are exposed under `/oauth/codex/*` and `/oauth/antigravity/*`
+- Requests are validated using OAuth service keys stored in DB (`oauth_service_keys`)
+- OAuth service key format: `sk-amux.oauth.{providerType}-{randomId}`
+
+### Desktop updater behavior
+
+Reference: `apps/desktop/electron/services/updater/index.ts`.
+
+- Update checks call GitHub latest release API:
+  - `https://api.github.com/repos/isboyjc/amux/releases/latest`
+
+### Desktop commands
+
+From repo root:
 
 ```bash
-# Install core package and adapters you need
+pnpm dev:desktop
+pnpm build:desktop
+pnpm package:desktop
+pnpm package:desktop:all
+pnpm package:desktop:mac
+pnpm package:desktop:win
+pnpm package:desktop:linux
+```
+
+Inside `apps/desktop`:
+
+```bash
+pnpm dev
+pnpm build
+pnpm package
+```
+
+## Quick Start (SDK Usage)
+
+Install only what you need:
+
+```bash
 pnpm add @amux.ai/llm-bridge @amux.ai/adapter-openai @amux.ai/adapter-anthropic
 ```
 
-### Basic Usage
+Basic bridge usage:
 
-```typescript
+```ts
 import { createBridge } from '@amux.ai/llm-bridge'
 import { openaiAdapter } from '@amux.ai/adapter-openai'
 import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
 
-// Create a bridge: OpenAI format in → Anthropic API out
 const bridge = createBridge({
   inbound: openaiAdapter,
   outbound: anthropicAdapter,
   config: {
-    apiKey: process.env.ANTHROPIC_API_KEY,
-    baseURL: 'https://api.anthropic.com'
-  }
+    apiKey: process.env.ANTHROPIC_API_KEY || '',
+  },
 })
 
-// Send OpenAI-format request, get OpenAI-format response
-// But actually calls Claude API under the hood
 const response = await bridge.chat({
   model: 'gpt-4',
-  messages: [{ role: 'user', content: 'Hello!' }]
+  messages: [{ role: 'user', content: 'Hello from Amux' }],
 })
 
-console.log(response.choices[0].message.content)
+console.log(response)
 ```
 
-## 📦 Packages
-
-| Package | Description | Version | Status |
-|---------|-------------|---------|--------|
-| [@amux.ai/llm-bridge](./packages/llm-bridge) | Core IR and adapter interfaces | - | ✅ Stable |
-| [@amux.ai/adapter-openai](./packages/adapter-openai) | OpenAI adapter | - | ✅ Stable |
-| [@amux.ai/adapter-anthropic](./packages/adapter-anthropic) | Anthropic (Claude) adapter | - | ✅ Stable |
-| [@amux.ai/adapter-deepseek](./packages/adapter-deepseek) | DeepSeek adapter | - | ✅ Stable |
-| [@amux.ai/adapter-moonshot](./packages/adapter-moonshot) | Moonshot (Kimi) adapter | - | ✅ Stable |
-| [@amux.ai/adapter-zhipu](./packages/adapter-zhipu) | Zhipu AI (GLM) adapter | - | ✅ Stable |
-| [@amux.ai/adapter-qwen](./packages/adapter-qwen) | Qwen adapter | - | ✅ Stable |
-| [@amux.ai/adapter-google](./packages/adapter-google) | Google Gemini adapter | - | ✅ Stable |
-| [@amux.ai/adapter-minimax](./packages/adapter-minimax) | MiniMax adapter | - | ✅ Stable |
-| [@amux.ai/utils](./packages/utils) | Shared utilities | - | ✅ Stable |
-
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Your Application                      │
-└────────────────────┬────────────────────────────────────┘
-                     │ OpenAI Format Request
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│                   Inbound Adapter                        │
-│              (Parse OpenAI → IR)                         │
-└────────────────────┬────────────────────────────────────┘
-                     │ Intermediate Representation (IR)
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│                      Bridge                              │
-│         (Validation & Compatibility Check)               │
-└────────────────────┬────────────────────────────────────┘
-                     │ IR
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│                  Outbound Adapter                        │
-│              (IR → Build Anthropic)                      │
-└────────────────────┬────────────────────────────────────┘
-                     │ Anthropic Format Request
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│                  Anthropic API                           │
-└─────────────────────────────────────────────────────────┘
-```
-
-## 🎯 Use Cases
-
-- **Multi-Provider Support**: Build applications that work with multiple LLM providers
-- **Provider Migration**: Easily migrate from one provider to another
-- **Cost Optimization**: Route requests to different providers based on cost/performance
-- **Fallback Strategy**: Implement automatic fallback to alternative providers
-- **Testing**: Test your application with different providers without code changes
-
-## 📚 Examples
-
-### All Adapters
-
-```typescript
-import { createBridge } from '@amux.ai/llm-bridge'
-import { openaiAdapter } from '@amux.ai/adapter-openai'
-import { anthropicAdapter } from '@amux.ai/adapter-anthropic'
-import { deepseekAdapter } from '@amux.ai/adapter-deepseek'
-import { moonshotAdapter } from '@amux.ai/adapter-moonshot'
-import { qwenAdapter } from '@amux.ai/adapter-qwen'
-import { geminiAdapter } from '@amux.ai/adapter-google'
-
-// OpenAI → Anthropic
-const bridge1 = createBridge({
-  inbound: openaiAdapter,
-  outbound: anthropicAdapter,
-  config: { apiKey: process.env.ANTHROPIC_API_KEY }
-})
-
-// Anthropic → DeepSeek
-const bridge2 = createBridge({
-  inbound: anthropicAdapter,
-  outbound: deepseekAdapter,
-  config: { apiKey: process.env.DEEPSEEK_API_KEY }
-})
-
-// Any combination works!
-```
-
-### Streaming
-
-```typescript
-const bridge = createBridge({
-  inbound: openaiAdapter,
-  outbound: anthropicAdapter,
-  config: { apiKey: process.env.ANTHROPIC_API_KEY }
-})
-
-for await (const chunk of bridge.chatStream({
-  model: 'gpt-4',
-  messages: [{ role: 'user', content: 'Tell me a story' }],
-  stream: true
-})) {
-  console.log(chunk)
-}
-```
-
-### Tool Calling
-
-```typescript
-const response = await bridge.chat({
-  model: 'gpt-4',
-  messages: [{ role: 'user', content: 'What is the weather in SF?' }],
-  tools: [{
-    type: 'function',
-    function: {
-      name: 'get_weather',
-      description: 'Get the current weather',
-      parameters: {
-        type: 'object',
-        properties: {
-          location: { type: 'string' }
-        },
-        required: ['location']
-      }
-    }
-  }]
-})
-```
-
-## 🧪 Testing
+## Development Commands
 
 ```bash
-# Run all tests
-pnpm test
-
-# Run tests for specific package
-cd packages/llm-bridge && pnpm test
-
-# Run tests with coverage
-pnpm test:coverage
-```
-
-## 🛠️ Development
-
-```bash
-# Install dependencies
 pnpm install
 
-# Build all packages
+# Monorepo tasks
 pnpm build
-
-# Run example
-cd examples/basic && pnpm start
-
-# Type check
-pnpm typecheck
-
-# Lint
+pnpm build:all
+pnpm test
 pnpm lint
+pnpm typecheck
+pnpm format
+pnpm format:check
+
+# Apps/examples shortcuts
+pnpm dev:website
+pnpm dev:proxy
+pnpm dev:example
+pnpm dev:example:streaming
 ```
 
-### 📦 Release Process
+## Related Docs
 
-#### NPM Packages
+- Agent guides: `CLAUDE.md`, `AGENTS.md`
+- Desktop-specific guide: `apps/desktop/README.md`
+- Docs site content: `apps/website/app/content/docs/en/*`, `apps/website/app/content/docs/zh/*`
+- Contribution guide: `CONTRIBUTING.md`
 
-For publishing npm packages, use the manual publish workflow:
-
-```bash
-# 1. Add changeset (describe your changes)
-pnpm changeset
-
-# 2. Update versions and generate CHANGELOG
-pnpm changeset:version
-
-# 3. Commit and push version updates
-git add .
-git commit -m "chore: bump package versions"
-git push
-
-# 4. Build packages
-pnpm --filter "./packages/**" build
-
-# 5. Publish to npm (requires npm login)
-pnpm changeset:publish
-
-# 6. Push generated tags
-git push --tags
-```
-
-#### Desktop App
-
-For releasing the Desktop application:
-
-```bash
-# Use the release script (recommended)
-pnpm release
-
-# Or manually create tag
-git tag -a desktop-v0.2.1 -m "Release Desktop v0.2.1"
-git push origin desktop-v0.2.1
-```
-
-The Desktop release will automatically trigger GitHub Actions to build installers for macOS, Windows, and Linux.
-
-## 📊 Project Status
-
-✅ **MVP Complete!**
-
-- ✅ Core infrastructure
-- ✅ 7 official adapters (OpenAI, Anthropic, DeepSeek, Moonshot, Zhipu, Qwen, Gemini)
-- ✅ Bidirectional conversion
-- ✅ Type-safe TypeScript
-- ✅ Unit tests
-- ✅ Working examples
-
-## 🗺️ Roadmap
-
-- [ ] Complete streaming support for all adapters
-- [ ] Add more unit tests (target: 80%+ coverage)
-- [ ] Create documentation site (fumadocs)
-- [ ] Add integration tests
-- [ ] Publish to npm
-- [ ] Add more adapters (community contributions welcome!)
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for details.
-
-## 📄 License
+## License
 
 MIT © [isboyjc](https://github.com/isboyjc)
 
-## 🙏 Acknowledgments
-
-This project is inspired by the excellent work of:
-- [Vercel AI SDK](https://sdk.vercel.ai/)
-- [LiteLLM](https://github.com/BerriAI/litellm)
-
----
-
-**Made with ❤️ by the Amux team**

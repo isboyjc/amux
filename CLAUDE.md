@@ -1,356 +1,246 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This document is an implementation-grounded guide for AI coding agents working in the Amux monorepo.
 
-## Project Overview
+## 1) Project Summary
 
-Amux is a bidirectional LLM API adapter that enables seamless conversion between different LLM provider APIs. It uses an Intermediate Representation (IR) pattern to convert between any provider format (OpenAI, Anthropic, DeepSeek, Moonshot, Qwen, Gemini).
+Amux is a pnpm/Nx monorepo centered on a provider-agnostic LLM bridge.
 
-**Key Architecture**: Provider Format → Inbound Adapter → IR → Outbound Adapter → Target Provider Format
+- Core pattern: `Provider Format -> Inbound Adapter -> IR -> Outbound Adapter -> Provider API`
+- Workspace layout: `packages/*`, `apps/*`, `examples/*`
+- Primary language: TypeScript
 
-## Development Commands
+Top-level tooling is defined in `package.json`, `pnpm-workspace.yaml`, and `nx.json`.
 
-### Build
+## 2) Monorepo Structure and Responsibilities
+
+### packages/
+
+- `packages/llm-bridge` (`@amux.ai/llm-bridge`)
+  - Core bridge orchestration, IR types, adapter contracts, HTTP client, capability checks.
+  - Entry points: `createBridge`, `Bridge`, IR and adapter types.
+- `packages/adapter-openai` (`@amux.ai/adapter-openai`)
+  - Includes both `openaiAdapter` (`/v1/chat/completions`) and `openaiResponsesAdapter` (`/v1/responses`).
+- `packages/adapter-anthropic` / `adapter-deepseek` / `adapter-google` / `adapter-minimax` / `adapter-moonshot` / `adapter-qwen` / `adapter-zhipu`
+  - Provider adapters implementing `LLMAdapter`.
+  - All depend on `@amux.ai/llm-bridge`.
+- `packages/utils` (`@amux.ai/utils`)
+  - Small shared helpers (`parseSSE`, `createSSE`, `normalizeError`, `LLMBridgeError`).
+  - Keep descriptions conservative; this package is not the central orchestration layer.
+
+### apps/
+
+- `apps/desktop` (`@amux.ai/desktop`, private)
+  - Electron desktop app with local Fastify proxy service, SQLite persistence, logs, metrics, OAuth, tunnel management, Code Switch, and update check.
+- `apps/proxy` (`@amux.ai/proxy`, private)
+  - Express sample proxy/gateway with predefined conversion routes and model mappings.
+- `apps/tunnel-api` (`@amux.ai/tunnel-api`, private)
+  - Cloudflare Workers API (KV + D1) for tunnel lifecycle (`create/delete/status/list`) and rate limiting.
+- `apps/website` (`@amux.ai/website`, private)
+  - Next.js + Fumadocs documentation site, bilingual (`en`/`zh`).
+
+### examples/
+
+- `examples/basic`
+  - Basic bridge usage and adapter conversion examples.
+- `examples/streaming`
+  - Streaming and event-handling examples.
+
+## 3) Core Bridge Semantics (Do Not Misstate)
+
+Reference: `packages/llm-bridge/src/bridge/bridge.ts`
+
+### Request/response flow
+
+`chat()` and `chatRaw()` execute this order:
+
+1. `inbound.parseRequest(request)` -> IR
+2. Model mapping (if configured)
+3. Optional hooks (`onRequest`)
+4. Optional request validation + capability checks
+5. `outbound.buildRequest(ir)`
+6. HTTP call (`baseURL + endpoint`)
+7. `outbound.inbound.parseResponse(response)` -> IR
+8. Optional hooks (`onResponse`)
+9. Convert back with inbound adapter response builder (for `chat()`)
+
+### Model mapping precedence
+
+`targetModel > modelMapper > modelMapping > original`
+
+### Streaming specifics
+
+- `chatStreamRaw()` filters duplicate `end` events.
+- `processSSELines()` ignores protocol marker `data: [DONE]` before parsing JSON.
+- `chatStream()` uses inbound `createStreamBuilder()` when available.
+- `chatStream()` filters final SSE events whose `data === '[DONE]'` (protocol marker is expected to be added by HTTP layer when needed).
+
+### Endpoint resolution
+
+- Chat path priority: `config.chatPath` > adapter `getInfo().endpoint.chatPath`
+- Models path priority: `config.modelsPath` > adapter `getInfo().endpoint.modelsPath`
+- Supports `{model}` placeholder replacement in chat paths (important for Google adapter path templates).
+
+## 4) Adapter Layer Rules
+
+Reference: `packages/llm-bridge/src/adapter/base.ts`
+
+- Adapters implement provider<->IR conversion only.
+- Avoid cross-provider branching inside adapter internals.
+- Keep provider-specific protocol details in adapter parsing/building.
+- Shared cross-adapter behavior belongs in bridge layer, not duplicated across adapters.
+
+Current provider adapter packages in this repo: OpenAI, Anthropic, DeepSeek, Google, MiniMax, Moonshot, Qwen, Zhipu.
+
+## 5) Desktop App Operational Architecture
+
+### Startup sequence
+
+Reference: `apps/desktop/electron/main.ts`
+
+Main process initializes in this order:
+
+1. Crypto service
+2. Database init + migrations
+3. Presets init + default provider bootstrap when provider table is empty
+4. Analytics init
+5. OAuth manager init
+6. Logger init
+7. IPC handlers registration
+8. Browser window creation
+
+### Local proxy service
+
+References:
+
+- `apps/desktop/electron/services/proxy-server/index.ts`
+- `apps/desktop/electron/services/proxy-server/routes.ts`
+- `apps/desktop/electron/ipc/proxy-service.ts`
+
+Facts:
+
+- Fastify service defaults to `127.0.0.1:9527` (settings-backed).
+- OAuth translation routes are registered before regular proxy routes.
+- Dynamic route groups:
+  - Provider passthrough: `/providers/{proxy_path}...`
+  - Conversion proxy: `/proxies/{proxy_path}{endpoint}`
+  - Code Switch (enabled): `POST /code/claudecode/v1/messages`
+  - Codex code-switch routes exist in code but are currently commented out in route registration.
+
+### Authentication behavior in proxy server
+
+Reference: `apps/desktop/electron/services/proxy-server/utils.ts`
+
+- If unified auth is disabled, requests can run without a platform key (provider key path).
+- If unified auth is enabled:
+  - `sk-amux.*` is validated as platform key.
+  - Non-platform key is treated as passthrough key.
+
+### Persistence and migration
+
+References:
+
+- `apps/desktop/electron/services/database/index.ts`
+- `apps/desktop/electron/services/database/migrator.ts`
+- `apps/desktop/electron/services/database/migrations/*`
+
+Facts:
+
+- SQLite (`amux.db`) under Electron `userData` path.
+- Migrations are tracked via `user_version` and `schema_migrations`.
+- Current migration set includes versions `001` through `012`.
+
+### Tunnel subsystem
+
+References:
+
+- `apps/desktop/electron/services/tunnel/tunnel-service.ts`
+- `apps/desktop/electron/services/tunnel/cloudflared-manager.ts`
+- `apps/tunnel-api/src/index.ts`
+
+Facts:
+
+- Desktop manages local `cloudflared` binary/process.
+- Tunnel API default base URL in desktop service is `https://tunnel-api.amux.ai`.
+- Tunnel API routes include create/delete/status/list.
+
+### OAuth subsystem
+
+References:
+
+- `apps/desktop/electron/services/oauth/*`
+- `apps/desktop/electron/services/proxy-server/oauth/index.ts`
+- `apps/desktop/electron/services/proxy-server/oauth/key-manager.ts`
+
+Facts:
+
+- Provider types include `codex` and `antigravity`.
+- OAuth translation routes are exposed under `/oauth/codex/*` and `/oauth/antigravity/*`.
+- Requests are validated against OAuth service keys stored in `oauth_service_keys` table.
+- Generated key format is `sk-amux.oauth.{providerType}-{id}`.
+
+### Update check
+
+Reference: `apps/desktop/electron/services/updater/index.ts`
+
+- Desktop checks latest release metadata from GitHub releases API endpoint:
+  - `https://api.github.com/repos/isboyjc/amux/releases/latest`
+
+## 6) Development Commands
+
+### Root
+
 ```bash
-# Build all packages
+pnpm install
 pnpm build
-
-# Build specific package
-cd packages/llm-bridge && pnpm build
-
-# Watch mode for development
-cd packages/llm-bridge && pnpm dev
-```
-
-### Testing
-```bash
-# Run all tests
+pnpm build:all
 pnpm test
-
-# Run tests for specific package
-cd packages/llm-bridge && pnpm test
-pnpm --filter @amux.ai/llm-bridge test
-
-# Watch mode
-cd packages/llm-bridge && pnpm test:watch
-
-# Coverage (target: 80%+)
-pnpm test:coverage
-cd packages/llm-bridge && pnpm test:coverage
-```
-
-**Test Status:**
-- ✅ Core package: All tests passing (18 tests)
-- ✅ OpenAI adapter: All tests passing
-- ✅ Anthropic adapter: All tests passing
-- ✅ DeepSeek adapter: All tests passing
-- ✅ Moonshot adapter: All tests passing
-- ⚠️ Gemini adapter: Tests failing (request parsing, stream parsing issues)
-- ⚠️ Qwen adapter: Tests failing (system message handling, vision content, stream parsing)
-
-### Type Checking & Linting
-```bash
-# Type check all packages
-pnpm typecheck
-
-# Lint all packages
 pnpm lint
-
-# Format code
+pnpm typecheck
 pnpm format
 pnpm format:check
 ```
 
-### Examples
-```bash
-# Run basic example
-pnpm dev:example
-cd examples/basic && pnpm start
+### Common app/package workflows
 
-# Run streaming example
+```bash
+# Website
+pnpm dev:website
+
+# Proxy example app
+pnpm dev:proxy
+
+# Desktop app
+pnpm dev:desktop
+pnpm build:desktop
+pnpm package:desktop
+```
+
+### Examples
+
+```bash
+pnpm dev:example
 pnpm dev:example:streaming
 ```
 
-### Documentation Site
-```bash
-# Development
-pnpm dev:website
+## 7) Documentation and Sync Rules
 
-# Build
-pnpm build:website
+When behavior/API is changed, keep docs synchronized:
 
-# Start production server
-pnpm start:website
-```
+- Root docs: `README.md` and `README_ZH.md`
+- Agent docs: `CLAUDE.md` and `AGENTS.md`
+- Website docs: `apps/website/app/content/docs/en/*` and `apps/website/app/content/docs/zh/*`
 
-## Monorepo Structure
+For architecture claims:
 
-This is a pnpm workspace monorepo managed by Nx:
+- Prefer citing concrete paths and implementation behavior.
+- Avoid test-status claims unless verified in current run.
+- Explicitly mark "implemented but not enabled" when routes/features are present in code but not registered.
 
-- **packages/llm-bridge**: Core IR definitions, adapter interfaces, bridge orchestration, HTTP client (@amux.ai/llm-bridge)
-- **packages/utils**: Shared utilities (SSE stream parsing, error handling) (@amux.ai/utils)
-- **packages/adapter-{provider}**: Official adapters (@amux.ai/adapter-openai, @amux.ai/adapter-anthropic, etc.)
-- **apps/website**: Documentation site (fumadocs)
-- **apps/proxy**: Proxy server for testing
-- **examples/**: Usage examples
+## 8) Change Safety for Agents
 
-## Core Architecture Concepts
+- Keep changes scoped; do not modify unrelated business logic.
+- Prefer root-cause changes over ad-hoc patches.
+- Follow existing code/style patterns in each package/app.
+- Do not assume provider compatibility details that are not expressed in adapter/bridge code.
 
-### Architecture Layer Principles
-
-The project follows strict separation of concerns across layers:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  User Application Layer (HTTP/Protocol)                     │
-│  - HTTP response handling                                   │
-│  - Protocol-specific markers (e.g., [DONE] for SSE)         │
-│  - Connection management                                    │
-├─────────────────────────────────────────────────────────────┤
-│  Bridge Layer (Orchestration)                               │
-│  - Request/response flow orchestration                      │
-│  - Model mapping                                            │
-│  - Cross-adapter compatibility checks                       │
-│  - Generic/common logic shared across all adapters          │
-│  - Filter out protocol-level details from adapters          │
-├─────────────────────────────────────────────────────────────┤
-│  Adapter Layer (Provider ↔ IR Conversion)                   │
-│  - ONLY handles its own provider format ↔ IR conversion     │
-│  - NO cross-adapter logic or dependencies                   │
-│  - Correctly express its own protocol format                │
-│  - Provider-specific quirks handled here                    │
-├─────────────────────────────────────────────────────────────┤
-│  IR Layer (Intermediate Representation)                     │
-│  - Unified data structures                                  │
-│  - Provider-agnostic                                        │
-│  - Standard event types (start, content, reasoning, end)    │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Key Rules:**
-
-1. **Adapter Isolation**: Each adapter ONLY knows about its own provider format. Never add logic in one adapter that handles another adapter's specifics.
-
-2. **IR as Contract**: IR types are the contract between adapters. Features like `reasoning` are standard IR types, not provider-specific.
-
-3. **Protocol vs IR**: Protocol-level concerns (like `[DONE]` SSE marker) are expressed by adapters but filtered by Bridge. Adapters correctly represent their protocol, Bridge filters protocol details, users handle protocol markers in HTTP layer.
-
-4. **Bridge for Common Logic**: Any logic that applies across multiple adapters belongs in Bridge, not duplicated in each adapter. This includes filtering protocol-level markers like `[DONE]`.
-
-**Example - SSE [DONE] marker handling:**
-- Adapter layer: `finalize()` returns `[DONE]` (correct protocol representation)
-- Bridge layer: Filters out `[DONE]` before yielding to user (common logic)
-- User HTTP layer: Adds `[DONE]` marker to HTTP response (protocol handling)
-
-### Intermediate Representation (IR)
-
-The IR is the central data structure that all adapters convert to/from. Key types:
-
-- **LLMRequestIR**: Unified request format with messages, tools, generation config, system prompt, metadata, extensions
-- **LLMResponseIR**: Unified response format with content, tool calls, usage stats
-- **LLMStreamEvent**: Unified streaming event format
-- **LLMErrorIR**: Unified error format
-
-Location: `packages/llm-bridge/src/ir/`
-
-### Adapter Interface
-
-Every adapter implements the `LLMAdapter` interface with:
-
-- **inbound**: Parse provider format → IR (parseRequest, parseResponse, parseStream, parseError)
-- **outbound**: Build IR → provider format (buildRequest, buildResponse)
-- **capabilities**: Feature flags (streaming, tools, vision, etc.)
-- **getInfo()**: Adapter metadata
-
-Location: `packages/llm-bridge/src/adapter/base.ts`
-
-### Bridge Pattern
-
-The Bridge class orchestrates the conversion flow:
-
-1. Inbound adapter parses incoming request → IR
-2. Validate IR (optional)
-3. Outbound adapter builds provider request from IR
-4. Send HTTP request to target provider API
-5. Outbound adapter parses response → IR
-6. Inbound adapter builds final response from IR
-
-Location: `packages/llm-bridge/src/bridge/bridge.ts`
-
-## Adapter Structure
-
-Each adapter follows this structure:
-
-```
-packages/adapter-{provider}/
-├── src/
-│   ├── adapter.ts           # Main adapter implementation
-│   ├── types.ts             # Provider-specific types
-│   ├── inbound/
-│   │   ├── request-parser.ts
-│   │   ├── response-parser.ts
-│   │   ├── stream-parser.ts
-│   │   └── error-parser.ts
-│   ├── outbound/
-│   │   ├── request-builder.ts
-│   │   └── response-builder.ts
-│   └── index.ts
-├── tests/
-│   └── adapter.test.ts
-└── package.json
-```
-
-**OpenAI-compatible adapters** (DeepSeek, Moonshot, Qwen, Gemini) extend the OpenAI adapter with minimal customization.
-
-## Key Implementation Details
-
-### HTTP Client
-
-Location: `packages/llm-bridge/src/bridge/http-client.ts`
-
-- Handles both regular and streaming requests
-- Supports custom headers, timeout, base URL
-- SSE (Server-Sent Events) parsing for streaming
-
-### Adapter Registry
-
-Location: `packages/llm-bridge/src/adapter/registry.ts`
-
-- Optional registry for managing multiple adapters
-- Not required for basic bridge usage
-
-### Capabilities System
-
-Location: `packages/llm-bridge/src/adapter/capabilities.ts`
-
-Adapters declare capabilities:
-- streaming, tools, vision, multimodal
-- systemPrompt, toolChoice, reasoning
-- webSearch, jsonMode, logprobs, seed
-
-The Bridge checks compatibility between inbound/outbound adapters.
-
-## Testing Guidelines
-
-- Use Vitest for all tests
-- Test files: `packages/*/tests/*.test.ts`
-- Coverage target: 80%+ (lines, functions, branches, statements)
-- Test structure: Arrange-Act-Assert pattern
-- Mock external API calls in unit tests
-
-## Build System
-
-- **Nx**: Task orchestration and caching
-- **tsup**: Fast TypeScript bundler for packages
-- **TypeScript**: Strict mode enabled
-- **Outputs**: ESM (.js), CJS (.cjs), and type definitions (.d.ts)
-
-Build configuration: `nx.json`, `tsconfig.base.json`, individual `tsconfig.json` files
-
-## Version Management
-
-Uses Changesets for version management:
-
-```bash
-# Add a changeset
-pnpm changeset
-
-# Version packages
-pnpm changeset:version
-
-# Publish packages
-pnpm changeset:publish
-```
-
-## Important Patterns
-
-### Zero Dependencies
-
-The core package has zero runtime dependencies. Only dev dependencies for building and testing.
-
-### Extensions Field
-
-The IR includes an `extensions` field for provider-specific features that don't map to the unified IR:
-
-```typescript
-extensions?: {
-  [provider: string]: unknown
-}
-```
-
-### Raw Field
-
-The IR includes a `raw` field to preserve the original request/response for debugging:
-
-```typescript
-raw?: unknown
-```
-
-### Error Handling
-
-All adapters should implement error parsing to convert provider-specific errors to `LLMErrorIR` format.
-
-## Adding a New Adapter
-
-1. Create package: `packages/adapter-{provider}/`
-2. Implement `LLMAdapter` interface
-3. Define provider-specific types
-4. Implement inbound parsers (request, response, stream, error)
-5. Implement outbound builders (request, response)
-6. Declare capabilities
-7. Add tests
-8. Export from index.ts
-
-For OpenAI-compatible providers, extend the OpenAI adapter instead of implementing from scratch.
-
-## Common Pitfalls
-
-- **Streaming**: Remember to set `ir.stream = true` in chatStream method
-- **Type Safety**: Always validate unknown types from provider APIs
-- **Capabilities**: Check adapter capabilities before using features
-- **Adapter Endpoint**: Each adapter defines its own baseURL and chatPath in `getInfo().endpoint`
-- **SSE Format**: Streaming responses use SSE format with `data: {...}` lines
-
-## Known Issues
-
-### Gemini Adapter
-- **Request Parsing**: Tests expect OpenAI format but Gemini uses `contents` instead of `messages`
-- **Stream Parsing**: Stream parser returns null for all events (not implemented correctly)
-- **Tool Format**: Gemini uses different tool format than OpenAI
-- **Capabilities**: Test expects `toolChoice: false` but adapter declares `toolChoice: true`
-
-### Qwen Adapter
-- **System Messages**: System messages not extracted properly
-- **Vision Content**: Uses `image` type instead of `image_url` type
-- **Content Format**: Doesn't serialize multipart content to JSON string like OpenAI adapter
-- **Stream Parsing**: Stream parser returns null
-
-**Root Cause**: These adapters claim to be OpenAI-compatible but have subtle differences in:
-1. How they handle system messages (separate field vs in messages array)
-2. Content format for vision/multipart messages
-3. Stream event format
-4. Tool/function calling format
-
-**Fix Strategy**: Either update the adapters to handle these differences, or update the tests to match actual provider behavior.
-
-## Documentation
-
-- Main README: Project overview and quick start
-- CONTRIBUTING.md: Development setup and contribution guidelines
-- PROJECT_SUMMARY.md: Detailed project status and architecture
-- Documentation site: fumadocs-based site in `apps/website/`
-
-### Documentation Update Rules
-
-**IMPORTANT**: When making changes to packages, always update the corresponding documentation:
-
-1. **Package Changes** → Update `apps/website/app/content/docs/` (both `en/` and `zh/` directories)
-2. **Adapter Rename/Add/Remove** → Update:
-   - `docs/en/index.mdx` and `docs/zh/index.mdx` (provider list)
-   - `docs/en/installation.mdx` and `docs/zh/installation.mdx` (install commands)
-   - `docs/*/adapters/index.mdx` (adapter overview)
-   - Create/rename/delete adapter-specific doc files
-3. **API Changes** → Update `docs/*/api/` files
-4. **New Features** → Add to relevant concept docs and examples
-
-Documentation is bilingual (English and Chinese). Always update both language versions.
