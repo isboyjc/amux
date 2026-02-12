@@ -112,35 +112,24 @@ export class CodeSwitchCacheManager {
     if (cached) {
       // Check if expired
       if (Date.now() - cached.cachedAt < this.CACHE_TTL) {
-        console.log(`[DEBUG-CACHE] Cache HIT for ${cliType}, mappings:`,
-          Array.from(cached.modelMappings.entries()).map(([k, v]) => `${k} -> ${v || '(empty)'}`)
-        )
         return cached
       }
       // Expired, remove from cache
-      console.log(`[DEBUG-CACHE] Cache EXPIRED for ${cliType}`)
       this.configCache.delete(cliType)
-    } else {
-      console.log(`[DEBUG-CACHE] Cache MISS for ${cliType}`)
     }
 
     // Fetch from database
     const config = this.codeSwitchRepo.findByCLIType(cliType)
     if (!config || !config.enabled) {
-      console.log(`[DEBUG-CACHE] DB lookup: config=${config ? 'found' : 'null'}, enabled=${config?.enabled}, returning null`)
       return null
     }
 
     // Fetch active model mappings
     const mappings = this.modelMappingRepo.findActiveByCodeSwitchId(config.id)
-    console.log(`[DEBUG-CACHE] DB lookup: found ${mappings.length} active mappings for config ${config.id}`)
     const modelMappings = new Map<string, string>()
     for (const mapping of mappings) {
       modelMappings.set(mapping.source_model, mapping.target_model)
     }
-    console.log(`[DEBUG-CACHE] Loaded mappings:`,
-      Array.from(modelMappings.entries()).map(([k, v]) => `${k} -> ${v || '(empty)'}`)
-    )
 
     // Cache it
     const cachedConfig: CachedCodeSwitchConfig = {
@@ -160,7 +149,6 @@ export class CodeSwitchCacheManager {
    * Called when configuration is updated
    */
   invalidate(cliType: 'claudecode' | 'codex'): void {
-    console.log(`[DEBUG-CACHE] Invalidating cache for ${cliType}`)
     this.configCache.delete(cliType)
 
     // Also clean up model mapping cache

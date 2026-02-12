@@ -58,9 +58,7 @@ export function ModelMappingEditor({
   }, [providerId])
 
   const loadProviderAndMappings = async () => {
-    console.log('[DEBUG-MME] loadProviderAndMappings called', { providerId, codeSwitchId })
     if (!providerId) {
-      console.log('[DEBUG-MME] No providerId, clearing mappings')
       setLoading(false)
       setLocalMappings([])
       return
@@ -72,14 +70,12 @@ export function ModelMappingEditor({
       // Load provider details
       const providerData = await window.api.invoke('provider:get', providerId)
       setProvider(providerData)
-      console.log('[DEBUG-MME] Provider loaded:', providerData?.name)
 
       // Load historical mappings if codeSwitchId exists
       let mappingsToUse: ModelMapping[] = []
 
       if (codeSwitchId) {
         try {
-          console.log('[DEBUG-MME] Loading historical mappings for codeSwitchId:', codeSwitchId, 'providerId:', providerId)
           const historicalMappings = await window.api.invoke(
             'code-switch:get-historical-mappings',
             codeSwitchId,
@@ -92,15 +88,11 @@ export function ModelMappingEditor({
               sourceModel: m.sourceModel,
               targetModel: m.targetModel
             }))
-            console.log('[DEBUG-MME] Loaded historical mappings:', mappingsToUse.map(m => `${m.sourceModel} -> ${m.targetModel || '(empty)'}`))
-          } else {
-            console.log('[DEBUG-MME] No historical mappings found')
+            console.log('[ModelMappingEditor] Loaded historical mappings:', mappingsToUse)
           }
         } catch (err) {
-          console.warn('[DEBUG-MME] Failed to load historical mappings:', err)
+          console.warn('[ModelMappingEditor] Failed to load historical mappings:', err)
         }
-      } else {
-        console.log('[DEBUG-MME] No codeSwitchId, skipping historical mappings lookup')
       }
 
       // If no historical mappings, initialize with default Claude models
@@ -109,12 +101,11 @@ export function ModelMappingEditor({
           sourceModel: model.value,
           targetModel: '' // Empty by default, user can fill or leave empty
         }))
-        console.log('[DEBUG-MME] Using default mappings (all targetModel empty)')
+        console.log('[ModelMappingEditor] Using default mappings')
       }
 
       setLocalMappings(mappingsToUse)
       // 初始化时通知父组件，让父组件设置 originalMappings
-      console.log('[DEBUG-MME] Calling onChange with mappings (notifying parent)')
       onChange(mappingsToUse)
     } catch (error) {
       console.error('[ModelMappingEditor] Failed to load provider and mappings:', error)
@@ -133,11 +124,10 @@ export function ModelMappingEditor({
   // Removed addMapping - no longer needed, models are pre-populated
 
   const updateMapping = (index: number, field: 'sourceModel' | 'targetModel', value: string) => {
-    console.log('[DEBUG-MME] updateMapping called', { index, field, value, providerId, codeSwitchId })
-    const newMappings = [...localMappings]
-    newMappings[index][field] = value
+    const newMappings = localMappings.map((m, i) =>
+      i === index ? { ...m, [field]: value } : { ...m }
+    )
     setLocalMappings(newMappings)
-    // 立即通知父组件，但父组件不会立即保存
     onChange(newMappings)
   }
 

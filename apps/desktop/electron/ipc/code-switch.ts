@@ -133,13 +133,6 @@ export function registerCodeSwitchHandlers(): void {
       }
     ) => {
       const { cliType, providerId, modelMappings, customConfigPath } = data
-      console.log(`[DEBUG-IPC] code-switch:enable ENTERED`, {
-        cliType,
-        providerId,
-        mappingsCount: modelMappings.length,
-        mappings: modelMappings.map(m => `${m.sourceModel} -> ${m.targetModel || '(empty)'}`),
-        customConfigPath
-      })
 
       // Step 1: Detect or validate config file
       const detection = customConfigPath
@@ -290,20 +283,11 @@ export function registerCodeSwitchHandlers(): void {
       providerId: string,
       modelMappings: Array<{ sourceModel: string; targetModel: string }>
     ) => {
-      console.log(`[DEBUG-IPC] code-switch:update-provider ENTERED`, {
-        cliType,
-        providerId,
-        mappingsCount: modelMappings.length,
-        mappings: modelMappings.map(m => `${m.sourceModel} -> ${m.targetModel || '(empty)'}`)
-      })
       const config = codeSwitchRepo.findByCLIType(cliType)
 
       if (!config) {
-        console.error(`[DEBUG-IPC] ABORT update-provider: No config found for ${cliType}`)
         throw new Error(`Code Switch config not found for ${cliType}`)
       }
-
-      console.log(`[DEBUG-IPC] Found config: id=${config.id}, enabled=${config.enabled}, provider=${config.provider_id}`)
 
       // For Codex, use the existing provider_id from config (unified endpoint doesn't switch providers)
       // For Claude Code, update to the new provider
@@ -315,7 +299,6 @@ export function registerCodeSwitchHandlers(): void {
       }
 
       // Update model mappings
-      console.log(`[DEBUG-IPC] modelMappings.length=${modelMappings.length}, will save: ${modelMappings.length > 0}`)
       if (modelMappings.length > 0) {
         modelMappingRepo.updateMappingsForProvider({
           codeSwitchId: config.id,
@@ -324,13 +307,7 @@ export function registerCodeSwitchHandlers(): void {
         })
       }
 
-      console.log(`[DEBUG-IPC] Updated ${cliType} mappings using provider ${actualProviderId}`)
-
-      // Verify: re-read from DB to confirm
-      const verifyMappings = modelMappingRepo.findActiveByCodeSwitchId(config.id)
-      console.log(`[DEBUG-IPC] Verification - active mappings in DB after save:`,
-        verifyMappings.map(m => `${m.source_model} -> ${m.target_model} (active=${m.is_active})`)
-      )
+      console.log(`[IPC] Updated ${cliType} mappings using provider ${actualProviderId}`)
 
       // Invalidate cache for dynamic switching
       invalidateCodeSwitchCache(cliType as 'claudecode' | 'codex')
