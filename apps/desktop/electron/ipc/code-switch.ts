@@ -60,13 +60,6 @@ export function registerCodeSwitchHandlers(): void {
     'code-switch:get-config',
     async (_event, cliType: 'claudecode' | 'codex') => {
       const row = codeSwitchRepo.findByCLIType(cliType)
-      console.log('[CS-DIAG][Main][IPC] get-config', {
-        cliType,
-        found: Boolean(row),
-        configId: row?.id,
-        enabled: row?.enabled,
-        providerId: row?.provider_id
-      })
       return row ? toCodeSwitchConfig(row) : null
     }
   )
@@ -84,11 +77,6 @@ export function registerCodeSwitchHandlers(): void {
       providerId: string,
       configPath: string
     ) => {
-      console.log('[CS-DIAG][Main][IPC] init-config called', {
-        cliType,
-        providerId,
-        configPath
-      })
 
       // Check if config already exists
       let config = codeSwitchRepo.findByCLIType(cliType)
@@ -113,13 +101,6 @@ export function registerCodeSwitchHandlers(): void {
         console.log(`[CodeSwitch] Updated config for ${cliType}:`, config.id)
       }
 
-      console.log('[CS-DIAG][Main][IPC] init-config resolved', {
-        cliType,
-        configId: config.id,
-        enabled: config.enabled,
-        providerId: config.provider_id,
-        configPath: config.config_path
-      })
       
       return toCodeSwitchConfig(config)
     }
@@ -155,12 +136,6 @@ export function registerCodeSwitchHandlers(): void {
     ) => {
       const { cliType, providerId, modelMappings, customConfigPath } = data
 
-      console.log('[CS-DIAG][Main][IPC] enable called', {
-        cliType,
-        providerId,
-        mappingsCount: modelMappings.length,
-        customConfigPath
-      })
 
       // Step 1: Detect or validate config file
       const detection = customConfigPath
@@ -233,25 +208,11 @@ export function registerCodeSwitchHandlers(): void {
           providerId,
           mappings: modelMappings
         })
-        console.log('[CS-DIAG][Main][IPC] enable saved mappings', {
-          cliType,
-          codeSwitchId: codeSwitchConfig.id,
-          providerId,
-          mappingsCount: modelMappings.length
-        })
-      } else {
-        console.log('[CS-DIAG][Main][IPC] enable skipped mappings save (empty mappings)')
       }
 
       // Step 7: Invalidate cache to pick up new config
       invalidateCodeSwitchCache(cliType as 'claudecode' | 'codex')
 
-      console.log('[CS-DIAG][Main][IPC] enable done', {
-        cliType,
-        configId: codeSwitchConfig.id,
-        enabled: codeSwitchConfig.enabled,
-        providerId: codeSwitchConfig.provider_id
-      })
 
       return toCodeSwitchConfig(codeSwitchConfig)
     }
@@ -266,7 +227,6 @@ export function registerCodeSwitchHandlers(): void {
   ipcMain.handle(
     'code-switch:disable',
     async (_event, cliType: 'claudecode' | 'codex') => {
-      console.log('[CS-DIAG][Main][IPC] disable called', { cliType })
 
       const config = codeSwitchRepo.findByCLIType(cliType)
 
@@ -285,11 +245,6 @@ export function registerCodeSwitchHandlers(): void {
       // Step 3: Invalidate cache
       invalidateCodeSwitchCache(cliType as 'claudecode' | 'codex')
 
-      console.log('[CS-DIAG][Main][IPC] disable done', {
-        cliType,
-        configId: config.id,
-        enabledAfter: 0
-      })
     }
   )
 
@@ -305,10 +260,6 @@ export function registerCodeSwitchHandlers(): void {
       cliType: 'claudecode' | 'codex',
       providerId: string
     ) => {
-      console.log('[CS-DIAG][Main][IPC] switch-provider called', {
-        cliType,
-        providerId
-      })
 
       const config = codeSwitchRepo.findByCLIType(cliType)
 
@@ -323,11 +274,6 @@ export function registerCodeSwitchHandlers(): void {
       invalidateCodeSwitchCache(cliType as 'claudecode' | 'codex')
       
       console.log(`[CodeSwitch] Switched provider to ${providerId} for ${cliType}`)
-      console.log('[CS-DIAG][Main][IPC] switch-provider done', {
-        cliType,
-        configId: config.id,
-        providerId
-      })
     }
   )
 
@@ -344,12 +290,6 @@ export function registerCodeSwitchHandlers(): void {
       providerId: string,
       modelMappings: Array<{ sourceModel: string; targetModel: string }>
     ) => {
-      console.log('[CS-DIAG][Main][IPC] update-provider called', {
-        cliType,
-        providerId,
-        mappingsCount: modelMappings.length,
-        mappingsPreview: modelMappings.slice(0, 3)
-      })
 
       const config = codeSwitchRepo.findByCLIType(cliType)
 
@@ -361,14 +301,6 @@ export function registerCodeSwitchHandlers(): void {
       // For Claude Code, update to the new provider
       const actualProviderId = cliType === 'codex' ? config.provider_id : providerId
 
-      console.log('[CS-DIAG][Main][IPC] update-provider resolved target', {
-        cliType,
-        configId: config.id,
-        configEnabled: config.enabled,
-        configProviderId: config.provider_id,
-        requestedProviderId: providerId,
-        actualProviderId
-      })
 
       // Update provider (only for Claude Code)
       if (cliType === 'claudecode') {
@@ -382,18 +314,6 @@ export function registerCodeSwitchHandlers(): void {
           providerId: actualProviderId, // Use actual provider ID from config for Codex
           mappings: modelMappings
         })
-        console.log('[CS-DIAG][Main][IPC] update-provider saved mappings', {
-          cliType,
-          codeSwitchId: config.id,
-          actualProviderId,
-          mappingsCount: modelMappings.length
-        })
-      } else {
-        console.log('[CS-DIAG][Main][IPC] update-provider skipped mappings save (empty mappings array)', {
-          cliType,
-          codeSwitchId: config.id,
-          actualProviderId
-        })
       }
 
       console.log(`[IPC] Updated ${cliType} mappings using provider ${actualProviderId}`)
@@ -401,12 +321,6 @@ export function registerCodeSwitchHandlers(): void {
       // Invalidate cache for dynamic switching
       invalidateCodeSwitchCache(cliType as 'claudecode' | 'codex')
 
-      console.log('[CS-DIAG][Main][IPC] update-provider done', {
-        cliType,
-        codeSwitchId: config.id,
-        actualProviderId,
-        cacheInvalidated: true
-      })
     }
   )
 
@@ -420,10 +334,6 @@ export function registerCodeSwitchHandlers(): void {
   ipcMain.handle(
     'code-switch:get-historical-mappings',
     async (_event, codeSwitchId: string, providerId?: string) => {
-      console.log('[CS-DIAG][Main][IPC] get-historical-mappings called', {
-        codeSwitchId,
-        providerId
-      })
 
       let rows: CodeModelMappingRow[]
       
@@ -435,17 +345,6 @@ export function registerCodeSwitchHandlers(): void {
         rows = modelMappingRepo.findActiveByCodeSwitchId(codeSwitchId)
       }
 
-      console.log('[CS-DIAG][Main][IPC] get-historical-mappings result', {
-        codeSwitchId,
-        providerId,
-        count: rows.length,
-        preview: rows.slice(0, 3).map((row) => ({
-          providerId: row.provider_id,
-          sourceModel: row.source_model,
-          targetModel: row.target_model,
-          isActive: row.is_active
-        }))
-      })
       
       return rows.map(toCodeModelMapping)
     }

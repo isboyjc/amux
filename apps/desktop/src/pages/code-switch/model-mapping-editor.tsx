@@ -30,6 +30,10 @@ interface ModelMapping {
   targetModel: string
 }
 
+function cloneMappings(mappings: ModelMapping[]): ModelMapping[] {
+  return mappings.map((mapping) => ({ ...mapping }))
+}
+
 interface ModelMappingEditorProps {
   cliType: 'claudecode' | 'codex'
   codeSwitchId: string
@@ -104,9 +108,9 @@ export function ModelMappingEditor({
         console.log('[ModelMappingEditor] Using default mappings')
       }
 
-      setLocalMappings(mappingsToUse)
+      setLocalMappings(cloneMappings(mappingsToUse))
       // 初始化时通知父组件，让父组件设置 originalMappings
-      onChange(mappingsToUse)
+      onChange(cloneMappings(mappingsToUse))
     } catch (error) {
       console.error('[ModelMappingEditor] Failed to load provider and mappings:', error)
       // Fallback to default mappings
@@ -114,8 +118,8 @@ export function ModelMappingEditor({
         sourceModel: model.value,
         targetModel: ''
       }))
-      setLocalMappings(defaultMappings)
-      onChange(defaultMappings)
+      setLocalMappings(cloneMappings(defaultMappings))
+      onChange(cloneMappings(defaultMappings))
     } finally {
       setLoading(false)
     }
@@ -124,11 +128,20 @@ export function ModelMappingEditor({
   // Removed addMapping - no longer needed, models are pre-populated
 
   const updateMapping = (index: number, field: 'sourceModel' | 'targetModel', value: string) => {
-    const newMappings = [...localMappings]
-    newMappings[index][field] = value
+    const newMappings = localMappings.map((mapping, mappingIndex) => {
+      if (mappingIndex !== index) {
+        return mapping
+      }
+
+      return {
+        ...mapping,
+        [field]: value
+      }
+    })
+
     setLocalMappings(newMappings)
     // 立即通知父组件，但父组件不会立即保存
-    onChange(newMappings)
+    onChange(cloneMappings(newMappings))
   }
 
   if (loading) {
