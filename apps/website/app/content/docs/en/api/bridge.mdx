@@ -64,21 +64,21 @@ function createBridge(options: BridgeOptions): Bridge
   <Tab value="BridgeConfig">
     ```typescript
     interface BridgeConfig {
-      apiKey?: string           // API key for the outbound provider
+      apiKey: string            // API key for the outbound provider (required)
       baseURL?: string          // Base URL for API calls
       chatPath?: string         // Custom chat endpoint path
       modelsPath?: string       // Custom models endpoint path
       timeout?: number          // Request timeout in milliseconds
-      maxRetries?: number       // Maximum number of retries
+      maxRetries?: number      // Maximum number of retries
       headers?: Record<string, string>  // Additional headers
       authHeaderName?: string   // Authentication header name (default: 'Authorization')
-      authHeaderPrefix?: string // Authentication header prefix (default: 'Bearer')
+      authHeaderPrefix?: string // Authentication header prefix (default: 'Bearer', set to '' for no prefix)
     }
     ```
 
     | Property | Type | Default | Description |
     |----------|------|---------|-------------|
-    | `apiKey` | `string?` | - | API key for authentication |
+    | `apiKey` | `string` | - | **Required** API key for authentication |
     | `baseURL` | `string?` | Auto-detected | Custom API base URL |
     | `chatPath` | `string?` | Auto-detected | Custom chat endpoint path (overrides adapter default) |
     | `modelsPath` | `string?` | Auto-detected | Custom models endpoint path (overrides adapter default) |
@@ -86,7 +86,7 @@ function createBridge(options: BridgeOptions): Bridge
     | `maxRetries` | `number?` | `3` | Max retry attempts |
     | `headers` | `Record<string, string>?` | `{}` | Custom HTTP headers |
     | `authHeaderName` | `string?` | `'Authorization'` | Name of the authentication header |
-    | `authHeaderPrefix` | `string?` | `'Bearer'` | Prefix for the authentication header value |
+    | `authHeaderPrefix` | `string?` | `'Bearer'` | Prefix for the authentication header value (set to `''` for no prefix) |
   </Tab>
 </Tabs>
 
@@ -738,8 +738,18 @@ res.setHeader('Content-Type', 'text/event-stream')
 for await (const sse of stream) {
   res.write(`event: ${sse.event}\ndata: ${JSON.stringify(sse.data)}\n\n`)
 }
+// Add [DONE] marker to signal stream end (handled by user's HTTP layer)
+res.write('data: [DONE]\n\n')
 res.end()
 ```
+
+<Callout type="info">
+**Note on `[DONE]` marker**: The Bridge filters out `[DONE]` markers from the provider response. You need to add the `data: [DONE]\n\n` marker in your HTTP layer to signal the stream end to the client.
+</Callout>
+
+<Callout type="info">
+**Note on stream_options**: When streaming is enabled, Bridge automatically sets `stream_options: { include_usage: true }` to include usage statistics in the final stream event.
+</Callout>
 
 ### chatStreamRaw
 
@@ -801,6 +811,25 @@ if (report.warnings) {
   console.warn('Warnings:', report.warnings)
   // Example: ["Inbound adapter supports vision but outbound adapter does not"]
 }
+```
+
+### listModels
+
+Lists available models from the target provider.
+
+```typescript
+async listModels(): Promise<unknown>
+```
+
+<Callout type="warn">
+Note: Not all providers support listing models. For example, MiniMax does not provide a models list endpoint.
+</Callout>
+
+#### Example
+
+```typescript
+const models = await bridge.listModels()
+console.log(models)
 ```
 
 ### getAdapters
