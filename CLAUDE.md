@@ -1,12 +1,61 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) and other AI agents when working with code in this repository.
 
 ## Project Overview
 
-Amux is a bidirectional LLM API adapter that enables seamless conversion between different LLM provider APIs. It uses an Intermediate Representation (IR) pattern to convert between any provider format (OpenAI, Anthropic, DeepSeek, Moonshot, Qwen, Gemini).
+Amux is a **bidirectional LLM API adapter** that enables seamless conversion between different LLM provider APIs. It uses an Intermediate Representation (IR) pattern to convert between any provider format (OpenAI, Anthropic, DeepSeek, Moonshot, Qwen, Gemini, MiniMax, Zhipu).
 
-**Key Architecture**: Provider Format → Inbound Adapter → IR → Outbound Adapter → Target Provider Format
+The project also includes **Amux Desktop**, a desktop application that provides a GUI for managing LLM API proxies, OAuth account pooling, tunnels, and more.
+
+**Key Architecture**: `Provider Format → Inbound Adapter → IR → Outbound Adapter → Target Provider Format`
+
+## Project Structure
+
+This is a **pnpm workspace monorepo** managed by Nx:
+
+```
+amux/
+├── packages/                    # Core packages (published to npm)
+│   ├── llm-bridge/             # Core IR, adapter interfaces, Bridge orchestration
+│   ├── utils/                   # Shared utilities (SSE parsing, error handling)
+│   ├── adapter-openai/         # OpenAI adapter (base for most adapters)
+│   ├── adapter-anthropic/      # Anthropic (Claude) adapter
+│   ├── adapter-deepseek/       # DeepSeek adapter
+│   ├── adapter-moonshot/       # Moonshot (Kimi) adapter
+│   ├── adapter-qwen/           # Qwen adapter
+│   ├── adapter-google/          # Google Gemini adapter
+│   ├── adapter-minimax/        # MiniMax adapter
+│   └── adapter-zhipu/           # Zhipu (ChatGLM) adapter
+├── apps/                        # Applications
+│   ├── website/                # Documentation site (Next.js + fumadocs)
+│   ├── desktop/                # Amux Desktop (Electron app)
+│   ├── proxy/                  # Proxy server for testing
+│   └── tunnel-api/             # Cloudflare Workers for tunnel management
+├── examples/                    # Usage examples
+│   ├── basic/                  # Basic non-streaming example
+│   └── streaming/              # Streaming example
+└── scripts/                    # Build/release scripts
+```
+
+## Package Responsibilities
+
+### Core Packages
+
+| Package | Responsibility |
+|---------|----------------|
+| `packages/llm-bridge` | Core IR definitions, LLMAdapter interface, Bridge orchestration, HTTP client. **Zero runtime dependencies**. |
+| `packages/utils` | Shared utilities: SSE stream parsing, error handling utilities |
+| `packages/adapter-*` | Each adapter implements `LLMAdapter` interface to convert between provider format ↔ IR |
+
+### Apps
+
+| App | Responsibility |
+|-----|----------------|
+| `apps/website` | Documentation site built with Next.js and fumadocs (bilingual: English & Chinese) |
+| `apps/desktop` | Amux Desktop - Electron-based desktop application for LLM API proxy management |
+| `apps/proxy` | Simple proxy server for testing bidirectional LLM API conversion |
+| `apps/tunnel-api` | Cloudflare Workers API for Amux Tunnel management |
 
 ## Development Commands
 
@@ -29,22 +78,22 @@ pnpm test
 
 # Run tests for specific package
 cd packages/llm-bridge && pnpm test
-pnpm --filter @amux.ai/llm-bridge test
 
 # Watch mode
 cd packages/llm-bridge && pnpm test:watch
 
 # Coverage (target: 80%+)
 pnpm test:coverage
-cd packages/llm-bridge && pnpm test:coverage
 ```
 
 **Test Status:**
-- ✅ Core package: All tests passing (18 tests)
+- ✅ Core package (llm-bridge): All tests passing
 - ✅ OpenAI adapter: All tests passing
 - ✅ Anthropic adapter: All tests passing
 - ✅ DeepSeek adapter: All tests passing
 - ✅ Moonshot adapter: All tests passing
+- ✅ Zhipu adapter: All tests passing
+- ✅ MiniMax adapter: All tests passing
 - ⚠️ Gemini adapter: Tests failing (request parsing, stream parsing issues)
 - ⚠️ Qwen adapter: Tests failing (system message handling, vision content, stream parsing)
 
@@ -83,47 +132,53 @@ pnpm build:website
 pnpm start:website
 ```
 
-## Monorepo Structure
+### Desktop Application
+```bash
+# Development
+pnpm dev:desktop
 
-This is a pnpm workspace monorepo managed by Nx:
+# Build
+pnpm build:desktop
 
-- **packages/llm-bridge**: Core IR definitions, adapter interfaces, bridge orchestration, HTTP client (@amux.ai/llm-bridge)
-- **packages/utils**: Shared utilities (SSE stream parsing, error handling) (@amux.ai/utils)
-- **packages/adapter-{provider}**: Official adapters (@amux.ai/adapter-openai, @amux.ai/adapter-anthropic, etc.)
-- **apps/website**: Documentation site (fumadocs)
-- **apps/proxy**: Proxy server for testing
-- **examples/**: Usage examples
+# Package for distribution
+pnpm package:desktop
+
+# Package for specific platforms
+pnpm package:desktop:mac      # macOS
+pnpm package:desktop:win      # Windows
+pnpm package:desktop:linux    # Linux
+```
 
 ## Core Architecture Concepts
 
 ### Architecture Layer Principles
 
-The project follows strict separation of concerns across layers:
+The project follows strict separation of concern across layers:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  User Application Layer (HTTP/Protocol)                     │
 │  - HTTP response handling                                   │
-│  - Protocol-specific markers (e.g., [DONE] for SSE)         │
+│  - Protocol-specific markers (e.g., [DONE] for SSE)        │
 │  - Connection management                                    │
 ├─────────────────────────────────────────────────────────────┤
-│  Bridge Layer (Orchestration)                               │
-│  - Request/response flow orchestration                      │
-│  - Model mapping                                            │
+│  Bridge Layer (Orchestration)                              │
+│  - Request/response flow orchestration                    │
+│  - Model mapping                                           │
 │  - Cross-adapter compatibility checks                       │
 │  - Generic/common logic shared across all adapters          │
-│  - Filter out protocol-level details from adapters          │
+│  - Filter out protocol-level details from adapters         │
 ├─────────────────────────────────────────────────────────────┤
-│  Adapter Layer (Provider ↔ IR Conversion)                   │
-│  - ONLY handles its own provider format ↔ IR conversion     │
-│  - NO cross-adapter logic or dependencies                   │
-│  - Correctly express its own protocol format                │
-│  - Provider-specific quirks handled here                    │
+│  Adapter Layer (Provider ↔ IR Conversion)                  │
+│  - ONLY handles its own provider format ↔ IR conversion   │
+│  - NO cross-adapter logic or dependencies                  │
+│  - Correctly express its own protocol format               │
+│  - Provider-specific quirks handled here                   │
 ├─────────────────────────────────────────────────────────────┤
 │  IR Layer (Intermediate Representation)                     │
-│  - Unified data structures                                  │
-│  - Provider-agnostic                                        │
-│  - Standard event types (start, content, reasoning, end)    │
+│  - Unified data structures                                 │
+│  - Provider-agnostic                                       │
+│  - Standard event types (start, content, reasoning, end)   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -193,14 +248,45 @@ packages/adapter-{provider}/
 │   │   └── error-parser.ts
 │   ├── outbound/
 │   │   ├── request-builder.ts
-│   │   └── response-builder.ts
+│   │   ├── response-builder.ts
+│   │   └── stream-builder.ts
 │   └── index.ts
 ├── tests/
 │   └── adapter.test.ts
 └── package.json
 ```
 
-**OpenAI-compatible adapters** (DeepSeek, Moonshot, Qwen, Gemini) extend the OpenAI adapter with minimal customization.
+**OpenAI-compatible adapters** (DeepSeek, Moonshot, Qwen, Gemini, MiniMax, Zhipu) extend the OpenAI adapter with minimal customization.
+
+## Amux Desktop Application
+
+The Desktop application (`apps/desktop`) is an Electron-based app that provides:
+
+### Features
+- **Provider Management**: Configure and manage multiple LLM providers
+- **Proxy Management**: Create and manage API proxies with model mapping
+- **Chat Interface**: Test LLM conversations directly in the app
+- **OAuth Account Pooling**: Manage OAuth accounts for providers (e.g., Azure OpenAI)
+- **Tunnel**: Create Cloudflare tunnels for remote access
+- **Dashboard**: View usage statistics and analytics
+- **Code Switch**: Dynamic CLI configuration management for switching between different model configurations
+
+### Tech Stack
+- **Frontend**: React, Tailwind CSS, Zustand (state management)
+- **Backend**: Electron (main process), Fastify (local proxy server)
+- **Database**: better-sqlite3 (local storage)
+- **UI Components**: Radix UI, shadcn/ui
+
+### Key Directories
+- `apps/desktop/src/` - React frontend
+- `apps/desktop/electron/` - Electron main process, IPC handlers, services
+
+### Build Commands
+```bash
+pnpm dev:desktop          # Development mode
+pnpm build:desktop        # Build
+pnpm package:desktop      # Package for distribution
+```
 
 ## Key Implementation Details
 
@@ -266,7 +352,7 @@ pnpm changeset:publish
 
 ### Zero Dependencies
 
-The core package has zero runtime dependencies. Only dev dependencies for building and testing.
+The core package (`llm-bridge`) has zero runtime dependencies. Only dev dependencies for building and testing.
 
 ### Extensions Field
 
@@ -337,7 +423,7 @@ For OpenAI-compatible providers, extend the OpenAI adapter instead of implementi
 
 - Main README: Project overview and quick start
 - CONTRIBUTING.md: Development setup and contribution guidelines
-- PROJECT_SUMMARY.md: Detailed project status and architecture
+- prompt.md: Project vision and architecture (Chinese)
 - Documentation site: fumadocs-based site in `apps/website/`
 
 ### Documentation Update Rules

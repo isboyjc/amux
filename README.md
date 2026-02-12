@@ -6,17 +6,19 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-8.15-orange)](https://pnpm.io/)
 
-## 🌟 Features
+[English](./README.md) | [中文](./README_ZH.md)
 
-- **🔄 Bidirectional Conversion**: Convert between any LLM provider API formats
-- **🎯 Type-Safe**: Full TypeScript support with comprehensive type definitions
-- **🔌 Extensible**: Easy to add custom adapters for new providers
-- **⚡ Zero Dependencies**: Core package has zero runtime dependencies
-- **🧪 Well-Tested**: High test coverage with comprehensive test suites
-- **📦 Tree-Shakable**: Optimized for modern bundlers
-- **🚀 8 Official Adapters**: OpenAI, Anthropic, DeepSeek, Moonshot, Zhipu, Qwen, Gemini, MiniMax
+## Features
 
-## 🚀 Quick Start
+- **Bidirectional Conversion**: Convert between any LLM provider API formats
+- **Type-Safe**: Full TypeScript support with comprehensive type definitions
+- **Extensible**: Easy to add custom adapters for new providers
+- **Zero Dependencies**: Core package has zero runtime dependencies
+- **Well-Tested**: High test coverage with comprehensive test suites
+- **Tree-Shakable**: Optimized for modern bundlers
+- **8 Official Adapters**: OpenAI, Anthropic, DeepSeek, Moonshot, Zhipu, Qwen, Gemini, MiniMax
+
+## Quick Start
 
 ### Installation
 
@@ -52,22 +54,22 @@ const response = await bridge.chat({
 console.log(response.choices[0].message.content)
 ```
 
-## 📦 Packages
+## Packages
 
 | Package | Description | Version | Status |
 |---------|-------------|---------|--------|
-| [@amux.ai/llm-bridge](./packages/llm-bridge) | Core IR and adapter interfaces | - | ✅ Stable |
-| [@amux.ai/adapter-openai](./packages/adapter-openai) | OpenAI adapter | - | ✅ Stable |
-| [@amux.ai/adapter-anthropic](./packages/adapter-anthropic) | Anthropic (Claude) adapter | - | ✅ Stable |
-| [@amux.ai/adapter-deepseek](./packages/adapter-deepseek) | DeepSeek adapter | - | ✅ Stable |
-| [@amux.ai/adapter-moonshot](./packages/adapter-moonshot) | Moonshot (Kimi) adapter | - | ✅ Stable |
-| [@amux.ai/adapter-zhipu](./packages/adapter-zhipu) | Zhipu AI (GLM) adapter | - | ✅ Stable |
-| [@amux.ai/adapter-qwen](./packages/adapter-qwen) | Qwen adapter | - | ✅ Stable |
-| [@amux.ai/adapter-google](./packages/adapter-google) | Google Gemini adapter | - | ✅ Stable |
-| [@amux.ai/adapter-minimax](./packages/adapter-minimax) | MiniMax adapter | - | ✅ Stable |
-| [@amux.ai/utils](./packages/utils) | Shared utilities | - | ✅ Stable |
+| [@amux.ai/llm-bridge](./packages/llm-bridge) | Core IR and adapter interfaces | - | Stable |
+| [@amux.ai/adapter-openai](./packages/adapter-openai) | OpenAI adapter | - | Stable |
+| [@amux.ai/adapter-anthropic](./packages/adapter-anthropic) | Anthropic (Claude) adapter | - | Stable |
+| [@amux.ai/adapter-deepseek](./packages/adapter-deepseek) | DeepSeek adapter | - | Stable |
+| [@amux.ai/adapter-moonshot](./packages/adapter-moonshot) | Moonshot (Kimi) adapter | - | Stable |
+| [@amux.ai/adapter-zhipu](./packages/adapter-zhipu) | Zhipu AI (GLM) adapter | - | Stable |
+| [@amux.ai/adapter-qwen](./packages/adapter-qwen) | Qwen adapter | - | Stable |
+| [@amux.ai/adapter-google](./packages/adapter-google) | Google Gemini adapter | - | Stable |
+| [@amux.ai/adapter-minimax](./packages/adapter-minimax) | MiniMax adapter | - | Stable |
+| [@amux.ai/utils](./packages/utils) | Shared utilities | - | Stable |
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -98,7 +100,7 @@ console.log(response.choices[0].message.content)
 └─────────────────────────────────────────────────────────┘
 ```
 
-## 🎯 Use Cases
+## Use Cases
 
 - **Multi-Provider Support**: Build applications that work with multiple LLM providers
 - **Provider Migration**: Easily migrate from one provider to another
@@ -106,7 +108,7 @@ console.log(response.choices[0].message.content)
 - **Fallback Strategy**: Implement automatic fallback to alternative providers
 - **Testing**: Test your application with different providers without code changes
 
-## 📚 Examples
+## Examples
 
 ### All Adapters
 
@@ -177,7 +179,44 @@ const response = await bridge.chat({
 })
 ```
 
-## 🧪 Testing
+## Amux Desktop
+
+Amux also provides a **desktop application** that brings all the bridge capabilities to a visual interface.
+
+### Features
+
+- **Provider Management**: Configure and manage multiple LLM providers with API keys
+- **Proxy Management**: Create and manage API proxies with model mapping
+- **Chat Interface**: Test LLM conversations directly in the app
+- **OAuth Account Pooling**: Manage OAuth accounts for providers (e.g., Azure OpenAI)
+- **Tunnel**: Create Cloudflare tunnels for remote access
+- **Dashboard**: View usage statistics and analytics with charts
+- **Code Switch**: Dynamic CLI configuration management for switching between different model configurations
+- **Local Proxy Server**: Built-in Fastify server for local API proxying
+
+### Download
+
+Download the latest version from the [Releases](https://github.com/isboyjc/amux/releases) page.
+
+### Build from Source
+
+```bash
+# Development
+pnpm dev:desktop
+
+# Build
+pnpm build:desktop
+
+# Package for distribution
+pnpm package:desktop
+
+# Package for specific platforms
+pnpm package:desktop:mac      # macOS
+pnpm package:desktop:win      # Windows
+pnpm package:desktop:linux    # Linux
+```
+
+## Testing
 
 ```bash
 # Run all tests
@@ -190,7 +229,7 @@ cd packages/llm-bridge && pnpm test
 pnpm test:coverage
 ```
 
-## 🛠️ Development
+## Development
 
 ```bash
 # Install dependencies
@@ -209,7 +248,7 @@ pnpm typecheck
 pnpm lint
 ```
 
-### 📦 Release Process
+### Release Process
 
 #### NPM Packages
 
@@ -252,40 +291,40 @@ git push origin desktop-v0.2.1
 
 The Desktop release will automatically trigger GitHub Actions to build installers for macOS, Windows, and Linux.
 
-## 📊 Project Status
+## Project Status
 
-✅ **MVP Complete!**
+**MVP Complete!**
 
-- ✅ Core infrastructure
-- ✅ 7 official adapters (OpenAI, Anthropic, DeepSeek, Moonshot, Zhipu, Qwen, Gemini)
-- ✅ Bidirectional conversion
-- ✅ Type-safe TypeScript
-- ✅ Unit tests
-- ✅ Working examples
+- Core infrastructure
+- 8 official adapters (OpenAI, Anthropic, DeepSeek, Moonshot, Zhipu, Qwen, Gemini, MiniMax)
+- Bidirectional conversion
+- Type-safe TypeScript
+- Unit tests
+- Working examples
+- Desktop application
 
-## 🗺️ Roadmap
+## Roadmap
 
-- [ ] Complete streaming support for all adapters
-- [ ] Add more unit tests (target: 80%+ coverage)
-- [ ] Create documentation site (fumadocs)
-- [ ] Add integration tests
-- [ ] Publish to npm
-- [ ] Add more adapters (community contributions welcome!)
+- Complete streaming support for all adapters
+- Add more unit tests (target: 80%+ coverage)
+- Create documentation site (fumadocs)
+- Add integration tests
+- Publish to npm
+- Add more adapters (community contributions welcome!)
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for details.
 
-## 📄 License
+## License
 
 MIT © [isboyjc](https://github.com/isboyjc)
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 This project is inspired by the excellent work of:
 - [Vercel AI SDK](https://sdk.vercel.ai/)
-- [LiteLLM](https://github.com/BerriAI/litellm)
 
 ---
 
-**Made with ❤️ by the Amux team**
+**Made with love by the Amux team**
