@@ -509,8 +509,7 @@ function ProviderConfigPanel({
   // Copy proxy URL
   const handleCopyProxyUrl = () => {
     if (!proxyPath) return
-    const endpoint = getProxyEndpoint()
-    const url = `http://127.0.0.1:9527/providers/${proxyPath}${endpoint}`
+    const url = `http://127.0.0.1:9527/providers/${proxyPath}`
     copyProxyUrl(url)
   }
 
@@ -558,7 +557,7 @@ function ProviderConfigPanel({
   }
 
   const handleCopyEndpoint = () => {
-    copyEndpoint(apiEndpoint)
+    copyEndpoint(baseUrl)
   }
 
   const handleFetchModels = async () => {
@@ -723,7 +722,8 @@ function ProviderConfigPanel({
           <Label className="text-sm font-medium">{t('providers.apiEndpoint')}</Label>
           <div className="flex items-center gap-2">
             <code className="flex-1 px-3 py-2 bg-muted rounded-md text-xs font-mono truncate">
-              {apiEndpoint}
+              <span className="text-foreground font-semibold">{baseUrl}</span>
+              <span className="text-muted-foreground opacity-60">{chatPath}</span>
             </code>
             <Button
               variant="ghost"
@@ -746,24 +746,49 @@ function ProviderConfigPanel({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <Label className="text-sm font-medium">{t('providers.models')} *</Label>
-            {(provider.modelsPath || preset?.modelsPath) && (
+            <div className="flex items-center gap-2">
+              {(provider.modelsPath || preset?.modelsPath) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={handleFetchModels}
+                  onMouseEnter={() => refreshIconRef.current?.startAnimation()}
+                  onMouseLeave={() => refreshIconRef.current?.stopAnimation()}
+                  disabled={fetchingModels || !apiKey || !baseUrl}
+                >
+                  {fetchingModels ? (
+                    <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
+                  ) : (
+                    <RefreshIcon ref={refreshIconRef} size={14} className="mr-1.5" />
+                  )}
+                  Fetch
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
                 className="h-7 text-xs"
-                onClick={handleFetchModels}
-                onMouseEnter={() => refreshIconRef.current?.startAnimation()}
-                onMouseLeave={() => refreshIconRef.current?.stopAnimation()}
-                disabled={fetchingModels || !apiKey || !baseUrl}
+                onClick={() => {
+                  const availableModelIds = provider.models && provider.models.length > 0
+                    ? provider.models
+                    : (preset?.models.map(m => m.id) || [])
+                  setSelectedModels(availableModelIds)
+                }}
+                disabled={!preset?.models?.length && !provider.models?.length}
               >
-                {fetchingModels ? (
-                  <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
-                ) : (
-                  <RefreshIcon ref={refreshIconRef} size={14} className="mr-1.5" />
-                )}
-                Fetch Models
+                {t('common.selectAll')}
               </Button>
-            )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setSelectedModels([])}
+                disabled={selectedModels.length === 0}
+              >
+                {t('common.clear')}
+              </Button>
+            </div>
           </div>
 
           {/* Selected Models */}
@@ -936,7 +961,8 @@ function ProviderConfigPanel({
                   <Label className="text-xs font-medium">{t('providers.proxyUrl')}</Label>
                   <div className="flex gap-2">
                     <code className="flex-1 bg-muted px-2.5 py-1.5 rounded-md text-xs font-mono truncate border">
-                      http://127.0.0.1:9527/providers/{proxyPath}{getProxyEndpoint()}
+                      <span className="text-foreground font-semibold">http://127.0.0.1:9527/providers/{proxyPath}</span>
+                      <span className="text-muted-foreground opacity-60">{getProxyEndpoint()}</span>
                     </code>
                     <Button
                       variant="ghost"

@@ -308,7 +308,9 @@
     "saved": "Saved successfully",
     "create": "Create",
     "show": "Show",
-    "hide": "Hide"
+    "hide": "Hide",
+    "selectAll": "Select All",
+    "clear": "Clear"
   },
   "tunnel": {
     "title": "Tunnel",
