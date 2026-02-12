@@ -506,11 +506,10 @@ function ProviderConfigPanel({
     }
   }
   
-  // Copy proxy URL
+  // Copy proxy URL (base URL only, without endpoint path)
   const handleCopyProxyUrl = () => {
     if (!proxyPath) return
-    const endpoint = getProxyEndpoint()
-    const url = `http://127.0.0.1:9527/providers/${proxyPath}${endpoint}`
+    const url = `http://127.0.0.1:9527/providers/${proxyPath}`
     copyProxyUrl(url)
   }
 
@@ -558,7 +557,7 @@ function ProviderConfigPanel({
   }
 
   const handleCopyEndpoint = () => {
-    copyEndpoint(apiEndpoint)
+    copyEndpoint(baseUrl)
   }
 
   const handleFetchModels = async () => {
@@ -631,7 +630,6 @@ function ProviderConfigPanel({
 
   // API endpoint for display - use provider's chatPath or preset's chatPath
   const chatPath = provider.chatPath || preset?.chatPath || '/v1/chat/completions'
-  const apiEndpoint = `${baseUrl}${chatPath}`
   const canSave = apiKey && baseUrl && selectedModels.length > 0
   const status = getProviderStatus(provider)
 
@@ -723,7 +721,8 @@ function ProviderConfigPanel({
           <Label className="text-sm font-medium">{t('providers.apiEndpoint')}</Label>
           <div className="flex items-center gap-2">
             <code className="flex-1 px-3 py-2 bg-muted rounded-md text-xs font-mono truncate">
-              {apiEndpoint}
+              <span>{baseUrl}</span>
+              <span className="text-muted-foreground/50">{chatPath}</span>
             </code>
             <Button
               variant="ghost"
@@ -800,7 +799,28 @@ function ProviderConfigPanel({
             
             return (
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{t('providers.presetModels')}</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-muted-foreground">{t('providers.presetModels')}</Label>
+                  <div className="flex items-center gap-1">
+                    <button
+                      className="px-1.5 py-0.5 text-[10px] rounded border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      onClick={() => {
+                        const allIds = availableModelIds.filter(id => !selectedModels.includes(id))
+                        if (allIds.length > 0) {
+                          setSelectedModels([...selectedModels, ...allIds])
+                        }
+                      }}
+                    >
+                      {t('providers.selectAll')}
+                    </button>
+                    <button
+                      className="px-1.5 py-0.5 text-[10px] rounded border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      onClick={() => setSelectedModels([])}
+                    >
+                      {t('providers.clearAll')}
+                    </button>
+                  </div>
+                </div>
                 <div className="flex flex-wrap gap-1">
                   {availableModelIds.map((modelId) => {
                     const presetModel = preset?.models.find(m => m.id === modelId)
@@ -936,7 +956,8 @@ function ProviderConfigPanel({
                   <Label className="text-xs font-medium">{t('providers.proxyUrl')}</Label>
                   <div className="flex gap-2">
                     <code className="flex-1 bg-muted px-2.5 py-1.5 rounded-md text-xs font-mono truncate border">
-                      http://127.0.0.1:9527/providers/{proxyPath}{getProxyEndpoint()}
+                      <span>http://127.0.0.1:9527/providers/{proxyPath}</span>
+                      <span className="text-muted-foreground/50">{getProxyEndpoint()}</span>
                     </code>
                     <Button
                       variant="ghost"

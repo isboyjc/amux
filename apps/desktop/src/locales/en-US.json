@@ -85,6 +85,8 @@
     "modelRequired": "Please select at least one model",
     "noModelsSelected": "No models selected",
     "presetModels": "Preset Models",
+    "selectAll": "Select All",
+    "clearAll": "Clear",
     "addCustomModel": "Add Custom Model",
     "modelIdPlaceholder": "Enter model ID (e.g. gpt-4o)",
     "passthroughProxy": "Passthrough Proxy",

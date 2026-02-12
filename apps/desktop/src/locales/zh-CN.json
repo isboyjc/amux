@@ -85,6 +85,8 @@
     "modelRequired": "请至少选择一个模型",
     "noModelsSelected": "未选择模型",
     "presetModels": "预设模型",
+    "selectAll": "全选",
+    "clearAll": "清空",
     "addCustomModel": "添加自定义模型",
     "modelIdPlaceholder": "输入模型 ID（如 gpt-4o）",
     "passthroughProxy": "直通代理",

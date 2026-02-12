@@ -459,7 +459,7 @@ function ProxyListPanel({
 }: ProxyListPanelProps) {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const [showPassthrough, setShowPassthrough] = useState(true)
+  const [showPassthrough, setShowPassthrough] = useState(false)
   const [showCodeSwitch, setShowCodeSwitch] = useState(true)
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null)
   const { copy: copyUrl } = useCopyToClipboard({ duration: COPY_FEEDBACK_DURATION })
@@ -515,8 +515,7 @@ function ProxyListPanel({
   }
   
   const handleCopyPassthroughUrl = (provider: Provider) => {
-    const endpoint = provider.adapterType === 'anthropic' ? '/v1/messages' : '/v1/chat/completions'
-    const url = `http://127.0.0.1:9527/providers/${provider.proxyPath}${endpoint}`
+    const url = `http://127.0.0.1:9527/providers/${provider.proxyPath}`
     copyUrl(url)
     setCopiedUrl(provider.id)
     setTimeout(() => setCopiedUrl(null), COPY_FEEDBACK_DURATION)
@@ -731,8 +730,9 @@ function ProxyListPanel({
                           </Tooltip>
                         </TooltipProvider>
                       </div>
-                      <code className="block text-[10px] font-mono text-muted-foreground truncate bg-muted/70 px-2 py-1.5 rounded border border-border/50">
-                        /providers/{provider.proxyPath}{endpoint}
+                      <code className="block text-[10px] font-mono truncate bg-muted/70 px-2 py-1.5 rounded border border-border/50">
+                        <span className="text-foreground">/providers/{provider.proxyPath}</span>
+                        <span className="text-muted-foreground/50">{endpoint}</span>
                       </code>
                     </div>
                   )
@@ -1024,8 +1024,7 @@ function ProxyConfigPanel({
 
   const handleCopyEndpoint = async () => {
     if (!proxy) return
-    const chatPath = getProxyEndpointPath()
-    const endpoint = `http://127.0.0.1:9527/proxies/${proxy.proxyPath}${chatPath}`
+    const endpoint = `http://127.0.0.1:9527/proxies/${proxy.proxyPath}`
     copyEndpointUrl(endpoint)
   }
 
@@ -1252,7 +1251,8 @@ function ProxyConfigPanel({
             <Label className="text-xs">{t('proxies.accessUrl')}</Label>
             <div className="flex items-center gap-2">
               <code className="flex-1 bg-muted px-3 py-2 rounded-md text-xs font-mono truncate">
-                http://127.0.0.1:9527/proxies/{formData.proxyPath || 'path'}{getProxyEndpointPath()}
+                <span>http://127.0.0.1:9527/proxies/{formData.proxyPath || 'path'}</span>
+                <span className="text-muted-foreground/50">{getProxyEndpointPath()}</span>
               </code>
               <Button
                 variant="ghost"
@@ -1533,7 +1533,7 @@ function AddProxyModal({
 
           {/* Access URL Preview */}
           <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1.5 rounded">
-            {t('proxies.accessUrl')}: <code className="font-mono">http://127.0.0.1:9527/proxies/{formData.proxyPath || 'path'}{getModalEndpointPath()}</code>
+            {t('proxies.accessUrl')}: <code className="font-mono"><span className="text-foreground">http://127.0.0.1:9527/proxies/{formData.proxyPath || 'path'}</span><span className="text-muted-foreground/50">{getModalEndpointPath()}</span></code>
           </div>
 
           {/* Inbound Adapter */}
