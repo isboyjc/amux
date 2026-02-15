@@ -1,11 +1,11 @@
 /**
  * Code Switch Handler
  * 
- * Handles proxy requests for Claude Code and Codex CLI tools.
- * This handler provides dynamic provider switching without requiring CLI restart.
+ * Handles proxy requests for Claude Code CLI.
+ * Provides dynamic provider switching without requiring CLI restart.
  * 
  * Architecture:
- * - CLI always points to fixed proxy URL (http://127.0.0.1:9527/code/{cliType})
+ * - Claude Code points to fixed proxy URL (http://127.0.0.1:9527/code/claudecode)
  * - Handler reads current provider config from cache/database
  * - Uses Anthropic inbound adapter + dynamic outbound adapter based on config
  * - Model mapping is applied to translate Claude model names to provider models
@@ -21,6 +21,7 @@ import { getProviderRepository } from '../database/repositories'
 import { logRequest } from '../logger'
 import { recordRequest as recordMetrics } from '../metrics'
 import { getCodeSwitchCache } from '../code-switch'
+import type { CachedCodeSwitchConfig } from '../code-switch/cache'
 
 import { getAdapter, setBridgeUsage, getBridgeUsage } from './bridge-manager'
 import { ProxyErrorCode } from './types'
@@ -30,7 +31,41 @@ import { createErrorResponse } from './utils'
 interface ChatRequestBody {
   model?: string
   stream?: boolean
+  thinking?: { type?: string }
   [key: string]: unknown
+}
+
+/**
+ * Resolve target model using hybrid mapping priority:
+ * 1. Reasoning (if thinking enabled)
+ * 2. Exact match
+ * 3. Family match (model name contains family keyword)
+ * 4. Default fallback
+ * 5. Original model
+ */
+function resolveTargetModel(
+  requestModel: string,
+  body: ChatRequestBody,
+  cached: CachedCodeSwitchConfig
+): string {
+  const thinkingEnabled =
+    body?.thinking?.type === 'enabled' || body?.thinking?.type === 'adaptive'
+  if (thinkingEnabled && cached.reasoningModel) {
+    return cached.reasoningModel
+  }
+  if (cached.exactMappings.has(requestModel)) {
+    return cached.exactMappings.get(requestModel)!
+  }
+  const modelLower = requestModel.toLowerCase()
+  for (const fm of cached.familyMappings) {
+    if (modelLower.includes(fm.family.toLowerCase())) {
+      return fm.targetModel
+    }
+  }
+  if (cached.defaultModel) {
+    return cached.defaultModel
+  }
+  return requestModel
 }
 
 /**
@@ -47,7 +82,7 @@ interface ChatRequestBody {
 export async function handleCodeSwitch(
   request: FastifyRequest,
   reply: FastifyReply,
-  cliType: 'claudecode' | 'codex'
+  cliType: string
 ): Promise<void> {
   const requestId = randomUUID()
   const startTime = Date.now()
@@ -75,10 +110,9 @@ export async function handleCodeSwitch(
       return
     }
 
-    const { config, modelMappings } = cachedConfig
+    const { config } = cachedConfig
     console.log(`[CodeSwitch]   - Config ID: ${config.id}`)
     console.log(`[CodeSwitch]   - Provider ID: ${config.provider_id}`)
-    console.log(`[CodeSwitch]   - Model mappings: ${modelMappings.size}`)
 
     // Step 2: Get provider configuration
     const providerRepo = getProviderRepository()
@@ -139,16 +173,15 @@ export async function handleCodeSwitch(
 
     // Step 4: Parse request body
     const body = request.body as ChatRequestBody
-    const requestModel = body.model || 'claude-sonnet-4-5-20250929'
+    const requestModel = body.model || 'unknown'
     const isStreaming = body.stream === true
 
     console.log(`[CodeSwitch]   - Request model: ${requestModel}`)
     console.log(`[CodeSwitch]   - Streaming: ${isStreaming}`)
 
-    // Step 5: Apply model mapping
-    let targetModel = requestModel
-    if (modelMappings.has(requestModel)) {
-      targetModel = modelMappings.get(requestModel)!
+    // Step 5: Resolve target model (exact -> family -> default -> original)
+    const targetModel = resolveTargetModel(requestModel, body, cachedConfig)
+    if (targetModel !== requestModel) {
       console.log(`[CodeSwitch]   - Model mapped: ${requestModel} -> ${targetModel}`)
     } else {
       console.log(`[CodeSwitch]   - No mapping, using original model: ${requestModel}`)

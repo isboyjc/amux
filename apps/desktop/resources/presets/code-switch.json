@@ -1,35 +1,49 @@
 {
   "version": "1.0.0",
   "minClientVersion": "0.1.0",
-  "updatedAt": "2026-01-29T00:00:00Z",
+  "updatedAt": "2026-02-15T00:00:00Z",
   "clis": [
     {
       "id": "claudecode",
       "logo": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjUiIGhlaWdodD0iMTI1IiB2aWV3Qm94PSIwIDAgMzIgMzIiPjwhLS0gSWNvbiBmcm9tIFZTQ29kZSBJY29ucyBieSBSb2JlcnRvIEh1ZXJ0YXMgLSBodHRwczovL2dpdGh1Yi5jb20vdnNjb2RlLWljb25zL3ZzY29kZS1pY29ucy9ibG9iL21hc3Rlci9MSUNFTlNFIC0tPjxwYXRoIGZpbGw9IiNkOTc3NTciIGQ9Im03LjUgMjAuNjFsNS41LTMuMDhsLjEtLjI3bC0uMS0uMTVoLS4yN2wtLjkyLS4wNmEyMzQgMjM0IDAgMCAxLTguNTEtLjM0bC0uNjctLjE0bC0uNjItLjgybC4wNi0uNDFsLjU2LS4zOGwuOC4wN2MzLjA4LjIgNi4xNS40IDkuMjEuNzJoLjQ2bC4wNi0uMTlsLS4xNi0uMWwtLjEyLS4xMmwtMi43NC0xLjg2Yy0yLjA0LTEuMy0zLjU1LTIuNDMtNS4zOC0zLjY4bC0uNDMtLjU0bC0uMTgtMS4xOGwuNzYtLjg0bDEuMDMuMDdsLjI2LjA3YzIuMDMgMS42IDQuMSAzLjE0IDYuMTcgNC42NmwuNDMuMzZsLjE3LS4xMmwuMDItLjA5bC0uMi0uMzJjLTEuNDMtMi42LTIuNTUtNC42Mi00LTYuOTZsLS4yLS43MmMtLjA4LS4zLS4xMy0uNTUtLjEzLS44NWwuODctMS4xOGwuNDktLjE2bDEuMTYuMTZsLjQ5LjQyYzEuNCAzLjMxIDIuNzYgNS45MyA0LjIzIDguODNsLjI5Ljk3bC4xLjNoLjE5di0uMTdjLjY1LTMuNDIgMC02LjU3IDEuMjItOS41M2wuODctLjU3bC42OC4zM2wuNTYuOGwtLjA4LjUxYy0uMzcgMi42Mi0uOTIgNS4yMi0xLjQgNy44MmguMjRsLjI5LS4yOWE2OSA2OSAwIDAgMSA0LjkxLTUuOTRsLjY0LS41aDEuMmwuODkgMS4zMmwtLjQgMS4zNmE1My41IDUzLjUgMCAwIDAtNC42NiA2LjQ3bC4wOS4xM2wuMjItLjAyYzIuNC0uNTcgNC44NC0uOTkgNy4yNy0xLjRsLjk3LjQ1bC4xLjQ2bC0uMzcuOTRjLTMgLjcyLTYgMS4zNC05IDIuMDVsLS4wNS4wNGwuMDYuMDdjMi43LjI2IDUuNjIuMyA3Ljk5LjQ3bC45Mi42MWwuNTUuNzVsLS4xLjU2bC0xLjQuNzNjLTIuOTMtLjctNS4xOS0xLjIyLTcuOTEtMS45aC0uMjJ2LjEzYzIuMTggMi4xMiA0LjYgNC4yNyA2LjU0IDYuMDdsLjE1LjY4bC0uMzguNTNsLS40LS4wNmMtMi4wNC0xLjQzLTMuOS0zLjA5LTUuOC00LjdoLS4xNXYuMmwuNTIuNzZjMS4xNCAxLjc5IDIuNjQgMy4yNSAyLjg3IDUuMzdsLS4yLjQxbC0uNy4yNWwtLjc4LS4xNGE3MyA3MyAwIDAgMS00LjU4LTcuMDRsLS4xNy4wOWwtLjc4IDguNDZsLS4zNy40M2wtLjg1LjMzbC0uNzEtLjU0bC0uMzgtLjg3YTExNCAxMTQgMCAwIDAgMS41My03Ljk3bC4yLS43M2wtLjAxLS4wNWwtLjE2LjAyYTc3IDc3IDAgMCAxLTYuMjMgNy44OGwtLjQ4LjJsLS44NC0uNDRsLjA4LS43N2wuNDctLjY5YzIuMDctMi41NyAzLjU0LTQuNjYgNS41NC03di0uMTloLS4wN2wtNy40IDQuOGwtMS4zMS4xN2wtLjU3LS41M2wuMDctLjg3bC4yNy0uMjhsMi4yMy0xLjUzeiIvPjwvc3ZnPg==",
       "color": "#ffffff",
-      "configFile": "config.json",
+      "configFile": "settings.json",
       "configPath": {
-        "darwin": "~/.claudecode/config.json",
-        "win32": "%APPDATA%\\Claude Code\\config.json",
-        "linux": "~/.claudecode/config.json"
+        "darwin": "~/.claude/settings.json",
+        "win32": "%USERPROFILE%\\.claude\\settings.json",
+        "linux": "~/.claude/settings.json"
       },
       "proxyEndpoint": "/code/claudecode",
       "defaultModels": [
         {
+          "id": "claude-opus-4-6",
+          "family": "opus",
+          "i18nKey": "claudeOpus46",
+          "capabilities": ["vision", "tools", "streaming"]
+        },
+        {
           "id": "claude-opus-4",
+          "family": "opus",
           "i18nKey": "claudeOpus4",
           "capabilities": ["vision", "tools", "streaming"]
         },
         {
           "id": "claude-sonnet-4",
+          "family": "sonnet",
           "i18nKey": "claudeSonnet4",
           "capabilities": ["vision", "tools", "streaming"]
         },
         {
           "id": "claude-haiku-4",
+          "family": "haiku",
           "i18nKey": "claudeHaiku4",
           "capabilities": ["vision", "tools", "streaming"]
         }
+      ],
+      "modelFamilies": [
+        { "id": "opus", "i18nKey": "opusFamily", "keywords": ["opus"], "priority": 1 },
+        { "id": "sonnet", "i18nKey": "sonnetFamily", "keywords": ["sonnet"], "priority": 2 },
+        { "id": "haiku", "i18nKey": "haikuFamily", "keywords": ["haiku"], "priority": 3 }
       ],
       "defaultConfig": {
         "provider": "anthropic",
@@ -39,71 +53,10 @@
         "requiresProvider": true,
         "supportsModelMapping": true,
         "supportsDynamicSwitch": true,
-        "requiresRestart": true
-      }
-    },
-    {
-      "id": "codex",
-      "logo": "data:image/png;base64,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",
-      "color": "#10A37F",
-      "configFiles": [
-        {
-          "name": "auth.json",
-          "type": "auth",
-          "path": {
-            "darwin": "~/.codex/auth.json",
-            "win32": "%APPDATA%\\Codex\\auth.json",
-            "linux": "~/.codex/auth.json"
-          }
-        },
-        {
-          "name": "config.toml",
-          "type": "config",
-          "path": {
-            "darwin": "~/.codex/config.toml",
-            "win32": "%APPDATA%\\Codex\\config.toml",
-            "linux": "~/.codex/config.toml"
-          }
-        }
-      ],
-      "proxyEndpoint": "/code/codex",
-      "defaultModels": [
-        {
-          "id": "gpt-5.2-codex",
-          "i18nKey": "codexModel52",
-          "capabilities": ["tools", "streaming"],
-          "isDefault": true
-        },
-        {
-          "id": "gpt-5.2",
-          "i18nKey": "codexModelBase",
-          "capabilities": ["tools", "streaming"]
-        },
-        {
-          "id": "gpt-5.1-codex-max",
-          "i18nKey": "codexModelMax",
-          "capabilities": ["tools", "streaming"]
-        },
-        {
-          "id": "gpt-5.1-codex-mini",
-          "i18nKey": "codexModelMini",
-          "capabilities": ["tools", "streaming"]
-        }
-      ],
-      "defaultConfig": {
-        "modelProvider": "amux",
-        "model": "gpt-5.2-codex",
-        "modelReasoningEffort": "high",
-        "disableResponseStorage": true,
-        "wireApi": "responses",
-        "requiresOpenaiAuth": true
-      },
-      "features": {
-        "requiresProvider": false,
-        "supportsModelMapping": true,
-        "supportsDynamicSwitch": false,
-        "requiresRestart": false,
-        "unifiedEndpoint": true
+        "requiresRestart": true,
+        "supportsReasoningMapping": true,
+        "supportsFamilyMapping": true,
+        "supportsDefaultMapping": true
       }
     }
   ]

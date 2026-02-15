@@ -1,6 +1,6 @@
 /**
  * Path resolver for Code Switch
- * Handles cross-platform path detection and validation for Claude Code and Codex
+ * Handles cross-platform path detection and validation for Claude Code
  */
 
 import * as path from 'path'
@@ -24,15 +24,21 @@ export class PathResolver {
   }
 
   /**
-   * Get Claude Code settings path
-   * Attempts to locate settings.json in multiple possible locations
-   * Priority:
-   * 1. ~/.claude/settings.json
-   * 2. ~/.claude.json
+   * Get canonical Claude Code user settings path (official location).
+   * Claude Code reads from ~/.claude/settings.json per official docs.
+   * Use this when writing config so Claude Code picks it up.
+   */
+  static getClaudeCodeUserSettingsPath(): string {
+    return path.join(this.getClaudeConfigDir(), 'settings.json')
+  }
+
+  /**
+   * Get Claude Code settings path (for detection - only returns path if file exists).
+   * Priority: ~/.claude/settings.json, then ~/.claude.json (legacy)
    */
   static getClaudeSettingsPath(): string | null {
     const possiblePaths = [
-      path.join(this.getClaudeConfigDir(), 'settings.json'),
+      this.getClaudeCodeUserSettingsPath(),
       path.join(this.getHomeDir(), '.claude.json')
     ]
 
@@ -46,38 +52,14 @@ export class PathResolver {
   }
 
   /**
-   * Get Codex config directory
-   * Typically: ~/.codex
-   */
-  static getCodexConfigDir(): string {
-    return path.join(this.getHomeDir(), '.codex')
-  }
-
-  /**
-   * Get Codex auth.json path
-   */
-  static getCodexAuthPath(): string {
-    return path.join(this.getCodexConfigDir(), 'auth.json')
-  }
-
-  /**
-   * Get Codex config.toml path
-   */
-  static getCodexConfigPath(): string {
-    return path.join(this.getCodexConfigDir(), 'config.toml')
-  }
-
-  /**
    * Normalize path for cross-platform compatibility
    * Resolves ~ to home directory, handles relative paths
    */
   static normalizePath(inputPath: string): string {
-    // Handle ~ expansion
     if (inputPath.startsWith('~')) {
       return path.join(this.getHomeDir(), inputPath.slice(1))
     }
 
-    // Handle relative paths
     if (!path.isAbsolute(inputPath)) {
       return path.resolve(inputPath)
     }

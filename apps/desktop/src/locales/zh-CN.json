@@ -534,8 +534,8 @@
   },
   "codeSwitch": {
     "title": "Code Switch",
-    "description": "配置 Claude Code 和 Codex CLI 使用不同的 LLM 提供商，无需重启即可动态切换",
-    "alertInfo": "Code Switch 允许您将 Claude Code 或 Codex CLI 连接到任何已配置的提供商。启用后，CLI 将始终指向本地代理，您可以随时切换底层提供商而无需重启 CLI。",
+    "description": "配置 Claude Code 使用不同的 LLM 提供商，无需重启即可动态切换",
+    "alertInfo": "Code Switch 允许您将 Claude Code 连接到任何已配置的提供商。启用后，CLI 将始终指向本地代理，您可以随时切换底层提供商而无需重启 CLI。",
     "enabled": "已启用",
     "claudecode": {
       "name": "Claude Code",
@@ -548,6 +548,7 @@
       "description": "配置 Codex CLI 使用 Amux 作为代理，支持任意 LLM 提供商"
     },
     "models": {
+      "claudeOpus46": "Opus 4.6 模型",
       "claudeOpus4": "Opus 模型",
       "claudeSonnet4": "Sonnet 模型",
       "claudeHaiku4": "Haiku 模型",
@@ -609,6 +610,7 @@
     "detectConfigSuccess": "找到 {cliType} 配置文件: {path}",
     "configNotFound": "未找到配置文件",
     "noProviders": "没有可用的提供商，请先在「提供商」页面添加并启用",
+    "opus46Model": "Opus 4.6 模型",
     "sonnetModel": "Sonnet 模型",
     "opusModel": "Opus 模型",
     "haikuModel": "Haiku 模型",
@@ -623,6 +625,17 @@
     "noCliProxies": "暂无已启用的 CLI 代理，前往 Code Switch 页面进行配置",
     "goToConfig": "前往配置",
     "currentProvider": "当前提供商",
-    "manageConfig": "管理配置"
+    "manageConfig": "管理配置",
+    "opusFamily": "Opus 家族",
+    "sonnetFamily": "Sonnet 家族",
+    "haikuFamily": "Haiku 家族",
+    "familyMapping": "家族映射",
+    "familyMappingDesc": "按模型家族映射；该家族所有版本（如任意 Opus）将使用所选目标模型。",
+    "reasoningMapping": "Reasoning 映射",
+    "reasoningMappingDesc": "当请求启用 thinking 模式时，使用此模型。",
+    "defaultMapping": "默认兜底",
+    "defaultMappingDesc": "对未匹配家族或精确映射的请求使用此模型。",
+    "exactOverride": "精确覆盖",
+    "addExactOverride": "添加精确覆盖"
   }
 }

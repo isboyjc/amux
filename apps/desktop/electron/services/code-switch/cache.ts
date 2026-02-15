@@ -8,6 +8,7 @@ import {
   CodeModelMappingRepository
 } from '../database/repositories'
 import type { CodeSwitchConfigRow } from '../database/types'
+import { getCLIPreset } from '../presets/code-switch-preset'
 
 /**
  * Simple LRU Cache implementation
@@ -66,11 +67,24 @@ class LRUCache<K, V> {
 }
 
 /**
- * Cached Code Switch configuration with model mappings
+ * Cached Code Switch configuration with model mappings by type
  */
+export interface FamilyMapping {
+  family: string
+  targetModel: string
+  priority: number
+}
+
 export interface CachedCodeSwitchConfig {
   config: CodeSwitchConfigRow
-  modelMappings: Map<string, string> // sourceModel -> targetModel
+  /** Exact model ID -> target model */
+  exactMappings: Map<string, string>
+  /** Family mappings sorted by priority (lower = higher priority) */
+  familyMappings: FamilyMapping[]
+  /** Target model when thinking is enabled; null if not set */
+  reasoningModel: string | null
+  /** Fallback target model for all other requests; null if not set */
+  defaultModel: string | null
   cachedAt: number
 }
 
@@ -81,9 +95,6 @@ export interface CachedCodeSwitchConfig {
 export class CodeSwitchCacheManager {
   // LRU cache for Code Switch configs (key: cliType)
   private configCache: LRUCache<string, CachedCodeSwitchConfig>
-
-  // In-memory model mapping cache for active configs
-  private modelMappingCache: Map<string, Map<string, string>> // codeSwitchId -> (sourceModel -> targetModel)
 
   // Repositories
   private codeSwitchRepo: CodeSwitchRepository
@@ -97,7 +108,6 @@ export class CodeSwitchCacheManager {
 
   constructor() {
     this.configCache = new LRUCache(10) // Small cache, only 2 CLI types at most
-    this.modelMappingCache = new Map()
     this.codeSwitchRepo = new CodeSwitchRepository()
     this.modelMappingRepo = new CodeModelMappingRepository()
   }
@@ -106,7 +116,7 @@ export class CodeSwitchCacheManager {
    * Get Code Switch config with model mappings
    * Uses cache if available and not expired
    */
-  getConfig(cliType: 'claudecode' | 'codex'): CachedCodeSwitchConfig | null {
+  getConfig(cliType: string): CachedCodeSwitchConfig | null {
     // Check cache first
     const cached = this.configCache.get(cliType)
     if (cached) {
@@ -124,23 +134,64 @@ export class CodeSwitchCacheManager {
       return null
     }
 
-    // Fetch active model mappings
-    const mappings = this.modelMappingRepo.findActiveByCodeSwitchId(config.id)
-    const modelMappings = new Map<string, string>()
-    for (const mapping of mappings) {
-      modelMappings.set(mapping.source_model, mapping.target_model)
+    // Fetch active model mappings for current provider only (filter by provider_id)
+    const allActive = this.modelMappingRepo.findActiveByCodeSwitchId(config.id)
+    const mappings = allActive.filter((m) => m.provider_id === config.provider_id)
+    const exactMappings = new Map<string, string>()
+    const familyMappingsRaw: FamilyMapping[] = []
+    let reasoningModel: string | null = null
+    let defaultModel: string | null = null
+
+    // Load preset family priorities for sorting
+    const preset = getCLIPreset(cliType)
+    const familyPriorityMap = new Map<string, number>()
+    if (preset?.modelFamilies) {
+      for (const fam of preset.modelFamilies) {
+        for (const keyword of fam.keywords) {
+          familyPriorityMap.set(keyword.toLowerCase(), fam.priority)
+        }
+      }
     }
 
-    // Cache it
+    for (const mapping of mappings) {
+      const mt = mapping.mapping_type ?? 'exact'
+      switch (mt) {
+        case 'exact':
+          exactMappings.set(mapping.source_model, mapping.target_model)
+          break
+        case 'family': {
+          const priority = familyPriorityMap.get(mapping.source_model.toLowerCase()) ?? 99
+          familyMappingsRaw.push({
+            family: mapping.source_model,
+            targetModel: mapping.target_model,
+            priority
+          })
+          break
+        }
+        case 'reasoning':
+          reasoningModel = mapping.target_model
+          break
+        case 'default':
+          defaultModel = mapping.target_model
+          break
+        default:
+          exactMappings.set(mapping.source_model, mapping.target_model)
+      }
+    }
+
+    // Sort family mappings by priority (lower = higher priority)
+    const familyMappings = familyMappingsRaw.sort((a, b) => a.priority - b.priority)
+
     const cachedConfig: CachedCodeSwitchConfig = {
       config,
-      modelMappings,
+      exactMappings,
+      familyMappings,
+      reasoningModel,
+      defaultModel,
       cachedAt: Date.now()
     }
 
     this.configCache.set(cliType, cachedConfig)
-    this.modelMappingCache.set(config.id, modelMappings)
-
     return cachedConfig
   }
 
@@ -148,33 +199,8 @@ export class CodeSwitchCacheManager {
    * Invalidate cache for a CLI type
    * Called when configuration is updated
    */
-  invalidate(cliType: 'claudecode' | 'codex'): void {
+  invalidate(cliType: string): void {
     this.configCache.delete(cliType)
-
-    // Also clean up model mapping cache
-    const config = this.codeSwitchRepo.findByCLIType(cliType)
-    if (config) {
-      this.modelMappingCache.delete(config.id)
-    }
-  }
-
-  /**
-   * Invalidate all caches
-   */
-  invalidateAll(): void {
-    this.configCache.clear()
-    this.modelMappingCache.clear()
-  }
-
-  /**
-   * Get cache statistics
-   */
-  getStats() {
-    return {
-      configCacheSize: this.configCache.size(),
-      modelMappingCacheSize: this.modelMappingCache.size,
-      ttl: this.CACHE_TTL
-    }
   }
 }
 
@@ -192,7 +218,7 @@ CodeSwitchCacheManager.getInstance = function(): CodeSwitchCacheManager {
 }
 
 /**
- * Get Code Switch cache manager instance (deprecated, use CodeSwitchCacheManager.getInstance())
+ * Get Code Switch cache manager instance
  */
 export function getCodeSwitchCache(): CodeSwitchCacheManager {
   return CodeSwitchCacheManager.getInstance()
@@ -202,13 +228,6 @@ export function getCodeSwitchCache(): CodeSwitchCacheManager {
  * Invalidate cache for a CLI type
  * Helper function for external use
  */
-export function invalidateCodeSwitchCache(cliType: 'claudecode' | 'codex'): void {
+export function invalidateCodeSwitchCache(cliType: string): void {
   getCodeSwitchCache().invalidate(cliType)
-}
-
-/**
- * Invalidate all Code Switch caches
- */
-export function invalidateAllCodeSwitchCaches(): void {
-  getCodeSwitchCache().invalidateAll()
 }

@@ -514,6 +514,3 @@ export function recordRequest(success: boolean, latencyMs: number): void {
 
 // Export types
 export * from './types'
-
-// Export Codex unified endpoint utilities
-export { invalidateModelListCache } from './codex-unified-handler'

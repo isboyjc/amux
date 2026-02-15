@@ -1,28 +1,33 @@
 /**
  * Code Model Mapping repository - Manages model mappings with historical support
- * 
+ *
  * Historical mapping support allows users to switch between providers without losing
  * their previous mapping configurations.
+ * Supports mapping_type: exact | family | reasoning | default for hybrid mapping strategy.
  */
 
 import { BaseRepository } from './base'
-import type { CodeModelMappingRow } from '../types'
+import type { CodeModelMappingRow, CodeModelMappingType } from '../types'
 
 export interface CreateModelMappingDTO {
   codeSwitchId: string
   providerId: string
   sourceModel: string
   targetModel: string
+  mappingType?: CodeModelMappingType
   isActive?: boolean
+}
+
+export interface ModelMappingItem {
+  sourceModel: string
+  targetModel: string
+  mappingType?: CodeModelMappingType
 }
 
 export interface UpdateModelMappingsDTO {
   codeSwitchId: string
   providerId: string
-  mappings: Array<{
-    sourceModel: string
-    targetModel: string
-  }>
+  mappings: ModelMappingItem[]
 }
 
 export class CodeModelMappingRepository extends BaseRepository<CodeModelMappingRow> {
@@ -79,12 +84,13 @@ export class CodeModelMappingRepository extends BaseRepository<CodeModelMappingR
   create(data: CreateModelMappingDTO): CodeModelMappingRow {
     const id = this.generateId()
     const now = this.now()
+    const mappingType = data.mappingType ?? 'exact'
 
     const stmt = this.db.prepare(`
       INSERT INTO code_model_mappings (
-        id, code_switch_id, provider_id, source_model, target_model, is_active, created_at, updated_at
+        id, code_switch_id, provider_id, source_model, target_model, mapping_type, is_active, created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
 
     stmt.run(
@@ -93,6 +99,7 @@ export class CodeModelMappingRepository extends BaseRepository<CodeModelMappingR
       data.providerId,
       data.sourceModel,
       data.targetModel,
+      mappingType,
       data.isActive !== false ? 1 : 0,
       now,
       now
@@ -104,19 +111,17 @@ export class CodeModelMappingRepository extends BaseRepository<CodeModelMappingR
   /**
    * Batch update/create mappings for a provider
    * This is the main method used when switching providers or updating mappings
-   * 
+   *
    * Algorithm:
    * 1. Deactivate all mappings for this Code Switch
-   * 2. Upsert new mappings (create or update existing ones for this provider)
+   * 2. Upsert new mappings (create or update existing ones for this provider), including mapping_type
    * 3. Set new mappings as active
    */
   updateMappingsForProvider(data: UpdateModelMappingsDTO): void {
     const { codeSwitchId, providerId, mappings } = data
     const now = this.now()
 
-    // Use transaction for atomicity
     const transaction = this.db.transaction(() => {
-      // Step 1: Deactivate all mappings for this Code Switch
       const deactivateStmt = this.db.prepare(`
         UPDATE code_model_mappings
         SET is_active = 0, updated_at = ?
@@ -124,13 +129,12 @@ export class CodeModelMappingRepository extends BaseRepository<CodeModelMappingR
       `)
       deactivateStmt.run(now, codeSwitchId)
 
-      // Step 2 & 3: Upsert new mappings and set as active
       const upsertStmt = this.db.prepare(`
         INSERT INTO code_model_mappings (
-          id, code_switch_id, provider_id, source_model, target_model, is_active, created_at, updated_at
+          id, code_switch_id, provider_id, source_model, target_model, mapping_type, is_active, created_at, updated_at
         )
-        VALUES (?, ?, ?, ?, ?, 1, ?, ?)
-        ON CONFLICT (code_switch_id, provider_id, source_model)
+        VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
+        ON CONFLICT (code_switch_id, provider_id, source_model, mapping_type)
         DO UPDATE SET
           target_model = excluded.target_model,
           is_active = 1,
@@ -138,12 +142,14 @@ export class CodeModelMappingRepository extends BaseRepository<CodeModelMappingR
       `)
 
       for (const mapping of mappings) {
+        const mappingType = mapping.mappingType ?? 'exact'
         upsertStmt.run(
           this.generateId(),
           codeSwitchId,
           providerId,
           mapping.sourceModel,
           mapping.targetModel,
+          mappingType,
           now,
           now
         )

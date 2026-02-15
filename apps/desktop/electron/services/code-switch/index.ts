@@ -6,10 +6,9 @@ export * from './path-resolver'
 export * from './config-detector'
 export * from './config-backup'
 export * from './config-writer'
-export { 
-  CodeSwitchCacheManager, 
+export {
+  CodeSwitchCacheManager,
   type CachedCodeSwitchConfig,
   getCodeSwitchCache,
-  invalidateCodeSwitchCache,
-  invalidateAllCodeSwitchCaches
+  invalidateCodeSwitchCache
 } from './cache'

@@ -1,5 +1,6 @@
 /**
  * Code Switch IPC handlers
+ * Currently supports Claude Code only
  */
 
 import { ipcMain } from 'electron'
@@ -7,7 +8,6 @@ import { randomUUID } from 'crypto'
 import {
   CodeSwitchRepository,
   CodeModelMappingRepository,
-  getProviderRepository
 } from '../services/database/repositories'
 import type { CodeSwitchConfigRow, CodeModelMappingRow } from '../services/database/types'
 import type { CodeSwitchConfig, CodeModelMapping } from '../../src/types'
@@ -15,7 +15,8 @@ import {
   ConfigDetector,
   ConfigBackup,
   ConfigWriter,
-  invalidateCodeSwitchCache
+  invalidateCodeSwitchCache,
+  PathResolver
 } from '../services/code-switch'
 import { isAuthEnabled } from '../services/proxy-server/utils'
 import { getCLIPreset, getDefaultModels } from '../services/presets/code-switch-preset'
@@ -24,7 +25,7 @@ import { getCLIPreset, getDefaultModels } from '../services/presets/code-switch-
 function toCodeSwitchConfig(row: CodeSwitchConfigRow): CodeSwitchConfig {
   return {
     id: row.id,
-    cliType: row.cli_type as 'claudecode' | 'codex',
+    cliType: row.cli_type as 'claudecode',
     enabled: row.enabled === 1,
     providerId: row.provider_id,
     configPath: row.config_path,
@@ -43,6 +44,7 @@ function toCodeModelMapping(row: CodeModelMappingRow): CodeModelMapping {
     providerId: row.provider_id,
     sourceModel: row.source_model,
     targetModel: row.target_model,
+    mappingType: row.mapping_type as CodeModelMapping['mappingType'],
     isActive: row.is_active === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -58,8 +60,8 @@ export function registerCodeSwitchHandlers(): void {
    */
   ipcMain.handle(
     'code-switch:get-config',
-    async (_event, cliType: 'claudecode' | 'codex') => {
-      const row = codeSwitchRepo.findByCLIType(cliType)
+    async (_event, _cliType: string) => {
+      const row = codeSwitchRepo.findByCLIType('claudecode')
       return row ? toCodeSwitchConfig(row) : null
     }
   )
@@ -73,26 +75,26 @@ export function registerCodeSwitchHandlers(): void {
     'code-switch:init-config',
     async (
       _event,
-      cliType: 'claudecode' | 'codex',
+      _cliType: string,
       providerId: string,
       configPath: string
     ) => {
+      const cliType = 'claudecode'
+      
       // Check if config already exists
       let config = codeSwitchRepo.findByCLIType(cliType)
       
       if (!config) {
-        // Create a new disabled config
-        const proxyPath = `/code/${cliType}`
+        const proxyPath = `code/${cliType}`
         config = codeSwitchRepo.create({
           cliType,
           providerId,
           configPath,
-          backupConfig: '', // Will be set when enabling
+          backupConfig: '',
           proxyPath
         })
         console.log(`[CodeSwitch] Initialized config for ${cliType}:`, config.id)
       } else if (config.provider_id !== providerId || config.config_path !== configPath) {
-        // Update provider or config path if changed
         config = codeSwitchRepo.update(config.id, {
           providerId,
           configPath
@@ -108,8 +110,7 @@ export function registerCodeSwitchHandlers(): void {
    * Detect CLI configuration files
    */
   ipcMain.handle('code-switch:detect-files', async () => {
-    const detections = ConfigDetector.detectAll()
-    return detections
+    return ConfigDetector.detectAll()
   })
 
   /**
@@ -119,45 +120,45 @@ export function registerCodeSwitchHandlers(): void {
    * 2. Backup original config
    * 3. Write proxy config
    * 4. Save to database
-   * 5. Register proxy route (handled by proxy-server)
    */
   ipcMain.handle(
     'code-switch:enable',
     async (
       _event,
       data: {
-        cliType: 'claudecode' | 'codex'
+        cliType: string
         providerId: string
         modelMappings: Array<{ sourceModel: string; targetModel: string }>
         customConfigPath?: string
       }
     ) => {
-      const { cliType, providerId, modelMappings, customConfigPath } = data
+      const { providerId, modelMappings, customConfigPath } = data
+      const cliType = 'claudecode'
 
       // Step 1: Detect or validate config file
       const detection = customConfigPath
-        ? ConfigDetector.validateCustomPath(cliType, customConfigPath)
-        : cliType === 'claudecode'
-          ? ConfigDetector.detectClaudeCode()
-          : ConfigDetector.detectCodex()
+        ? ConfigDetector.validateCustomPath(customConfigPath)
+        : ConfigDetector.detectClaudeCode()
 
-      if (!detection.detected || !detection.valid || !detection.configPath) {
-        throw new Error(
-          detection.error || `Failed to detect ${cliType} configuration file`
-        )
+      let configPath: string
+
+      // Claude Code official path is ~/.claude/settings.json; create if missing
+      if (detection.detected && detection.valid && detection.configPath) {
+        configPath = detection.configPath
+      } else if (customConfigPath) {
+        throw new Error(detection.error || `Invalid path: ${customConfigPath}`)
+      } else {
+        configPath = PathResolver.getClaudeCodeUserSettingsPath()
       }
 
-      const configPath = detection.configPath
-
       // Step 2: Backup original config
-      const backupContent = ConfigBackup.backup(cliType, configPath)
+      const backupContent = ConfigBackup.backup(configPath)
 
       // Step 3: Generate API key and proxy URL
-      // Check if authentication is enabled
       const authEnabled = isAuthEnabled()
       const apiKey = authEnabled 
-        ? `amux_code_${randomUUID().replace(/-/g, '')}` // Auth enabled: generate unique key
-        : 'amux' // Auth disabled: use placeholder
+        ? `amux_code_${randomUUID().replace(/-/g, '')}` 
+        : 'amux'
       
       console.log(`[CodeSwitch] Auth enabled: ${authEnabled}, using API key: ${authEnabled ? apiKey : 'amux (placeholder)'}`)
       
@@ -165,11 +166,7 @@ export function registerCodeSwitchHandlers(): void {
       const proxyUrl = `http://127.0.0.1:9527/${proxyPath}`
 
       // Step 4: Write proxy config to CLI config file
-      if (cliType === 'claudecode') {
-        await ConfigWriter.writeClaudeCode({ configPath, proxyUrl, apiKey })
-      } else {
-        await ConfigWriter.writeCodex({ authPath: configPath, proxyUrl, apiKey })
-      }
+      await ConfigWriter.writeClaudeCode({ configPath, proxyUrl, apiKey })
 
       // Step 5: Save to database
       const existingConfig = codeSwitchRepo.findByCLIType(cliType)
@@ -177,7 +174,6 @@ export function registerCodeSwitchHandlers(): void {
       let codeSwitchConfig: CodeSwitchConfigRow
 
       if (existingConfig) {
-        // Update existing config
         codeSwitchConfig = codeSwitchRepo.update(existingConfig.id, {
           providerId,
           configPath,
@@ -185,7 +181,6 @@ export function registerCodeSwitchHandlers(): void {
           enabled: true
         })!
       } else {
-        // Create new config
         codeSwitchConfig = codeSwitchRepo.create({
           cliType,
           providerId,
@@ -193,7 +188,6 @@ export function registerCodeSwitchHandlers(): void {
           backupConfig: backupContent,
           proxyPath
         })
-        // Enable it
         codeSwitchRepo.setEnabled(cliType, true)
         codeSwitchConfig = codeSwitchRepo.findByCLIType(cliType)!
       }
@@ -208,7 +202,7 @@ export function registerCodeSwitchHandlers(): void {
       }
 
       // Step 7: Invalidate cache to pick up new config
-      invalidateCodeSwitchCache(cliType as 'claudecode' | 'codex')
+      invalidateCodeSwitchCache(cliType)
 
       return toCodeSwitchConfig(codeSwitchConfig)
     }
@@ -216,13 +210,11 @@ export function registerCodeSwitchHandlers(): void {
 
   /**
    * Disable Code Switch
-   * Steps:
-   * 1. Restore original config
-   * 2. Update database
    */
   ipcMain.handle(
     'code-switch:disable',
-    async (_event, cliType: 'claudecode' | 'codex') => {
+    async (_event, _cliType: string) => {
+      const cliType = 'claudecode'
       const config = codeSwitchRepo.findByCLIType(cliType)
 
       if (!config) {
@@ -231,95 +223,98 @@ export function registerCodeSwitchHandlers(): void {
 
       // Step 1: Restore original config
       if (config.backup_config) {
-        await ConfigBackup.restore(cliType, config.config_path, config.backup_config)
+        await ConfigBackup.restore(config.config_path, config.backup_config)
       }
 
       // Step 2: Disable in database
       codeSwitchRepo.setEnabled(cliType, false)
 
       // Step 3: Invalidate cache
-      invalidateCodeSwitchCache(cliType as 'claudecode' | 'codex')
+      invalidateCodeSwitchCache(cliType)
     }
   )
 
   /**
-   * Switch provider only (without updating model mappings)
-   * Used when user switches provider in enabled state
-   * Model mappings will be loaded from history automatically
+   * Switch provider (and activate historical mappings immediately)
+   * Historical mappings for the new provider are activated right away
+   * so the proxy has valid mappings without waiting for the frontend debounce
    */
   ipcMain.handle(
     'code-switch:switch-provider',
-    async (
-      _event,
-      cliType: 'claudecode' | 'codex',
-      providerId: string
-    ) => {
+    async (_event, _cliType: string, providerId: string) => {
+      const cliType = 'claudecode'
       const config = codeSwitchRepo.findByCLIType(cliType)
 
       if (!config) {
         throw new Error(`Code Switch config not found for ${cliType}`)
       }
 
-      // Update provider only, don't touch model mappings
+      // Update provider
       codeSwitchRepo.updateProvider(cliType, providerId)
 
-      // Invalidate cache for dynamic switching
-      invalidateCodeSwitchCache(cliType as 'claudecode' | 'codex')
+      // Activate historical mappings for the new provider immediately
+      // This ensures the proxy has valid mappings right after the switch
+      const historicalMappings = modelMappingRepo.findByProvider(config.id, providerId)
+      if (historicalMappings.length > 0) {
+        modelMappingRepo.updateMappingsForProvider({
+          codeSwitchId: config.id,
+          providerId,
+          mappings: historicalMappings.map(m => ({
+            sourceModel: m.source_model,
+            targetModel: m.target_model,
+            mappingType: m.mapping_type as 'exact' | 'family' | 'reasoning' | 'default' | undefined
+          }))
+        })
+      }
+
+      invalidateCodeSwitchCache(cliType)
       
-      console.log(`[CodeSwitch] Switched provider to ${providerId} for ${cliType}`)
+      console.log(`[CodeSwitch] Switched provider to ${providerId} for ${cliType}, activated ${historicalMappings.length} historical mappings`)
     }
   )
 
   /**
    * Update provider and model mappings (dynamic switch)
    * This does NOT modify CLI config, only updates database
-   * Proxy will pick up changes automatically
+   * Proxy will pick up changes automatically via cache invalidation
    */
   ipcMain.handle(
     'code-switch:update-provider',
     async (
       _event,
-      cliType: 'claudecode' | 'codex',
+      _cliType: string,
       providerId: string,
-      modelMappings: Array<{ sourceModel: string; targetModel: string }>
+      modelMappings: Array<{ sourceModel: string; targetModel: string; mappingType?: 'exact' | 'family' | 'reasoning' | 'default' }>
     ) => {
+      const cliType = 'claudecode'
       const config = codeSwitchRepo.findByCLIType(cliType)
 
       if (!config) {
         throw new Error(`Code Switch config not found for ${cliType}`)
       }
 
-      // For Codex, use the existing provider_id from config (unified endpoint doesn't switch providers)
-      // For Claude Code, update to the new provider
-      const actualProviderId = cliType === 'codex' ? config.provider_id : providerId
-
-      // Update provider (only for Claude Code)
-      if (cliType === 'claudecode') {
-        codeSwitchRepo.updateProvider(cliType, providerId)
-      }
+      // Update provider
+      codeSwitchRepo.updateProvider(cliType, providerId)
 
       // Update model mappings
       if (modelMappings.length > 0) {
         modelMappingRepo.updateMappingsForProvider({
           codeSwitchId: config.id,
-          providerId: actualProviderId, // Use actual provider ID from config for Codex
+          providerId,
           mappings: modelMappings
         })
       }
 
-      console.log(`[IPC] Updated ${cliType} mappings using provider ${actualProviderId}`)
+      console.log(`[IPC] Updated ${cliType} mappings for provider ${providerId}`)
 
       // Invalidate cache for dynamic switching
-      invalidateCodeSwitchCache(cliType as 'claudecode' | 'codex')
+      invalidateCodeSwitchCache(cliType)
     }
   )
 
   /**
    * Get historical model mappings for a provider
    * Used to auto-restore mappings when switching back
-   * 
-   * For Codex (unified endpoint): providerId is optional, returns all active mappings
-   * For Claude Code: providerId required, returns mappings for specific provider
    */
   ipcMain.handle(
     'code-switch:get-historical-mappings',
@@ -327,10 +322,8 @@ export function registerCodeSwitchHandlers(): void {
       let rows: CodeModelMappingRow[]
       
       if (providerId) {
-        // Claude Code: Get mappings for specific provider
         rows = modelMappingRepo.findByProvider(codeSwitchId, providerId)
       } else {
-        // Codex: Get all active mappings
         rows = modelMappingRepo.findActiveByCodeSwitchId(codeSwitchId)
       }
       
@@ -340,43 +333,28 @@ export function registerCodeSwitchHandlers(): void {
 
   /**
    * Test connection to Code Switch proxy
-   * Sends a simple request to verify the setup
    */
   ipcMain.handle(
     'code-switch:test-connection',
-    async (_event, cliType: 'claudecode' | 'codex') => {
+    async (_event, _cliType: string) => {
+      const cliType = 'claudecode'
       const config = codeSwitchRepo.findByCLIType(cliType)
 
       if (!config || !config.enabled) {
-        return {
-          success: false,
-          error: 'Code Switch not enabled'
-        }
+        return { success: false, error: 'Code Switch not enabled' }
       }
 
       try {
         const startTime = Date.now()
-        
-        // Simply check if config is valid
         const proxyUrl = `http://127.0.0.1:9527/${config.proxy_path}`
-        const configValid =
-          cliType === 'claudecode'
-            ? ConfigWriter.verifyClaudeCodeConfig(config.config_path, proxyUrl)
-            : ConfigWriter.verifyCodexConfig(config.config_path, proxyUrl)
-
+        const configValid = ConfigWriter.verifyClaudeCodeConfig(config.config_path, proxyUrl)
         const latency = Date.now() - startTime
 
         if (!configValid) {
-          return {
-            success: false,
-            error: 'Configuration file validation failed'
-          }
+          return { success: false, error: 'Configuration file validation failed' }
         }
 
-        return {
-          success: true,
-          latency
-        }
+        return { success: true, latency }
       } catch (error) {
         return {
           success: false,
@@ -387,136 +365,21 @@ export function registerCodeSwitchHandlers(): void {
   )
 
   // ============================================================================
-  // Codex Model Mapping & Selection
-  // ============================================================================
-
-  // Invalidate Codex model mapping cache (provider changed)
-  ipcMain.handle('code-switch:invalidate-codex-model-mapping-cache', async (_, codeSwitchId: string) => {
-    console.log('[IPC] Invalidating Codex model mapping cache:', codeSwitchId)
-    
-    try {
-      // Import dynamically to avoid circular dependency
-      const { invalidateModelMappingCache } = await import('../services/proxy-server/codex-unified-handler')
-      invalidateModelMappingCache(codeSwitchId)
-      
-      return { success: true }
-    } catch (error) {
-      console.error('[IPC] Failed to invalidate mapping cache:', error)
-      throw new Error(`Failed to invalidate mapping cache: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    }
-  })
-
-  // Get current Codex model from config.toml
-  ipcMain.handle('code-switch:get-codex-model', async (_, tomlPath: string) => {
-    console.log('[IPC] Getting current Codex model from:', tomlPath)
-    
-    try {
-      // Read directly from config.toml (no need to check if enabled)
-      const model = ConfigWriter.readCodexModel(tomlPath)
-      return model
-    } catch (error) {
-      console.error('[IPC] Failed to get Codex model:', error)
-      return 'gpt-5.2-codex' // Default fallback
-    }
-  })
-
-  // Update current Codex model in config.toml
-  ipcMain.handle('code-switch:update-codex-model', async (_, tomlPath: string, model: string) => {
-    console.log('[IPC] Updating Codex model to:', model)
-    console.log('[IPC] Config path:', tomlPath)
-    
-    try {
-      // Update directly to config.toml (works both when enabled and disabled)
-      await ConfigWriter.updateCodexModel(tomlPath, model)
-      return { success: true }
-    } catch (error) {
-      console.error('[IPC] Failed to update Codex model:', error)
-      throw new Error(`Failed to update Codex model: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    }
-  })
-
-  // Get aggregated models for UI dropdown (grouped by provider)
-  ipcMain.handle('code-switch:get-aggregated-models', async () => {
-    console.log('[IPC] Getting aggregated models for UI')
-    
-    try {
-      const providerRepo = getProviderRepository()
-      const allProviders = providerRepo.findAll()
-      const enabledProviders = allProviders.filter(p => p.enabled)
-      
-      console.log(`[IPC] Found ${enabledProviders.length} enabled providers`)
-      
-      const result = []
-      
-      for (const provider of enabledProviders) {
-        try {
-          // Parse models from database (stored as JSON string)
-          let modelList: Array<{ id: string; name: string }> = []
-          
-          if (provider.models) {
-            try {
-              const modelsData = JSON.parse(provider.models)
-              if (Array.isArray(modelsData)) {
-                modelList = modelsData.map((m: any) => ({
-                  id: typeof m === 'string' ? m : (m.id || m.name || m),
-                  name: typeof m === 'string' ? m : (m.name || m.id || m)
-                }))
-              }
-            } catch (parseError) {
-              console.error(`[IPC] Failed to parse models for provider ${provider.name}:`, parseError)
-            }
-          }
-          
-          console.log(`[IPC] Provider ${provider.name}: ${modelList.length} models from database`)
-          
-          result.push({
-            providerId: provider.id,
-            providerName: provider.name,
-            adapterType: provider.adapter_type,
-            models: modelList
-          })
-        } catch (error) {
-          console.error(`[IPC] Failed to process provider ${provider.name}:`, error)
-          // Still include provider with empty models
-          result.push({
-            providerId: provider.id,
-            providerName: provider.name,
-            adapterType: provider.adapter_type,
-            models: []
-          })
-        }
-      }
-      
-      console.log(`[IPC] Returning ${result.length} providers with models`)
-      return result
-    } catch (error) {
-      console.error('[IPC] Failed to get aggregated models:', error)
-      throw new Error(`Failed to get aggregated models: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    }
-  })
-
-  // ============================================================================
   // Code Switch Preset Handlers
   // ============================================================================
 
-  // Get CLI preset information
-  ipcMain.handle('code-switch:get-cli-preset', async (_, cliId: 'claudecode' | 'codex') => {
-    console.log('[IPC] Getting CLI preset for:', cliId)
+  ipcMain.handle('code-switch:get-cli-preset', async (_, cliId: string) => {
     try {
-      const preset = getCLIPreset(cliId)
-      return preset
+      return getCLIPreset(cliId)
     } catch (error) {
       console.error('[IPC] Failed to get CLI preset:', error)
       throw new Error(`Failed to get CLI preset: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   })
 
-  // Get default models for a CLI
-  ipcMain.handle('code-switch:get-default-models', async (_, cliId: 'claudecode' | 'codex') => {
-    console.log('[IPC] Getting default models for:', cliId)
+  ipcMain.handle('code-switch:get-default-models', async (_, cliId: string) => {
     try {
-      const models = getDefaultModels(cliId)
-      return models
+      return getDefaultModels(cliId)
     } catch (error) {
       console.error('[IPC] Failed to get default models:', error)
       throw new Error(`Failed to get default models: ${error instanceof Error ? error.message : 'Unknown error'}`)

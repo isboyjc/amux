@@ -534,8 +534,8 @@
   },
   "codeSwitch": {
     "title": "Code Switch",
-    "description": "Configure Claude Code and Codex CLI to use different LLM providers with dynamic switching without restart",
-    "alertInfo": "Code Switch allows you to connect Claude Code or Codex CLI to any configured provider. Once enabled, the CLI will always point to the local proxy, and you can switch providers at any time without restarting the CLI.",
+    "description": "Configure Claude Code to use different LLM providers with dynamic switching without restart",
+    "alertInfo": "Code Switch allows you to connect Claude Code to any configured provider. Once enabled, the CLI will always point to the local proxy, and you can switch providers at any time without restarting the CLI.",
     "enabled": "Enabled",
     "claudecode": {
       "name": "Claude Code",
@@ -548,6 +548,7 @@
       "description": "Configure Codex CLI to use Amux as a proxy with support for any LLM provider"
     },
     "models": {
+      "claudeOpus46": "Opus 4.6 Model",
       "claudeOpus4": "Opus Model",
       "claudeSonnet4": "Sonnet Model",
       "claudeHaiku4": "Haiku Model",
@@ -609,6 +610,7 @@
     "detectConfigSuccess": "Found {cliType} configuration file: {path}",
     "configNotFound": "Configuration file not found",
     "noProviders": "No providers available, please add and enable providers in the Providers page first",
+    "opus46Model": "Opus 4.6 Model",
     "sonnetModel": "Sonnet Model",
     "opusModel": "Opus Model",
     "haikuModel": "Haiku Model",
@@ -623,6 +625,17 @@
     "noCliProxies": "No CLI proxies enabled, go to Code Switch page to configure",
     "goToConfig": "Go to Configuration",
     "currentProvider": "Current Provider",
-    "manageConfig": "Manage Configuration"
+    "manageConfig": "Manage Configuration",
+    "opusFamily": "Opus Family",
+    "sonnetFamily": "Sonnet Family",
+    "haikuFamily": "Haiku Family",
+    "familyMapping": "Family Mapping",
+    "familyMappingDesc": "Map by model family; all versions of this family (e.g. any Opus) will use the selected target model.",
+    "reasoningMapping": "Reasoning Mapping",
+    "reasoningMappingDesc": "When the request has thinking mode enabled, use this model.",
+    "defaultMapping": "Default Fallback",
+    "defaultMappingDesc": "Use this model for any request that does not match family or exact mappings.",
+    "exactOverride": "Exact Overrides",
+    "addExactOverride": "Add Exact Override"
   }
 }

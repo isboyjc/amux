@@ -122,14 +122,13 @@ export function registerProviderHandlers(): void {
       if (config.enabled && config.backup_config) {
         try {
           await ConfigBackup.restore(
-            config.cli_type as 'claudecode' | 'codex',
             config.config_path,
             config.backup_config
           )
           console.log(`[Provider Delete] Restored ${config.cli_type} config`)
           
           // Invalidate cache
-          invalidateCodeSwitchCache(config.cli_type as 'claudecode' | 'codex')
+          invalidateCodeSwitchCache(config.cli_type)
         } catch (error) {
           console.error(`[Provider Delete] Failed to restore ${config.cli_type} config:`, error)
         }

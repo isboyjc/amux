@@ -125,6 +125,16 @@
       "color": "#ffffff",
       "models": [
         {
+          "id": "claude-opus-4-6-20260206",
+          "name": "Claude Opus 4.6",
+          "contextLength": 200000,
+          "capabilities": [
+            "vision",
+            "tools",
+            "reasoning"
+          ]
+        },
+        {
           "id": "claude-opus-4-5-20251101",
           "name": "Claude Opus 4.5",
           "contextLength": 200000,

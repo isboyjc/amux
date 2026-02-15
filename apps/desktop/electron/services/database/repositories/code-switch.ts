@@ -6,7 +6,7 @@ import { BaseRepository } from './base'
 import type { CodeSwitchConfigRow } from '../types'
 
 export interface CreateCodeSwitchDTO {
-  cliType: 'claudecode' | 'codex'
+  cliType: string
   providerId: string
   configPath: string
   backupConfig: string
@@ -34,7 +34,7 @@ export class CodeSwitchRepository extends BaseRepository<CodeSwitchConfigRow> {
   /**
    * Find Code Switch config by CLI type
    */
-  findByCLIType(cliType: 'claudecode' | 'codex'): CodeSwitchConfigRow | null {
+  findByCLIType(cliType: string): CodeSwitchConfigRow | null {
     const stmt = this.db.prepare('SELECT * FROM code_switch_configs WHERE cli_type = ?')
     const result = stmt.get(cliType) as CodeSwitchConfigRow | undefined
     return result ?? null
@@ -137,7 +137,7 @@ export class CodeSwitchRepository extends BaseRepository<CodeSwitchConfigRow> {
   /**
    * Update provider for a CLI type
    */
-  updateProvider(cliType: 'claudecode' | 'codex', providerId: string): void {
+  updateProvider(cliType: string, providerId: string): void {
     const stmt = this.db.prepare(`
       UPDATE code_switch_configs
       SET provider_id = ?, updated_at = ?
@@ -149,7 +149,7 @@ export class CodeSwitchRepository extends BaseRepository<CodeSwitchConfigRow> {
   /**
    * Set enabled status for a CLI type
    */
-  setEnabled(cliType: 'claudecode' | 'codex', enabled: boolean): void {
+  setEnabled(cliType: string, enabled: boolean): void {
     const stmt = this.db.prepare(`
       UPDATE code_switch_configs
       SET enabled = ?, updated_at = ?
@@ -161,7 +161,7 @@ export class CodeSwitchRepository extends BaseRepository<CodeSwitchConfigRow> {
   /**
    * Delete Code Switch config by CLI type
    */
-  deleteByCLIType(cliType: 'claudecode' | 'codex'): boolean {
+  deleteByCLIType(cliType: string): boolean {
     const stmt = this.db.prepare('DELETE FROM code_switch_configs WHERE cli_type = ?')
     const result = stmt.run(cliType)
     return result.changes > 0

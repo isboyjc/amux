@@ -242,6 +242,9 @@ export interface CodeSwitchConfig {
   updatedAt: number
 }
 
+// Mapping type for hybrid mapping strategy
+export type CodeModelMappingType = 'exact' | 'family' | 'reasoning' | 'default'
+
 // Code model mapping
 export interface CodeModelMapping {
   id: string
@@ -249,6 +252,7 @@ export interface CodeModelMapping {
   providerId: string
   sourceModel: string // Source model name - Claude official models or Codex default/custom models
   targetModel: string // Target provider model name (format: provider/model)
+  mappingType?: CodeModelMappingType
   isActive: boolean
   createdAt: number
   updatedAt: number

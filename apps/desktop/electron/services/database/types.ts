@@ -162,12 +162,16 @@ export interface CodeSwitchConfigRow extends BaseRow {
   updated_at: number
 }
 
+// Mapping type for hybrid mapping strategy
+export type CodeModelMappingType = 'exact' | 'family' | 'reasoning' | 'default'
+
 // Code model mapping row from database (with historical mapping support)
 export interface CodeModelMappingRow extends BaseRow {
   code_switch_id: string
   provider_id: string // Support for historical mappings per provider
   source_model: string // Source model name - Claude official models or Codex default/custom models
   target_model: string // Target provider model name (format: provider/model)
+  mapping_type: CodeModelMappingType // exact | family | reasoning | default
   is_active: number // 0 or 1 - only active when provider matches code_switch config
   updated_at: number
 }
