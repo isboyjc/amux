@@ -124,10 +124,10 @@ export function ModelMappingEditor({
   // Removed addMapping - no longer needed, models are pre-populated
 
   const updateMapping = (index: number, field: 'sourceModel' | 'targetModel', value: string) => {
-    const newMappings = [...localMappings]
-    newMappings[index][field] = value
+    const newMappings = localMappings.map((m, i) =>
+      i === index ? { ...m, [field]: value } : { ...m }
+    )
     setLocalMappings(newMappings)
-    // 立即通知父组件，但父组件不会立即保存
     onChange(newMappings)
   }
 

@@ -262,7 +262,7 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
     
     // 如果是首次加载（originalMappings 为空），设置 originalMappings，不触发保存
     if (originalMappings.length === 0) {
-      setOriginalMappings(mappings)
+      setOriginalMappings(mappings.map(m => ({ ...m })))
       return
     }
     
@@ -316,8 +316,8 @@ export function CodeSwitchConfig({ cliType, config, onConfigChange, loading }: C
         })
       }
 
-      // 更新原始映射
-      setOriginalMappings(mappings)
+      // 更新原始映射（深拷贝，避免引用共享）
+      setOriginalMappings(mappings.map(m => ({ ...m })))
       // 不需要刷新整个配置，映射已经在本地状态中了
       // onConfigChange() ← 移除，避免页面闪烁
     } catch (error) {
