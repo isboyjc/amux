@@ -103,6 +103,8 @@ graph TD
       model: string                    // 必需：使用的模型
       choices: Choice[]                // 必需：生成的响应
       usage?: Usage                    // 令牌使用统计
+      created?: number                 // 响应创建时间戳
+      systemFingerprint?: string       // 用于可重复性的系统指纹
       metadata?: Record<string, unknown>
       extensions?: Record<string, unknown>
       raw?: unknown
@@ -126,7 +128,9 @@ graph TD
         promptTokens: 20,
         completionTokens: 15,
         totalTokens: 35
-      }
+      },
+      created: 1704067200,
+      systemFingerprint: 'fp_12345'
     }
     ```
   </Tab>
@@ -676,6 +680,40 @@ interface ThinkingConfig {
     - 在响应的 `logprobs` 字段中可用
   </Tab>
 </Tabs>
+
+## 使用统计
+
+`Usage` 接口提供详细的令牌使用信息：
+
+```typescript
+interface Usage {
+  promptTokens: number        // 提示中的令牌数
+  completionTokens: number     // 补全中的令牌数
+  totalTokens: number          // 使用的总令牌数
+
+  // 详细令牌分类（提供商特定）
+  details?: {
+    reasoningTokens?: number      // 推理/思考令牌（DeepSeek、Qwen）
+    cachedTokens?: number        // 缓存的提示令牌（DeepSeek、Anthropic）
+    cacheCreationTokens?: number // 缓存创建令牌（Anthropic）
+    cacheReadTokens?: number    // 缓存读取令牌（Anthropic）
+  }
+}
+```
+
+### 各提供商的令牌详情
+
+| 提供商 | reasoningTokens | cachedTokens | cacheCreationTokens | cacheReadTokens |
+|----------|-----------------|--------------|---------------------|-----------------|
+| OpenAI | - | - | - | - |
+| Anthropic | - | ✅ | ✅ | ✅ |
+| DeepSeek | ✅ | ✅ | - | - |
+| Qwen | ✅ | - | - | - |
+| MiniMax | ✅ | - | - | - |
+
+<Callout type="info">
+`details` 字段是可选的，仅在提供商提供这些额外的令牌计数时才会包含。这允许更精细的成本跟踪和缓存优化。
+</Callout>
 
 ## 工具调用流程
 

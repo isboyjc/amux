@@ -46,10 +46,18 @@ console.log(response.choices[0].message.content)
 |------|------|------|
 | `deepseek-chat` | 通用对话模型 | 高性价比，适合日常对话 |
 | `deepseek-coder` | 代码专用模型 | 专注于代码生成和理解 |
+| `deepseek-reasoner` | 推理模型 | 高级推理能力 |
+
+<Callout type="warn">
+**DeepSeek Reasoner 限制：** 使用 `deepseek-reasoner` 模型时：
+- **不支持系统消息**，系统消息会被静默跳过。如果包含系统消息，API 会返回错误。
+- 输入消息中**不能包含 `reasoning_content`** 字段，否则 API 会返回 400 错误。
+- `max_tokens` 会被限制在 **1-8192** 范围内。
+</Callout>
 
 ## 主要功能
 
-<Tabs items={['代码生成', '函数调用', '流式传输']}>
+<Tabs items={['代码生成', '推理能力', '函数调用', '流式传输']}>
   <Tab value="代码生成">
     ### 代码生成
 
@@ -68,6 +76,54 @@ console.log(response.choices[0].message.content)
     })
 
     console.log(response.choices[0].message.content)
+    ```
+  </Tab>
+
+  <Tab value="推理能力">
+    ### 推理能力 (DeepSeek Reasoner)
+
+    DeepSeek Reasoner 支持深度推理，通过 `reasoning_content` 字段返回推理过程：
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'deepseek-reasoner',
+      messages: [
+        // 注意：reasoner 模型不支持系统消息
+        { role: 'user', content: '请逐步求解：如果 3x + 7 = 22，x 是多少？' }
+      ]
+    })
+
+    // 访问推理内容
+    console.log('推理过程:', response.choices[0].message.reasoning_content)
+    console.log('最终回答:', response.choices[0].message.content)
+    ```
+
+    也可以通过 `thinking` 参数显式启用思考模式：
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'deepseek-chat',
+      messages: [{ role: 'user', content: '复杂分析...' }],
+      thinking: { type: 'enabled' }
+    })
+    ```
+
+    **流式推理：**
+
+    ```typescript
+    const stream = bridge.chatStreamRaw({
+      model: 'deepseek-reasoner',
+      messages: [{ role: 'user', content: '证明根号 2 是无理数。' }],
+      stream: true
+    })
+
+    for await (const event of stream) {
+      if (event.type === 'reasoning') {
+        process.stdout.write(`[思考] ${event.reasoning?.delta}`)
+      } else if (event.type === 'content') {
+        process.stdout.write(event.content?.delta ?? '')
+      }
+    }
     ```
   </Tab>
 
@@ -165,9 +221,12 @@ const response = await bridge.chat({
 | 流式传输 | ✅ | 完全支持 |
 | 函数调用 | ✅ | 完全支持 |
 | 视觉 | ❌ | 不支持 |
-| 系统提示 | ✅ | 完全支持 |
-| 推理能力 | ✅ | deepseek-reasoner 模型 |
-| JSON 模式 | ✅ | 结构化输出 |
+| 系统提示 | ✅ | `deepseek-reasoner` 模型不支持 |
+| 推理能力 | ✅ | `deepseek-reasoner` 模型，`reasoning_content` 字段 |
+| 思考模式 | ✅ | `thinking: { type: 'enabled' \| 'disabled' }` |
+| JSON 模式 | ✅ | 仅支持 `json_object`（不支持 `json_schema`） |
+| Logprobs | ✅ | 完全支持 |
+| 缓存 Token | ✅ | usage 中包含 `prompt_cache_hit_tokens` / `prompt_cache_miss_tokens` |
 
 ## 优势
 
@@ -191,6 +250,13 @@ const chatResponse = await bridge.chat({
 const codeResponse = await bridge.chat({
   model: 'deepseek-coder',
   messages: [{ role: 'user', content: '写一个二分查找算法' }]
+})
+
+// 复杂推理使用 deepseek-reasoner
+const reasoningResponse = await bridge.chat({
+  model: 'deepseek-reasoner',
+  // 注意：reasoner 模型不支持系统消息
+  messages: [{ role: 'user', content: '请解决这个复杂的问题...' }]
 })
 ```
 

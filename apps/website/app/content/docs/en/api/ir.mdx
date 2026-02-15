@@ -103,6 +103,8 @@ graph TD
       model: string                    // Required: Model used
       choices: Choice[]                // Required: Generated responses
       usage?: Usage                    // Token usage stats
+      created?: number                 // Response creation timestamp
+      systemFingerprint?: string       // System fingerprint for reproducibility
       metadata?: Record<string, unknown>
       extensions?: Record<string, unknown>
       raw?: unknown
@@ -126,7 +128,9 @@ graph TD
         promptTokens: 20,
         completionTokens: 15,
         totalTokens: 35
-      }
+      },
+      created: 1704067200,
+      systemFingerprint: 'fp_12345'
     }
     ```
   </Tab>
@@ -676,6 +680,40 @@ interface ThinkingConfig {
     - Available in response `logprobs` field
   </Tab>
 </Tabs>
+
+## Usage Statistics
+
+The `Usage` interface provides detailed token usage information:
+
+```typescript
+interface Usage {
+  promptTokens: number        // Number of tokens in the prompt
+  completionTokens: number   // Number of tokens in the completion
+  totalTokens: number       // Total tokens used
+
+  // Detailed token breakdown (provider-specific)
+  details?: {
+    reasoningTokens?: number      // Reasoning/thinking tokens (DeepSeek, Qwen)
+    cachedTokens?: number        // Cached prompt tokens (DeepSeek, Anthropic)
+    cacheCreationTokens?: number // Cache creation tokens (Anthropic)
+    cacheReadTokens?: number    // Cache read tokens (Anthropic)
+  }
+}
+```
+
+### Token Details by Provider
+
+| Provider | reasoningTokens | cachedTokens | cacheCreationTokens | cacheReadTokens |
+|----------|-----------------|--------------|---------------------|-----------------|
+| OpenAI | - | - | - | - |
+| Anthropic | - | ✅ | ✅ | ✅ |
+| DeepSeek | ✅ | ✅ | - | - |
+| Qwen | ✅ | - | - | - |
+| MiniMax | ✅ | - | - | - |
+
+<Callout type="info">
+The `details` field is optional and only included when the provider provides these additional token counts. This allows for more granular cost tracking and caching optimization.
+</Callout>
 
 ## Tool Calling Flow
 

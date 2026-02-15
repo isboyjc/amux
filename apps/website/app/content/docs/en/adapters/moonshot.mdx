@@ -149,9 +149,11 @@ const bridge = createBridge({
 | Streaming | ✅ | Fully supported |
 | Function Calling | ✅ | Fully supported |
 | Long Context | ✅ | Ultra-long context support |
-| Vision | ❌ | Not supported |
+| Vision | ❌ | Not supported (text-only content) |
 | System Prompt | ✅ | Fully supported |
-| JSON Mode | ✅ | Structured output |
+| Reasoning | ✅ | `kimi-k2-thinking` model, `reasoning_content` field |
+| JSON Mode | ✅ | `json_object` only |
+| Tool Choice | ⚠️ | `required` is not supported (silently dropped) |
 
 ## Best Practices
 

@@ -149,9 +149,11 @@ const bridge = createBridge({
 | 流式传输 | ✅ | 完全支持 |
 | 函数调用 | ✅ | 完全支持 |
 | 长上下文 | ✅ | 支持超长上下文 |
-| 视觉 | ❌ | 不支持 |
+| 视觉 | ❌ | 不支持（仅文本内容） |
 | 系统提示 | ✅ | 完全支持 |
-| JSON 模式 | ✅ | 结构化输出 |
+| 推理能力 | ✅ | `kimi-k2-thinking` 模型，`reasoning_content` 字段 |
+| JSON 模式 | ✅ | 仅支持 `json_object` |
+| Tool Choice | ⚠️ | 不支持 `required`（会被静默丢弃） |
 
 ## 最佳实践
 

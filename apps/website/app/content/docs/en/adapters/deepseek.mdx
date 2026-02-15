@@ -48,9 +48,16 @@ console.log(response.choices[0].message.content)
 | `deepseek-coder` | Code-specialized model | Focused on code generation and understanding |
 | `deepseek-reasoner` | Reasoning model | Advanced reasoning capabilities |
 
+<Callout type="warn">
+**DeepSeek Reasoner Restrictions:** When using `deepseek-reasoner` model:
+- System messages are **not supported** and will be silently skipped. The API returns an error if system messages are included.
+- `reasoning_content` must **not** be included in input messages. The API returns a 400 error if present.
+- `max_tokens` is clamped to the range **1-8192**.
+</Callout>
+
 ## Key Features
 
-<Tabs items={['Code Generation', 'Function Calling', 'Streaming']}>
+<Tabs items={['Code Generation', 'Reasoning', 'Function Calling', 'Streaming']}>
   <Tab value="Code Generation">
     ### Code Generation
 
@@ -69,6 +76,54 @@ console.log(response.choices[0].message.content)
     })
 
     console.log(response.choices[0].message.content)
+    ```
+  </Tab>
+
+  <Tab value="Reasoning">
+    ### Reasoning (DeepSeek Reasoner)
+
+    DeepSeek Reasoner supports deep thinking with `reasoning_content`:
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'deepseek-reasoner',
+      messages: [
+        // Note: system messages are NOT supported for reasoner model
+        { role: 'user', content: 'Solve this step by step: If 3x + 7 = 22, what is x?' }
+      ]
+    })
+
+    // Access reasoning content
+    console.log('Reasoning:', response.choices[0].message.reasoning_content)
+    console.log('Answer:', response.choices[0].message.content)
+    ```
+
+    You can also enable thinking mode explicitly via the `thinking` parameter:
+
+    ```typescript
+    const response = await bridge.chat({
+      model: 'deepseek-chat',
+      messages: [{ role: 'user', content: 'Complex analysis...' }],
+      thinking: { type: 'enabled' }
+    })
+    ```
+
+    **Streaming with reasoning:**
+
+    ```typescript
+    const stream = bridge.chatStreamRaw({
+      model: 'deepseek-reasoner',
+      messages: [{ role: 'user', content: 'Prove that sqrt(2) is irrational.' }],
+      stream: true
+    })
+
+    for await (const event of stream) {
+      if (event.type === 'reasoning') {
+        process.stdout.write(`[Thinking] ${event.reasoning?.delta}`)
+      } else if (event.type === 'content') {
+        process.stdout.write(event.content?.delta ?? '')
+      }
+    }
     ```
   </Tab>
 
@@ -166,9 +221,12 @@ const response = await bridge.chat({
 | Streaming | ✅ | Fully supported |
 | Function Calling | ✅ | Fully supported |
 | Vision | ❌ | Not supported |
-| System Prompt | ✅ | Fully supported |
-| Reasoning | ✅ | deepseek-reasoner model |
-| JSON Mode | ✅ | Structured output |
+| System Prompt | ✅ | Not supported for `deepseek-reasoner` model |
+| Reasoning | ✅ | `deepseek-reasoner` model, `reasoning_content` field |
+| Thinking Mode | ✅ | `thinking: { type: 'enabled' \| 'disabled' }` |
+| JSON Mode | ✅ | `json_object` only (`json_schema` not supported) |
+| Logprobs | ✅ | Fully supported |
+| Cache Tokens | ✅ | `prompt_cache_hit_tokens` / `prompt_cache_miss_tokens` in usage |
 
 ## Advantages
 

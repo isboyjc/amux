@@ -160,7 +160,7 @@ const bridge = createBridge({
   outbound: qwenAdapter,
   config: {
     apiKey: process.env.QWEN_API_KEY,
-    baseURL: 'https://dashscope.aliyuncs.com/api', // Default
+    baseURL: 'https://dashscope.aliyuncs.com/compatible-mode', // Default
     timeout: 60000
   }
 })
@@ -174,11 +174,19 @@ const bridge = createBridge({
 | Streaming | ✅ | Fully supported |
 | Function Calling | ✅ | Fully supported |
 | Vision | ✅ | Qwen-VL series |
-| Multimodal | ✅ | Text + Image |
+| Multimodal | ✅ | Text + Image (also supports audio/video) |
 | System Prompt | ✅ | Fully supported |
-| Reasoning | ✅ | Advanced reasoning |
-| JSON Mode | ✅ | Structured output |
-| Web Search | ✅ | Built-in search |
+| Reasoning | ✅ | `enable_thinking: true` for QwQ models, `reasoning_content` field |
+| JSON Mode | ✅ | `json_object` only |
+| Web Search | ✅ | `enable_search: true` |
+| Seed | ✅ | Deterministic generation |
+
+<Callout type="info">
+**Qwen-specific parameters:**
+- `enable_thinking` (boolean) -- Enables deep thinking mode for QwQ reasoning models
+- `enable_search` (boolean) -- Enables real-time web search
+- `fps` (number) -- Video frame rate for video input (stored in `extensions.qwen.fps`)
+</Callout>
 
 ## Best Practices
 

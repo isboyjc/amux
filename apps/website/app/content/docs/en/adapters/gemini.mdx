@@ -177,12 +177,21 @@ const bridge = createBridge({
 | Streaming | ✅ | Fully supported |
 | Vision | ✅ | Gemini Pro Vision |
 | Ultra-Long Context | ✅ | Up to 2M tokens |
-| Function Calling | ⚠️ | Partial support |
-| System Prompt | ✅ | Fully supported |
-| JSON Mode | ✅ | Structured output |
+| Function Calling | ✅ | Fully supported (uses `functionDeclarations` format) |
+| System Prompt | ✅ | Via `systemInstruction` |
+| JSON Mode | ✅ | Via `responseMimeType: 'application/json'` |
+| Dual Format | ✅ | Auto-detects OpenAI format vs native Gemini format |
+
+<Callout type="info">
+**Dual Format Support:** The Gemini adapter automatically detects whether an incoming request uses OpenAI format (with `messages` array) or native Gemini format (with `contents` array). This allows it to work seamlessly as both an inbound and outbound adapter.
+</Callout>
+
+<Callout type="info">
+**Chat Path:** The Gemini adapter uses a chat path containing a `{model}` placeholder: `/v1beta/models/{model}:streamGenerateContent`. The Bridge automatically replaces `{model}` with the actual model name.
+</Callout>
 
 <Callout type="warn">
-Gemini's function calling format differs from OpenAI and may require additional format conversion.
+Gemini's function calling uses a different format (`functionDeclarations` grouped under a single `tools` object) compared to OpenAI's per-tool format. The adapter handles this conversion automatically when used with Bridge.
 </Callout>
 
 ## Best Practices

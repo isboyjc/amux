@@ -259,11 +259,13 @@ const response = await bridge.chat({
 |---------|-----------|-------|
 | Messages API | ✅ | Fully supported |
 | Streaming | ✅ | Fully supported |
-| Tool Use | ✅ | Fully supported |
+| Tool Use | ✅ | Fully supported (content block based) |
 | Vision | ✅ | Claude 3 series |
-| System Prompt | ✅ | Separate system parameter |
+| System Prompt | ✅ | Separate `system` parameter (top-level, not in messages) |
 | Long Context | ✅ | 200K tokens |
-| Extended Thinking | ✅ | Reasoning support |
+| Extended Thinking | ✅ | Reasoning support with `budget_tokens` |
+| `top_k` | ✅ | Anthropic-specific sampling parameter (not available in OpenAI) |
+| `max_tokens` | ✅ | **Required** (defaults to 4096 when used as outbound) |
 
 ## Best Practices
 
