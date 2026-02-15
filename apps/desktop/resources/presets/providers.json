@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "minClientVersion": "0.1.0",
-  "updatedAt": "2026-01-11T00:00:00Z",
+  "updatedAt": "2026-02-15T00:00:00Z",
   "providers": [
     {
       "id": "openai",

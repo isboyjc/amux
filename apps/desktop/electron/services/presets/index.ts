@@ -193,8 +193,29 @@ function _compareVersions(v1: string, v2: string): number {
 }
 
 /**
- * Merge remote and built-in presets
- * Remote presets take precedence
+ * Merge models from two provider presets
+ * Primary models take precedence, secondary-only models are appended
+ */
+function mergeProviderModels(primary: ProviderPreset, secondary: ProviderPreset): ProviderPreset {
+  const primaryModelIds = new Set(primary.models.map(m => m.id))
+  const secondaryOnlyModels = secondary.models.filter(m => !primaryModelIds.has(m.id))
+  
+  if (secondaryOnlyModels.length === 0) return primary
+  
+  return {
+    ...primary,
+    models: [...primary.models, ...secondaryOnlyModels]
+  }
+}
+
+/**
+ * Merge remote/cached and built-in presets
+ * 
+ * Strategy:
+ * - Compare updatedAt timestamps to determine which source is newer
+ * - The newer source is used as the primary (its provider config takes precedence)
+ * - For providers that exist in both sources, models are merged (primary models first, then unique secondary models)
+ * - Providers that exist only in one source are included as-is
  */
 function mergePresets(remote: PresetsConfig | null, builtin: PresetsConfig | null): PresetsConfig {
   if (!remote && !builtin) {
@@ -209,13 +230,31 @@ function mergePresets(remote: PresetsConfig | null, builtin: PresetsConfig | nul
   if (!remote) return builtin!
   if (!builtin) return remote
   
-  // Use remote as base, add any built-in providers not in remote
-  const remoteIds = new Set(remote.providers.map(p => p.id))
-  const additionalProviders = builtin.providers.filter(p => !remoteIds.has(p.id))
+  // Determine which is newer based on updatedAt
+  const remoteTime = new Date(remote.updatedAt).getTime()
+  const builtinTime = new Date(builtin.updatedAt).getTime()
+  
+  const [primary, secondary] = builtinTime > remoteTime
+    ? [builtin, remote]
+    : [remote, builtin]
+  
+  // Build a map of secondary providers for quick lookup
+  const secondaryMap = new Map(secondary.providers.map(p => [p.id, p]))
+  
+  // Merge providers: start with primary, merge models from secondary for matching providers
+  const mergedProviders = primary.providers.map(primaryProvider => {
+    const secondaryProvider = secondaryMap.get(primaryProvider.id)
+    if (!secondaryProvider) return primaryProvider
+    return mergeProviderModels(primaryProvider, secondaryProvider)
+  })
+  
+  // Add secondary-only providers
+  const primaryIds = new Set(primary.providers.map(p => p.id))
+  const additionalProviders = secondary.providers.filter(p => !primaryIds.has(p.id))
   
   return {
-    ...remote,
-    providers: [...remote.providers, ...additionalProviders]
+    ...primary,
+    providers: [...mergedProviders, ...additionalProviders]
   }
 }
 
