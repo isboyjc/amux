@@ -1,9 +1,9 @@
 ---
 title: MiniMax Adapter
-description: Use the MiniMax adapter to connect to MiniMax-M2.1 and other MiniMax models with Interleaved Thinking support
+description: Use the MiniMax adapter to connect to MiniMax-M2.5 and other MiniMax models with Interleaved Thinking support
 ---
 
-The MiniMax adapter provides integration with the MiniMax API. MiniMax M2.1 features strong multilingual programming capabilities and supports Interleaved Thinking for enhanced reasoning.
+The MiniMax adapter provides integration with the MiniMax API. MiniMax M2.5 is the latest flagship model featuring state-of-the-art coding and agent capabilities with a Mixture of Experts architecture (230B total parameters, 10B active per token), delivering industry-leading performance at a fraction of the cost. It supports Interleaved Thinking for enhanced reasoning.
 
 ## Installation
 
@@ -30,7 +30,7 @@ const bridge = createBridge({
 })
 
 const response = await bridge.chat({
-  model: 'MiniMax-M2.1',
+  model: 'MiniMax-M2.5',
   messages: [
     { role: 'system', content: 'You are a helpful assistant.' },
     { role: 'user', content: 'Hello, how are you?' }
@@ -44,8 +44,10 @@ console.log(response.choices[0].message.content)
 
 | Model | Description | Output Speed |
 |-------|-------------|--------------|
+| `MiniMax-M2.5` | SOTA in coding and agent, MoE architecture (230B/10B active) | ~50 tps |
+| `MiniMax-M2.5-lightning` | M2.5 Lightning version: same quality, faster speed | ~100 tps |
 | `MiniMax-M2.1` | Strong multilingual programming capabilities | ~60 tps |
-| `MiniMax-M2.1-lightning` | Lightning version: faster and more agile | ~100 tps |
+| `MiniMax-M2.1-lightning` | M2.1 Lightning version: faster and more agile | ~100 tps |
 | `MiniMax-M2` | Designed for efficient coding and Agent workflows | ~60 tps |
 
 ## Key Features
@@ -54,14 +56,14 @@ console.log(response.choices[0].message.content)
   <Tab value="Interleaved Thinking">
     ### Interleaved Thinking
 
-    MiniMax M2.1 supports Interleaved Thinking, which provides transparent reasoning process.
+    MiniMax M2.5 / M2.1 supports Interleaved Thinking, which provides transparent reasoning process.
     
     **`reasoning_split` is enabled by default** - thinking content is automatically separated:
 
     ```typescript
     // reasoning_split is enabled by default
     const stream = bridge.chatStream({
-      model: 'MiniMax-M2.1',
+      model: 'MiniMax-M2.5',
       messages: [
         { role: 'user', content: 'Solve: What is 15 * 24?' }
       ],
@@ -81,11 +83,11 @@ console.log(response.choices[0].message.content)
   <Tab value="Multilingual Programming">
     ### Multilingual Programming
 
-    MiniMax M2.1 excels at multiple programming languages:
+    MiniMax M2.5 excels at multiple programming languages:
 
     ```typescript
     const response = await bridge.chat({
-      model: 'MiniMax-M2.1',
+      model: 'MiniMax-M2.5',
       messages: [
         {
           role: 'user',
@@ -110,7 +112,7 @@ console.log(response.choices[0].message.content)
 
     ```typescript
     const response = await bridge.chat({
-      model: 'MiniMax-M2.1',
+      model: 'MiniMax-M2.5',
       messages: [
         { role: 'user', content: 'What is the weather in Beijing?' }
       ],
@@ -137,7 +139,7 @@ console.log(response.choices[0].message.content)
 
     ```typescript
     const stream = bridge.chatStream({
-      model: 'MiniMax-M2.1-lightning',
+      model: 'MiniMax-M2.5-lightning',
       messages: [
         { role: 'user', content: 'Tell me a story about AI' }
       ],
@@ -186,7 +188,7 @@ const bridge = createBridge({
 
 // Send request in OpenAI format
 const response = await bridge.chat({
-  model: 'gpt-4', // Will be mapped to MiniMax-M2.1
+  model: 'gpt-4', // Will be mapped to MiniMax-M2.5
   messages: [{ role: 'user', content: 'Hello' }]
 })
 ```
@@ -207,14 +209,14 @@ const response = await bridge.chat({
 
 ### Interleaved Thinking
 
-MiniMax M2.1 supports Interleaved Thinking, which allows you to see the model's reasoning process.
+MiniMax M2.5 / M2.1 supports Interleaved Thinking, which allows you to see the model's reasoning process.
 
 **By default, `reasoning_split` is enabled**, which means thinking content is automatically separated from the final answer:
 
 ```typescript
 // reasoning_split is enabled by default
 const stream = bridge.chatStream({
-  model: 'MiniMax-M2.1',
+  model: 'MiniMax-M2.5',
   messages: [
     { role: 'user', content: 'Solve this complex problem...' }
   ],
@@ -236,7 +238,7 @@ for await (const event of stream) {
 
 ```typescript
 const ir = {
-  model: 'MiniMax-M2.1',
+  model: 'MiniMax-M2.5',
   messages: [
     { role: 'user', content: 'Solve this complex problem...' }
   ],
@@ -258,7 +260,7 @@ MiniMax has a strict temperature range of (0.0, 1.0]:
 
 ```typescript
 const response = await bridge.chat({
-  model: 'MiniMax-M2.1',
+  model: 'MiniMax-M2.5',
   messages: [{ role: 'user', content: 'Hello' }],
   temperature: 1.0 // Recommended: 1.0
 })
@@ -270,32 +272,34 @@ const response = await bridge.chat({
 
 ## Advantages
 
-- **Multilingual Programming**: Excellent support for Rust, Java, Golang, C++, and more
+- **SOTA Coding Performance**: M2.5 achieves 80.2% on SWE-Bench Verified and 51.3% on Multi-SWE-Bench
+- **MoE Architecture**: 230B total parameters with only 10B active per token, delivering top performance at 1/10~1/20 the cost
 - **Interleaved Thinking**: Transparent reasoning process for complex tasks
+- **Multilingual Programming**: Excellent support for Rust, Java, Golang, C++, and more
 - **WebDev & AppDev**: Enhanced capabilities for web and mobile app development
-- **Efficient**: More concise responses and lower token consumption
 - **Agent-Friendly**: Great support for various AI coding tools and Agent frameworks
+- **Open Source**: M2.5 is open-sourced on HuggingFace under a modified MIT License
 
 ## Best Practices
 
 ### 1. Choose the Right Model
 
 ```typescript
-// For general tasks with good balance
+// For SOTA coding and agent tasks
 const response = await bridge.chat({
-  model: 'MiniMax-M2.1',
+  model: 'MiniMax-M2.5',
   messages: [{ role: 'user', content: 'Explain quantum computing' }]
 })
 
-// For high-speed responses
+// For high-speed responses with M2.5 quality
 const fastResponse = await bridge.chat({
-  model: 'MiniMax-M2.1-lightning',
+  model: 'MiniMax-M2.5-lightning',
   messages: [{ role: 'user', content: 'Quick summary of this article' }]
 })
 
-// For Agent workflows
-const agentResponse = await bridge.chat({
-  model: 'MiniMax-M2',
+// For general tasks with good balance
+const generalResponse = await bridge.chat({
+  model: 'MiniMax-M2.1',
   messages: [{ role: 'user', content: 'Help me debug this code' }]
 })
 ```
@@ -305,7 +309,7 @@ const agentResponse = await bridge.chat({
 ```typescript
 // For complex problem-solving
 const ir = {
-  model: 'MiniMax-M2.1',
+  model: 'MiniMax-M2.5',
   messages: [
     {
       role: 'system',
@@ -329,7 +333,7 @@ const ir = {
 
 ```typescript
 const response = await bridge.chat({
-  model: 'MiniMax-M2.1',
+  model: 'MiniMax-M2.5',
   messages: [
     {
       role: 'system',
@@ -357,9 +361,11 @@ The following OpenAI parameters are not supported by MiniMax:
 
 ## Related Resources
 
-- [MiniMax Text Generation Guide](https://platform.minimax.com/docs/guides/text-generation)
-- [OpenAI API Compatibility](https://platform.minimax.com/docs/api-reference/text-openai-api)
-- [MiniMax M2.1 Release](https://minimax.com/news/minimax-m21)
+- [MiniMax Text Generation Guide](https://platform.minimax.io/docs/guides/text-generation)
+- [OpenAI API Compatibility](https://platform.minimax.io/docs/api-reference/text-openai-api)
+- [MiniMax M2.5 Release](https://www.minimax.io/news/minimax-m25)
+- [MiniMax M2.5 on HuggingFace](https://huggingface.co/MiniMaxAI)
+- [MiniMax M2.5 on GitHub](https://github.com/MiniMax-AI/MiniMax-M2.5)
 
 ## Next Steps
 

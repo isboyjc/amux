@@ -284,11 +284,21 @@
       "color": "#ffffff",
       "models": [
         {
-          "id": "glm-4.5",
-          "name": "GLM-4.5",
+          "id": "glm-5",
+          "name": "GLM-5",
+          "contextLength": 200000,
+          "capabilities": [
+            "tools",
+            "reasoning"
+          ]
+        },
+        {
+          "id": "glm-4.7",
+          "name": "GLM-4.7",
           "contextLength": 128000,
           "capabilities": [
-            "tools"
+            "tools",
+            "reasoning"
           ]
         },
         {
@@ -300,12 +310,11 @@
           ]
         },
         {
-          "id": "glm-4.7",
-          "name": "GLM-4.7",
+          "id": "glm-4.5",
+          "name": "GLM-4.5",
           "contextLength": 128000,
           "capabilities": [
-            "tools",
-            "reasoning"
+            "tools"
           ]
         }
       ]
@@ -358,6 +367,24 @@
       "logo": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMjQgMjQiPjwhLS0gSWNvbiBmcm9tIFNpbXBsZSBJY29ucyBieSBTaW1wbGUgSWNvbnMgQ29sbGFib3JhdG9ycyAtIGh0dHBzOi8vZ2l0aHViLmNvbS9zaW1wbGUtaWNvbnMvc2ltcGxlLWljb25zL2Jsb2IvZGV2ZWxvcC9MSUNFTlNFLm1kIC0tPjxwYXRoIGZpbGw9ImN1cnJlbnRDb2xvciIgZD0iTTExLjQzIDMuOTJhLjg2Ljg2IDAgMSAwLTEuNzE4IDB2MTQuMjM2YTEuOTk5IDEuOTk5IDAgMCAxLTMuOTk3IDBWOS4wMjJhLjg2Ljg2IDAgMSAwLTEuNzE4IDB2My44N2ExLjk5OSAxLjk5OSAwIDAgMS0zLjk5NyAwVjExLjQ5YS41Ny41NyAwIDAgMSAxLjEzOSAwdjEuNDA0YS44Ni44NiAwIDAgMCAxLjcxOSAwVjkuMDIyYTEuOTk5IDEuOTk5IDAgMCAxIDMuOTk3IDB2OS4xMzRhLjg2Ljg2IDAgMCAwIDEuNzE5IDBWMy45MmExLjk5OCAxLjk5OCAwIDEgMSAzLjk5NiAwdjExLjc4OGEuNTcuNTcgMCAxIDEtMS4xMzkgMHptMTAuNTcyIDMuMTA1YTIgMiAwIDAgMC0xLjk5OSAxLjk5N3Y3LjYzYS44Ni44NiAwIDAgMS0xLjcxOCAwVjMuOTIzYTEuOTk5IDEuOTk5IDAgMCAwLTMuOTk3IDB2MTYuMTZhLjg2Ljg2IDAgMCAxLTEuNzE5IDBWMTguMDhhLjU3LjU3IDAgMSAwLTEuMTM4IDB2MmExLjk5OCAxLjk5OCAwIDAgMCAzLjk5NiAwVjMuOTJhLjg2Ljg2IDAgMCAxIDEuNzE5IDB2MTIuNzNhMS45OTkgMS45OTkgMCAwIDAgMy45OTYgMFY5LjAyM2EuODYuODYgMSAxLjcyIDB2Ni42ODZhLjU3LjU3IDAgMCAwIDEuMTM4IDBWOS4wMjJhMiAyIDAgMCAwLTEuOTk4LTEuOTk3Ii8+PC9zdmc+",
       "color": "#ffffff",
       "models": [
+        {
+          "id": "MiniMax-M2.5",
+          "name": "MiniMax M2.5",
+          "contextLength": 204800,
+          "capabilities": [
+            "tools",
+            "reasoning"
+          ]
+        },
+        {
+          "id": "MiniMax-M2.5-lightning",
+          "name": "MiniMax M2.5 Lightning",
+          "contextLength": 204800,
+          "capabilities": [
+            "tools",
+            "reasoning"
+          ]
+        },
         {
           "id": "MiniMax-M2.1",
           "name": "MiniMax M2.1",

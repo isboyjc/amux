@@ -1,9 +1,9 @@
 ---
 title: Zhipu Adapter
-description: Use the Zhipu adapter to connect to Zhipu AI's GLM series models
+description: Use the Zhipu adapter to connect to Zhipu AI's GLM series models including GLM-5
 ---
 
-The Zhipu adapter provides integration with the Zhipu AI API. Zhipu AI offers the GLM series of large language models, with an API that is fully compatible with the OpenAI format.
+The Zhipu adapter provides integration with the Zhipu AI API. Zhipu AI offers the GLM series of large language models, with an API that is fully compatible with the OpenAI format. The latest GLM-5 is a 744B-parameter MoE model (44B active per token) with 200K context window, achieving open-source SOTA in coding and agent capabilities.
 
 ## Installation
 
@@ -30,7 +30,7 @@ const bridge = createBridge({
 })
 
 const response = await bridge.chat({
-  model: 'glm-4.7',
+  model: 'glm-5',
   messages: [
     { role: 'system', content: 'You are a helpful assistant.' },
     { role: 'user', content: 'What is Amux?' }
@@ -46,7 +46,8 @@ Zhipu AI offers various GLM models:
 
 | Model | Description |
 |-------|-------------|
-| glm-4.7 | Latest flagship model with best performance |
+| glm-5 | Latest flagship model, 744B MoE (44B active), 200K context, SOTA coding & agent |
+| glm-4.7 | Previous generation flagship with reasoning capabilities |
 | glm-4.6 | High-performance model balancing capability and cost |
 | glm-4.5 | Cost-effective model for everyday tasks |
 | glm-4v | Multimodal model supporting visual understanding |
@@ -63,7 +64,7 @@ Zhipu AI models are continuously updated. Please refer to the official documenta
 
     ```typescript
     const response = await bridge.chat({
-      model: 'glm-4.7',
+      model: 'glm-5',
       messages: [
         { role: 'user', content: 'Tell me about Zhipu AI' }
       ],
@@ -78,7 +79,7 @@ Zhipu AI models are continuously updated. Please refer to the official documenta
 
     ```typescript
     const response = await bridge.chat({
-      model: 'glm-4.7',
+      model: 'glm-5',
       messages: [
         { role: 'user', content: 'What time is it in Beijing?' }
       ],
@@ -105,7 +106,7 @@ Zhipu AI models are continuously updated. Please refer to the official documenta
 
     ```typescript
     const stream = bridge.chatStream({
-      model: 'glm-4.7',
+      model: 'glm-5',
       messages: [
         { role: 'user', content: 'Tell me a story' }
       ],
@@ -165,7 +166,7 @@ const quickResponse = await bridge.chat({
 
 // Use flagship model for complex tasks
 const complexTask = await bridge.chat({
-  model: 'glm-4.7',
+  model: 'glm-5',
   messages: [
     { role: 'user', content: 'Please analyze the performance issues in this code...' }
   ]
@@ -176,7 +177,7 @@ const complexTask = await bridge.chat({
 
 ```typescript
 const response = await bridge.chat({
-  model: 'glm-4.7',
+  model: 'glm-5',
   messages: [
     {
       role: 'system',
@@ -200,7 +201,7 @@ const messages = [
 ]
 
 const response = await bridge.chat({
-  model: 'glm-4.7',
+  model: 'glm-5',
   messages
 })
 ```

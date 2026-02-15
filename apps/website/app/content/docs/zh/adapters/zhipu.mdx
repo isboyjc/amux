@@ -1,9 +1,9 @@
 ---
 title: Zhipu 适配器
-description: 使用 Zhipu 适配器连接智谱 AI 的 GLM 系列模型
+description: 使用 Zhipu 适配器连接智谱 AI 的 GLM 系列模型，包括最新的 GLM-5
 ---
 
-Zhipu 适配器提供了与智谱 AI（Zhipu AI）API 的集成。智谱 AI 提供了 GLM 系列大语言模型，API 完全兼容 OpenAI 格式。
+Zhipu 适配器提供了与智谱 AI（Zhipu AI）API 的集成。智谱 AI 提供了 GLM 系列大语言模型，API 完全兼容 OpenAI 格式。最新的 GLM-5 是一个 744B 参数的 MoE 模型（每 token 激活 44B），拥有 200K 上下文窗口，在编码和 Agent 能力上达到开源 SOTA 水平。
 
 ## 安装
 
@@ -30,7 +30,7 @@ const bridge = createBridge({
 })
 
 const response = await bridge.chat({
-  model: 'glm-4.7',
+  model: 'glm-5',
   messages: [
     { role: 'system', content: '你是一个智能助手。' },
     { role: 'user', content: '什么是 Amux？' }
@@ -46,7 +46,8 @@ console.log(response.choices[0].message.content)
 
 | 模型 | 描述 |
 |------|------|
-| glm-4.7 | 最新一代旗舰模型，性能最强 |
+| glm-5 | 最新旗舰模型，744B MoE（44B 激活），200K 上下文，编码与 Agent SOTA |
+| glm-4.7 | 上一代旗舰模型，支持推理能力 |
 | glm-4.6 | 高性能模型，平衡性能与成本 |
 | glm-4.5 | 高性价比模型，适合日常任务 |
 | glm-4v | 支持视觉理解的多模态模型 |
@@ -63,7 +64,7 @@ console.log(response.choices[0].message.content)
 
     ```typescript
     const response = await bridge.chat({
-      model: 'glm-4.7',
+      model: 'glm-5',
       messages: [
         { role: 'user', content: '介绍一下智谱AI' }
       ],
@@ -78,7 +79,7 @@ console.log(response.choices[0].message.content)
 
     ```typescript
     const response = await bridge.chat({
-      model: 'glm-4.7',
+      model: 'glm-5',
       messages: [
         { role: 'user', content: '北京现在几点？' }
       ],
@@ -105,7 +106,7 @@ console.log(response.choices[0].message.content)
 
     ```typescript
     const stream = bridge.chatStream({
-      model: 'glm-4.7',
+      model: 'glm-5',
       messages: [
         { role: 'user', content: '讲一个故事' }
       ],
@@ -165,7 +166,7 @@ const quickResponse = await bridge.chat({
 
 // 复杂任务使用旗舰模型
 const complexTask = await bridge.chat({
-  model: 'glm-4.7',
+  model: 'glm-5',
   messages: [
     { role: 'user', content: '请分析这段代码的性能问题...' }
   ]
@@ -176,7 +177,7 @@ const complexTask = await bridge.chat({
 
 ```typescript
 const response = await bridge.chat({
-  model: 'glm-4.7',
+  model: 'glm-5',
   messages: [
     {
       role: 'system',
@@ -200,7 +201,7 @@ const messages = [
 ]
 
 const response = await bridge.chat({
-  model: 'glm-4.7',
+  model: 'glm-5',
   messages
 })
 ```

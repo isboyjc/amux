@@ -1,9 +1,9 @@
 ---
 title: MiniMax 适配器
-description: 使用 MiniMax 适配器连接到 MiniMax-M2.1 等模型,支持 Interleaved Thinking
+description: 使用 MiniMax 适配器连接到 MiniMax-M2.5 等模型,支持 Interleaved Thinking
 ---
 
-MiniMax 适配器提供了与 MiniMax API 的集成。MiniMax M2.1 拥有强大的多语言编程能力,并支持 Interleaved Thinking 增强推理能力。
+MiniMax 适配器提供了与 MiniMax API 的集成。MiniMax M2.5 是最新的旗舰模型，采用 MoE 架构（2300 亿总参数，每 token 仅激活 100 亿），在编码和 Agent 任务上达到业界领先水平，成本仅为同类模型的 1/10~1/20。支持 Interleaved Thinking 增强推理能力。
 
 ## 安装
 
@@ -30,7 +30,7 @@ const bridge = createBridge({
 })
 
 const response = await bridge.chat({
-  model: 'MiniMax-M2.1',
+  model: 'MiniMax-M2.5',
   messages: [
     { role: 'system', content: '你是一个有帮助的助手。' },
     { role: 'user', content: '你好,你好吗?' }
@@ -44,6 +44,8 @@ console.log(response.choices[0].message.content)
 
 | 模型 | 说明 | 输出速度 |
 |------|------|----------|
+| `MiniMax-M2.5` | 编码和 Agent SOTA，MoE 架构（2300亿/100亿激活） | 约 50 tps |
+| `MiniMax-M2.5-lightning` | M2.5 极速版：效果不变，速度更快 | 约 100 tps |
 | `MiniMax-M2.1` | 强大多语言编程能力,全面升级编程体验 | 约 60 tps |
 | `MiniMax-M2.1-lightning` | M2.1 极速版:效果不变,更快,更敏捷 | 约 100 tps |
 | `MiniMax-M2` | 专为高效编码与 Agent 工作流而生 | 约 60 tps |
@@ -54,14 +56,14 @@ console.log(response.choices[0].message.content)
   <Tab value="Interleaved Thinking">
     ### Interleaved Thinking
 
-    MiniMax M2.1 支持 Interleaved Thinking,提供透明的推理过程。
+    MiniMax M2.5 / M2.1 支持 Interleaved Thinking，提供透明的推理过程。
     
     **`reasoning_split` 默认已启用** - 思考内容会自动分离:
 
     ```typescript
     // reasoning_split 默认已启用
     const stream = bridge.chatStream({
-      model: 'MiniMax-M2.1',
+      model: 'MiniMax-M2.5',
       messages: [
         { role: 'user', content: '计算: 15 * 24 等于多少?' }
       ],
@@ -81,11 +83,11 @@ console.log(response.choices[0].message.content)
   <Tab value="多语言编程">
     ### 多语言编程
 
-    MiniMax M2.1 在多种编程语言上表现出色:
+    MiniMax M2.5 在多种编程语言上表现出色:
 
     ```typescript
     const response = await bridge.chat({
-      model: 'MiniMax-M2.1',
+      model: 'MiniMax-M2.5',
       messages: [
         {
           role: 'user',
@@ -110,7 +112,7 @@ console.log(response.choices[0].message.content)
 
     ```typescript
     const response = await bridge.chat({
-      model: 'MiniMax-M2.1',
+      model: 'MiniMax-M2.5',
       messages: [
         { role: 'user', content: '北京的天气怎么样?' }
       ],
@@ -137,7 +139,7 @@ console.log(response.choices[0].message.content)
 
     ```typescript
     const stream = bridge.chatStream({
-      model: 'MiniMax-M2.1-lightning',
+      model: 'MiniMax-M2.5-lightning',
       messages: [
         { role: 'user', content: '给我讲一个关于 AI 的故事' }
       ],
@@ -186,7 +188,7 @@ const bridge = createBridge({
 
 // 使用 OpenAI 格式发送请求
 const response = await bridge.chat({
-  model: 'gpt-4', // 将被映射到 MiniMax-M2.1
+  model: 'gpt-4', // 将被映射到 MiniMax-M2.5
   messages: [{ role: 'user', content: '你好' }]
 })
 ```
@@ -207,14 +209,14 @@ const response = await bridge.chat({
 
 ### Interleaved Thinking
 
-MiniMax M2.1 支持 Interleaved Thinking,可以看到模型的推理过程。
+MiniMax M2.5 / M2.1 支持 Interleaved Thinking，可以看到模型的推理过程。
 
 **默认情况下,`reasoning_split` 已启用**,这意味着思考内容会自动与最终答案分离:
 
 ```typescript
 // reasoning_split 默认启用
 const stream = bridge.chatStream({
-  model: 'MiniMax-M2.1',
+  model: 'MiniMax-M2.5',
   messages: [
     { role: 'user', content: '解决这个复杂问题...' }
   ],
@@ -236,7 +238,7 @@ for await (const event of stream) {
 
 ```typescript
 const ir = {
-  model: 'MiniMax-M2.1',
+  model: 'MiniMax-M2.5',
   messages: [
     { role: 'user', content: '解决这个复杂问题...' }
   ],
@@ -258,7 +260,7 @@ MiniMax 的温度参数范围为 (0.0, 1.0]:
 
 ```typescript
 const response = await bridge.chat({
-  model: 'MiniMax-M2.1',
+  model: 'MiniMax-M2.5',
   messages: [{ role: 'user', content: '你好' }],
   temperature: 1.0 // 推荐值: 1.0
 })
@@ -270,32 +272,34 @@ const response = await bridge.chat({
 
 ## 优势
 
+- **SOTA 编码性能**: M2.5 在 SWE-Bench Verified 上达到 80.2%，Multi-SWE-Bench 上达到 51.3%
+- **MoE 架构**: 2300 亿总参数，每 token 仅激活 100 亿，顶级性能，成本仅为同类模型的 1/10~1/20
+- **Interleaved Thinking**: 透明的推理过程，适合复杂任务
 - **多语言编程**: 对 Rust、Java、Golang、C++ 等语言有出色支持
-- **Interleaved Thinking**: 透明的推理过程,适合复杂任务
 - **WebDev & AppDev**: 增强的 Web 和移动应用开发能力
-- **高效**: 更简洁的回复和更低的 token 消耗
 - **Agent 友好**: 对各类 AI 编程工具和 Agent 框架有良好支持
+- **开源**: M2.5 已在 HuggingFace 上以修改版 MIT 许可证开源
 
 ## 最佳实践
 
 ### 1. 选择合适的模型
 
 ```typescript
-// 通用任务,平衡性能
+// SOTA 编码和 Agent 任务
 const response = await bridge.chat({
-  model: 'MiniMax-M2.1',
+  model: 'MiniMax-M2.5',
   messages: [{ role: 'user', content: '解释量子计算' }]
 })
 
-// 需要快速响应
+// M2.5 品质的高速响应
 const fastResponse = await bridge.chat({
-  model: 'MiniMax-M2.1-lightning',
+  model: 'MiniMax-M2.5-lightning',
   messages: [{ role: 'user', content: '快速总结这篇文章' }]
 })
 
-// Agent 工作流
-const agentResponse = await bridge.chat({
-  model: 'MiniMax-M2',
+// 通用任务,平衡性能
+const generalResponse = await bridge.chat({
+  model: 'MiniMax-M2.1',
   messages: [{ role: 'user', content: '帮我调试这段代码' }]
 })
 ```
@@ -305,7 +309,7 @@ const agentResponse = await bridge.chat({
 ```typescript
 // 复杂问题求解
 const ir = {
-  model: 'MiniMax-M2.1',
+  model: 'MiniMax-M2.5',
   messages: [
     {
       role: 'system',
@@ -329,7 +333,7 @@ const ir = {
 
 ```typescript
 const response = await bridge.chat({
-  model: 'MiniMax-M2.1',
+  model: 'MiniMax-M2.5',
   messages: [
     {
       role: 'system',
@@ -357,9 +361,11 @@ const response = await bridge.chat({
 
 ## 相关资源
 
-- [MiniMax 文本生成指南](https://platform.minimax.com/docs/guides/text-generation)
-- [OpenAI API 兼容](https://platform.minimax.com/docs/api-reference/text-openai-api)
-- [MiniMax M2.1 发布](https://minimax.com/news/minimax-m21)
+- [MiniMax 文本生成指南](https://platform.minimax.io/docs/guides/text-generation)
+- [OpenAI API 兼容](https://platform.minimax.io/docs/api-reference/text-openai-api)
+- [MiniMax M2.5 发布](https://www.minimax.io/news/minimax-m25)
+- [MiniMax M2.5 HuggingFace](https://huggingface.co/MiniMaxAI)
+- [MiniMax M2.5 GitHub](https://github.com/MiniMax-AI/MiniMax-M2.5)
 
 ## 下一步
 
