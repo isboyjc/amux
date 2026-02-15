@@ -1,5 +1,16 @@
 # @amux/desktop
 
+## 0.2.3
+
+### Patch Changes
+
+- 68ab84f: ensure deep copying of mappings in Code Switch configuration and model mapping editor
+- 4884859: enhance preset merging logic to prioritize timestamps and improve model integration
+- 96c7c64: enhance UI with new localization strings and model selection features
+- 14e938d: enhance Code Switch functionality for Claude Code integration
+- 5347615: add support for MiniMax M2.5 and update documentation
+- 5347615: add support for ZhiPu GLM5 and update documentation
+
 ## 0.2.2
 
 ### Patch Changes

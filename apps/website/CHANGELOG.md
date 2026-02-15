@@ -1,5 +1,13 @@
 # @amux.ai/website
 
+## 0.1.4
+
+### Patch Changes
+
+- b8b1732: expand provider support and enhance documentation
+- 5347615: add support for MiniMax M2.5 and update documentation
+- 5347615: add support for ZhiPu GLM5 and update documentation
+
 ## 0.1.3
 
 ### Patch Changes
