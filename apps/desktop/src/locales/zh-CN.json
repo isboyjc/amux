@@ -308,7 +308,9 @@
     "add": "添加",
     "create": "创建",
     "show": "显示",
-    "hide": "隐藏"
+    "hide": "隐藏",
+    "selectAll": "全选",
+    "clear": "清空"
   },
   "tunnel": {
     "title": "隧道",
