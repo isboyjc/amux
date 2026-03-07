@@ -1,0 +1,98 @@
+---
+title: 日志
+description: 查看、搜索、过滤和导出详细的请求日志
+---
+
+**Logs** 模块提供通过 Amux Desktop 代理服务器的每一次 API 调用的请求级追踪。
+
+![Logs](/images/log_zh.png)
+
+## 日志条目字段
+
+每条日志记录以下信息：
+
+| 字段 | 描述 |
+| --- | --- |
+| **Proxy Path** | 处理请求的代理 |
+| **Source Model** | 客户端请求的模型名 |
+| **Target Model** | 提供商侧实际使用的模型 |
+| **Status Code** | HTTP 响应状态码 |
+| **Input Tokens** | 请求中的 Token 数 |
+| **Output Tokens** | 响应中的 Token 数 |
+| **Latency** | 请求到响应的耗时（ms） |
+| **Source** | `local` 或 `tunnel` — 请求来自本地网络还是 Cloudflare Tunnel |
+| **Timestamp** | 请求时间 |
+
+## 过滤与搜索
+
+### 文本搜索
+
+使用搜索栏按代理路径、模型名等字段过滤日志。
+
+{/* IMAGE: 搜索栏和过滤结果 */}
+
+### 状态过滤
+
+快速过滤按钮：
+
+- **All**：所有请求
+- **Success**：仅 2xx 成功响应
+- **Failed**：仅错误响应（4xx、5xx）
+
+### 请求详情
+
+点击任意日志条目展开查看完整的请求和响应体（需在 Settings 中启用请求体记录）。
+
+{/* IMAGE: 展开的日志条目，显示请求/响应体 */}
+
+## 导出
+
+支持两种格式导出日志：
+
+| 格式 | 描述 |
+| --- | --- |
+| **JSON** | 完整的结构化数据，适合程序分析 |
+| **CSV** | 电子表格兼容格式，便于快速查看 |
+
+{/* IMAGE: 导出按钮和格式选项 */}
+
+## 清空日志
+
+使用 **Clear** 按钮删除所有日志条目。重置日志历史并释放存储空间。
+
+## 日志设置
+
+在 **[Settings](/zh/docs/desktop/guides/settings) > Logs** 中配置日志行为：
+
+| 设置 | 默认值 | 描述 |
+| --- | --- | --- |
+| **Enabled** | 是 | 是否记录请求日志 |
+| **Save Request Body** | 否 | 在每条日志中存储完整请求负载 |
+| **Save Response Body** | 否 | 在每条日志中存储完整响应负载 |
+| **Retention Days** | 7 | 超过此天数的日志自动删除 |
+| **Max Entries** | 10000 | 保留的最大日志条数 |
+
+<Callout type="info">
+启用请求/响应体日志对调试很有用，但会显著增加存储占用。
+</Callout>
+
+## 使用场景
+
+| 场景 | 日志如何帮助 |
+| --- | --- |
+| **调试** | 检查状态码、延迟和错误信息 |
+| **成本追踪** | 监控不同模型和代理的 Token 使用量 |
+| **性能分析** | 识别慢请求或高延迟提供商 |
+| **使用分析** | 导出日志分析使用模式 |
+| **安全审计** | 追踪请求来源（本地 vs 隧道），识别未授权访问 |
+
+## 下一步
+
+<Cards>
+  <Card title="仪表盘" href="/zh/docs/desktop/guides/dashboard">
+    查看聚合指标和趋势
+  </Card>
+  <Card title="设置" href="/zh/docs/desktop/guides/settings">
+    配置日志保留和存储选项
+  </Card>
+</Cards>

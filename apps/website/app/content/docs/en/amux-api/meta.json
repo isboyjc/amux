@@ -1,0 +1,28 @@
+{
+  "title": "Amux API Platform",
+  "description": "An independent, unified LLM API gateway platform built on top of New API",
+  "root": true,
+  "icon": "Server",
+  "pages": [
+    "index",
+    "quick-start",
+    "api-reference",
+    "---Guides---",
+    "guides/use-with-claude-code",
+    "guides/use-with-codex",
+    "guides/use-with-gemini-cli",
+    "guides/use-with-open-code",
+    "guides/use-with-openclaw",
+    "guides/use-in-projects",
+    "---Install---",
+    "guides/install-claude-code",
+    "guides/install-codex-cli",
+    "guides/install-gemini-cli",
+    "guides/install-open-code",
+    "guides/install-openclaw",
+    "---Advanced---",
+    "guides/desktop-integration",
+    "guides/configuration",
+    "guides/authentication"
+  ]
+}

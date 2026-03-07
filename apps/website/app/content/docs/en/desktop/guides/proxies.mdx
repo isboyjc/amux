@@ -1,0 +1,139 @@
+---
+title: Proxies
+description: Configure bridge proxies with format conversion and direct passthrough proxies
+---
+
+The **Proxies** module is where you create and manage proxy routes — the core of Amux Desktop's API bridging capabilities.
+
+![Proxies](/images/proxy.png)
+
+## Two Proxy Modes
+
+| Mode | Description | Use Case |
+| --- | --- | --- |
+| **Bridge Proxy** | Converts between different API formats via adapters | Client and provider use different formats (e.g. OpenAI → Anthropic) |
+| **Direct Passthrough** | Forwards requests as-is, only injecting API key | Client and provider use the same format |
+
+## Bridge Proxies
+
+Bridge proxies leverage the [Amux LLM Bridge](/docs/llm-bridge) adapter engine to convert request/response formats between different LLM providers.
+
+### Creating a Bridge Proxy
+
+1. Click **Add Proxy**
+2. Fill in the configuration:
+
+{/* IMAGE: Bridge proxy creation dialog */}
+
+| Field | Description |
+| --- | --- |
+| **Name** | Display name |
+| **Proxy Path** | URL path segment (e.g. `my-proxy`), accessible at `/proxies/my-proxy/...` |
+| **Inbound Adapter** | The API format your client sends (`openai`, `anthropic`, etc.) |
+| **Outbound Provider** | The target LLM provider to forward requests to |
+| **Enabled** | Whether this proxy route is active |
+
+### Model Mappings
+
+Model mappings translate client model names to target provider model names.
+
+| Field | Description |
+| --- | --- |
+| **Source Model** | The model name the client sends |
+| **Target Model** | The actual model name on the outbound provider |
+| **Is Default** | Fallback mapping when no source model matches |
+
+{/* IMAGE: Model mapping configuration table */}
+
+### Endpoints
+
+```
+POST http://127.0.0.1:9527/proxies/{proxyPath}/v1/chat/completions
+GET  http://127.0.0.1:9527/proxies/{proxyPath}/v1/models
+```
+
+### Example: OpenAI → Anthropic Bridge
+
+Create a bridge proxy that accepts OpenAI-format requests and routes them to Anthropic:
+
+```
+Name:             OpenAI to Claude
+Proxy Path:       openai-to-claude
+Inbound Adapter:  openai
+Outbound:         Anthropic (provider)
+
+Model Mappings:
+  gpt-4o          → claude-sonnet-4-20250514
+  gpt-4o-mini     → claude-haiku-4-20250514
+  *  (default)    → claude-sonnet-4-20250514
+```
+
+```bash
+curl http://127.0.0.1:9527/proxies/openai-to-claude/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [{"role": "user", "content": "Hello"}],
+    "stream": true
+  }'
+```
+
+The request arrives in OpenAI format, gets converted to Anthropic format, sent to Claude, and the response is converted back to OpenAI format.
+
+## Direct Passthrough Proxies
+
+Direct passthrough proxies forward requests without any format conversion. They're configured on the **[Providers](/docs/desktop/guides/providers)** page by enabling **Enable as Proxy** on a provider.
+
+### Endpoints
+
+```
+POST http://127.0.0.1:9527/providers/{proxyPath}/v1/chat/completions
+GET  http://127.0.0.1:9527/providers/{proxyPath}/v1/models
+```
+
+### When to Use
+
+- Centralizing API key management without format conversion
+- Sharing a provider's API access across multiple tools without exposing the real key
+- Simple scenarios where client and provider use the same API format
+
+## Authentication
+
+When **Unified API Key** is enabled in **[Settings](/docs/desktop/guides/settings)**, clients must include an API key in the `Authorization: Bearer <key>` header.
+
+| Key Format | Behavior |
+| --- | --- |
+| `sk-amux.xxx` | Platform key — validated locally, then the provider's stored key is used |
+| Any other format | Passthrough — forwarded directly to the upstream provider |
+
+Manage platform tokens on the **[Tokens](/docs/desktop/guides/tokens)** page.
+
+## Proxy Server Settings
+
+Global proxy server settings are configured in **[Settings](/docs/desktop/guides/settings)**:
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| **Host** | `127.0.0.1` | Bind address |
+| **Port** | `9527` | Listen port |
+| **Auto Start** | Enabled | Start proxy on app launch |
+| **Timeout** | `60000`ms | Request timeout |
+| **CORS** | Enabled | Cross-Origin Resource Sharing |
+
+## Health Check
+
+```bash
+GET http://127.0.0.1:9527/health
+GET http://127.0.0.1:9527/v1/proxies   # List all proxy routes
+```
+
+## Next Steps
+
+<Cards>
+  <Card title="Code Switch" href="/docs/desktop/guides/code-switch">
+    Route CLI tools through your proxies
+  </Card>
+  <Card title="Dashboard" href="/docs/desktop/guides/dashboard">
+    Monitor proxy request metrics
+  </Card>
+</Cards>

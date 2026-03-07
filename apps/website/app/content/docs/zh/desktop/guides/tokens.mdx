@@ -1,0 +1,93 @@
+---
+title: 令牌
+description: 签发和管理平台 API 令牌，用于代理访问鉴权
+---
+
+**Tokens** 模块管理用于 Amux Desktop 代理服务器访问鉴权的 API 令牌。
+
+![Tokens](/images/token_zh.png)
+
+## 前提条件
+
+首先在 **[Settings](/zh/docs/desktop/guides/settings) > Security** 中启用 **Unified API Key**。未启用时，代理接受所有请求而不需要鉴权。
+
+## 创建令牌
+
+1. 进入 **Tokens** 页面
+2. 点击 **Create Token**
+3. 可选地填写描述性 **Name**（如 "Cursor IDE"、"Claude Code"、"团队成员 A"）
+4. 令牌以 `sk-amux.xxx` 格式生成
+
+{/* IMAGE: 创建令牌对话框 */}
+
+## 令牌属性
+
+| 属性 | 描述 |
+| --- | --- |
+| **Key** | API Key 字符串（`sk-amux.xxx` 格式） |
+| **Name** | 可选的显示名称，用于识别 |
+| **Enabled** | 此令牌当前是否启用 |
+| **Created At** | 创建时间 |
+| **Last Used At** | 最后使用时间 |
+
+## 管理令牌
+
+| 操作 | 描述 |
+| --- | --- |
+| **显示/隐藏** | 切换密钥可见性（默认掩码显示以保安全） |
+| **复制** | 复制密钥到剪贴板 |
+| **启用/禁用** | 切换令牌是否接受请求 |
+| **删除** | 永久移除令牌 |
+
+{/* IMAGE: 令牌操作 - 显示/隐藏、复制、删除 */}
+
+## 使用令牌
+
+在 API 请求的 `Authorization` 头中包含令牌：
+
+```bash
+curl http://127.0.0.1:9527/proxies/my-proxy/v1/chat/completions \
+  -H "Authorization: Bearer sk-amux.xxx" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gpt-4o", "messages": [{"role": "user", "content": "Hello"}]}'
+```
+
+### 在客户端应用中
+
+| 应用 | 配置方式 |
+| --- | --- |
+| **Cursor** | 在模型设置中将 API Key 设为 `sk-amux.xxx` |
+| **Claude Code** | 通过 [Code Switch](/zh/docs/desktop/guides/code-switch) 自动配置 |
+| **自定义应用** | 设置 `Authorization: Bearer sk-amux.xxx` 请求头 |
+
+## 鉴权流程
+
+启用 **Unified API Key** 后，代理会验证传入的密钥：
+
+| Key 格式 | 行为 |
+| --- | --- |
+| `sk-amux.xxx` | **平台 Key** — 本地校验后，使用提供商存储的 Key 发送上游请求 |
+| 其他格式 | **透传** — 直接转发给上游提供商（绕过存储的 Key） |
+
+这种双重机制让你可以：
+- 使用 `sk-amux.xxx` 令牌保护提供商密钥，同时集中管理访问
+- 需要时直接传递原始提供商密钥
+
+## 最佳实践
+
+- 为不同应用或用户创建 **独立令牌**
+- 使用描述性 **名称** 追踪每个令牌的使用场景
+- 不用时 **禁用** 令牌而非删除
+- 定期 **轮换** 令牌：创建新令牌并禁用旧令牌
+- 使用 [Tunnel](/zh/docs/desktop/guides/tunnel) 时务必开启鉴权
+
+## 下一步
+
+<Cards>
+  <Card title="日志" href="/zh/docs/desktop/guides/logs">
+    追踪哪些令牌在发起请求
+  </Card>
+  <Card title="隧道" href="/zh/docs/desktop/guides/tunnel">
+    将代理安全暴露到公网
+  </Card>
+</Cards>

@@ -1,0 +1,162 @@
+---
+title: FAQ
+description: Frequently asked questions about Amux Desktop
+---
+
+## General
+
+### What is the difference between Bridge Proxy and Direct Passthrough?
+
+**Bridge Proxy** converts between different API formats using adapters. For example, it can accept OpenAI-format requests and forward them to Anthropic's API after converting the format. This is ideal when the client and provider use different API formats.
+
+**Direct Passthrough** forwards requests as-is without any format conversion, only injecting the stored API key. Use this when the client and provider already use the same API format.
+
+### What is the default proxy address?
+
+The default proxy server runs at `http://127.0.0.1:9527`. You can change the host and port in [Settings](/docs/desktop/guides/settings).
+
+### Does Amux Desktop require an internet connection?
+
+Yes, an internet connection is needed to forward requests to LLM provider APIs. However, the application itself runs entirely locally — no data is sent to Amux servers (unless you enable Tunnel or Analytics).
+
+### Where is my data stored?
+
+All data is stored locally:
+
+| Platform | Path |
+| --- | --- |
+| macOS | `~/Library/Application Support/amux-desktop/` |
+| Windows | `%APPDATA%/amux-desktop/` |
+| Linux | `~/.config/amux-desktop/` |
+
+## Providers
+
+### Which LLM providers are supported?
+
+Amux Desktop ships with presets for OpenAI, Anthropic, DeepSeek, Moonshot, Qwen, Zhipu, Google Gemini, and MiniMax. You can also add any OpenAI-compatible provider by using the `openai` adapter type with a custom Base URL.
+
+### Are my API keys safe?
+
+Yes. API keys are encrypted and stored locally in the SQLite database. They never leave your machine unless sent to the corresponding provider API.
+
+### How do I add a custom provider not in the presets?
+
+Go to **Providers** → **Add Provider**, select the closest adapter type (most OpenAI-compatible APIs use the `openai` adapter), enter the Base URL and API Key, then add models manually or fetch from the provider's API.
+
+## Proxies
+
+### Can I use multiple proxies at the same time?
+
+Yes. You can create as many bridge proxies and enable as many direct passthrough proxies as you need. Each proxy has its own unique path and can be accessed independently.
+
+### How does model mapping work?
+
+Model mapping translates the model name in client requests to a different model on the target provider. For example, a client requesting `gpt-4o` can be routed to `claude-sonnet-4-20250514` on Anthropic. You can also set a default mapping as a fallback when no specific model matches.
+
+### Why is my proxy returning errors?
+
+Common causes:
+
+1. **Invalid API Key** — Check that the provider's API key is correct
+2. **Wrong Adapter** — Ensure the inbound adapter matches the format your client sends
+3. **Model Not Found** — Verify the target model name is valid on the provider side
+4. **Timeout** — Increase the timeout in Settings if the provider is slow to respond
+5. **Service Not Running** — Check the Dashboard to confirm the proxy server is started
+
+## Code Switch
+
+### What does Code Switch do?
+
+Code Switch modifies your CLI tool's configuration (e.g. Claude Code's `~/.claude/settings.json`) to route requests through Amux Desktop's local proxy. This lets you use any LLM model with Claude Code, not just Anthropic's models.
+
+### Will Code Switch break my Claude Code configuration?
+
+No. Code Switch backs up your original configuration before making changes. When you disable Code Switch, the original configuration is automatically restored.
+
+### Can I use Code Switch with Codex CLI?
+
+Codex support is planned but not yet available. Currently only Claude Code is supported.
+
+## Tunnel
+
+### Is the tunnel secure?
+
+Tunnel traffic is encrypted through Cloudflare's network. However, anyone with the public URL can access your proxy. Always enable **Unified API Key** authentication in Settings when using Tunnel.
+
+### Why can't my tunnel start?
+
+Common causes:
+
+1. **Network Issues** — Ensure you have internet access and no firewall blocking outbound connections to Cloudflare
+2. **cloudflared Download Failed** — The binary is downloaded automatically on first use; check your network connection
+3. **Port Conflict** — Make sure the proxy server is running before starting the tunnel
+
+## Tokens & Security
+
+### What is the Unified API Key?
+
+When enabled, the proxy server requires clients to include a valid API token in the `Authorization: Bearer <key>` header. Without it, the proxy accepts all requests without authentication.
+
+### What's the difference between `sk-amux.xxx` keys and regular keys?
+
+- **`sk-amux.xxx`**: Platform tokens validated locally. The provider's stored API key is used for the upstream request.
+- **Other formats**: Passed through directly to the upstream provider, bypassing the stored key.
+
+### Should I enable authentication?
+
+It's recommended when:
+
+- You use **Tunnel** to expose the proxy to the internet
+- Multiple users or applications access the proxy
+- You want to track per-token usage in logs
+
+For local-only usage, it's optional.
+
+## Performance
+
+### What happens if a provider is slow?
+
+The default request timeout is 60 seconds. You can adjust this in [Settings](/docs/desktop/guides/settings). For streaming requests, the connection remains open until the response completes.
+
+### Does Amux Desktop add significant latency?
+
+Amux Desktop adds minimal overhead (typically < 5ms) for request routing and format conversion. The majority of response time comes from the upstream LLM provider.
+
+### How much disk space does Amux Desktop use?
+
+The application itself is lightweight. Storage usage depends on:
+
+- **Logs**: Configurable retention (default 7 days, max 10000 entries)
+- **Database**: Grows with providers, proxies, and tokens (typically < 10MB)
+- **Request/Response Bodies**: If enabled in log settings, can grow significantly
+
+## Troubleshooting
+
+### The proxy server won't start
+
+1. Check if the port (default 9527) is already in use by another application
+2. Try changing the port in Settings
+3. Restart Amux Desktop
+
+### Streaming responses are not working
+
+1. Ensure the client is sending `"stream": true` in the request body
+2. Check that the target provider supports streaming for the selected model
+3. Verify CORS settings if calling from a browser
+
+### Config import fails
+
+1. Ensure the file is a valid JSON export from Amux Desktop
+2. Check the file is from a compatible version
+3. Try restarting the application and importing again
+
+## Next Steps
+
+<Cards>
+  <Card title="Quick Start" href="/docs/desktop/quick-start">
+    Get started with Amux Desktop
+  </Card>
+  <Card title="Settings" href="/docs/desktop/guides/settings">
+    Configure application settings
+  </Card>
+</Cards>

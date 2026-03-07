@@ -1,0 +1,84 @@
+---
+title: 在 Claude Code 中使用
+description: 将 Claude Code CLI 连接到 Amux API Platform 以使用所有支持的模型
+---
+
+[Claude Code](https://docs.anthropic.com/en/docs/claude-code) 是 Anthropic 的 AI 编程助手 CLI。将其连接到 Amux API Platform 后，你可以使用 GPT、Grok、MiniMax 以及平台支持的所有模型。
+
+## 前提条件
+
+- 已安装 Claude Code（[安装指南](/zh/docs/amux-api/guides/install-claude-code)）
+- 拥有 Amux API Platform 账号和 API 令牌（[快速开始](/zh/docs/amux-api/quick-start)）
+
+## 方式一：通过 Amux Desktop Code Switch（推荐）
+
+如果你安装了 [Amux Desktop](/zh/docs/desktop)，可以使用 [Code Switch](/zh/docs/desktop/guides/code-switch) 功能，通过可视化界面配置模型映射和动态切换：
+
+1. 在 Amux Desktop 中添加 Amux API Platform 作为供应商：
+   - **Name**: Amux API
+   - **Adapter Type**: `openai`
+   - **Base URL**: `https://amux.ai`
+   - **API Key**: 你的 Amux API 令牌
+2. 进入 **Code Switch** 创建配置，目标供应商选择 Amux API
+3. 配置模型映射（如 `claude-sonnet` → `gpt-5.4`）
+4. 启用配置
+
+这种方式可以动态切换模型，无需修改环境变量。
+
+## 方式二：环境变量
+
+设置环境变量将 Claude Code 指向 Amux API Platform：
+
+```bash
+export ANTHROPIC_BASE_URL="https://amux.ai"
+export ANTHROPIC_API_KEY="your-amux-api-token"
+```
+
+将其写入 shell 配置文件（`~/.bashrc`、`~/.zshrc` 等）以持久化：
+
+```bash
+echo 'export ANTHROPIC_BASE_URL="https://amux.ai"' >> ~/.zshrc
+echo 'export ANTHROPIC_API_KEY="your-amux-api-token"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+然后正常运行 Claude Code：
+
+```bash
+claude
+```
+
+## 方式三：Claude Code 配置文件
+
+直接编辑 Claude Code 的配置文件 `~/.claude/settings.json`：
+
+```json
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://amux.ai",
+    "ANTHROPIC_API_KEY": "your-amux-api-token"
+  }
+}
+```
+
+## 方式四：CC-Switch
+
+[CC-Switch](https://github.com/foreveryh/claude-code-switch) 是一个基于 Shell 的 Claude Code 模型一键切换工具，支持多种供应商和自定义配置。
+
+## 方式五：CC-Switch-CLI
+
+[CC-Switch-CLI](https://github.com/farion1231/cc-switch) 是一个跨平台 CLI 工具（Rust 构建），支持管理 Claude Code、Codex 和 Gemini CLI 的供应商配置。
+
+## 验证
+
+运行 `claude` 并发送测试消息，如果收到回复则连接成功。
+
+```bash
+claude "Hello, what model are you?"
+```
+
+## 注意事项
+
+- Amux API Platform 使用 OpenAI 兼容 API 格式，Claude Code 可以通过 Base URL 覆盖来使用
+- 可用模型取决于你的 Amux API 账号和额度
+- 完整支持流式响应

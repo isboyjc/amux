@@ -1,0 +1,141 @@
+---
+title: Install Open Code
+description: Download and install Open Code CLI
+---
+
+[Open Code](https://opencode.ai) is an open-source AI coding agent for the terminal. Once installed, you can [use it with Amux API Platform](/docs/amux-api/guides/use-with-open-code) to access any supported model.
+
+## System Requirements
+
+| Requirement | Minimum |
+| --- | --- |
+| **OS** | macOS, Linux, Windows |
+| **Terminal** | Modern terminal emulator (Kitty, Ghostty, Alacritty, WezTerm, etc.) |
+| **Network** | Internet connection required |
+
+You'll also need API keys for your preferred LLM provider.
+
+## Installation
+
+### Quick Install (Recommended)
+
+**macOS / Linux / WSL:**
+
+```bash
+curl -fsSL https://opencode.ai/install | bash
+```
+
+### npm
+
+```bash
+npm install -g opencode-ai
+```
+
+Also available via yarn, pnpm, and bun:
+
+```bash
+yarn global add opencode-ai
+pnpm add -g opencode-ai
+bun add -g opencode-ai
+```
+
+### Homebrew (macOS / Linux)
+
+```bash
+brew install anomalyco/tap/opencode
+```
+
+The OpenCode tap is recommended for the most up-to-date releases.
+
+### Arch Linux
+
+```bash
+sudo pacman -S opencode
+# Or from AUR (latest)
+paru -S opencode-bin
+```
+
+### Windows
+
+**Chocolatey:**
+
+```bash
+choco install opencode
+```
+
+**Scoop:**
+
+```bash
+scoop install opencode
+```
+
+### Docker
+
+```bash
+docker run -it --rm ghcr.io/anomalyco/opencode
+```
+
+### Mise
+
+```bash
+mise use -g github:anomalyco/opencode
+```
+
+### GitHub Releases
+
+Download platform-specific binaries from the [GitHub Releases](https://github.com/opencode-ai/opencode/releases) page.
+
+## Verify Installation
+
+```bash
+opencode --version
+```
+
+## Configure a Provider
+
+On first launch, use the `/connect` command to configure your LLM provider:
+
+```bash
+opencode
+```
+
+Then inside OpenCode:
+
+```
+/connect
+```
+
+### Using Environment Variables
+
+```bash
+export OPENAI_API_KEY="sk-..."
+export OPENAI_BASE_URL="https://api.openai.com/v1"
+opencode
+```
+
+## Quick Start
+
+Navigate to your project and start Open Code:
+
+```bash
+cd /path/to/your/project
+opencode
+```
+
+Initialize project analysis:
+
+```
+/init
+```
+
+This analyzes your project and creates an `AGENTS.md` file to help Open Code understand the codebase.
+
+## Using with Amux API Platform
+
+After installing Open Code, see [Use with Open Code](/docs/amux-api/guides/use-with-open-code) to connect it to Amux API Platform and access GPT, Grok, MiniMax, and other models.
+
+## Resources
+
+- [Open Code Documentation](https://dev.opencode.ai/docs)
+- [Open Code GitHub](https://github.com/opencode-ai/opencode)
+- [npm Package](https://www.npmjs.com/package/opencode-ai)

@@ -1,0 +1,96 @@
+---
+title: Introduction
+description: Amux Desktop - A personal cross-platform desktop LLM client with built-in gateway services
+---
+
+## What is Amux Desktop?
+
+Amux Desktop is a personal cross-platform desktop LLM client with built-in gateway services. It runs a local proxy server on your machine, enabling format conversion and intelligent routing between different LLM provider APIs.
+
+![Amux Desktop](/images/demo1.png)
+
+### Core Features
+
+- **Multi-Provider Support**: Built-in presets for OpenAI, Anthropic, DeepSeek, Moonshot, Qwen, Zhipu, Google Gemini, MiniMax, and custom providers
+- **Two Proxy Modes**: Bridge proxies (format conversion via adapters) and direct passthrough proxies
+- **Code Switch**: One-click switching of Claude Code / Codex CLI to use any model through your proxy
+- **AI Chat**: Built-in chat interface for testing proxies and conversing with models
+- **Real-time Dashboard**: Live metrics including request count, success rate, latency, and model usage trends
+- **Request Logging**: Detailed request/response logs with filtering, search, and export
+- **Platform API Tokens**: Issue and manage API tokens for authenticating proxy access
+- **Cloudflare Tunnel**: Expose your local proxy to the internet securely via Cloudflare Tunnel
+- **OAuth Integration**: Connect third-party OAuth accounts for provider API key pools
+- **System Tray**: Minimize to system tray, run proxy server in background
+- **Auto Launch**: Start automatically on system boot
+- **Config Import/Export**: Backup and migrate your full configuration
+- **Themes & i18n**: Light / Dark / System theme, English and Chinese UI
+
+### Functional Modules
+
+| Module | Description |
+| --- | --- |
+| **Chat** | Built-in AI conversation, select proxy to test any model |
+| **Dashboard** | Service status, request metrics, model usage trends |
+| **Providers** | Manage LLM providers, API keys, and model lists |
+| **Proxies** | Configure bridge proxies (with adapter conversion) and direct passthrough proxies |
+| **Code Switch** | Configure Claude Code / Codex CLI to route through your proxy |
+| **OAuth** | Connect OAuth accounts and manage API key pools |
+| **Tunnel** | Create Cloudflare tunnels for public access to local proxy |
+| **Tokens** | Issue and manage platform API tokens |
+| **Logs** | View and export detailed request logs |
+| **Settings** | Proxy server, logging, security, appearance, and more |
+
+### Architecture
+
+```
+Clients (Cursor, Claude Code, VS Code, Custom Apps)
+              │
+              ▼
+   ┌──────────────────────────┐
+   │      Amux Desktop         │
+   │    Local Proxy Server     │
+   │    (127.0.0.1:9527)       │
+   ├──────────────────────────┤
+   │ Bridge Proxies            │ ← Format conversion via adapters
+   │ Direct Passthrough        │ ← Forward as-is with key injection
+   │ Code Switch               │ ← CLI tool routing
+   │ Unified API Key Auth      │
+   │ Metrics & Logging         │
+   └──┬──────┬──────┬─────┬──┘
+      │      │      │     │
+      ▼      ▼      ▼     ▼
+   OpenAI  Claude  DeepSeek  Gemini  ...
+```
+
+### Tech Stack
+
+| Component | Technology |
+| --- | --- |
+| **Framework** | Electron + React + TypeScript |
+| **Build** | electron-vite + Vite |
+| **UI** | shadcn/ui + TailwindCSS |
+| **State** | Zustand |
+| **Router** | React Router |
+| **Database** | better-sqlite3 |
+| **Proxy Server** | Fastify |
+| **Charts** | Recharts |
+| **Core** | @amux.ai/llm-bridge + adapter packages |
+
+### Related Products
+
+- **[Amux LLM Bridge](/docs/llm-bridge)**: The core adapter conversion engine powering Desktop's bridge proxies
+- **[Amux API Platform](/docs/amux-api)**: An independent Web-based LLM API gateway platform. In a future release, Desktop will integrate Amux API Platform support, bridging the Web-based API gateway with the local client for quick setup
+
+## Next Steps
+
+<Cards>
+  <Card title="Installation" href="/docs/desktop/installation">
+    Download and install Amux Desktop
+  </Card>
+  <Card title="Quick Start" href="/docs/desktop/quick-start">
+    Set up your first proxy in minutes
+  </Card>
+  <Card title="Providers" href="/docs/desktop/guides/providers">
+    Configure LLM providers and API keys
+  </Card>
+</Cards>

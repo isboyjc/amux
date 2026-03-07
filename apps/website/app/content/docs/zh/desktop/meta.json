@@ -1,0 +1,24 @@
+{
+  "title": "Amux Desktop",
+  "description": "个人跨平台桌面大模型客户端，内置网关服务",
+  "root": true,
+  "icon": "Monitor",
+  "pages": [
+    "index",
+    "installation",
+    "quick-start",
+    "---功能模块---",
+    "guides/chat",
+    "guides/dashboard",
+    "guides/providers",
+    "guides/proxies",
+    "guides/code-switch",
+    "guides/oauth",
+    "guides/tunnel",
+    "guides/tokens",
+    "guides/logs",
+    "guides/settings",
+    "---其他---",
+    "guides/faq"
+  ]
+}

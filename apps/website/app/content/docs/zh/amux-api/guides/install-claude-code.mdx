@@ -1,0 +1,115 @@
+---
+title: 安装 Claude Code
+description: 下载并安装 Anthropic 的 Claude Code CLI
+---
+
+[Claude Code](https://docs.anthropic.com/en/docs/claude-code) 是 Anthropic 官方的 AI 编程助手 CLI。安装后，你可以[通过 Amux API Platform 使用](/zh/docs/amux-api/guides/use-with-claude-code)，或通过 [Amux Desktop 的 Code Switch](/zh/docs/desktop/guides/code-switch) 将 Claude Code 路由到任意 LLM 供应商。
+
+## 系统要求
+
+| 要求 | 最低配置 |
+| --- | --- |
+| **操作系统** | macOS 13.0+、Ubuntu 20.04+、Debian 10+、Alpine Linux 3.19+、Windows 10 1809+ |
+| **Shell** | Bash、Zsh、PowerShell 或 CMD |
+| **网络** | 需要互联网连接 |
+
+Windows 需要安装 [Git for Windows](https://git-scm.com/downloads/win)。
+
+## 安装
+
+### 原生安装器（推荐）
+
+原生安装器支持后台自动更新，不依赖 Node.js。
+
+**macOS / Linux / WSL：**
+
+```bash
+curl -fsSL https://claude.ai/install.sh | bash
+```
+
+**Windows (PowerShell)：**
+
+```powershell
+irm https://claude.ai/install.ps1 | iex
+```
+
+**Windows (CMD)：**
+
+```cmd
+curl -fsSL https://claude.ai/install.cmd -o install.cmd && install.cmd && del install.cmd
+```
+
+### Homebrew (macOS)
+
+```bash
+brew install --cask claude-code
+```
+
+Homebrew 安装不会自动更新，请定期运行 `brew upgrade claude-code` 获取最新版本。
+
+### WinGet (Windows)
+
+```powershell
+winget install Anthropic.ClaudeCode
+```
+
+WinGet 安装不会自动更新，请定期运行 `winget upgrade Anthropic.ClaudeCode`。
+
+### npm（已弃用）
+
+npm 安装方式已弃用，建议使用原生安装器。
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+需要 [Node.js 18+](https://nodejs.org/en/download)。
+
+## 验证安装
+
+```bash
+claude --version
+```
+
+更详细的检查：
+
+```bash
+claude doctor
+```
+
+## 认证
+
+Claude Code 需要 Pro、Max、Teams、Enterprise 或 Console 账号。运行 `claude` 启动浏览器认证流程：
+
+```bash
+claude
+```
+
+### 使用 API Key
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+claude
+```
+
+## 从 npm 迁移
+
+如果之前通过 npm 安装：
+
+```bash
+curl -fsSL https://claude.ai/install.sh | bash
+npm uninstall -g @anthropic-ai/claude-code
+```
+
+现有配置文件会保留并自动迁移。
+
+## 配合 Amux API Platform 使用
+
+安装 Claude Code 后，详见[在 Claude Code 中使用](/zh/docs/amux-api/guides/use-with-claude-code)，将其连接到 Amux API Platform 以访问 GPT、Grok、MiniMax 等模型。
+
+你也可以使用 [Amux Desktop 的 Code Switch](/zh/docs/desktop/guides/code-switch) 将所有 Claude Code 请求路由到本地代理，实现动态模型切换。
+
+## 相关资源
+
+- [Claude Code 官方文档](https://docs.anthropic.com/en/docs/claude-code)
+- [Claude Code GitHub](https://github.com/anthropics/claude-code)

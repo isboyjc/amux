@@ -1,0 +1,93 @@
+---
+title: Tokens
+description: Issue and manage platform API tokens for authenticating proxy access
+---
+
+The **Tokens** module manages API tokens for authenticating access to your Amux Desktop proxy server.
+
+![Tokens](/images/token.png)
+
+## Prerequisites
+
+Enable **Unified API Key** in **[Settings](/docs/desktop/guides/settings) > Security** first. Without this, the proxy accepts all requests without authentication.
+
+## Creating a Token
+
+1. Go to the **Tokens** page
+2. Click **Create Token**
+3. Optionally give it a descriptive **Name** (e.g. "Cursor IDE", "Claude Code", "Team Member A")
+4. The token is generated in `sk-amux.xxx` format
+
+{/* IMAGE: Create token dialog */}
+
+## Token Properties
+
+| Property | Description |
+| --- | --- |
+| **Key** | The API key string (`sk-amux.xxx` format) |
+| **Name** | Optional display name for identification |
+| **Enabled** | Whether this token is currently active |
+| **Created At** | When the token was created |
+| **Last Used At** | When the token was last used for a request |
+
+## Managing Tokens
+
+| Action | Description |
+| --- | --- |
+| **Show/Hide** | Toggle key visibility (masked by default for security) |
+| **Copy** | Copy the key to clipboard |
+| **Enable/Disable** | Toggle whether the token accepts requests |
+| **Delete** | Permanently remove the token |
+
+{/* IMAGE: Token actions - show/hide, copy, delete */}
+
+## Using Tokens
+
+Include the token in the `Authorization` header of API requests:
+
+```bash
+curl http://127.0.0.1:9527/proxies/my-proxy/v1/chat/completions \
+  -H "Authorization: Bearer sk-amux.xxx" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gpt-4o", "messages": [{"role": "user", "content": "Hello"}]}'
+```
+
+### In Client Applications
+
+| Application | Configuration |
+| --- | --- |
+| **Cursor** | Set API Key to `sk-amux.xxx` in model settings |
+| **Claude Code** | Configured automatically via [Code Switch](/docs/desktop/guides/code-switch) |
+| **Custom App** | Set `Authorization: Bearer sk-amux.xxx` header |
+
+## Authentication Flow
+
+When **Unified API Key** is enabled, the proxy validates incoming keys:
+
+| Key Format | Behavior |
+| --- | --- |
+| `sk-amux.xxx` | **Platform key** — validated locally, then the provider's stored key is used for the upstream request |
+| Any other format | **Passthrough** — forwarded directly to the upstream provider (bypasses stored key) |
+
+This dual behavior lets you:
+- Use `sk-amux.xxx` tokens to protect your provider keys while centralizing access
+- Pass through a raw provider key when needed for direct access
+
+## Best Practices
+
+- Create **separate tokens** for different applications or users
+- Use descriptive **names** to track which token is used where
+- **Disable** tokens when not in use, rather than deleting them
+- **Rotate** tokens periodically by creating new ones and disabling old ones
+- Always enable authentication when using [Tunnel](/docs/desktop/guides/tunnel)
+
+## Next Steps
+
+<Cards>
+  <Card title="Logs" href="/docs/desktop/guides/logs">
+    Track which tokens are making requests
+  </Card>
+  <Card title="Tunnel" href="/docs/desktop/guides/tunnel">
+    Expose your proxy securely to the internet
+  </Card>
+</Cards>

@@ -1,0 +1,131 @@
+---
+title: 快速开始
+description: 注册、创建 API 令牌，开始使用 Amux API Platform
+---
+
+## 步骤 1：注册账号
+
+1. 访问 [https://amux.ai](https://amux.ai)
+2. 点击 **注册** 创建新账号
+3. 使用邮箱完成注册
+
+Amux API Platform 目前**限时开放注册**。注册后，部分内测用户将获得兑换码以获得额度。
+
+### 兑换额度
+
+如果您有兑换码：
+
+1. 登录平台
+2. 进入账户设置或钱包页面
+3. 输入兑换码获取额度
+
+## 步骤 2：创建 API 令牌
+
+1. 登录 [https://amux.ai](https://amux.ai)
+2. 进入 **令牌** → **创建令牌**
+3. 为令牌命名（例如 "我的应用"、"Cursor"、"Claude Code"）
+4. 点击 **创建** 并复制生成的令牌
+
+请妥善保管令牌 — 它可以访问您的账户额度。
+
+## 步骤 3：开始发送请求
+
+使用以下配置连接：
+
+| 设置 | 值 |
+| --- | --- |
+| **Base URL** | `https://amux.ai` |
+| **API Key** | 步骤 2 中创建的 API 令牌 |
+
+### 使用 curl
+
+```bash
+curl https://amux.ai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-api-token" \
+  -d '{
+    "model": "gpt-5.4",
+    "messages": [
+      {"role": "user", "content": "你好！"}
+    ]
+  }'
+```
+
+### 使用 OpenAI SDK
+
+```ts
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://amux.ai/v1',
+  apiKey: 'your-api-token',
+});
+
+const response = await client.chat.completions.create({
+  model: 'gpt-5.4',
+  messages: [{ role: 'user', content: '你好！' }],
+});
+
+console.log(response.choices[0].message.content);
+```
+
+### 使用 Python
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://amux.ai/v1",
+    api_key="your-api-token",
+)
+
+response = client.chat.completions.create(
+    model="gpt-5.4",
+    messages=[{"role": "user", "content": "你好！"}],
+)
+
+print(response.choices[0].message.content)
+```
+
+## 可用模型
+
+您可以通过 Amux API 使用以下模型：
+
+| 提供商 | 可用模型 |
+| --- | --- |
+| **OpenAI** | GPT-5.4、GPT-4o、GPT-4、o3-mini 等 |
+| **xAI** | Grok 全系（文本、图像、视频生成） |
+| **MiniMax** | M2.5 及 M 全系模型 |
+
+更多提供商（Claude、Gemini 等）将逐步接入。
+
+## 配合 AI 工具使用
+
+Amux API 兼容任何支持 OpenAI API 格式的工具：
+
+| 工具 | Base URL 设置 | API Key 设置 |
+| --- | --- | --- |
+| **Cursor** | 覆盖 OpenAI Base URL | API 令牌 |
+| **Claude Code** | 通过 Amux Desktop C/S 代理 | API 令牌 |
+| **VS Code (Continue)** | 自定义提供商 Base URL | API 令牌 |
+| **OpenClaw** | 自定义供应商 Base URL | API 令牌 |
+| **Amux Desktop** | 内置集成（即将推出） | API 令牌 |
+
+详见 [Desktop 集成](/zh/docs/amux-api/guides/desktop-integration)，了解与 Amux Desktop 搭配使用的详细设置说明。
+
+## 下一步
+
+<Cards>
+  <Card title="在 Claude Code 中使用" href="/zh/docs/amux-api/guides/use-with-claude-code">
+    将 Claude Code 连接到 Amux API
+  </Card>
+  <Card title="在 Codex CLI 中使用" href="/zh/docs/amux-api/guides/use-with-codex">
+    将 OpenAI Codex CLI 连接到 Amux API
+  </Card>
+  <Card title="在 OpenClaw 中使用" href="/zh/docs/amux-api/guides/use-with-openclaw">
+    将 OpenClaw 连接到 Amux API
+  </Card>
+  <Card title="在工程中使用" href="/zh/docs/amux-api/guides/use-in-projects">
+    Python 和 Node.js 集成示例
+  </Card>
+</Cards>

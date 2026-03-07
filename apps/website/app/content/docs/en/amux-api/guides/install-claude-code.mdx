@@ -1,0 +1,115 @@
+---
+title: Install Claude Code
+description: Download and install Anthropic's Claude Code CLI
+---
+
+[Claude Code](https://docs.anthropic.com/en/docs/claude-code) is Anthropic's official AI coding assistant CLI. Once installed, you can [use it with Amux API Platform](/docs/amux-api/guides/use-with-claude-code) or with [Amux Desktop's Code Switch](/docs/desktop/guides/code-switch) to route Claude Code through any LLM provider.
+
+## System Requirements
+
+| Requirement | Minimum |
+| --- | --- |
+| **OS** | macOS 13.0+, Ubuntu 20.04+, Debian 10+, Alpine Linux 3.19+, Windows 10 1809+ |
+| **Shell** | Bash, Zsh, PowerShell, or CMD |
+| **Network** | Internet connection required |
+
+Windows requires [Git for Windows](https://git-scm.com/downloads/win).
+
+## Installation
+
+### Native Installer (Recommended)
+
+The native installer auto-updates in the background and does not require Node.js.
+
+**macOS / Linux / WSL:**
+
+```bash
+curl -fsSL https://claude.ai/install.sh | bash
+```
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://claude.ai/install.ps1 | iex
+```
+
+**Windows (CMD):**
+
+```cmd
+curl -fsSL https://claude.ai/install.cmd -o install.cmd && install.cmd && del install.cmd
+```
+
+### Homebrew (macOS)
+
+```bash
+brew install --cask claude-code
+```
+
+Homebrew installations do not auto-update. Run `brew upgrade claude-code` periodically to get the latest version.
+
+### WinGet (Windows)
+
+```powershell
+winget install Anthropic.ClaudeCode
+```
+
+WinGet installations do not auto-update. Run `winget upgrade Anthropic.ClaudeCode` periodically.
+
+### npm (Deprecated)
+
+npm installation is deprecated. Use the native installer when possible.
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+Requires [Node.js 18+](https://nodejs.org/en/download).
+
+## Verify Installation
+
+```bash
+claude --version
+```
+
+For a more detailed check:
+
+```bash
+claude doctor
+```
+
+## Authentication
+
+Claude Code requires a Pro, Max, Teams, Enterprise, or Console account. Run `claude` to start the browser-based authentication flow:
+
+```bash
+claude
+```
+
+### Using an API Key
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+claude
+```
+
+## Migrating from npm
+
+If you previously installed via npm:
+
+```bash
+curl -fsSL https://claude.ai/install.sh | bash
+npm uninstall -g @anthropic-ai/claude-code
+```
+
+Your existing configuration files are preserved and automatically migrated.
+
+## Using with Amux API Platform
+
+After installing Claude Code, see [Use with Claude Code](/docs/amux-api/guides/use-with-claude-code) to connect it to Amux API Platform and access GPT, Grok, MiniMax, and other models.
+
+You can also use [Amux Desktop's Code Switch](/docs/desktop/guides/code-switch) to route all Claude Code requests through a local proxy, enabling dynamic model switching.
+
+## Resources
+
+- [Claude Code Documentation](https://docs.anthropic.com/en/docs/claude-code)
+- [Claude Code GitHub](https://github.com/anthropics/claude-code)

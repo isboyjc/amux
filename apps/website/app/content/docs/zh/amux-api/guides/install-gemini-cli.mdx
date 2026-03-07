@@ -1,0 +1,117 @@
+---
+title: 安装 Gemini CLI
+description: 下载并安装 Google 的 Gemini CLI
+---
+
+[Gemini CLI](https://github.com/google-gemini/gemini-cli) 是 Google 官方的 AI 编程助手 CLI，由 Gemini 模型家族驱动。
+
+## 系统要求
+
+| 要求 | 最低配置 |
+| --- | --- |
+| **操作系统** | macOS、Linux、Windows |
+| **Node.js** | 20+ |
+| **网络** | 需要互联网连接 |
+
+## 安装
+
+### npm（推荐）
+
+```bash
+npm install -g @google/gemini-cli
+```
+
+### 免安装运行
+
+```bash
+npx @google/gemini-cli
+```
+
+### Homebrew (macOS)
+
+```bash
+brew install gemini-cli
+```
+
+### MacPorts (macOS)
+
+```bash
+sudo port install gemini-cli
+```
+
+## 验证安装
+
+```bash
+gemini --version
+```
+
+## 认证
+
+### Google 账号（推荐）
+
+运行 `gemini` 后按提示在浏览器中登录：
+
+```bash
+gemini
+```
+
+### API Key
+
+也可以使用 Gemini API Key：
+
+```bash
+export GEMINI_API_KEY="your-api-key"
+gemini
+```
+
+你可以在 [Google AI Studio](https://aistudio.google.com/apikey) 获取 API Key。
+
+## 快速上手
+
+**交互式会话：**
+
+```bash
+gemini
+```
+
+**单次提问：**
+
+```bash
+gemini "explain this code"
+```
+
+## 发布渠道
+
+Gemini CLI 遵循固定的发布周期：
+
+| 渠道 | 周期 | npm Tag |
+| --- | --- | --- |
+| **Stable** | 每周二 UTC 20:00 | `latest` |
+| **Preview** | 每周二 UTC 23:59 | `preview` |
+| **Nightly** | 每天 UTC 00:00 | `nightly` |
+
+安装特定渠道：
+
+```bash
+npm install -g @google/gemini-cli@preview
+npm install -g @google/gemini-cli@nightly
+```
+
+## 配合 Amux API Platform 使用
+
+安装 Gemini CLI 后，详见[在 Gemini CLI 中使用](/zh/docs/amux-api/guides/use-with-gemini-cli)，将其连接到 Amux API Platform。
+
+你也可以通过 [Amux Desktop 代理](/zh/docs/desktop/guides/proxies)路由 Gemini CLI：
+
+```bash
+export GEMINI_API_KEY="sk-amux.xxx"
+export GEMINI_BASE_URL="http://127.0.0.1:9527/providers/{proxyPath}"
+gemini
+```
+
+## 相关资源
+
+- [Gemini CLI GitHub](https://github.com/google-gemini/gemini-cli)
+- [Gemini CLI 官方教程](https://codelabs.developers.google.com/gemini-cli-hands-on)
+- [npm 包](https://www.npmjs.com/package/@google/gemini-cli)
+- [Google AI Studio（获取 API Key）](https://aistudio.google.com/apikey)

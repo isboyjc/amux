@@ -1,0 +1,97 @@
+---
+title: Tunnel
+description: Expose your local proxy to the internet through a secure Cloudflare Tunnel
+---
+
+The **Tunnel** module creates a secure public endpoint for your local Amux Desktop proxy server using Cloudflare Tunnel technology.
+
+![Tunnel](/images/tunnel.png)
+
+## Overview
+
+By default, Amux Desktop's proxy runs on `127.0.0.1:9527` and is only accessible locally. The Tunnel feature assigns a public URL that securely forwards traffic from the internet to your local proxy.
+
+```
+Internet  →  Public URL (xxx.amux.ai)  →  Cloudflare Tunnel  →  127.0.0.1:9527
+```
+
+## How It Works
+
+1. Amux Desktop downloads and manages `cloudflared` automatically
+2. Creates a tunnel through the Amux tunnel API (`tunnel-api.amux.ai`)
+3. Assigns a unique public URL that maps to your local proxy
+4. All traffic is encrypted through Cloudflare's network
+
+## Usage
+
+### Starting a Tunnel
+
+1. Go to the **Tunnel** page
+2. Click **Start Tunnel**
+3. Wait for the tunnel to establish (usually a few seconds)
+4. A public URL is displayed once ready
+
+{/* IMAGE: Tunnel starting with public URL displayed */}
+
+### Using the Public URL
+
+Copy the public URL and use it as the API Base URL in any remote application:
+
+```bash
+curl https://your-tunnel-id.amux.ai/proxies/my-proxy/v1/chat/completions \
+  -H "Authorization: Bearer sk-amux.xxx" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gpt-4o", "messages": [{"role": "user", "content": "Hello"}]}'
+```
+
+### Stopping a Tunnel
+
+Click **Stop Tunnel** to close the connection. The public URL becomes inactive immediately.
+
+## Use Cases
+
+| Scenario | Description |
+| --- | --- |
+| **Remote Servers** | Access your local proxy from cloud servers or remote machines |
+| **Cloud IDEs** | Connect GitHub Codespaces, Gitpod, or other cloud IDEs to your local LLM setup |
+| **Team Sharing** | Temporarily share your proxy configuration with team members |
+| **Mobile Apps** | Connect mobile or external applications to your local proxy |
+
+## Tunnel Status
+
+The Tunnel page displays:
+
+- **Status**: Running / Stopped
+- **Public URL**: The assigned tunnel URL (clickable to copy)
+- **Uptime**: How long the tunnel has been running
+
+{/* IMAGE: Tunnel status details */}
+
+## Security
+
+<Callout type="warn">
+When tunnel is active, anyone with the public URL can access your proxy. Always enable **Unified API Key** authentication in [Settings](/docs/desktop/guides/settings) to require token-based access.
+</Callout>
+
+Recommended security setup:
+
+1. Enable **Unified API Key** in Settings > Security
+2. Create tokens on the [Tokens](/docs/desktop/guides/tokens) page
+3. Share only the token (not the tunnel URL alone) with trusted users
+
+## Requirements
+
+- Internet connection
+- No firewall blocking outbound connections to Cloudflare
+- `cloudflared` binary (downloaded automatically on first use)
+
+## Next Steps
+
+<Cards>
+  <Card title="Tokens" href="/docs/desktop/guides/tokens">
+    Create API tokens for tunnel authentication
+  </Card>
+  <Card title="Settings" href="/docs/desktop/guides/settings">
+    Configure security and proxy settings
+  </Card>
+</Cards>

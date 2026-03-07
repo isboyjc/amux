@@ -1,0 +1,77 @@
+---
+title: 在 Codex CLI 中使用
+description: 将 OpenAI Codex CLI 连接到 Amux API Platform
+---
+
+[Codex CLI](https://github.com/openai/codex) 是 OpenAI 的 AI 编程代理。由于 Amux API Platform 提供 OpenAI 兼容 API，Codex CLI 可以无缝接入。
+
+## 前提条件
+
+- 已安装 Codex CLI（[安装指南](/zh/docs/amux-api/guides/install-codex-cli)）
+- 拥有 Amux API Platform 账号和 API 令牌（[快速开始](/zh/docs/amux-api/quick-start)）
+
+## 方式一：环境变量
+
+设置环境变量将 Codex CLI 指向 Amux API Platform：
+
+```bash
+export OPENAI_BASE_URL="https://amux.ai/v1"
+export OPENAI_API_KEY="your-amux-api-token"
+```
+
+写入 shell 配置文件以持久化：
+
+```bash
+echo 'export OPENAI_BASE_URL="https://amux.ai/v1"' >> ~/.zshrc
+echo 'export OPENAI_API_KEY="your-amux-api-token"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+## 方式二：CC-Switch
+
+[CC-Switch](https://github.com/foreveryh/claude-code-switch) 是一个基于 Shell 的模型一键切换工具，支持多种供应商和自定义配置。
+
+## 方式三：CC-Switch-CLI
+
+[CC-Switch-CLI](https://github.com/farion1231/cc-switch) 是一个跨平台 CLI 工具（Rust 构建），支持管理 Claude Code、Codex 和 Gemini CLI 的供应商配置。
+
+## 使用
+
+正常运行 Codex CLI：
+
+```bash
+# 交互模式
+codex
+
+# 单次命令
+codex "explain this codebase"
+
+# 全自动模式
+codex --full-auto "fix the failing tests"
+```
+
+Codex CLI 将自动通过 Amux API Platform 处理所有请求。
+
+### 模型选择
+
+默认使用 OpenAI 的默认模型，也可以指定其他模型：
+
+```bash
+codex --model gpt-5.4 "review this code"
+```
+
+通过 Amux API 可用的模型包括 GPT-5.4、GPT-4o、Grok 系列、MiniMax M2.5 等。完整列表请参阅[快速开始](/zh/docs/amux-api/quick-start)。
+
+## 验证
+
+```bash
+codex "Hello, what model are you?"
+```
+
+如果收到回复，连接配置正确。
+
+## 注意事项
+
+- Amux API Platform 完全兼容 OpenAI，无需额外配置
+- Codex CLI 的所有功能（流式传输、安全模式、沙箱）均正常工作
+- 可用模型取决于你的 Amux API 账号和额度

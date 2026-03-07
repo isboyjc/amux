@@ -1,34 +1,8 @@
 {
   "title": "文档",
   "pages": [
-    "index",
-    "installation",
-    "quick-start",
-    "core-concepts",
-    "---使用指南---",
-    "guides/basic-usage",
-    "guides/streaming",
-    "guides/tool-calling",
-    "guides/multimodal",
-    "guides/error-handling",
-    "guides/model-mapping",
-    "guides/migration",
-    "---最佳实践---",
-    "best-practices",
-    "faq",
-    "---API 参考---",
-    "api/bridge",
-    "api/adapters",
-    "api/ir",
-    "---适配器---",
-    "adapters/openai",
-    "adapters/anthropic",
-    "adapters/deepseek",
-    "adapters/moonshot",
-    "adapters/zhipu",
-    "adapters/qwen",
-    "adapters/gemini",
-    "adapters/minimax",
-    "adapters/custom-adapter"
+    "desktop",
+    "llm-bridge",
+    "amux-api"
   ]
 }

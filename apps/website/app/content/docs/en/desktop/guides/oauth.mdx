@@ -1,0 +1,74 @@
+---
+title: OAuth
+description: Connect third-party OAuth accounts and build API key pools for higher availability
+---
+
+<Callout type="warn">
+This feature is being deprecated and will be removed in a future release. Please plan accordingly and migrate to alternative solutions.
+</Callout>
+
+The **OAuth** module lets you connect third-party OAuth accounts and build API key pools, enabling load balancing and higher quotas across multiple accounts.
+
+![OAuth](/images/2api.png)
+
+## Supported Providers
+
+| Provider | Description |
+| --- | --- |
+| **Antigravity** | OAuth-based API access |
+| **Codex** | OAuth-based API access |
+
+## Adding an Account
+
+1. Go to the **OAuth** page
+2. Select a provider tab (Antigravity or Codex)
+3. Click **Add Account**
+4. An authorization dialog opens — complete the OAuth flow in the popup window
+5. Once authorized, the account appears in your list
+
+{/* IMAGE: OAuth authorization dialog */}
+
+## Key Pool
+
+Multiple OAuth accounts can form a **Pool Provider** — a special provider that automatically rotates between accounts for:
+
+- **Load Balancing**: Distribute requests across accounts evenly
+- **Higher Quotas**: Combine quotas from multiple accounts
+- **Redundancy**: If one account is rate-limited, others continue serving
+
+### How It Works
+
+When a Pool Provider is created, Amux Desktop automatically cycles through enabled accounts when handling requests. This is transparent to the client — it sees a single provider endpoint.
+
+{/* IMAGE: Pool provider with multiple accounts */}
+
+## Managing Accounts
+
+| Action | Description |
+| --- | --- |
+| **Enable/Disable Pool** | Toggle whether an account participates in the rotation pool |
+| **Refresh Token** | Manually refresh an account's OAuth access token |
+| **Update Quota** | Adjust the account's usage quota settings |
+| **Delete** | Remove the account permanently |
+
+{/* IMAGE: Account management actions */}
+
+## Pool Provider
+
+When you add the first OAuth account for a provider, Amux Desktop can automatically create a **Pool Provider** entry on the Providers page. This Pool Provider:
+
+- Appears alongside regular providers
+- Can be used as the outbound provider for bridge proxies
+- Can be enabled as a direct passthrough proxy
+- Automatically load-balances across all enabled accounts in the pool
+
+## Next Steps
+
+<Cards>
+  <Card title="Tunnel" href="/docs/desktop/guides/tunnel">
+    Expose your proxy to the internet
+  </Card>
+  <Card title="Tokens" href="/docs/desktop/guides/tokens">
+    Manage platform API tokens
+  </Card>
+</Cards>

@@ -1,0 +1,131 @@
+---
+title: Quick Start
+description: Register, create API tokens, and start using Amux API Platform
+---
+
+## Step 1: Register an Account
+
+1. Visit [https://amux.ai](https://amux.ai)
+2. Click **Sign Up** to create a new account
+3. Complete the registration with your email
+
+Amux API Platform is currently in **limited-time open registration**. After registration, selected beta users will receive redemption codes to obtain credits.
+
+### Redeeming Credits
+
+If you have a redemption code:
+
+1. Log in to the platform
+2. Navigate to your account settings or wallet page
+3. Enter the redemption code to receive your credits
+
+## Step 2: Create an API Token
+
+1. Log in to [https://amux.ai](https://amux.ai)
+2. Navigate to **Tokens** → **Create Token**
+3. Give your token a name (e.g., "My App", "Cursor", "Claude Code")
+4. Click **Create** and copy the generated token
+
+Keep your token secure — it provides access to your account's quota.
+
+## Step 3: Start Making Requests
+
+Use the following configuration to connect:
+
+| Setting | Value |
+| --- | --- |
+| **Base URL** | `https://amux.ai` |
+| **API Key** | Your API token from Step 2 |
+
+### Using curl
+
+```bash
+curl https://amux.ai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-api-token" \
+  -d '{
+    "model": "gpt-5.4",
+    "messages": [
+      {"role": "user", "content": "Hello!"}
+    ]
+  }'
+```
+
+### Using OpenAI SDK
+
+```ts
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://amux.ai/v1',
+  apiKey: 'your-api-token',
+});
+
+const response = await client.chat.completions.create({
+  model: 'gpt-5.4',
+  messages: [{ role: 'user', content: 'Hello!' }],
+});
+
+console.log(response.choices[0].message.content);
+```
+
+### Using Python
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://amux.ai/v1",
+    api_key="your-api-token",
+)
+
+response = client.chat.completions.create(
+    model="gpt-5.4",
+    messages=[{"role": "user", "content": "Hello!"}],
+)
+
+print(response.choices[0].message.content)
+```
+
+## Available Models
+
+You can use the following models through Amux API:
+
+| Provider | Available Models |
+| --- | --- |
+| **OpenAI** | GPT-5.4, GPT-4o, GPT-4, o3-mini, and more |
+| **xAI** | Grok series (text, image, video generation) |
+| **MiniMax** | M2.5, and the full M series |
+
+More providers (Claude, Gemini, etc.) will be added progressively.
+
+## Using with AI Tools
+
+Amux API works with any tool that supports the OpenAI API format:
+
+| Tool | Base URL Setting | API Key Setting |
+| --- | --- | --- |
+| **Cursor** | Override OpenAI Base URL | API Token |
+| **Claude Code** | Via Amux Desktop C/S proxy | API Token |
+| **VS Code (Continue)** | Custom provider base URL | API Token |
+| **OpenClaw** | Custom provider base URL | API Token |
+| **Amux Desktop** | Built-in integration (coming soon) | API Token |
+
+See [Desktop Integration](/docs/amux-api/guides/desktop-integration) for detailed setup instructions with Amux Desktop.
+
+## Next Steps
+
+<Cards>
+  <Card title="Use with Claude Code" href="/docs/amux-api/guides/use-with-claude-code">
+    Connect Claude Code to Amux API
+  </Card>
+  <Card title="Use with Codex CLI" href="/docs/amux-api/guides/use-with-codex">
+    Connect OpenAI Codex CLI to Amux API
+  </Card>
+  <Card title="Use with OpenClaw" href="/docs/amux-api/guides/use-with-openclaw">
+    Connect OpenClaw to Amux API
+  </Card>
+  <Card title="Use in Projects" href="/docs/amux-api/guides/use-in-projects">
+    Python and Node.js integration examples
+  </Card>
+</Cards>

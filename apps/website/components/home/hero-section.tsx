@@ -46,7 +46,7 @@ export function HeroSection({ lang }: HeroSectionProps) {
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4">
             <Link
-              href={`/${lang}/docs`}
+              href={`/${lang}/docs/llm-bridge`}
               className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-lg bg-fd-primary text-fd-primary-foreground font-medium hover:bg-fd-primary/90 transition-all hover:scale-105"
             >
               {t.hero.getStarted}

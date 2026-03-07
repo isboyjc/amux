@@ -1,0 +1,74 @@
+---
+title: 仪表盘
+description: 实时服务状态、请求指标和模型使用分析
+---
+
+**Dashboard** 是 Amux Desktop 的首页，提供代理服务健康状况和使用模式的实时概览。
+
+![Dashboard](/images/dashboard_zh.png)
+
+## 服务状态
+
+顶部显示代理服务器的当前状态，提供 **Start** 和 **Stop** 控制按钮。运行时会显示绑定地址（如 `127.0.0.1:9527`）。
+
+{/* IMAGE: 服务状态栏，启动/停止控制 */}
+
+## 指标卡片
+
+四个关键指标以卡片形式展示：
+
+| 指标 | 描述 |
+| --- | --- |
+| **Total Requests** | 自上次重置以来的累计请求数，附带当前每分钟请求数（QPM） |
+| **Success Rate** | 返回 2xx 状态码的请求占比 |
+| **Average Latency** | 所有请求的平均响应时间（毫秒） |
+| **Active Connections** | 当前打开/流式传输中的连接数 |
+
+{/* IMAGE: 四个指标卡片 */}
+
+## 提供商与代理概览
+
+| 部分 | 展示内容 |
+| --- | --- |
+| **Providers** | 提供商总数和已启用数，带提供商 Logo 堆叠 |
+| **Proxies** | 桥接代理 + 直通代理的总数 |
+
+快速了解有多少服务已配置和激活。
+
+## Token 使用量
+
+汇总的 Token 消耗统计：
+
+- **Total Tokens**：所有输入和输出 Token 总和
+- **Input Tokens**：请求中发送的 Token 数
+- **Output Tokens**：响应中接收的 Token 数
+
+{/* IMAGE: Token 使用量部分 */}
+
+## 模型使用图表
+
+时间序列面积图，展示 **过去 24 小时** 内按代理路径（proxyPath）分组的请求分布，以 **30 分钟** 为间隔聚合。
+
+{/* IMAGE: 模型使用面积图 */}
+
+此图表帮助你：
+
+- 识别使用高峰时段
+- 查看哪些代理/模型最受欢迎
+- 检测异常流量模式
+- 了解每日使用分布
+
+## 实时更新
+
+当请求通过代理服务器时，所有 Dashboard 指标会实时更新。QPM（每分钟查询数）值提供当前负载的即时反馈。
+
+## 下一步
+
+<Cards>
+  <Card title="日志" href="/zh/docs/desktop/guides/logs">
+    深入查看单个请求详情
+  </Card>
+  <Card title="代理" href="/zh/docs/desktop/guides/proxies">
+    配置和管理代理路由
+  </Card>
+</Cards>

@@ -61,7 +61,7 @@ export function SolutionSection({ lang }: SolutionSectionProps) {
                   {t.products.bridge.cta}
                 </code>
                 <Link
-                  href={`/${lang}/docs`}
+                  href={`/${lang}/docs/llm-bridge`}
                   className="group/btn inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg bg-fd-primary text-fd-primary-foreground font-medium hover:bg-fd-primary/90 transition-all"
                 >
                   {t.products.bridge.ctaButton}

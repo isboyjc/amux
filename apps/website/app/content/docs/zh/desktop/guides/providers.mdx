@@ -1,0 +1,126 @@
+---
+title: 供应商
+description: 在 Amux Desktop 中配置 LLM 供应商、API 密钥和模型列表
+---
+
+**Providers** 模块管理你的 LLM 服务连接。每个提供商代表一个特定的 LLM API，包含独立的凭证、适配器类型和模型目录。
+
+![Providers](/images/provider_zh.png)
+
+## 内置预设
+
+Amux Desktop 内置了以下主流提供商预设：
+
+| 提供商 | 适配器 | Base URL |
+| --- | --- | --- |
+| **OpenAI** | `openai` | `https://api.openai.com` |
+| **OpenAI (Responses API)** | `openai-responses` | `https://api.openai.com` |
+| **Anthropic** | `anthropic` | `https://api.anthropic.com` |
+| **DeepSeek** | `deepseek` | `https://api.deepseek.com` |
+| **Moonshot** | `moonshot` | `https://api.moonshot.cn` |
+| **通义千问** | `qwen` | `https://dashscope.aliyuncs.com/compatible-mode` |
+| **智谱** | `zhipu` | `https://open.bigmodel.cn/api/paas` |
+| **Google Gemini** | `google` | `https://generativelanguage.googleapis.com` |
+| **MiniMax** | `minimax` | `https://api.minimaxi.com/v1` |
+
+预设包含提供商图标、适配器类型、API 路径以及附带能力元数据（上下文长度、视觉、工具等）的模型列表。
+
+## 添加提供商
+
+1. 点击预设卡片或点击 **Add Provider**
+2. 填写配置字段
+3. 点击 **Save**
+
+{/* IMAGE: 提供商编辑对话框 */}
+
+### 配置字段
+
+| 字段 | 必填 | 描述 |
+| --- | --- | --- |
+| **Name** | 是 | 显示名称 |
+| **Adapter Type** | 是 | API 格式适配器（`openai`、`anthropic`、`deepseek` 等） |
+| **API Key** | 是 | 从提供商获取的 API 密钥 |
+| **Base URL** | 是 | 提供商 API 基础地址 |
+| **Chat Path** | 否 | 聊天补全端点路径（默认为适配器标准路径） |
+| **Models Path** | 否 | 模型列表端点路径 |
+| **Enabled** | — | 是否启用此提供商 |
+| **Enable as Proxy** | — | 是否作为直通代理端点暴露 |
+| **Proxy Path** | 启用代理时 | 直通代理的 URL 路径段 |
+
+## API Key 安全
+
+API Key 经 **加密** 后存储在本地 SQLite 数据库中，除发送到对应提供商 API 外，不会离开你的机器。
+
+## 模型管理
+
+### 预设模型
+
+内置预设附带模型列表和元数据：
+
+- **Model ID**：API 标识符（如 `gpt-4o`、`claude-sonnet-4-20250514`）
+- **显示名称**：易读的模型名称
+- **上下文长度**：最大上下文窗口大小
+- **能力**：视觉、工具调用、推理等
+
+### 从 API 获取
+
+点击 **Fetch Models** 从提供商 API 端点加载最新模型列表，更新本地目录中新发布的模型。
+
+{/* IMAGE: 模型列表和 Fetch Models 按钮 */}
+
+### 自定义模型
+
+手动添加预设和 API 结果中没有的模型。适用于微调模型或自定义部署。
+
+## 自定义提供商
+
+添加不在预设中的提供商：
+
+1. 点击 **Add Provider**
+2. 选择最接近的 **Adapter Type**（大多数 OpenAI 兼容 API 可使用 `openai` 适配器）
+3. 输入服务的 **Base URL** 和 **API Key**
+4. 手动添加模型或从 API 获取
+
+### 示例：自定义 OpenAI 兼容服务
+
+```
+Name:         My Custom LLM
+Adapter Type: openai
+Base URL:     https://my-llm-service.example.com
+API Key:      sk-xxxxx
+Chat Path:    /v1/chat/completions
+Models Path:  /v1/models
+```
+
+## 直通代理
+
+开启提供商的 **Enable as Proxy** 开关，将其作为直通代理端点暴露：
+
+```
+POST http://127.0.0.1:9527/providers/{proxyPath}/v1/chat/completions
+GET  http://127.0.0.1:9527/providers/{proxyPath}/v1/models
+```
+
+直接转发请求，不做格式转换，仅注入已存储的 API Key。
+
+{/* IMAGE: 提供商卡片，Enable as Proxy 开关 */}
+
+## 预设更新
+
+提供商预设可从远程源自动更新。在 **[Settings](/zh/docs/desktop/guides/settings)** 中配置：
+
+- **Remote URL**：获取更新预设的远程地址
+- **Auto Update**：自动检查新预设版本
+
+合并策略基于 `updatedAt` 时间戳，较新的版本优先。
+
+## 下一步
+
+<Cards>
+  <Card title="代理" href="/zh/docs/desktop/guides/proxies">
+    创建带格式转换的桥接代理
+  </Card>
+  <Card title="Code Switch" href="/zh/docs/desktop/guides/code-switch">
+    将 CLI 工具路由到已配置的提供商
+  </Card>
+</Cards>

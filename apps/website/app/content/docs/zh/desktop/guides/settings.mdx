@@ -1,0 +1,112 @@
+---
+title: 设置
+description: 配置代理服务器、日志、安全、外观和数据管理
+---
+
+**Settings** 模块提供全面的应用配置，分为多个部分。
+
+{/* IMAGE: Settings 页面总览 */}
+
+## 外观
+
+| 设置 | 选项 | 描述 |
+| --- | --- | --- |
+| **Theme** | Light / Dark | 应用颜色主题 |
+| **Language** | English / 中文 | 界面语言 |
+
+{/* IMAGE: 外观设置 */}
+
+## 通用
+
+| 设置 | 默认值 | 描述 |
+| --- | --- | --- |
+| **Auto Launch** | 关闭 | 系统启动时自动运行 Amux Desktop |
+| **Minimize to Tray** | 关闭 | 关闭窗口时最小化到系统托盘而非退出 |
+| **Analytics** | 关闭 | 分享匿名使用统计以帮助改进产品 |
+
+## 代理服务器
+
+配置内置代理服务器：
+
+| 设置 | 默认值 | 描述 |
+| --- | --- | --- |
+| **Port** | `9527` | 代理服务器监听端口 |
+| **Host** | `127.0.0.1` | 代理服务器绑定地址 |
+| **Auto Start** | 开启 | 应用启动时自动开启代理服务器 |
+| **Timeout** | `60000`ms | 上游提供商调用的请求超时时间 |
+
+{/* IMAGE: 代理服务器设置 */}
+
+<Callout type="info">
+将 **Host** 改为 `0.0.0.0` 可接受局域网内其他设备的连接（不仅限于 localhost）。
+</Callout>
+
+## 日志
+
+| 设置 | 默认值 | 描述 |
+| --- | --- | --- |
+| **Enabled** | 是 | 记录请求日志 |
+| **Save Request Body** | 否 | 存储完整请求负载（增加存储占用） |
+| **Save Response Body** | 否 | 存储完整响应负载（增加存储占用） |
+| **Retention Days** | 7 | 超过此天数的日志自动删除 |
+| **Max Entries** | 10000 | 保留的最大日志条数 |
+| **Clear Logs** | — | 立即删除所有现有日志条目 |
+
+## 安全
+
+| 设置 | 默认值 | 描述 |
+| --- | --- | --- |
+| **Unified API Key** | 关闭 | 访问代理服务器时要求 API 令牌 |
+
+启用后，客户端必须在 `Authorization: Bearer <key>` 头中包含有效令牌。在 **[Tokens](/zh/docs/desktop/guides/tokens)** 页面管理令牌。
+
+## 数据管理
+
+| 操作 | 描述 |
+| --- | --- |
+| **Export Config** | 将完整配置（提供商、代理、模型映射、设置）导出为 JSON 文件 |
+| **Import Config** | 导入之前导出的配置文件以恢复或迁移设置 |
+| **Refresh Presets** | 从远程源重新加载提供商预设 |
+| **Open Data Directory** | 在系统文件管理器中打开应用数据目录 |
+
+{/* IMAGE: 数据管理部分 */}
+
+### 配置导入/导出
+
+使用导出/导入功能：
+- **备份**：在更新前保存完整配置
+- **迁移**：将配置迁移到新机器
+- **分享**：与团队成员共享代理配置（API Key 出于安全考虑不会导出）
+
+### 预设更新
+
+提供商预设可从远程源自动更新：
+
+| 设置 | 描述 |
+| --- | --- |
+| **Remote URL** | 获取更新预设的远程地址 |
+| **Auto Update** | 自动检查新预设版本 |
+
+合并策略基于 `updatedAt` 时间戳，较新的版本优先。
+
+## 关于
+
+| 信息 | 描述 |
+| --- | --- |
+| **Version** | 当前应用版本 |
+| **Platform** | 操作系统和架构 |
+| **Check for Updates** | 手动检查是否有新版本 |
+| **GitHub** | 项目仓库链接 |
+
+{/* IMAGE: 关于部分 */}
+
+## 下一步
+
+<Cards>
+  <Card title="快速开始" href="/zh/docs/desktop/quick-start">
+    从基础开始上手
+  </Card>
+  <Card title="供应商" href="/zh/docs/desktop/guides/providers">
+    配置 LLM 供应商
+  </Card>
+</Cards>

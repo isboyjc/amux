@@ -26,7 +26,7 @@ export function CTASection({ lang }: CTASectionProps) {
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link
-              href={`/${lang}/docs`}
+              href={`/${lang}/docs/llm-bridge`}
               className="group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-fd-primary text-fd-primary-foreground font-medium hover:bg-fd-primary/90 transition-all"
             >
               {t.cta.primary}

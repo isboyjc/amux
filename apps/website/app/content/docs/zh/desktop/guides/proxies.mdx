@@ -1,0 +1,139 @@
+---
+title: 代理
+description: 配置桥接代理（格式转换）和直通代理
+---
+
+**Proxies** 模块用于创建和管理代理路由 — Amux Desktop API 桥接能力的核心。
+
+![Proxies](/images/proxy_zh.png)
+
+## 两种代理模式
+
+| 模式 | 描述 | 使用场景 |
+| --- | --- | --- |
+| **桥接代理** | 通过适配器在不同 API 格式之间转换 | 客户端和提供商使用不同格式（如 OpenAI → Anthropic） |
+| **直通代理** | 原样转发请求，仅注入 API Key | 客户端和提供商使用相同格式 |
+
+## 桥接代理
+
+桥接代理利用 [Amux LLM Bridge](/zh/docs/llm-bridge) 适配器引擎在不同 LLM 供应商之间转换请求/响应格式。
+
+### 创建桥接代理
+
+1. 点击 **Add Proxy**
+2. 填写配置：
+
+{/* IMAGE: 桥接代理创建对话框 */}
+
+| 字段 | 描述 |
+| --- | --- |
+| **Name** | 显示名称 |
+| **Proxy Path** | URL 路径段（如 `my-proxy`），通过 `/proxies/my-proxy/...` 访问 |
+| **Inbound Adapter** | 客户端发送的 API 格式（`openai`、`anthropic` 等） |
+| **Outbound Provider** | 要转发请求的目标 LLM 提供商 |
+| **Enabled** | 此代理路由是否启用 |
+
+### 模型映射
+
+模型映射将客户端模型名翻译为目标提供商模型名。
+
+| 字段 | 描述 |
+| --- | --- |
+| **Source Model** | 客户端发送的模型名 |
+| **Target Model** | 出站提供商的实际模型名 |
+| **Is Default** | 兜底映射，没有源模型匹配时使用 |
+
+{/* IMAGE: 模型映射配置表 */}
+
+### 端点
+
+```
+POST http://127.0.0.1:9527/proxies/{proxyPath}/v1/chat/completions
+GET  http://127.0.0.1:9527/proxies/{proxyPath}/v1/models
+```
+
+### 示例：OpenAI → Anthropic 桥接
+
+创建一个接受 OpenAI 格式请求并路由到 Anthropic 的桥接代理：
+
+```
+Name:             OpenAI to Claude
+Proxy Path:       openai-to-claude
+Inbound Adapter:  openai
+Outbound:         Anthropic (provider)
+
+Model Mappings:
+  gpt-4o          → claude-sonnet-4-20250514
+  gpt-4o-mini     → claude-haiku-4-20250514
+  *  (default)    → claude-sonnet-4-20250514
+```
+
+```bash
+curl http://127.0.0.1:9527/proxies/openai-to-claude/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [{"role": "user", "content": "Hello"}],
+    "stream": true
+  }'
+```
+
+请求以 OpenAI 格式到达，被转换为 Anthropic 格式发送到 Claude，响应再转换回 OpenAI 格式返回。
+
+## 直通代理
+
+直通代理不做格式转换直接转发请求。在 **[Providers](/zh/docs/desktop/guides/providers)** 页面通过启用提供商的 **Enable as Proxy** 来配置。
+
+### 端点
+
+```
+POST http://127.0.0.1:9527/providers/{proxyPath}/v1/chat/completions
+GET  http://127.0.0.1:9527/providers/{proxyPath}/v1/models
+```
+
+### 适用场景
+
+- 无需格式转换，仅集中管理 API Key
+- 在多个工具间共享提供商 API 访问而不暴露真实密钥
+- 客户端和提供商使用相同 API 格式的简单场景
+
+## 鉴权
+
+在 **[Settings](/zh/docs/desktop/guides/settings)** 中启用 **Unified API Key** 后，客户端必须在 `Authorization: Bearer <key>` 头中包含 API Key。
+
+| Key 格式 | 行为 |
+| --- | --- |
+| `sk-amux.xxx` | 平台 Key — 本地校验后使用提供商存储的 Key |
+| 其他格式 | 透传 — 直接转发给上游提供商 |
+
+在 **[Tokens](/zh/docs/desktop/guides/tokens)** 页面管理平台令牌。
+
+## 代理服务器设置
+
+全局代理服务器设置在 **[Settings](/zh/docs/desktop/guides/settings)** 中配置：
+
+| 设置 | 默认值 | 描述 |
+| --- | --- | --- |
+| **Host** | `127.0.0.1` | 绑定地址 |
+| **Port** | `9527` | 监听端口 |
+| **Auto Start** | 开启 | 应用启动时自动开启代理 |
+| **Timeout** | `60000`ms | 请求超时时间 |
+| **CORS** | 开启 | 跨域资源共享 |
+
+## 健康检查
+
+```bash
+GET http://127.0.0.1:9527/health
+GET http://127.0.0.1:9527/v1/proxies   # 列出所有代理路由
+```
+
+## 下一步
+
+<Cards>
+  <Card title="Code Switch" href="/zh/docs/desktop/guides/code-switch">
+    将 CLI 工具路由到你的代理
+  </Card>
+  <Card title="仪表盘" href="/zh/docs/desktop/guides/dashboard">
+    监控代理请求指标
+  </Card>
+</Cards>

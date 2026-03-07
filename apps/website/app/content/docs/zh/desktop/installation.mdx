@@ -1,0 +1,118 @@
+---
+title: 安装
+description: 在 macOS、Windows 或 Linux 上下载并安装 Amux Desktop
+---
+
+## 系统要求
+
+| 平台 | 要求 |
+| --- | --- |
+| **macOS** | macOS 10.15 (Catalina) 及以上，Intel 或 Apple Silicon |
+| **Windows** | Windows 10 及以上，64 位 |
+| **Linux** | Ubuntu 20.04+、Debian 11+、Fedora 36+ 或同等版本 |
+
+## 下载
+
+从 [GitHub Releases](https://github.com/isboyjc/amux/releases) 页面下载最新版本。
+
+| 平台 | 文件 | 架构 | 下载 |
+| --- | --- | --- | --- |
+| macOS | `amux-desktop-x.x.x.dmg` | Universal (Intel + Apple Silicon) | [GitHub Releases](https://github.com/isboyjc/amux/releases) |
+| Windows | `amux-desktop-x.x.x-setup.exe` | x64 | [GitHub Releases](https://github.com/isboyjc/amux/releases) |
+| Linux | `amux-desktop-x.x.x.AppImage` | x64 | [GitHub Releases](https://github.com/isboyjc/amux/releases) |
+| Linux (Debian) | `amux-desktop-x.x.x.deb` | x64 | [GitHub Releases](https://github.com/isboyjc/amux/releases) |
+
+## 安装步骤
+
+### macOS
+
+1. 打开下载的 `.dmg` 文件
+2. 将 **Amux Desktop** 拖到 **Applications** 文件夹
+3. 首次启动时 macOS 可能弹出安全提示，前往 **系统偏好设置 > 安全性与隐私**，点击 **仍要打开**
+
+{/* IMAGE: macOS 安装 - 拖入 Applications */}
+
+### Windows
+
+1. 运行下载的 `.exe` 安装程序
+2. 按安装向导完成安装
+3. Amux Desktop 将添加到开始菜单
+
+{/* IMAGE: Windows 安装向导 */}
+
+### Linux
+
+**AppImage：**
+
+```bash
+chmod +x amux-desktop-x.x.x.AppImage
+./amux-desktop-x.x.x.AppImage
+```
+
+**Debian/Ubuntu (.deb)：**
+
+```bash
+sudo dpkg -i amux-desktop-x.x.x.deb
+```
+
+## 数据目录
+
+Amux Desktop 的配置、数据库和日志存储在以下位置：
+
+| 平台 | 路径 |
+| --- | --- |
+| macOS | `~/Library/Application Support/amux-desktop/` |
+| Windows | `%APPDATA%/amux-desktop/` |
+| Linux | `~/.config/amux-desktop/` |
+
+该目录包含：
+
+| 文件/文件夹 | 描述 |
+| --- | --- |
+| `database.sqlite` | 本地数据库（提供商、代理、日志、令牌等） |
+| `logs/` | 应用日志文件 |
+| `presets/` | 缓存的提供商预设 |
+
+## 从源码构建
+
+如果你需要从源码构建：
+
+```bash
+git clone https://github.com/isboyjc/amux.git
+cd amux
+
+# 安装依赖
+pnpm install
+
+# 开发模式运行
+cd apps/desktop
+pnpm dev
+
+# 构建分发包
+pnpm package
+```
+
+平台特定构建：
+
+```bash
+pnpm package:mac      # macOS (.dmg)
+pnpm package:win      # Windows (.exe)
+pnpm package:linux    # Linux (.AppImage, .deb)
+```
+
+## 自动更新
+
+Amux Desktop 支持自动检查更新。当有新版本可用时，应用内会弹出更新通知。你也可以在 **Settings** 中手动检查更新。
+
+{/* IMAGE: 自动更新通知 */}
+
+## 下一步
+
+<Cards>
+  <Card title="快速开始" href="/zh/docs/desktop/quick-start">
+    几分钟内设置你的第一个代理
+  </Card>
+  <Card title="供应商" href="/zh/docs/desktop/guides/providers">
+    配置 LLM 供应商和 API 密钥
+  </Card>
+</Cards>

@@ -1,0 +1,97 @@
+---
+title: 安装 OpenClaw
+description: 下载并安装 OpenClaw AI Agent
+---
+
+[OpenClaw](https://openclaw.ai) 是一个开源的 AI Agent，具备丰富的 CLI 功能，支持 Agents、工具、沙箱执行和自定义供应商。安装后，你可以[通过 Amux API Platform 使用](/zh/docs/amux-api/guides/use-with-openclaw)。
+
+## 系统要求
+
+| 要求 | 最低配置 |
+| --- | --- |
+| **操作系统** | macOS 11+、Linux（Ubuntu 20.04+、Debian 11+）、Windows 10/11（WSL2） |
+| **Node.js** | 22+ |
+| **网络** | 需要互联网连接 |
+
+## 安装
+
+### 快速安装（推荐）
+
+```bash
+curl -fsSL https://openclaw.ai/install.sh | bash
+```
+
+自动检测平台并安装对应二进制文件。
+
+### npm
+
+```bash
+npm install -g openclaw@latest
+```
+
+### Docker
+
+```bash
+docker run -it --rm openclaw/openclaw
+```
+
+## 验证安装
+
+```bash
+openclaw --version
+```
+
+## 初始设置
+
+运行引导向导配置你的第一个供应商：
+
+```bash
+openclaw onboard
+```
+
+按提示选择供应商并输入 API Key。也可以通过环境变量或配置文件设置。
+
+### 使用 API Key
+
+```bash
+openclaw onboard --auth-choice openai-api-key
+```
+
+或用于自定义供应商：
+
+```bash
+openclaw onboard --auth-choice custom-api-key \
+  --custom-base-url "https://api.example.com/v1" \
+  --custom-model-id "model-name" \
+  --custom-api-key "your-key" \
+  --custom-compatibility openai
+```
+
+## 快速上手
+
+进入项目目录后启动 OpenClaw：
+
+```bash
+cd /path/to/your/project
+openclaw
+```
+
+检查供应商状态：
+
+```bash
+openclaw models status
+```
+
+## 配置
+
+所有设置存储在 `~/.openclaw/openclaw.json`。敏感凭据可存储在 `~/.openclaw/.env`。
+
+## 配合 Amux API Platform 使用
+
+安装 OpenClaw 后，详见[在 OpenClaw 中使用](/zh/docs/amux-api/guides/use-with-openclaw)，将其连接到 Amux API Platform 以访问 GPT、Grok、MiniMax 等模型。
+
+## 相关资源
+
+- [OpenClaw 官方文档](https://docs.openclaw.ai)
+- [OpenClaw GitHub](https://github.com/openclaw/openclaw)
+- [npm 包](https://www.npmjs.com/package/openclaw)

@@ -1,0 +1,125 @@
+---
+title: Quick Start
+description: Set up your first LLM proxy in minutes with Amux Desktop
+---
+
+This guide walks you through setting up Amux Desktop from first launch to making your first API call through the proxy.
+
+## Step 1: Launch & Start Service
+
+After installation, launch Amux Desktop. On first start, the built-in proxy server starts automatically on `127.0.0.1:9527`.
+
+You can verify the service status on the **Dashboard** page — it shows whether the proxy is running, along with real-time metrics.
+
+{/* IMAGE: Dashboard page showing service running */}
+
+## Step 2: Configure a Provider
+
+Go to the **Providers** page. Amux Desktop comes with built-in presets for popular LLM providers.
+
+1. Click a provider card (e.g. **OpenAI**)
+2. Enter your **API Key**
+3. Toggle **Enabled** on
+4. Click **Save**
+
+{/* IMAGE: Provider configuration dialog with API key input */}
+
+The provider is now ready to use. You can also click **Fetch Models** to load the latest model list from the provider's API.
+
+## Step 3: Create a Proxy
+
+Go to the **Proxies** page and create a proxy route. There are two types:
+
+### Bridge Proxy (Format Conversion)
+
+Bridge proxies convert between different API formats using adapters (e.g. OpenAI format → Anthropic API).
+
+1. Click **Add Proxy**
+2. Set a **Name** and **Proxy Path** (the URL path for this proxy, e.g. `my-openai`)
+3. Choose an **Inbound Adapter** (the format your client sends, e.g. `openai`)
+4. Choose an **Outbound Provider** (the target LLM provider)
+5. Configure **Model Mappings** (map client model names to target model names)
+6. Click **Save**
+
+{/* IMAGE: Bridge proxy creation form */}
+
+### Direct Passthrough Proxy
+
+Direct passthrough proxies forward requests as-is, only injecting the API key. Useful when client and provider use the same API format.
+
+Each provider with **Enable as Proxy** toggled on becomes available as a direct passthrough at `/providers/{proxyPath}/...`.
+
+{/* IMAGE: Provider card with "Enable as Proxy" toggle */}
+
+## Step 4: Test with Built-in Chat
+
+Go to the **Chat** page to verify your proxy works:
+
+1. Select a proxy from the dropdown in the top bar
+2. Choose a model
+3. Send a message
+
+{/* IMAGE: Chat page with proxy selector and conversation */}
+
+If you receive a response, your proxy is working correctly.
+
+## Step 5: Use in Your Application
+
+Now point your application to the Amux Desktop proxy.
+
+### Bridge Proxy Endpoint
+
+```
+POST http://127.0.0.1:9527/proxies/{proxyPath}/v1/chat/completions
+```
+
+### Direct Passthrough Endpoint
+
+```
+POST http://127.0.0.1:9527/providers/{proxyPath}/v1/chat/completions
+```
+
+### Example with curl
+
+```bash
+curl http://127.0.0.1:9527/proxies/my-openai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+### Example with Cursor / Claude Code
+
+Set your API Base URL to:
+
+```
+http://127.0.0.1:9527/proxies/{proxyPath}
+```
+
+If you have **Unified API Key** enabled in Settings, also provide the platform API key in the `Authorization` header.
+
+## Default Configuration
+
+| Setting | Default Value |
+| --- | --- |
+| Proxy Host | `127.0.0.1` |
+| Proxy Port | `9527` |
+| Auto Start | Enabled |
+| Request Timeout | 60s |
+| Logging | Enabled |
+
+## Next Steps
+
+<Cards>
+  <Card title="Providers" href="/docs/desktop/guides/providers">
+    Full guide on configuring providers and API keys
+  </Card>
+  <Card title="Proxies" href="/docs/desktop/guides/proxies">
+    Detailed proxy settings, model mappings, and auth
+  </Card>
+  <Card title="Code Switch" href="/docs/desktop/guides/code-switch">
+    Route Claude Code / Codex CLI through your proxy
+  </Card>
+</Cards>

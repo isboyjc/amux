@@ -1,0 +1,109 @@
+---
+title: Configuration
+description: Configure Amux API Platform channels, model routing, and system settings
+---
+
+## Overview
+
+Amux API Platform is built on [New API](https://github.com/QuantumNous/new-api), providing a web-based admin panel for configuring channels, tokens, and model routing.
+
+## Channel Management
+
+Channels represent connections to upstream LLM providers. Each channel has its own API key, base URL, and supported models.
+
+### Adding a Channel
+
+1. Log in to the admin panel
+2. Navigate to **Channels** → **Add Channel**
+3. Configure the channel:
+
+| Field | Description |
+| --- | --- |
+| **Name** | Display name for the channel |
+| **Type** | Provider type (OpenAI, Claude, Gemini, etc.) |
+| **Base URL** | API endpoint of the provider |
+| **API Key** | Authentication key for the provider |
+| **Models** | List of models available through this channel |
+| **Priority** | Routing priority (higher = preferred) |
+| **Weight** | Load balancing weight within the same priority |
+
+### Supported Provider Types
+
+- OpenAI (GPT-4, GPT-4o, o3-mini, etc.)
+- Anthropic (Claude 4 Sonnet, Claude 4 Opus, etc.)
+- Google Gemini (Gemini 2.5 Pro, Gemini 2.5 Flash, etc.)
+- DeepSeek (DeepSeek-V3, DeepSeek-R1, etc.)
+- Moonshot (Kimi)
+- Zhipu AI (GLM-4)
+- And many more...
+
+## Model Routing
+
+Amux API Platform supports intelligent model routing with multiple strategies:
+
+### Priority-Based Routing
+
+Channels with higher priority are used first. If a high-priority channel fails, the system automatically falls back to the next available channel.
+
+### Weighted Load Balancing
+
+For channels with the same priority, requests are distributed based on their configured weights.
+
+### Model Mapping
+
+Map custom model names to specific provider models:
+
+| Incoming Model | Routed To |
+| --- | --- |
+| `gpt-4` | OpenAI GPT-4 channel |
+| `claude` | Anthropic Claude channel |
+| `fast` | DeepSeek channel (lower cost) |
+
+## System Settings
+
+### General Settings
+
+| Setting | Description |
+| --- | --- |
+| **Server Address** | Public URL of the API Platform |
+| **Retry Count** | Number of retries on channel failure |
+| **Display Token** | Show token on the user dashboard |
+| **Check Frequency** | Channel health check interval |
+
+### Billing Settings
+
+| Setting | Description |
+| --- | --- |
+| **Quota Mode** | Token-based or request-based billing |
+| **Model Pricing** | Per-model input/output token pricing |
+| **Cache Billing** | Whether to bill for cached tokens |
+
+## Environment Variables
+
+Key environment variables for deployment:
+
+```bash
+# Database
+SQL_DSN=root:password@tcp(localhost:3306)/new-api
+
+# Server
+PORT=3000
+TZ=Asia/Shanghai
+
+# Redis (optional, for distributed deployments)
+REDIS_CONN_STRING=redis://localhost:6379
+
+# Session secret
+SESSION_SECRET=your-random-secret
+```
+
+## Next Steps
+
+<Cards>
+  <Card title="Authentication" href="/docs/amux-api/guides/authentication">
+    Token management and access control
+  </Card>
+  <Card title="Use in Projects" href="/docs/amux-api/guides/use-in-projects">
+    Python and Node.js integration examples
+  </Card>
+</Cards>

@@ -1,0 +1,125 @@
+---
+title: 快速开始
+description: 几分钟内使用 Amux Desktop 设置你的第一个 LLM 代理
+---
+
+本指南带你从首次启动 Amux Desktop 到通过代理完成第一次 API 调用。
+
+## 第一步：启动服务
+
+安装完成后启动 Amux Desktop。首次启动时，内置代理服务器会自动在 `127.0.0.1:9527` 上运行。
+
+你可以在 **Dashboard** 页面查看服务状态，包括代理是否在运行及实时指标。
+
+{/* IMAGE: Dashboard 页面，显示服务运行状态 */}
+
+## 第二步：配置提供商
+
+进入 **Providers** 页面。Amux Desktop 内置了主流 LLM 提供商的预设配置。
+
+1. 点击一个提供商卡片（如 **OpenAI**）
+2. 输入你的 **API Key**
+3. 开启 **Enabled** 开关
+4. 点击 **Save**
+
+{/* IMAGE: 提供商配置对话框，填写 API Key */}
+
+提供商现在已就绪。你还可以点击 **Fetch Models** 从提供商 API 加载最新模型列表。
+
+## 第三步：创建代理
+
+进入 **Proxies** 页面创建代理路由。有两种类型：
+
+### 桥接代理（格式转换）
+
+桥接代理使用适配器在不同 API 格式之间转换（如 OpenAI 格式 → Anthropic API）。
+
+1. 点击 **Add Proxy**
+2. 设置 **Name** 和 **Proxy Path**（此代理的 URL 路径，如 `my-openai`）
+3. 选择 **Inbound Adapter**（你的客户端发送的格式，如 `openai`）
+4. 选择 **Outbound Provider**（目标 LLM 提供商）
+5. 配置 **Model Mappings**（将客户端模型名映射到目标模型名）
+6. 点击 **Save**
+
+{/* IMAGE: 桥接代理创建表单 */}
+
+### 直通代理
+
+直通代理原样转发请求，仅注入 API Key。适用于客户端和提供商使用相同 API 格式的场景。
+
+每个开启了 **Enable as Proxy** 的提供商会自动生成一个直通代理端点 `/providers/{proxyPath}/...`。
+
+{/* IMAGE: 提供商卡片，Enable as Proxy 开关 */}
+
+## 第四步：使用内置对话测试
+
+进入 **Chat** 页面验证代理是否正常工作：
+
+1. 在顶部下拉菜单中选择一个代理
+2. 选择模型
+3. 发送消息
+
+{/* IMAGE: Chat 页面，代理选择器和对话 */}
+
+如果收到回复，说明代理配置正确。
+
+## 第五步：在你的应用中使用
+
+现在将你的应用指向 Amux Desktop 代理。
+
+### 桥接代理端点
+
+```
+POST http://127.0.0.1:9527/proxies/{proxyPath}/v1/chat/completions
+```
+
+### 直通代理端点
+
+```
+POST http://127.0.0.1:9527/providers/{proxyPath}/v1/chat/completions
+```
+
+### curl 示例
+
+```bash
+curl http://127.0.0.1:9527/proxies/my-openai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+### 在 Cursor / Claude Code 中使用
+
+将 API Base URL 设为：
+
+```
+http://127.0.0.1:9527/proxies/{proxyPath}
+```
+
+如果你在 Settings 中开启了 **Unified API Key**，还需要在 `Authorization` 头中提供平台 API Key。
+
+## 默认配置
+
+| 设置 | 默认值 |
+| --- | --- |
+| 代理主机 | `127.0.0.1` |
+| 代理端口 | `9527` |
+| 自动启动 | 开启 |
+| 请求超时 | 60s |
+| 日志记录 | 开启 |
+
+## 下一步
+
+<Cards>
+  <Card title="供应商" href="/zh/docs/desktop/guides/providers">
+    完整的供应商和 API Key 配置指南
+  </Card>
+  <Card title="代理" href="/zh/docs/desktop/guides/proxies">
+    详细的代理设置、模型映射和鉴权
+  </Card>
+  <Card title="Code Switch" href="/zh/docs/desktop/guides/code-switch">
+    将 Claude Code / Codex CLI 路由到你的代理
+  </Card>
+</Cards>

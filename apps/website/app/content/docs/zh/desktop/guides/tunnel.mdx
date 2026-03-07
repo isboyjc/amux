@@ -1,0 +1,97 @@
+---
+title: 隧道
+description: 通过 Cloudflare Tunnel 将本地代理安全暴露到公网
+---
+
+**Tunnel** 模块使用 Cloudflare Tunnel 技术为你本地的 Amux Desktop 代理服务器创建安全的公网访问端点。
+
+![Tunnel](/images/tunnel_zh.png)
+
+## 概述
+
+默认情况下，Amux Desktop 的代理运行在 `127.0.0.1:9527`，仅本地可访问。Tunnel 功能会分配一个公网 URL，安全地将互联网流量转发到你的本地代理。
+
+```
+互联网  →  公网 URL (xxx.amux.ai)  →  Cloudflare Tunnel  →  127.0.0.1:9527
+```
+
+## 工作原理
+
+1. Amux Desktop 自动下载和管理 `cloudflared`
+2. 通过 Amux 隧道 API（`tunnel-api.amux.ai`）创建隧道
+3. 分配一个唯一的公网 URL 映射到你的本地代理
+4. 所有流量通过 Cloudflare 网络加密传输
+
+## 使用方法
+
+### 启动隧道
+
+1. 进入 **Tunnel** 页面
+2. 点击 **Start Tunnel**
+3. 等待隧道建立（通常几秒钟）
+4. 就绪后显示公网 URL
+
+{/* IMAGE: 隧道启动中，显示公网 URL */}
+
+### 使用公网 URL
+
+复制公网 URL，在任何远程应用中作为 API Base URL 使用：
+
+```bash
+curl https://your-tunnel-id.amux.ai/proxies/my-proxy/v1/chat/completions \
+  -H "Authorization: Bearer sk-amux.xxx" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gpt-4o", "messages": [{"role": "user", "content": "Hello"}]}'
+```
+
+### 停止隧道
+
+点击 **Stop Tunnel** 关闭连接。公网 URL 立即失效。
+
+## 使用场景
+
+| 场景 | 描述 |
+| --- | --- |
+| **远程服务器** | 从云服务器或远程机器访问本地代理 |
+| **云 IDE** | 将 GitHub Codespaces、Gitpod 等云 IDE 连接到本地 LLM 配置 |
+| **团队共享** | 临时与团队成员共享代理配置 |
+| **移动应用** | 将移动设备或外部应用连接到本地代理 |
+
+## 隧道状态
+
+Tunnel 页面显示：
+
+- **状态**：运行中 / 已停止
+- **公网 URL**：分配的隧道 URL（可点击复制）
+- **运行时长**：隧道已运行的时间
+
+{/* IMAGE: 隧道状态详情 */}
+
+## 安全
+
+<Callout type="warn">
+隧道激活后，任何拥有公网 URL 的人都可以访问你的代理。请务必在 [Settings](/zh/docs/desktop/guides/settings) 中启用 **Unified API Key** 鉴权以要求令牌访问。
+</Callout>
+
+推荐的安全配置：
+
+1. 在 Settings > Security 中启用 **Unified API Key**
+2. 在 [Tokens](/zh/docs/desktop/guides/tokens) 页面创建令牌
+3. 仅将令牌（而非隧道 URL 本身）分享给信任的用户
+
+## 要求
+
+- 互联网连接
+- 防火墙未阻止到 Cloudflare 的出站连接
+- `cloudflared` 二进制文件（首次使用时自动下载）
+
+## 下一步
+
+<Cards>
+  <Card title="令牌" href="/zh/docs/desktop/guides/tokens">
+    创建用于隧道鉴权的 API 令牌
+  </Card>
+  <Card title="设置" href="/zh/docs/desktop/guides/settings">
+    配置安全和代理设置
+  </Card>
+</Cards>

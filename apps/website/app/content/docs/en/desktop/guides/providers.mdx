@@ -1,0 +1,126 @@
+---
+title: Providers
+description: Configure LLM providers, API keys, and model lists in Amux Desktop
+---
+
+The **Providers** module manages your LLM service connections. Each provider represents a specific LLM API with its own credentials, adapter type, and model catalog.
+
+![Providers](/images/provider.png)
+
+## Built-in Presets
+
+Amux Desktop ships with presets for popular LLM providers:
+
+| Provider | Adapter | Base URL |
+| --- | --- | --- |
+| **OpenAI** | `openai` | `https://api.openai.com` |
+| **OpenAI (Responses API)** | `openai-responses` | `https://api.openai.com` |
+| **Anthropic** | `anthropic` | `https://api.anthropic.com` |
+| **DeepSeek** | `deepseek` | `https://api.deepseek.com` |
+| **Moonshot** | `moonshot` | `https://api.moonshot.cn` |
+| **Qwen (通义千问)** | `qwen` | `https://dashscope.aliyuncs.com/compatible-mode` |
+| **Zhipu (智谱)** | `zhipu` | `https://open.bigmodel.cn/api/paas` |
+| **Google Gemini** | `google` | `https://generativelanguage.googleapis.com` |
+| **MiniMax** | `minimax` | `https://api.minimaxi.com/v1` |
+
+Presets include provider logos, adapter types, API paths, and curated model lists with capability metadata (context length, vision, tools, etc.).
+
+## Adding a Provider
+
+1. Click a preset card or click **Add Provider**
+2. Fill in the configuration fields
+3. Click **Save**
+
+{/* IMAGE: Provider edit dialog */}
+
+### Configuration Fields
+
+| Field | Required | Description |
+| --- | --- | --- |
+| **Name** | Yes | Display name |
+| **Adapter Type** | Yes | API format adapter (`openai`, `anthropic`, `deepseek`, etc.) |
+| **API Key** | Yes | Your API key from the provider |
+| **Base URL** | Yes | Provider API base URL |
+| **Chat Path** | No | Chat completion endpoint path (defaults to adapter standard) |
+| **Models Path** | No | Model listing endpoint path |
+| **Enabled** | — | Whether this provider is active |
+| **Enable as Proxy** | — | Expose as a direct passthrough proxy endpoint |
+| **Proxy Path** | When proxy enabled | URL path segment for direct passthrough access |
+
+## API Key Security
+
+API keys are **encrypted** and stored locally in the SQLite database. They never leave your machine unless sent to the corresponding provider API.
+
+## Model Management
+
+### Preset Models
+
+Built-in presets include curated model lists with metadata:
+
+- **Model ID**: API identifier (e.g. `gpt-4o`, `claude-sonnet-4-20250514`)
+- **Display Name**: Human-readable name
+- **Context Length**: Maximum context window size
+- **Capabilities**: Vision, tools, reasoning, etc.
+
+### Fetch from API
+
+Click **Fetch Models** to load the latest model list directly from the provider's API endpoint. This updates the local catalog with any newly released models.
+
+{/* IMAGE: Model list with Fetch Models button */}
+
+### Custom Models
+
+Manually add models not present in presets or API results. Useful for fine-tuned models or custom deployments.
+
+## Custom Provider
+
+To add a provider not in the presets:
+
+1. Click **Add Provider**
+2. Select the closest **Adapter Type** (most OpenAI-compatible APIs work with the `openai` adapter)
+3. Enter the service **Base URL** and **API Key**
+4. Add models manually or fetch from the API
+
+### Example: Custom OpenAI-Compatible Service
+
+```
+Name:         My Custom LLM
+Adapter Type: openai
+Base URL:     https://my-llm-service.example.com
+API Key:      sk-xxxxx
+Chat Path:    /v1/chat/completions
+Models Path:  /v1/models
+```
+
+## Direct Passthrough Proxy
+
+Toggle **Enable as Proxy** on a provider to expose it as a direct passthrough endpoint:
+
+```
+POST http://127.0.0.1:9527/providers/{proxyPath}/v1/chat/completions
+GET  http://127.0.0.1:9527/providers/{proxyPath}/v1/models
+```
+
+Requests are forwarded directly without format conversion — only the stored API key is injected.
+
+{/* IMAGE: Provider with Enable as Proxy toggle */}
+
+## Preset Updates
+
+Provider presets can auto-update from a remote source. Configure in **[Settings](/docs/desktop/guides/settings)**:
+
+- **Remote URL**: URL for fetching updated presets
+- **Auto Update**: Automatically check for new preset versions
+
+The merge strategy uses `updatedAt` timestamps — the newer version wins.
+
+## Next Steps
+
+<Cards>
+  <Card title="Proxies" href="/docs/desktop/guides/proxies">
+    Create bridge proxies with format conversion
+  </Card>
+  <Card title="Code Switch" href="/docs/desktop/guides/code-switch">
+    Route CLI tools through your providers
+  </Card>
+</Cards>

@@ -1,0 +1,98 @@
+---
+title: Logs
+description: View, search, filter, and export detailed request logs
+---
+
+The **Logs** module provides detailed request-level tracking for every API call passing through Amux Desktop's proxy server.
+
+![Logs](/images/log.png)
+
+## Log Entry Fields
+
+Each log entry records:
+
+| Field | Description |
+| --- | --- |
+| **Proxy Path** | Which proxy handled the request |
+| **Source Model** | The model name the client requested |
+| **Target Model** | The actual model used on the provider side |
+| **Status Code** | HTTP response status code |
+| **Input Tokens** | Tokens in the request |
+| **Output Tokens** | Tokens in the response |
+| **Latency** | Request-to-response time (ms) |
+| **Source** | `local` or `tunnel` — whether the request came from local network or Cloudflare Tunnel |
+| **Timestamp** | When the request was made |
+
+## Filtering & Search
+
+### Text Search
+
+Use the search bar to filter logs by proxy path, model name, or other text fields.
+
+{/* IMAGE: Search bar with filter results */}
+
+### Status Filter
+
+Quick filter buttons to show:
+
+- **All**: Every request
+- **Success**: Only 2xx responses
+- **Failed**: Only error responses (4xx, 5xx)
+
+### Request Details
+
+Click any log entry to expand and view the full request and response body (when body logging is enabled in Settings).
+
+{/* IMAGE: Expanded log entry showing request/response body */}
+
+## Export
+
+Export your logs in two formats:
+
+| Format | Description |
+| --- | --- |
+| **JSON** | Full structured data, suitable for programmatic analysis |
+| **CSV** | Spreadsheet-compatible format for quick review |
+
+{/* IMAGE: Export button with format options */}
+
+## Clear Logs
+
+Use the **Clear** button to delete all logged entries. This resets the log history and frees storage space.
+
+## Log Settings
+
+Configure logging behavior in **[Settings](/docs/desktop/guides/settings) > Logs**:
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| **Enabled** | Yes | Whether to record request logs |
+| **Save Request Body** | No | Store the full request payload in each log entry |
+| **Save Response Body** | No | Store the full response payload in each log entry |
+| **Retention Days** | 7 | Auto-delete logs older than this number of days |
+| **Max Entries** | 10000 | Maximum number of log entries to keep |
+
+<Callout type="info">
+Enabling request/response body logging is useful for debugging but increases storage usage significantly.
+</Callout>
+
+## Use Cases
+
+| Scenario | How Logs Help |
+| --- | --- |
+| **Debugging** | Check status codes, latency, and error messages for failed requests |
+| **Cost Tracking** | Monitor token usage across different models and proxies |
+| **Performance** | Identify slow requests or providers with high latency |
+| **Usage Analysis** | Export logs to analyze usage patterns over time |
+| **Security** | Track request sources (local vs. tunnel) and identify unauthorized access attempts |
+
+## Next Steps
+
+<Cards>
+  <Card title="Dashboard" href="/docs/desktop/guides/dashboard">
+    See aggregated metrics and trends
+  </Card>
+  <Card title="Settings" href="/docs/desktop/guides/settings">
+    Configure log retention and storage options
+  </Card>
+</Cards>

@@ -1,0 +1,238 @@
+---
+title: Use in Projects
+description: Integrate Amux API Platform into your Python and Node.js projects
+---
+
+Amux API Platform provides an OpenAI-compatible API, so you can use the standard OpenAI SDKs in any programming language to connect.
+
+## Prerequisites
+
+- An Amux API Platform account with an API token ([Quick Start](/docs/amux-api/quick-start))
+
+## Python
+
+### Install SDK
+
+```bash
+pip install openai
+```
+
+### Basic Chat Completion
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://amux.ai/v1",
+    api_key="your-amux-api-token",
+)
+
+response = client.chat.completions.create(
+    model="gpt-5.4",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Hello!"},
+    ],
+)
+
+print(response.choices[0].message.content)
+```
+
+### Streaming
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://amux.ai/v1",
+    api_key="your-amux-api-token",
+)
+
+stream = client.chat.completions.create(
+    model="gpt-5.4",
+    messages=[{"role": "user", "content": "Write a short poem"}],
+    stream=True,
+)
+
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+```
+
+### Async Usage
+
+```python
+import asyncio
+from openai import AsyncOpenAI
+
+client = AsyncOpenAI(
+    base_url="https://amux.ai/v1",
+    api_key="your-amux-api-token",
+)
+
+async def main():
+    response = await client.chat.completions.create(
+        model="gpt-5.4",
+        messages=[{"role": "user", "content": "Hello!"}],
+    )
+    print(response.choices[0].message.content)
+
+asyncio.run(main())
+```
+
+### Using Environment Variables
+
+```bash
+export OPENAI_BASE_URL="https://amux.ai/v1"
+export OPENAI_API_KEY="your-amux-api-token"
+```
+
+```python
+from openai import OpenAI
+
+# Automatically reads OPENAI_BASE_URL and OPENAI_API_KEY
+client = OpenAI()
+
+response = client.chat.completions.create(
+    model="gpt-5.4",
+    messages=[{"role": "user", "content": "Hello!"}],
+)
+```
+
+## Node.js
+
+### Install SDK
+
+```bash
+npm install openai
+```
+
+### Basic Chat Completion
+
+```typescript
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://amux.ai/v1',
+  apiKey: 'your-amux-api-token',
+});
+
+async function main() {
+  const response = await client.chat.completions.create({
+    model: 'gpt-5.4',
+    messages: [
+      { role: 'system', content: 'You are a helpful assistant.' },
+      { role: 'user', content: 'Hello!' },
+    ],
+  });
+
+  console.log(response.choices[0].message.content);
+}
+
+main();
+```
+
+### Streaming
+
+```typescript
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://amux.ai/v1',
+  apiKey: 'your-amux-api-token',
+});
+
+async function main() {
+  const stream = await client.chat.completions.create({
+    model: 'gpt-5.4',
+    messages: [{ role: 'user', content: 'Write a short poem' }],
+    stream: true,
+  });
+
+  for await (const chunk of stream) {
+    const content = chunk.choices[0]?.delta?.content;
+    if (content) process.stdout.write(content);
+  }
+}
+
+main();
+```
+
+### Using Environment Variables
+
+```bash
+export OPENAI_BASE_URL="https://amux.ai/v1"
+export OPENAI_API_KEY="your-amux-api-token"
+```
+
+```typescript
+import OpenAI from 'openai';
+
+// Automatically reads OPENAI_BASE_URL and OPENAI_API_KEY
+const client = new OpenAI();
+
+const response = await client.chat.completions.create({
+  model: 'gpt-5.4',
+  messages: [{ role: 'user', content: 'Hello!' }],
+});
+```
+
+### CommonJS (require)
+
+```javascript
+const OpenAI = require('openai');
+
+const client = new OpenAI({
+  baseURL: 'https://amux.ai/v1',
+  apiKey: 'your-amux-api-token',
+});
+
+async function main() {
+  const response = await client.chat.completions.create({
+    model: 'gpt-5.4',
+    messages: [{ role: 'user', content: 'Hello!' }],
+  });
+
+  console.log(response.choices[0].message.content);
+}
+
+main();
+```
+
+## Using with fetch (No SDK)
+
+If you prefer not to use an SDK, you can call the API directly:
+
+```typescript
+const response = await fetch('https://amux.ai/v1/chat/completions', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer your-amux-api-token',
+  },
+  body: JSON.stringify({
+    model: 'gpt-5.4',
+    messages: [{ role: 'user', content: 'Hello!' }],
+  }),
+});
+
+const data = await response.json();
+console.log(data.choices[0].message.content);
+```
+
+## Available Models
+
+| Provider | Models |
+| --- | --- |
+| **OpenAI** | GPT-5.4, GPT-4o, GPT-4, o3-mini, and more |
+| **xAI** | Grok series (text, image, video) |
+| **MiniMax** | M2.5 and the M series |
+
+More providers will be added progressively. Check the [platform](https://amux.ai) for the latest model list.
+
+## Notes
+
+- Amux API Platform is fully OpenAI-compatible — any OpenAI SDK or library works
+- Always store API tokens in environment variables, not in source code
+- Streaming is supported across all models
+- Rate limits and quotas depend on your account credits

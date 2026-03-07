@@ -1,0 +1,79 @@
+---
+title: Chat
+description: Built-in AI conversation interface for testing proxies and interacting with models
+---
+
+The **Chat** module provides a built-in AI conversation interface, letting you quickly test any configured proxy and model without leaving Amux Desktop.
+
+![Chat](/images/chat.png)
+
+## Overview
+
+Chat is designed for:
+
+- **Testing Proxies**: Verify that your bridge or passthrough proxies work correctly
+- **Exploring Models**: Try different models side-by-side through different proxies
+- **Quick Conversations**: Have a lightweight AI chat without opening another application
+
+## Using Chat
+
+### Select a Proxy
+
+Use the dropdown selector at the top of the Chat page to choose which proxy to send requests through. Both bridge proxies and direct passthrough proxies are listed.
+
+{/* IMAGE: Proxy selector dropdown */}
+
+### Select a Model
+
+After choosing a proxy, select a model from the available model list. The models shown depend on the selected proxy's configuration:
+
+- **Bridge Proxy**: Shows the source models defined in your model mappings
+- **Direct Passthrough**: Shows the provider's model catalog
+
+### Send Messages
+
+Type your message in the input area and press Enter (or click Send). The response streams in real-time.
+
+{/* IMAGE: Chat conversation with streaming response */}
+
+### Conversation History
+
+- Each conversation is stored locally
+- Create new conversations with the **New Chat** button
+- Switch between previous conversations in the sidebar
+- Clear or delete conversations as needed
+
+## Features
+
+| Feature | Description |
+| --- | --- |
+| **Streaming** | Real-time streaming responses |
+| **Proxy Switching** | Switch between proxies mid-session |
+| **Model Switching** | Change models within the same proxy |
+| **History** | Persistent conversation history |
+| **Markdown** | Response rendering with Markdown formatting |
+
+## Use Cases
+
+### Verify a New Proxy
+
+After creating a new bridge proxy (e.g. OpenAI → DeepSeek), open Chat, select that proxy, and send a test message. If you get a response, the proxy is configured correctly.
+
+### Compare Models
+
+Open multiple conversations, each using a different proxy/model combination. Compare response quality, speed, and style to find the best model for your use case.
+
+### Debug Issues
+
+If a proxy isn't working as expected in your external application, test it in Chat first. The Chat module uses the same proxy endpoints, so if it works here, the issue is in the client configuration.
+
+## Next Steps
+
+<Cards>
+  <Card title="Dashboard" href="/docs/desktop/guides/dashboard">
+    Monitor request metrics and service status
+  </Card>
+  <Card title="Providers" href="/docs/desktop/guides/providers">
+    Configure LLM providers and API keys
+  </Card>
+</Cards>

@@ -1,0 +1,79 @@
+---
+title: Use with Open Code
+description: Connect Open Code CLI to Amux API Platform
+---
+
+[Open Code](https://opencode.ai) is an open-source AI coding agent for the terminal. It supports multiple LLM providers and can be configured to use Amux API Platform as the backend.
+
+## Prerequisites
+
+- Open Code installed ([installation guide](/docs/amux-api/guides/install-open-code))
+- An Amux API Platform account with an API token ([Quick Start](/docs/amux-api/quick-start))
+
+## Configuration
+
+Open Code supports multiple provider configurations. Set the environment variables:
+
+```bash
+export OPENAI_API_KEY="your-amux-api-token"
+export OPENAI_BASE_URL="https://amux.ai/v1"
+```
+
+For persistence, add them to your shell profile:
+
+```bash
+echo 'export OPENAI_API_KEY="your-amux-api-token"' >> ~/.zshrc
+echo 'export OPENAI_BASE_URL="https://amux.ai/v1"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+## Usage
+
+Navigate to your project and start Open Code:
+
+```bash
+cd /path/to/your/project
+opencode
+```
+
+### First-time Setup
+
+On first run, you can use the `/connect` command to configure your provider, or simply rely on the environment variables set above.
+
+### Common Commands
+
+```bash
+# Start interactive session
+opencode
+
+# Initialize project analysis
+# (run inside opencode)
+/init
+
+# Connect to a provider
+/connect
+```
+
+## Configuration File
+
+You can also configure Amux API in Open Code's configuration file (`opencode.json` in your project root or `~/.config/opencode/config.json`):
+
+```json
+{
+  "provider": {
+    "type": "openai",
+    "api_key": "your-amux-api-token",
+    "base_url": "https://amux.ai/v1"
+  }
+}
+```
+
+## Verify
+
+Start Open Code and send a test message. If you receive a response, the connection is working.
+
+## Notes
+
+- Amux API Platform is OpenAI-compatible, so configure Open Code with the `openai` provider type
+- All Open Code features work as expected with Amux API
+- Available models depend on your Amux API account and credits

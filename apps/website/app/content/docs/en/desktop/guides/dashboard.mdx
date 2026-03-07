@@ -1,0 +1,74 @@
+---
+title: Dashboard
+description: Real-time service status, request metrics, and model usage analytics
+---
+
+The **Dashboard** is the home screen of Amux Desktop, providing a live overview of your proxy service health and usage patterns.
+
+![Dashboard](/images/dashboard.png)
+
+## Service Status
+
+The top section displays the proxy server's current state with controls to **Start** or **Stop** the service. When running, you'll see the bound address (e.g. `127.0.0.1:9527`).
+
+{/* IMAGE: Service status bar with start/stop control */}
+
+## Metric Cards
+
+Four key metrics are displayed as cards:
+
+| Metric | Description |
+| --- | --- |
+| **Total Requests** | Cumulative request count since last reset, with current requests-per-minute (QPM) |
+| **Success Rate** | Percentage of requests returning 2xx status codes |
+| **Average Latency** | Mean response time across all requests (milliseconds) |
+| **Active Connections** | Number of currently open/streaming connections |
+
+{/* IMAGE: Four metric cards */}
+
+## Providers & Proxies Overview
+
+| Section | What it shows |
+| --- | --- |
+| **Providers** | Total providers and enabled count, with stacked provider logos |
+| **Proxies** | Total count of bridge proxies + direct passthrough proxies |
+
+This gives you a quick glance at how many services are configured and active.
+
+## Token Usage
+
+Aggregated token consumption statistics:
+
+- **Total Tokens**: Sum of all input and output tokens
+- **Input Tokens**: Tokens sent in requests
+- **Output Tokens**: Tokens received in responses
+
+{/* IMAGE: Token usage section */}
+
+## Model Usage Chart
+
+A time-series area chart showing request distribution over the **last 24 hours**, aggregated in **30-minute intervals**. Each colored area represents a different proxy path.
+
+{/* IMAGE: Model usage area chart */}
+
+This chart helps you:
+
+- Identify peak usage times
+- See which proxies/models are most popular
+- Detect unusual traffic patterns
+- Understand daily usage distribution
+
+## Real-time Updates
+
+All Dashboard metrics update in real-time as requests flow through the proxy server. The QPM (queries per minute) value provides instant feedback on current load.
+
+## Next Steps
+
+<Cards>
+  <Card title="Logs" href="/docs/desktop/guides/logs">
+    Drill down into individual request details
+  </Card>
+  <Card title="Proxies" href="/docs/desktop/guides/proxies">
+    Configure and manage proxy routes
+  </Card>
+</Cards>

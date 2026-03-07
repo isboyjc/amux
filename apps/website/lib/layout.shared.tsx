@@ -21,36 +21,12 @@ function Logo() {
   );
 }
 
-const translations = {
-  en: {
-    docs: 'Docs',
-    github: 'GitHub',
-  },
-  zh: {
-    docs: '文档',
-    github: 'GitHub',
-  },
-};
-
 export function baseOptions(locale: string): BaseLayoutProps {
-  const t = translations[locale as keyof typeof translations] || translations.en;
-
   return {
     i18n,
     nav: {
       title: <Logo />,
     },
-    links: [
-      {
-        text: t.docs,
-        url: `/${locale}/docs`,
-      },
-      {
-        text: t.github,
-        url: 'https://github.com/isboyjc/amux',
-        external: true,
-      },
-    ],
     githubUrl: 'https://github.com/isboyjc/amux',
   };
 }

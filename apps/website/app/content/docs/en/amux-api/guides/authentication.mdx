@@ -1,0 +1,84 @@
+---
+title: Authentication
+description: Token management and access control for Amux API Platform
+---
+
+## Overview
+
+Amux API Platform uses a token-based authentication system to control API access. Administrators can create tokens with different permissions, quota limits, and expiration dates.
+
+## Token Management
+
+### Creating Tokens
+
+1. Log in to the admin panel
+2. Navigate to **Tokens** → **Create Token**
+3. Configure the token:
+
+| Field | Description |
+| --- | --- |
+| **Name** | Display name for the token |
+| **Quota** | Maximum usage quota (in credits) |
+| **Expires** | Token expiration date (optional) |
+| **Models** | Restrict to specific models (optional, all by default) |
+| **Subnet** | IP whitelist for this token (optional) |
+
+### Using Tokens
+
+Include the token in the `Authorization` header:
+
+```bash
+curl https://api.amux.ai/v1/chat/completions \
+  -H "Authorization: Bearer sk-your-token-here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4",
+    "messages": [{"role": "user", "content": "Hello"}]
+  }'
+```
+
+### Token Groups
+
+Organize tokens into groups for better management:
+
+- **Group Quota**: Set quota limits per group
+- **Group Models**: Restrict available models per group
+- **Group Ratio**: Custom pricing ratios per group
+
+## User Management
+
+### User Roles
+
+| Role | Permissions |
+| --- | --- |
+| **Admin** | Full system access, channel and user management |
+| **User** | Create tokens, view usage, manage own resources |
+| **Guest** | Limited access based on system settings |
+
+### Registration Settings
+
+Configure user registration in the admin panel:
+
+- Enable/disable self-registration
+- Email verification
+- OIDC / third-party login (Telegram, GitHub, etc.)
+- Default quota for new users
+
+## Rate Limiting
+
+Protect your API from abuse with rate limiting:
+
+| Setting | Description |
+| --- | --- |
+| **Global Rate Limit** | Maximum requests per minute across all tokens |
+| **Per-Token Rate Limit** | Maximum requests per minute per token |
+| **Concurrent Limit** | Maximum concurrent requests |
+
+## Security Best Practices
+
+- Rotate tokens regularly and revoke unused ones
+- Use IP whitelisting for sensitive tokens
+- Set appropriate quota limits to prevent unexpected costs
+- Enable HTTPS for all API traffic
+- Monitor usage logs for anomalous patterns
+- Use separate tokens for different environments (dev, staging, production)

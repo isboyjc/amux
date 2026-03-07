@@ -1,0 +1,89 @@
+---
+title: Introduction
+description: Amux API Platform - An independent, unified LLM API gateway platform built on top of New API
+---
+
+## What is Amux API Platform?
+
+Amux API Platform is an independent, unified LLM API gateway platform, built on top of the open-source project [New API](https://github.com/QuantumNous/new-api). It provides centralized management and distribution of multiple LLM provider APIs, with a growing number of upstream providers integrated.
+
+Users can register and log in to the platform, create API tokens, and immediately start using a wide range of AI models through a single, unified API endpoint.
+
+In the future, **Amux Desktop** will integrate Amux API Platform support, bridging the Web-based API gateway with the local desktop client for a seamless experience.
+
+### Platform Status
+
+Amux API Platform is currently in **limited-time open registration**. After registration, selected beta users will receive redemption codes to obtain credits for experiencing the platform.
+
+### Supported Models
+
+Amux API Platform currently supports:
+
+| Provider | Models |
+| --- | --- |
+| **OpenAI** | GPT-5.4 and the full GPT series |
+| **xAI** | Grok full series (text, image, video) |
+| **MiniMax** | M2.5 and the full M series |
+
+We will progressively expand upstream providers to support **Claude**, **Gemini**, and all other leading models.
+
+### Core Features
+
+- **Unified API Gateway**: Access multiple LLM providers through a single OpenAI-compatible API endpoint
+- **User Registration & Token Management**: Register an account, create API tokens, and manage your usage
+- **Quota & Billing**: Credit-based quota system with transparent usage tracking
+- **Multi-Provider Routing**: Intelligent routing with failover, load balancing, and priority-based channel selection
+- **Streaming Support**: Full SSE streaming support across all providers
+- **OpenAI-Compatible**: Works with any client that supports the OpenAI API format
+
+### Using the Platform
+
+If you already have an account and have created an API token, the platform's Base URL is:
+
+```
+https://amux.ai
+```
+
+You can use this Base URL along with your API token to connect to any AI Agent project that supports the OpenAI API format, including **Amux Desktop** and many other tools.
+
+### Architecture
+
+```
+Users / AI Agent Projects (Amux Desktop, Cursor, etc.)
+              │
+              ▼
+   ┌─────────────────────────┐
+   │   Amux API Platform      │
+   │   https://amux.ai        │
+   ├─────────────────────────┤
+   │  User & Token Management │
+   │  Quota & Billing         │
+   │  Intelligent Routing     │
+   │  Multi-Provider Channels │
+   └──┬──────┬──────┬────────┘
+      │      │      │
+      ▼      ▼      ▼
+   OpenAI   xAI   MiniMax   Claude(soon)  Gemini(soon)  ...
+```
+
+### Relationship with Other Amux Products
+
+- **[Amux Desktop](/docs/desktop)**: A personal desktop LLM client with built-in gateway services. In a future release, Desktop will integrate Amux API Platform support, bridging the Web-based API gateway with the local client. You can already use Amux API with Desktop's C/S proxy module to dynamically switch models for tools like Claude Code.
+- **[Amux LLM Bridge](/docs/llm-bridge)**: The core adapter conversion engine used by Amux Desktop for local format translation between LLM providers.
+
+## Next Steps
+
+<Cards>
+  <Card title="Quick Start" href="/docs/amux-api/quick-start">
+    Register and start using Amux API Platform
+  </Card>
+  <Card title="Use with Claude Code" href="/docs/amux-api/guides/use-with-claude-code">
+    Connect Claude Code to Amux API
+  </Card>
+  <Card title="Use with OpenClaw" href="/docs/amux-api/guides/use-with-openclaw">
+    Connect OpenClaw to Amux API
+  </Card>
+  <Card title="Use in Projects" href="/docs/amux-api/guides/use-in-projects">
+    Python and Node.js integration examples
+  </Card>
+</Cards>

@@ -1,0 +1,96 @@
+---
+title: Desktop Integration
+description: Use Amux API Platform with Amux Desktop for seamless LLM access
+---
+
+## Overview
+
+Amux API Platform can be used with [Amux Desktop](/docs/desktop) in two ways:
+
+1. **Service Integration** (Coming Soon) — Desktop will add native support for Amux API Platform, bridging the Web-based API gateway with the local client for quick setup
+2. **C/S Proxy Mode** — Use Amux API as the upstream provider through Desktop's proxy server, enabling tools like Claude Code to dynamically switch between any model
+
+## Method 1: Service Integration (Coming Soon)
+
+Amux API Platform is an independent Web-based LLM API gateway. Amux Desktop is a personal desktop LLM client with its own built-in gateway. In an upcoming release, Desktop will add native support for connecting to Amux API Platform:
+
+- Open Amux Desktop → Settings → API Service
+- Link your Amux API Platform account
+- Your credits and available models will be synced
+- Quickly bridge the Web-based API gateway with your local Desktop client
+
+## Method 2: C/S Proxy Mode
+
+You can use Amux API Platform as an upstream provider through Amux Desktop's C/S (Client/Server) proxy module right now. This is especially powerful for tools like **Claude Code** that only support specific API formats.
+
+### How It Works
+
+```
+Claude Code / Other Tools
+        │
+        ▼
+┌────────────────────┐
+│   Amux Desktop     │
+│   C/S Proxy Server │
+│   (127.0.0.1:9527) │
+├────────────────────┤
+│ Inbound: Anthropic │
+│ Outbound: OpenAI   │
+└────────┬───────────┘
+         │
+         ▼
+┌────────────────────┐
+│ Amux API Platform  │
+│ https://amux.ai    │
+│ (GPT, Grok, M2.5) │
+└────────────────────┘
+```
+
+### Step-by-Step Setup
+
+#### 1. Get Your Amux API Token
+
+Log in to [https://amux.ai](https://amux.ai) and create an API token. See [Quick Start](/docs/amux-api/quick-start) for details.
+
+#### 2. Configure Amux Desktop
+
+1. Open Amux Desktop
+2. Go to **Providers** → **Add Provider**
+3. Configure:
+   - **Type**: Custom (OpenAI-compatible)
+   - **Name**: Amux API
+   - **Base URL**: `https://amux.ai`
+   - **API Key**: Your Amux API token
+
+#### 3. Create a Proxy Route
+
+1. Go to **Proxies** → **Add Proxy**
+2. Configure:
+   - **Name**: Amux API Proxy
+   - **Path**: `amux` (or any name you prefer)
+   - **Inbound Adapter**: OpenAI (or Anthropic, depending on your client)
+   - **Outbound Adapter**: OpenAI
+   - **Provider**: Select the Amux API provider from Step 2
+3. Configure **Model Mapping** to map your desired model names
+4. Save and enable the proxy
+
+#### 4. Connect Your Tools
+
+Use the proxy endpoint in your AI tools:
+
+| Setting | Value |
+| --- | --- |
+| **Base URL** | `http://127.0.0.1:9527/amux/v1` |
+| **API Key** | Your unified key (if configured) or Amux API token |
+
+### Use Case: Claude Code with Any Model
+
+See the [Amux Desktop Code Switch guide](/docs/desktop/guides/code-switch) for a detailed walkthrough on using Amux API to dynamically switch Claude Code to use GPT, Grok, MiniMax, or any other supported model.
+
+## Supported Scenarios
+
+| Scenario | Inbound | Outbound | Description |
+| --- | --- | --- | --- |
+| Cursor → Amux API | OpenAI | OpenAI | Use Amux API models in Cursor |
+| Claude Code → Amux API | Anthropic | OpenAI | Use any Amux API model in Claude Code |
+| Custom App → Amux API | OpenAI | OpenAI | Any OpenAI-compatible app |

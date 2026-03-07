@@ -1,0 +1,123 @@
+---
+title: Code Switch
+description: Route Claude Code and other CLI tools through Amux Desktop to use any LLM model
+---
+
+**Code Switch** lets you redirect CLI-based AI coding tools (such as Claude Code) through Amux Desktop's proxy server. This means you can use any LLM model with tools that normally only support a single provider.
+
+![Code Switch](/images/cs.png)
+
+## How It Works
+
+Code Switch modifies the CLI tool's configuration file to point at Amux Desktop's local proxy instead of the original provider API. Amux Desktop then routes the request to your configured provider with model mapping applied.
+
+```
+Claude Code  →  Amux Desktop (127.0.0.1:9527)  →  Any Provider
+   (Anthropic format)    Code Switch Handler         (DeepSeek, OpenAI, Gemini, ...)
+```
+
+When you enable Code Switch, Amux Desktop:
+
+1. Backs up the original CLI configuration
+2. Writes a new configuration pointing to the local proxy endpoint
+3. Sets the appropriate environment variables (`ANTHROPIC_BASE_URL`, `ANTHROPIC_API_KEY`)
+4. Removes any model override env vars so model mapping takes effect
+
+When disabled, the original configuration is restored from backup.
+
+## Supported CLI Tools
+
+| CLI Tool | Status | Config Path |
+| --- | --- | --- |
+| **Claude Code** | Supported | `~/.claude/settings.json` |
+| **Codex** | Planned | — |
+
+## Setting Up Code Switch
+
+### Step 1: Configure a Provider
+
+First, make sure you have at least one provider configured with a valid API key on the **Providers** page. This will be the target provider that actually handles the requests.
+
+### Step 2: Create a Code Switch Configuration
+
+1. Go to the **Code Switch** page
+2. Click **Add Configuration** (or the add button)
+3. Select the **CLI Type** (Claude Code)
+4. Choose the **Target Provider** — the provider whose API will handle requests
+5. Configure **Model Mappings**
+
+{/* IMAGE: Code Switch configuration dialog */}
+
+### Step 3: Configure Model Mappings
+
+Model mappings determine how Claude Code's model requests are routed. There are four mapping types:
+
+| Type | Description | Example |
+| --- | --- | --- |
+| **exact** | Maps a specific model name to a target model | `claude-opus-4-6-20260206` → `deepseek-r1` |
+| **family** | Maps an entire model family (opus/sonnet/haiku) to a target | `sonnet family` → `gpt-4o` |
+| **reasoning** | Used when Claude Code enables extended thinking | `reasoning` → `deepseek-r1` |
+| **default** | Fallback when no other mapping matches | `default` → `gpt-4o-mini` |
+
+{/* IMAGE: Model mapping configuration with different mapping types */}
+
+**Matching priority**: exact → family → reasoning → default
+
+### Step 4: Enable
+
+Toggle the configuration to **Enabled**. Amux Desktop will update your Claude Code configuration immediately.
+
+## Usage Example
+
+After enabling Code Switch with a DeepSeek provider:
+
+1. Open your terminal
+2. Run `claude` as normal
+3. Claude Code sends requests in Anthropic format to `127.0.0.1:9527`
+4. Amux Desktop applies model mapping and forwards to DeepSeek
+5. The response is converted back to Anthropic format and returned to Claude Code
+
+Claude Code works exactly as before, but now uses your configured model behind the scenes.
+
+## Configuration Details
+
+When Code Switch is enabled for Claude Code, the following changes are made to `~/.claude/settings.json`:
+
+```json
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://127.0.0.1:9527/code/claudecode",
+    "ANTHROPIC_API_KEY": "sk-amux.xxx"
+  }
+}
+```
+
+The original configuration is backed up and can be restored by disabling Code Switch.
+
+## Proxy Path
+
+Code Switch requests are handled at a dedicated endpoint:
+
+```
+POST http://127.0.0.1:9527/code/claudecode/v1/messages
+```
+
+This endpoint applies the model mappings and routes to the configured provider.
+
+## Tips
+
+- **Multiple Configurations**: You can create multiple Code Switch configs but only one per CLI type can be active
+- **Quick Switching**: Toggle between different providers/models by switching the enabled config
+- **Backup Safety**: Original CLI configs are always backed up before modification
+- **Real-time**: Changes take effect immediately — no need to restart the CLI tool
+
+## Next Steps
+
+<Cards>
+  <Card title="Dashboard" href="/docs/desktop/guides/dashboard">
+    Track Code Switch requests in the dashboard
+  </Card>
+  <Card title="Logs" href="/docs/desktop/guides/logs">
+    View detailed request logs
+  </Card>
+</Cards>

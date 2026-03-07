@@ -95,7 +95,7 @@ export function HomeNav({ lang }: HomeNavProps) {
         {/* Nav Links */}
         <div className="flex items-center gap-6">
           <Link
-            href={`/${lang}/docs`}
+            href={`/${lang}/docs/llm-bridge`}
             className="text-sm font-medium hover:text-fd-primary transition-colors"
           >
             {t.docs}

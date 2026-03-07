@@ -1,0 +1,141 @@
+---
+title: 安装 Open Code
+description: 下载并安装 Open Code CLI
+---
+
+[Open Code](https://opencode.ai) 是一个开源的 AI 编程代理，在终端中运行。安装后，你可以[通过 Amux API Platform 使用](/zh/docs/amux-api/guides/use-with-open-code)以访问任意支持的模型。
+
+## 系统要求
+
+| 要求 | 最低配置 |
+| --- | --- |
+| **操作系统** | macOS、Linux、Windows |
+| **终端** | 现代终端模拟器（Kitty、Ghostty、Alacritty、WezTerm 等） |
+| **网络** | 需要互联网连接 |
+
+还需要你偏好的 LLM 供应商的 API Key。
+
+## 安装
+
+### 快速安装（推荐）
+
+**macOS / Linux / WSL：**
+
+```bash
+curl -fsSL https://opencode.ai/install | bash
+```
+
+### npm
+
+```bash
+npm install -g opencode-ai
+```
+
+也可通过 yarn、pnpm 和 bun 安装：
+
+```bash
+yarn global add opencode-ai
+pnpm add -g opencode-ai
+bun add -g opencode-ai
+```
+
+### Homebrew (macOS / Linux)
+
+```bash
+brew install anomalyco/tap/opencode
+```
+
+推荐使用 OpenCode tap 以获取最新版本。
+
+### Arch Linux
+
+```bash
+sudo pacman -S opencode
+# 或从 AUR 安装（最新版）
+paru -S opencode-bin
+```
+
+### Windows
+
+**Chocolatey：**
+
+```bash
+choco install opencode
+```
+
+**Scoop：**
+
+```bash
+scoop install opencode
+```
+
+### Docker
+
+```bash
+docker run -it --rm ghcr.io/anomalyco/opencode
+```
+
+### Mise
+
+```bash
+mise use -g github:anomalyco/opencode
+```
+
+### GitHub Releases
+
+从 [GitHub Releases](https://github.com/opencode-ai/opencode/releases) 页面下载对应平台的二进制文件。
+
+## 验证安装
+
+```bash
+opencode --version
+```
+
+## 配置供应商
+
+首次启动时，使用 `/connect` 命令配置 LLM 供应商：
+
+```bash
+opencode
+```
+
+然后在 Open Code 内：
+
+```
+/connect
+```
+
+### 使用环境变量
+
+```bash
+export OPENAI_API_KEY="sk-..."
+export OPENAI_BASE_URL="https://api.openai.com/v1"
+opencode
+```
+
+## 快速上手
+
+进入项目目录后启动 Open Code：
+
+```bash
+cd /path/to/your/project
+opencode
+```
+
+初始化项目分析：
+
+```
+/init
+```
+
+这会分析你的项目并创建 `AGENTS.md` 文件，帮助 Open Code 理解代码库。
+
+## 配合 Amux API Platform 使用
+
+安装 Open Code 后，详见[在 Open Code 中使用](/zh/docs/amux-api/guides/use-with-open-code)，将其连接到 Amux API Platform 以访问 GPT、Grok、MiniMax 等模型。
+
+## 相关资源
+
+- [Open Code 官方文档](https://dev.opencode.ai/docs)
+- [Open Code GitHub](https://github.com/opencode-ai/opencode)
+- [npm 包](https://www.npmjs.com/package/opencode-ai)

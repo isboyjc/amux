@@ -1,0 +1,96 @@
+---
+title: Desktop 集成
+description: 将 Amux API Platform 与 Amux Desktop 搭配使用，实现无缝的大模型访问
+---
+
+## 概述
+
+Amux API Platform 可以通过两种方式与 [Amux Desktop](/zh/docs/desktop) 搭配使用：
+
+1. **服务集成**（即将推出）— Desktop 将内置支持 Amux API Platform，打通 Web 端 API 平台与本地客户端的快速集成
+2. **C/S 代理模式** — 通过 Desktop 的代理服务器将 Amux API 作为上游提供商，让 Claude Code 等工具可以动态切换使用任意模型
+
+## 方式一：服务集成（即将推出）
+
+Amux API Platform 是一个独立的 Web 端大模型 API 网关平台。Amux Desktop 是一个个人桌面大模型客户端，也内置了网关服务。在即将发布的版本中，Desktop 将内置支持连接 Amux API Platform：
+
+- 打开 Amux Desktop → 设置 → API 服务
+- 关联您的 Amux API Platform 账号
+- 额度和可用模型将自动同步
+- 快速打通 Web 端 API 平台与本地 Desktop 客户端
+
+## 方式二：C/S 代理模式
+
+您现在就可以通过 Amux Desktop 的 C/S（客户端/服务器）代理模块，将 Amux API Platform 作为上游提供商使用。这对于 **Claude Code** 等只支持特定 API 格式的工具尤其有用。
+
+### 工作原理
+
+```
+Claude Code / 其他工具
+        │
+        ▼
+┌────────────────────┐
+│   Amux Desktop     │
+│   C/S 代理服务器    │
+│   (127.0.0.1:9527) │
+├────────────────────┤
+│ 入站: Anthropic     │
+│ 出站: OpenAI        │
+└────────┬───────────┘
+         │
+         ▼
+┌────────────────────┐
+│ Amux API Platform  │
+│ https://amux.ai    │
+│ (GPT, Grok, M2.5) │
+└────────────────────┘
+```
+
+### 分步设置
+
+#### 1. 获取 Amux API 令牌
+
+登录 [https://amux.ai](https://amux.ai) 并创建 API 令牌。详见[快速开始](/zh/docs/amux-api/quick-start)。
+
+#### 2. 配置 Amux Desktop
+
+1. 打开 Amux Desktop
+2. 进入 **提供商** → **添加提供商**
+3. 配置：
+   - **类型**：自定义 (OpenAI 兼容)
+   - **名称**：Amux API
+   - **Base URL**：`https://amux.ai`
+   - **API Key**：您的 Amux API 令牌
+
+#### 3. 创建代理路由
+
+1. 进入 **代理** → **添加代理**
+2. 配置：
+   - **名称**：Amux API 代理
+   - **路径**：`amux`（或任意您偏好的名称）
+   - **入站适配器**：OpenAI（或 Anthropic，取决于您的客户端）
+   - **出站适配器**：OpenAI
+   - **提供商**：选择步骤 2 中配置的 Amux API 提供商
+3. 配置 **模型映射**，映射您需要的模型名称
+4. 保存并启用代理
+
+#### 4. 连接您的工具
+
+在 AI 工具中使用代理端点：
+
+| 设置 | 值 |
+| --- | --- |
+| **Base URL** | `http://127.0.0.1:9527/amux/v1` |
+| **API Key** | 您的统一密钥（如已配置）或 Amux API 令牌 |
+
+### 用例：Claude Code 使用任意模型
+
+详见 [Amux Desktop Code Switch 指南](/zh/docs/desktop/guides/code-switch)，了解如何使用 Amux API 动态切换 Claude Code 使用 GPT、Grok、MiniMax 或任何其他支持的模型。
+
+## 支持的场景
+
+| 场景 | 入站 | 出站 | 描述 |
+| --- | --- | --- | --- |
+| Cursor → Amux API | OpenAI | OpenAI | 在 Cursor 中使用 Amux API 模型 |
+| Claude Code → Amux API | Anthropic | OpenAI | 在 Claude Code 中使用任意 Amux API 模型 |
+| 自定义应用 → Amux API | OpenAI | OpenAI | 任何 OpenAI 兼容应用 |

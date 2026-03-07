@@ -1,0 +1,96 @@
+---
+title: 介绍
+description: Amux Desktop - 个人跨平台桌面大模型客户端，内置网关服务
+---
+
+## 什么是 Amux Desktop？
+
+Amux Desktop 是一个个人跨平台桌面大模型客户端，内置网关服务。它在本地运行一个代理服务器，实现不同 LLM 服务商 API 之间的格式转换和智能路由。
+
+![Amux Desktop](/images/demo1_zh.png)
+
+### 核心特性
+
+- **多提供商支持**：内置 OpenAI、Anthropic、DeepSeek、Moonshot、通义千问、智谱、Google Gemini、MiniMax 预设，也支持自定义提供商
+- **两种代理模式**：桥接代理（通过适配器转换格式）和直通代理（原格式透传）
+- **Code Switch**：一键切换 Claude Code / Codex CLI 使用任意模型
+- **AI 对话**：内置聊天界面，可选择代理测试各模型
+- **实时仪表盘**：实时展示请求数量、成功率、延迟、模型使用趋势等指标
+- **请求日志**：详细的请求/响应日志，支持过滤、搜索和导出
+- **平台 API 令牌**：签发和管理 API 令牌，用于代理访问鉴权
+- **Cloudflare 隧道**：通过 Cloudflare Tunnel 将本地代理安全暴露到公网
+- **OAuth 集成**：连接第三方 OAuth 账号，构建提供商 API Key 池
+- **系统托盘**：最小化到系统托盘，代理在后台持续运行
+- **开机自启**：支持系统启动时自动运行
+- **配置导入导出**：一键备份和迁移完整配置
+- **主题与多语言**：浅色 / 深色 / 跟随系统主题，中英文界面
+
+### 功能模块
+
+| 模块 | 描述 |
+| --- | --- |
+| **Chat** | 内置 AI 对话，选择代理测试任意模型 |
+| **Dashboard** | 服务状态、请求指标、模型使用趋势 |
+| **Providers** | 管理 LLM 提供商、API 密钥和模型列表 |
+| **Proxies** | 配置桥接代理（适配器转换）和直通代理 |
+| **Code Switch** | 配置 Claude Code / Codex CLI 通过代理路由 |
+| **OAuth** | 连接 OAuth 账号，管理 API Key 池 |
+| **Tunnel** | 创建 Cloudflare 隧道，公网访问本地代理 |
+| **Tokens** | 签发和管理平台 API 令牌 |
+| **Logs** | 查看和导出详细的请求日志 |
+| **Settings** | 代理服务器、日志、安全、外观等设置 |
+
+### 架构
+
+```
+客户端 (Cursor, Claude Code, VS Code, 自定义应用)
+              │
+              ▼
+   ┌──────────────────────────┐
+   │      Amux Desktop         │
+   │     本地代理服务器         │
+   │    (127.0.0.1:9527)       │
+   ├──────────────────────────┤
+   │ 桥接代理                  │ ← 通过适配器转换格式
+   │ 直通代理                  │ ← 原格式透传 + 密钥注入
+   │ Code Switch               │ ← CLI 工具路由
+   │ 统一 API Key 鉴权         │
+   │ 指标与日志                │
+   └──┬──────┬──────┬─────┬──┘
+      │      │      │     │
+      ▼      ▼      ▼     ▼
+   OpenAI  Claude  DeepSeek  Gemini  ...
+```
+
+### 技术栈
+
+| 组件 | 技术 |
+| --- | --- |
+| **框架** | Electron + React + TypeScript |
+| **构建** | electron-vite + Vite |
+| **UI** | shadcn/ui + TailwindCSS |
+| **状态管理** | Zustand |
+| **路由** | React Router |
+| **数据库** | better-sqlite3 |
+| **代理服务器** | Fastify |
+| **图表** | Recharts |
+| **核心** | @amux.ai/llm-bridge + 各适配器包 |
+
+### 相关产品
+
+- **[Amux LLM Bridge](/zh/docs/llm-bridge)**：驱动 Desktop 桥接代理的核心适配器转换引擎
+- **[Amux API Platform](/zh/docs/amux-api)**：独立的 Web 端大模型 API 网关平台。未来 Desktop 将内置支持 Amux API Platform，打通 Web 端 API 平台与本地客户端的快速集成
+
+## 下一步
+
+<Cards>
+  <Card title="安装" href="/zh/docs/desktop/installation">
+    下载并安装 Amux Desktop
+  </Card>
+  <Card title="快速开始" href="/zh/docs/desktop/quick-start">
+    几分钟内设置你的第一个代理
+  </Card>
+  <Card title="供应商" href="/zh/docs/desktop/guides/providers">
+    配置 LLM 供应商和 API 密钥
+  </Card>
+</Cards>

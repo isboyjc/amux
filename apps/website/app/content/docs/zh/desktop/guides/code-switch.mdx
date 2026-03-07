@@ -1,0 +1,123 @@
+---
+title: Code Switch
+description: 通过 Amux Desktop 将 Claude Code 等 CLI 工具路由到任意 LLM 模型
+---
+
+**Code Switch** 可以将基于 CLI 的 AI 编程工具（如 Claude Code）重定向到 Amux Desktop 的代理服务器。这意味着你可以让原本只支持单一提供商的工具使用任意 LLM 模型。
+
+![Code Switch](/images/cs_zh.png)
+
+## 工作原理
+
+Code Switch 修改 CLI 工具的配置文件，使其指向 Amux Desktop 的本地代理而非原始提供商 API。Amux Desktop 随后根据模型映射将请求路由到你配置的提供商。
+
+```
+Claude Code  →  Amux Desktop (127.0.0.1:9527)  →  任意提供商
+  (Anthropic 格式)    Code Switch 处理器         (DeepSeek, OpenAI, Gemini, ...)
+```
+
+启用 Code Switch 时，Amux Desktop 会：
+
+1. 备份原始 CLI 配置
+2. 写入新配置，指向本地代理端点
+3. 设置相应的环境变量（`ANTHROPIC_BASE_URL`、`ANTHROPIC_API_KEY`）
+4. 移除模型覆盖环境变量，使模型映射生效
+
+禁用时，从备份恢复原始配置。
+
+## 支持的 CLI 工具
+
+| CLI 工具 | 状态 | 配置路径 |
+| --- | --- | --- |
+| **Claude Code** | 已支持 | `~/.claude/settings.json` |
+| **Codex** | 计划中 | — |
+
+## 设置 Code Switch
+
+### 第一步：配置提供商
+
+首先，确保你在 **Providers** 页面中至少配置了一个提供商并填入有效的 API Key。这将是实际处理请求的目标提供商。
+
+### 第二步：创建 Code Switch 配置
+
+1. 进入 **Code Switch** 页面
+2. 点击 **Add Configuration**（或添加按钮）
+3. 选择 **CLI Type**（Claude Code）
+4. 选择 **Target Provider** — 实际处理请求的提供商
+5. 配置 **Model Mappings**
+
+{/* IMAGE: Code Switch 配置对话框 */}
+
+### 第三步：配置模型映射
+
+模型映射决定 Claude Code 的模型请求如何路由。有四种映射类型：
+
+| 类型 | 描述 | 示例 |
+| --- | --- | --- |
+| **exact** | 将特定模型名映射到目标模型 | `claude-opus-4-6-20260206` → `deepseek-r1` |
+| **family** | 将整个模型族（opus/sonnet/haiku）映射到目标 | `sonnet 族` → `gpt-4o` |
+| **reasoning** | Claude Code 启用扩展思考时使用的模型 | `reasoning` → `deepseek-r1` |
+| **default** | 兜底映射，没有其他规则匹配时使用 | `default` → `gpt-4o-mini` |
+
+{/* IMAGE: 不同映射类型的模型映射配置 */}
+
+**匹配优先级**：exact → family → reasoning → default
+
+### 第四步：启用
+
+将配置切换为 **Enabled**。Amux Desktop 会立即更新你的 Claude Code 配置。
+
+## 使用示例
+
+启用 Code Switch 并配置 DeepSeek 提供商后：
+
+1. 打开终端
+2. 像往常一样运行 `claude`
+3. Claude Code 以 Anthropic 格式向 `127.0.0.1:9527` 发送请求
+4. Amux Desktop 应用模型映射并转发到 DeepSeek
+5. 响应被转换回 Anthropic 格式并返回给 Claude Code
+
+Claude Code 的使用方式完全不变，但后台使用的是你配置的模型。
+
+## 配置详情
+
+为 Claude Code 启用 Code Switch 时，`~/.claude/settings.json` 会被修改为：
+
+```json
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://127.0.0.1:9527/code/claudecode",
+    "ANTHROPIC_API_KEY": "sk-amux.xxx"
+  }
+}
+```
+
+原始配置已备份，禁用 Code Switch 后自动恢复。
+
+## 代理路径
+
+Code Switch 请求通过专用端点处理：
+
+```
+POST http://127.0.0.1:9527/code/claudecode/v1/messages
+```
+
+此端点应用模型映射并路由到配置的提供商。
+
+## 提示
+
+- **多配置**：可以创建多个 Code Switch 配置，但每种 CLI 类型同一时间只能有一个处于启用状态
+- **快速切换**：通过切换启用的配置，快速在不同提供商/模型间切换
+- **备份安全**：修改前始终备份原始 CLI 配置
+- **实时生效**：更改立即生效，无需重启 CLI 工具
+
+## 下一步
+
+<Cards>
+  <Card title="仪表盘" href="/zh/docs/desktop/guides/dashboard">
+    在仪表盘中跟踪 Code Switch 请求
+  </Card>
+  <Card title="日志" href="/zh/docs/desktop/guides/logs">
+    查看详细的请求日志
+  </Card>
+</Cards>

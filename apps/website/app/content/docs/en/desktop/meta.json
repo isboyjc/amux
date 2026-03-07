@@ -1,0 +1,24 @@
+{
+  "title": "Amux Desktop",
+  "description": "A personal cross-platform desktop LLM client with built-in gateway services",
+  "root": true,
+  "icon": "Monitor",
+  "pages": [
+    "index",
+    "installation",
+    "quick-start",
+    "---Modules---",
+    "guides/chat",
+    "guides/dashboard",
+    "guides/providers",
+    "guides/proxies",
+    "guides/code-switch",
+    "guides/oauth",
+    "guides/tunnel",
+    "guides/tokens",
+    "guides/logs",
+    "guides/settings",
+    "---Other---",
+    "guides/faq"
+  ]
+}

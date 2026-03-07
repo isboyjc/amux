@@ -45,7 +45,7 @@ export function FooterSection({ lang }: FooterSectionProps) {
             <ul className="space-y-2 text-sm text-fd-muted-foreground">
               <li>
                 <Link
-                  href={`/${lang}/docs`}
+                  href={`/${lang}/docs/llm-bridge`}
                   className="hover:text-fd-foreground transition-colors"
                 >
                   {t.footer.docs}
@@ -80,7 +80,7 @@ export function FooterSection({ lang }: FooterSectionProps) {
             <ul className="space-y-2 text-sm text-fd-muted-foreground">
               <li>
                 <Link
-                  href={`/${lang}/docs/quick-start`}
+                  href={`/${lang}/docs/llm-bridge/quick-start`}
                   className="hover:text-fd-foreground transition-colors"
                 >
                   {t.footer.quickStart}
@@ -88,7 +88,7 @@ export function FooterSection({ lang }: FooterSectionProps) {
               </li>
               <li>
                 <Link
-                  href={`/${lang}/docs/adapters`}
+                  href={`/${lang}/docs/llm-bridge/adapters`}
                   className="hover:text-fd-foreground transition-colors"
                 >
                   {t.footer.adapters}
@@ -96,7 +96,7 @@ export function FooterSection({ lang }: FooterSectionProps) {
               </li>
               <li>
                 <Link
-                  href={`/${lang}/docs/api`}
+                  href={`/${lang}/docs/llm-bridge/api`}
                   className="hover:text-fd-foreground transition-colors"
                 >
                   {t.footer.apiReference}
@@ -138,7 +138,7 @@ export function FooterSection({ lang }: FooterSectionProps) {
             </a>
             <span className="text-fd-border">|</span>
             <Link
-              href={`/${lang}/docs`}
+              href={`/${lang}/docs/llm-bridge`}
               className="hover:text-fd-foreground transition-colors"
             >
               {locale === 'zh' ? '文档' : 'Docs'}

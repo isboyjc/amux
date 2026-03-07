@@ -1,0 +1,118 @@
+---
+title: Installation
+description: Download and install Amux Desktop on macOS, Windows, or Linux
+---
+
+## System Requirements
+
+| Platform | Requirement |
+| --- | --- |
+| **macOS** | macOS 10.15 (Catalina) or later, Intel or Apple Silicon |
+| **Windows** | Windows 10 or later, 64-bit |
+| **Linux** | Ubuntu 20.04+, Debian 11+, Fedora 36+, or equivalent |
+
+## Download
+
+Download the latest release from the [GitHub Releases](https://github.com/isboyjc/amux/releases) page.
+
+| Platform | File | Architecture | Download |
+| --- | --- | --- | --- |
+| macOS | `amux-desktop-x.x.x.dmg` | Universal (Intel + Apple Silicon) | [GitHub Releases](https://github.com/isboyjc/amux/releases) |
+| Windows | `amux-desktop-x.x.x-setup.exe` | x64 | [GitHub Releases](https://github.com/isboyjc/amux/releases) |
+| Linux | `amux-desktop-x.x.x.AppImage` | x64 | [GitHub Releases](https://github.com/isboyjc/amux/releases) |
+| Linux (Debian) | `amux-desktop-x.x.x.deb` | x64 | [GitHub Releases](https://github.com/isboyjc/amux/releases) |
+
+## Installation Steps
+
+### macOS
+
+1. Open the downloaded `.dmg` file
+2. Drag **Amux Desktop** to the **Applications** folder
+3. On first launch, macOS may show a security prompt — go to **System Preferences > Security & Privacy** and click **Open Anyway**
+
+{/* IMAGE: macOS installation - drag to Applications */}
+
+### Windows
+
+1. Run the downloaded `.exe` installer
+2. Follow the setup wizard
+3. Amux Desktop will be added to your Start Menu
+
+{/* IMAGE: Windows installation wizard */}
+
+### Linux
+
+**AppImage:**
+
+```bash
+chmod +x amux-desktop-x.x.x.AppImage
+./amux-desktop-x.x.x.AppImage
+```
+
+**Debian/Ubuntu (.deb):**
+
+```bash
+sudo dpkg -i amux-desktop-x.x.x.deb
+```
+
+## Data Directory
+
+Amux Desktop stores configuration, database, and logs in the following locations:
+
+| Platform | Path |
+| --- | --- |
+| macOS | `~/Library/Application Support/amux-desktop/` |
+| Windows | `%APPDATA%/amux-desktop/` |
+| Linux | `~/.config/amux-desktop/` |
+
+This directory contains:
+
+| File/Folder | Description |
+| --- | --- |
+| `database.sqlite` | Local database (providers, proxies, logs, tokens, etc.) |
+| `logs/` | Application log files |
+| `presets/` | Cached provider presets |
+
+## Build from Source
+
+If you prefer to build from source:
+
+```bash
+git clone https://github.com/isboyjc/amux.git
+cd amux
+
+# Install dependencies
+pnpm install
+
+# Run in development mode
+cd apps/desktop
+pnpm dev
+
+# Build distributable package
+pnpm package
+```
+
+Platform-specific builds:
+
+```bash
+pnpm package:mac      # macOS (.dmg)
+pnpm package:win      # Windows (.exe)
+pnpm package:linux    # Linux (.AppImage, .deb)
+```
+
+## Auto Updates
+
+Amux Desktop supports automatic update checking. When a new version is available, a notification will appear in the application. You can also manually check for updates in **Settings**.
+
+{/* IMAGE: auto update notification */}
+
+## Next Steps
+
+<Cards>
+  <Card title="Quick Start" href="/docs/desktop/quick-start">
+    Set up your first proxy in minutes
+  </Card>
+  <Card title="Providers" href="/docs/desktop/guides/providers">
+    Configure LLM providers and API keys
+  </Card>
+</Cards>

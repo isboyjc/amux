@@ -1,0 +1,78 @@
+---
+title: 在 Open Code 中使用
+description: 将 Open Code CLI 连接到 Amux API Platform
+---
+
+[Open Code](https://opencode.ai) 是一个开源的 AI 编程代理，在终端中运行。它支持多种 LLM 供应商，可以配置为使用 Amux API Platform 作为后端。
+
+## 前提条件
+
+- 已安装 Open Code（[安装指南](/zh/docs/amux-api/guides/install-open-code)）
+- 拥有 Amux API Platform 账号和 API 令牌（[快速开始](/zh/docs/amux-api/quick-start)）
+
+## 配置
+
+设置环境变量：
+
+```bash
+export OPENAI_API_KEY="your-amux-api-token"
+export OPENAI_BASE_URL="https://amux.ai/v1"
+```
+
+写入 shell 配置文件以持久化：
+
+```bash
+echo 'export OPENAI_API_KEY="your-amux-api-token"' >> ~/.zshrc
+echo 'export OPENAI_BASE_URL="https://amux.ai/v1"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+## 使用
+
+进入项目目录后启动 Open Code：
+
+```bash
+cd /path/to/your/project
+opencode
+```
+
+### 首次使用
+
+首次运行时，可以使用 `/connect` 命令配置供应商，或直接依赖上面设置的环境变量。
+
+### 常用命令
+
+```bash
+# 启动交互会话
+opencode
+
+# 初始化项目分析（在 opencode 内运行）
+/init
+
+# 连接供应商
+/connect
+```
+
+## 配置文件
+
+也可以在 Open Code 的配置文件中配置（项目根目录的 `opencode.json` 或 `~/.config/opencode/config.json`）：
+
+```json
+{
+  "provider": {
+    "type": "openai",
+    "api_key": "your-amux-api-token",
+    "base_url": "https://amux.ai/v1"
+  }
+}
+```
+
+## 验证
+
+启动 Open Code 并发送测试消息，如果收到回复则连接成功。
+
+## 注意事项
+
+- Amux API Platform 兼容 OpenAI，配置 Open Code 时使用 `openai` 供应商类型
+- Open Code 的所有功能均可正常使用
+- 可用模型取决于你的 Amux API 账号和额度

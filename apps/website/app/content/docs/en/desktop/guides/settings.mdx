@@ -1,0 +1,112 @@
+---
+title: Settings
+description: Configure proxy server, logging, security, appearance, and data management
+---
+
+The **Settings** module provides comprehensive application configuration, organized into several sections.
+
+{/* IMAGE: Settings page overview */}
+
+## Appearance
+
+| Setting | Options | Description |
+| --- | --- | --- |
+| **Theme** | Light / Dark | Application color theme |
+| **Language** | English / 中文 | User interface language |
+
+{/* IMAGE: Appearance settings */}
+
+## General
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| **Auto Launch** | Off | Start Amux Desktop automatically when the system boots |
+| **Minimize to Tray** | Off | Minimize to system tray instead of closing the window |
+| **Analytics** | Off | Share anonymous usage statistics to help improve the product |
+
+## Proxy Server
+
+Configure the built-in proxy server:
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| **Port** | `9527` | Proxy server listen port |
+| **Host** | `127.0.0.1` | Proxy server bind address |
+| **Auto Start** | On | Automatically start the proxy server when the app launches |
+| **Timeout** | `60000`ms | Request timeout for upstream provider calls |
+
+{/* IMAGE: Proxy server settings */}
+
+<Callout type="info">
+Change the **Host** to `0.0.0.0` if you want to accept connections from other devices on your local network (not just localhost).
+</Callout>
+
+## Logging
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| **Enabled** | Yes | Record request logs |
+| **Save Request Body** | No | Store full request payloads (increases storage usage) |
+| **Save Response Body** | No | Store full response payloads (increases storage usage) |
+| **Retention Days** | 7 | Automatically delete logs older than this |
+| **Max Entries** | 10000 | Maximum number of log entries to retain |
+| **Clear Logs** | — | Immediately delete all existing log entries |
+
+## Security
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| **Unified API Key** | Off | Require an API token to access the proxy server |
+
+When enabled, clients must include a valid token in the `Authorization: Bearer <key>` header. Manage tokens on the **[Tokens](/docs/desktop/guides/tokens)** page.
+
+## Data Management
+
+| Action | Description |
+| --- | --- |
+| **Export Config** | Export your full configuration (providers, proxies, model mappings, settings) as a JSON file |
+| **Import Config** | Import a previously exported configuration file to restore or migrate settings |
+| **Refresh Presets** | Reload provider presets from the remote source |
+| **Open Data Directory** | Open the application data folder in your system file manager |
+
+{/* IMAGE: Data management section */}
+
+### Config Import/Export
+
+Use Export/Import to:
+- **Backup**: Save your entire configuration before updates
+- **Migrate**: Move your setup to a new machine
+- **Share**: Share proxy configurations with team members (API keys are excluded for security)
+
+### Preset Updates
+
+Provider presets can be auto-updated from a remote source:
+
+| Setting | Description |
+| --- | --- |
+| **Remote URL** | URL for fetching updated presets |
+| **Auto Update** | Automatically check for new preset versions |
+
+The merge strategy uses `updatedAt` timestamps — the newer version wins.
+
+## About
+
+| Info | Description |
+| --- | --- |
+| **Version** | Current application version |
+| **Platform** | Operating system and architecture |
+| **Check for Updates** | Manually check if a new version is available |
+| **GitHub** | Link to the project repository |
+
+{/* IMAGE: About section */}
+
+## Next Steps
+
+<Cards>
+  <Card title="Quick Start" href="/docs/desktop/quick-start">
+    Get started with the basics
+  </Card>
+  <Card title="Providers" href="/docs/desktop/guides/providers">
+    Configure LLM providers
+  </Card>
+</Cards>
