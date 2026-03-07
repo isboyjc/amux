@@ -28,9 +28,42 @@ Download the latest release from the [GitHub Releases](https://github.com/isboyj
 
 1. Open the downloaded `.dmg` file
 2. Drag **Amux Desktop** to the **Applications** folder
-3. On first launch, macOS may show a security prompt — go to **System Preferences > Security & Privacy** and click **Open Anyway**
 
 {/* IMAGE: macOS installation - drag to Applications */}
+
+#### macOS Security Tips
+
+Since the app is not notarized by Apple, macOS may show a **"damaged"** or **"can't be opened"** error. Here are three methods to fix it:
+
+**Method 1: Right-click to Open**
+
+1. Right-click (or Control+Click) on the app icon
+2. Select **"Open"** from the menu
+3. Click **"Open"** in the security dialog
+
+**Method 2: System Settings**
+
+1. Try to open the app (it will be blocked)
+2. Go to **System Settings > Privacy & Security**
+3. Scroll down to find the "Amux was blocked" message
+4. Click **"Open Anyway"**
+5. Click **"Open"** in the confirmation dialog
+
+**Method 3: Remove Quarantine (Terminal)**
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Amux.app
+```
+
+If the app is in your Downloads folder:
+
+```bash
+xattr -dr com.apple.quarantine ~/Downloads/Amux.app
+```
+
+<Callout type="info">
+After using any of these methods, the app will open normally in the future.
+</Callout>
 
 ### Windows
 

@@ -28,9 +28,42 @@ description: 在 macOS、Windows 或 Linux 上下载并安装 Amux Desktop
 
 1. 打开下载的 `.dmg` 文件
 2. 将 **Amux Desktop** 拖到 **Applications** 文件夹
-3. 首次启动时 macOS 可能弹出安全提示，前往 **系统偏好设置 > 安全性与隐私**，点击 **仍要打开**
 
 {/* IMAGE: macOS 安装 - 拖入 Applications */}
+
+#### macOS 安全提示
+
+由于应用未经 Apple 公证，macOS 可能显示**"已损坏"**或**"无法打开"**的错误。以下是三种解决方法：
+
+**方法 1：右键打开**
+
+1. 右键点击（或 Control+点击）应用图标
+2. 从菜单中选择**"打开"**
+3. 在安全对话框中点击**"打开"**
+
+**方法 2：系统设置放行**
+
+1. 尝试打开应用（会被阻止）
+2. 前往 **系统设置 > 隐私与安全性**
+3. 向下滚动找到"已阻止 Amux"的提示
+4. 点击**"仍要打开"**
+5. 在确认对话框中点击**"打开"**
+
+**方法 3：移除隔离属性（终端）**
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Amux.app
+```
+
+如果应用在下载文件夹中：
+
+```bash
+xattr -dr com.apple.quarantine ~/Downloads/Amux.app
+```
+
+<Callout type="info">
+使用任一方法后，应用将可以正常打开，无需重复操作。
+</Callout>
 
 ### Windows
 
