@@ -1,5 +1,11 @@
 # @amux.ai/website
 
+## 0.2.0
+
+### Minor Changes
+
+- 1387730: introduce Amux API Platform documentation and integration guides
+
 ## 0.1.4
 
 ### Patch Changes
