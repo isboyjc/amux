@@ -16,14 +16,14 @@ description: 将 Open Code CLI 连接到 Amux API Platform
 
 ```bash
 export OPENAI_API_KEY="your-amux-api-token"
-export OPENAI_BASE_URL="https://amux.ai/v1"
+export OPENAI_BASE_URL="https://api.amux.ai/v1"
 ```
 
 写入 shell 配置文件以持久化：
 
 ```bash
 echo 'export OPENAI_API_KEY="your-amux-api-token"' >> ~/.zshrc
-echo 'export OPENAI_BASE_URL="https://amux.ai/v1"' >> ~/.zshrc
+echo 'export OPENAI_BASE_URL="https://api.amux.ai/v1"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
@@ -62,7 +62,7 @@ opencode
   "provider": {
     "type": "openai",
     "api_key": "your-amux-api-token",
-    "base_url": "https://amux.ai/v1"
+    "base_url": "https://api.amux.ai/v1"
   }
 }
 ```

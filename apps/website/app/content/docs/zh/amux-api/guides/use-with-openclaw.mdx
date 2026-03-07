@@ -19,7 +19,7 @@ description: 将 OpenClaw 连接到 Amux API Platform
 ```bash
 openclaw onboard \
   --auth-choice custom-api-key \
-  --custom-base-url "https://amux.ai/v1" \
+  --custom-base-url "https://api.amux.ai/v1" \
   --custom-model-id "gpt-5.4" \
   --custom-api-key "your-amux-api-token" \
   --custom-compatibility openai
@@ -34,7 +34,7 @@ openclaw onboard \
   "models": {
     "providers": {
       "amux": {
-        "baseUrl": "https://amux.ai/v1",
+        "baseUrl": "https://api.amux.ai/v1",
         "apiKey": "your-amux-api-token",
         "api": "openai-completions",
         "models": [
@@ -77,7 +77,7 @@ export CUSTOM_API_KEY="your-amux-api-token"
 openclaw onboard \
   --non-interactive \
   --auth-choice custom-api-key \
-  --custom-base-url "https://amux.ai/v1" \
+  --custom-base-url "https://api.amux.ai/v1" \
   --custom-model-id "gpt-5.4" \
   --custom-compatibility openai
 ```

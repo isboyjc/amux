@@ -8,7 +8,7 @@ Amux API Platform provides a complete set of RESTful API endpoints, fully compat
 ## Base URL
 
 ```
-https://amux.ai
+https://api.amux.ai
 ```
 
 ## Authentication
@@ -19,7 +19,7 @@ All API requests require authentication via Bearer Token in the `Authorization` 
 Authorization: Bearer your-amux-api-token
 ```
 
-Create your API token at [https://amux.ai](https://amux.ai). See [Quick Start](/docs/amux-api/quick-start) for details.
+Create your API token at [https://api.amux.ai](https://api.amux.ai). See [Quick Start](/docs/amux-api/quick-start) for details.
 
 ---
 
@@ -65,7 +65,7 @@ POST /v1/chat/completions
 ### Example
 
 ```bash
-curl https://amux.ai/v1/chat/completions \
+curl https://api.amux.ai/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-amux-api-token" \
   -d '{
@@ -108,7 +108,7 @@ curl https://amux.ai/v1/chat/completions \
 Set `stream: true` to receive Server-Sent Events (SSE):
 
 ```bash
-curl https://amux.ai/v1/chat/completions \
+curl https://api.amux.ai/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-amux-api-token" \
   -d '{
@@ -147,7 +147,7 @@ POST /v1/completions
 ### Example
 
 ```bash
-curl https://amux.ai/v1/completions \
+curl https://api.amux.ai/v1/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-amux-api-token" \
   -d '{
@@ -169,7 +169,7 @@ GET /v1/models
 ### Example
 
 ```bash
-curl https://amux.ai/v1/models \
+curl https://api.amux.ai/v1/models \
   -H "Authorization: Bearer your-amux-api-token"
 ```
 
@@ -211,7 +211,7 @@ POST /v1/embeddings
 ### Example
 
 ```bash
-curl https://amux.ai/v1/embeddings \
+curl https://api.amux.ai/v1/embeddings \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-amux-api-token" \
   -d '{
@@ -265,7 +265,7 @@ POST /v1/images/generations
 ### Example
 
 ```bash
-curl https://amux.ai/v1/images/generations \
+curl https://api.amux.ai/v1/images/generations \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-amux-api-token" \
   -d '{
@@ -339,7 +339,7 @@ POST /v1/videos
 ### Example
 
 ```bash
-curl https://amux.ai/v1/videos \
+curl https://api.amux.ai/v1/videos \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-amux-api-token" \
   -d '{
@@ -383,7 +383,7 @@ Establish a WebSocket connection for real-time audio conversations.
 GET /v1/realtime
 ```
 
-Connection URL: `wss://amux.ai/v1/realtime?model=gpt-4o-realtime`
+Connection URL: `wss://api.amux.ai/v1/realtime?model=gpt-4o-realtime`
 
 ### Query Parameters
 
@@ -403,7 +403,7 @@ Authorization: Bearer your-amux-api-token
 
 ```javascript
 const ws = new WebSocket(
-  'wss://amux.ai/v1/realtime?model=gpt-4o-realtime',
+  'wss://api.amux.ai/v1/realtime?model=gpt-4o-realtime',
   { headers: { 'Authorization': 'Bearer your-amux-api-token' } }
 );
 
@@ -443,7 +443,7 @@ POST /v1/rerank
 ### Example
 
 ```bash
-curl https://amux.ai/v1/rerank \
+curl https://api.amux.ai/v1/rerank \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-amux-api-token" \
   -d '{

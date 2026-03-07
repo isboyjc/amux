@@ -16,14 +16,14 @@ Set the environment variables to point Gemini CLI at Amux API Platform:
 
 ```bash
 export GEMINI_API_KEY="your-amux-api-token"
-export GEMINI_BASE_URL="https://amux.ai"
+export GEMINI_BASE_URL="https://api.amux.ai"
 ```
 
 For persistence, add them to your shell profile:
 
 ```bash
 echo 'export GEMINI_API_KEY="your-amux-api-token"' >> ~/.zshrc
-echo 'export GEMINI_BASE_URL="https://amux.ai"' >> ~/.zshrc
+echo 'export GEMINI_BASE_URL="https://api.amux.ai"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
@@ -34,7 +34,7 @@ You can also configure via Gemini CLI's settings file (`~/.gemini/settings.json`
 ```json
 {
   "apiKey": "your-amux-api-token",
-  "baseUrl": "https://amux.ai"
+  "baseUrl": "https://api.amux.ai"
 }
 ```
 

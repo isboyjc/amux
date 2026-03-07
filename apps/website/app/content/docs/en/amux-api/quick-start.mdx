@@ -5,7 +5,7 @@ description: Register, create API tokens, and start using Amux API Platform
 
 ## Step 1: Register an Account
 
-1. Visit [https://amux.ai](https://amux.ai)
+1. Visit [https://api.amux.ai](https://api.amux.ai)
 2. Click **Sign Up** to create a new account
 3. Complete the registration with your email
 
@@ -21,7 +21,7 @@ If you have a redemption code:
 
 ## Step 2: Create an API Token
 
-1. Log in to [https://amux.ai](https://amux.ai)
+1. Log in to [https://api.amux.ai](https://api.amux.ai)
 2. Navigate to **Tokens** → **Create Token**
 3. Give your token a name (e.g., "My App", "Cursor", "Claude Code")
 4. Click **Create** and copy the generated token
@@ -34,13 +34,13 @@ Use the following configuration to connect:
 
 | Setting | Value |
 | --- | --- |
-| **Base URL** | `https://amux.ai` |
+| **Base URL** | `https://api.amux.ai` |
 | **API Key** | Your API token from Step 2 |
 
 ### Using curl
 
 ```bash
-curl https://amux.ai/v1/chat/completions \
+curl https://api.amux.ai/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-api-token" \
   -d '{
@@ -57,7 +57,7 @@ curl https://amux.ai/v1/chat/completions \
 import OpenAI from 'openai';
 
 const client = new OpenAI({
-  baseURL: 'https://amux.ai/v1',
+  baseURL: 'https://api.amux.ai/v1',
   apiKey: 'your-api-token',
 });
 
@@ -75,7 +75,7 @@ console.log(response.choices[0].message.content);
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="https://amux.ai/v1",
+    base_url="https://api.amux.ai/v1",
     api_key="your-api-token",
 )
 

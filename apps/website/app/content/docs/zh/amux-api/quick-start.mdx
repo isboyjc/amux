@@ -5,7 +5,7 @@ description: 注册、创建 API 令牌，开始使用 Amux API Platform
 
 ## 步骤 1：注册账号
 
-1. 访问 [https://amux.ai](https://amux.ai)
+1. 访问 [https://api.amux.ai](https://api.amux.ai)
 2. 点击 **注册** 创建新账号
 3. 使用邮箱完成注册
 
@@ -21,7 +21,7 @@ Amux API Platform 目前**限时开放注册**。注册后，部分内测用户�
 
 ## 步骤 2：创建 API 令牌
 
-1. 登录 [https://amux.ai](https://amux.ai)
+1. 登录 [https://api.amux.ai](https://api.amux.ai)
 2. 进入 **令牌** → **创建令牌**
 3. 为令牌命名（例如 "我的应用"、"Cursor"、"Claude Code"）
 4. 点击 **创建** 并复制生成的令牌
@@ -34,13 +34,13 @@ Amux API Platform 目前**限时开放注册**。注册后，部分内测用户�
 
 | 设置 | 值 |
 | --- | --- |
-| **Base URL** | `https://amux.ai` |
+| **Base URL** | `https://api.amux.ai` |
 | **API Key** | 步骤 2 中创建的 API 令牌 |
 
 ### 使用 curl
 
 ```bash
-curl https://amux.ai/v1/chat/completions \
+curl https://api.amux.ai/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-api-token" \
   -d '{
@@ -57,7 +57,7 @@ curl https://amux.ai/v1/chat/completions \
 import OpenAI from 'openai';
 
 const client = new OpenAI({
-  baseURL: 'https://amux.ai/v1',
+  baseURL: 'https://api.amux.ai/v1',
   apiKey: 'your-api-token',
 });
 
@@ -75,7 +75,7 @@ console.log(response.choices[0].message.content);
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="https://amux.ai/v1",
+    base_url="https://api.amux.ai/v1",
     api_key="your-api-token",
 )
 

@@ -23,7 +23,7 @@ pip install openai
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="https://amux.ai/v1",
+    base_url="https://api.amux.ai/v1",
     api_key="your-amux-api-token",
 )
 
@@ -44,7 +44,7 @@ print(response.choices[0].message.content)
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="https://amux.ai/v1",
+    base_url="https://api.amux.ai/v1",
     api_key="your-amux-api-token",
 )
 
@@ -66,7 +66,7 @@ import asyncio
 from openai import AsyncOpenAI
 
 client = AsyncOpenAI(
-    base_url="https://amux.ai/v1",
+    base_url="https://api.amux.ai/v1",
     api_key="your-amux-api-token",
 )
 
@@ -83,7 +83,7 @@ asyncio.run(main())
 ### 使用环境变量
 
 ```bash
-export OPENAI_BASE_URL="https://amux.ai/v1"
+export OPENAI_BASE_URL="https://api.amux.ai/v1"
 export OPENAI_API_KEY="your-amux-api-token"
 ```
 
@@ -113,7 +113,7 @@ npm install openai
 import OpenAI from 'openai';
 
 const client = new OpenAI({
-  baseURL: 'https://amux.ai/v1',
+  baseURL: 'https://api.amux.ai/v1',
   apiKey: 'your-amux-api-token',
 });
 
@@ -138,7 +138,7 @@ main();
 import OpenAI from 'openai';
 
 const client = new OpenAI({
-  baseURL: 'https://amux.ai/v1',
+  baseURL: 'https://api.amux.ai/v1',
   apiKey: 'your-amux-api-token',
 });
 
@@ -161,7 +161,7 @@ main();
 ### 使用环境变量
 
 ```bash
-export OPENAI_BASE_URL="https://amux.ai/v1"
+export OPENAI_BASE_URL="https://api.amux.ai/v1"
 export OPENAI_API_KEY="your-amux-api-token"
 ```
 
@@ -183,7 +183,7 @@ const response = await client.chat.completions.create({
 const OpenAI = require('openai');
 
 const client = new OpenAI({
-  baseURL: 'https://amux.ai/v1',
+  baseURL: 'https://api.amux.ai/v1',
   apiKey: 'your-amux-api-token',
 });
 
@@ -204,7 +204,7 @@ main();
 如果不想引入 SDK，可以直接调用 API：
 
 ```typescript
-const response = await fetch('https://amux.ai/v1/chat/completions', {
+const response = await fetch('https://api.amux.ai/v1/chat/completions', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -228,7 +228,7 @@ console.log(data.choices[0].message.content);
 | **xAI** | Grok 系列（文本、图像、视频） |
 | **MiniMax** | M2.5 及 M 系列 |
 
-更多供应商将陆续接入，请在[平台](https://amux.ai)查看最新模型列表。
+更多供应商将陆续接入，请在[平台](https://api.amux.ai)查看最新模型列表。
 
 ## 注意事项
 

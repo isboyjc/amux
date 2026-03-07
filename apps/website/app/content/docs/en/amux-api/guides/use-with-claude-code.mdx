@@ -17,7 +17,7 @@ If you have [Amux Desktop](/docs/desktop) installed, you can use the [Code Switc
 1. Add Amux API Platform as a provider in Amux Desktop:
    - **Name**: Amux API
    - **Adapter Type**: `openai`
-   - **Base URL**: `https://amux.ai`
+   - **Base URL**: `https://api.amux.ai`
    - **API Key**: Your Amux API token
 2. Go to **Code Switch** and create a configuration targeting this provider
 3. Configure model mappings (e.g. `claude-sonnet` → `gpt-5.4`)
@@ -30,14 +30,14 @@ This method gives you the flexibility to dynamically switch models without chang
 Set environment variables to point Claude Code at Amux API Platform:
 
 ```bash
-export ANTHROPIC_BASE_URL="https://amux.ai"
+export ANTHROPIC_BASE_URL="https://api.amux.ai"
 export ANTHROPIC_API_KEY="your-amux-api-token"
 ```
 
 Or add them to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.) for persistence:
 
 ```bash
-echo 'export ANTHROPIC_BASE_URL="https://amux.ai"' >> ~/.zshrc
+echo 'export ANTHROPIC_BASE_URL="https://api.amux.ai"' >> ~/.zshrc
 echo 'export ANTHROPIC_API_KEY="your-amux-api-token"' >> ~/.zshrc
 source ~/.zshrc
 ```
@@ -55,7 +55,7 @@ Edit Claude Code's configuration file directly at `~/.claude/settings.json`:
 ```json
 {
   "env": {
-    "ANTHROPIC_BASE_URL": "https://amux.ai",
+    "ANTHROPIC_BASE_URL": "https://api.amux.ai",
     "ANTHROPIC_API_KEY": "your-amux-api-token"
   }
 }

@@ -17,7 +17,7 @@ description: 将 Claude Code CLI 连接到 Amux API Platform 以使用所有支�
 1. 在 Amux Desktop 中添加 Amux API Platform 作为供应商：
    - **Name**: Amux API
    - **Adapter Type**: `openai`
-   - **Base URL**: `https://amux.ai`
+   - **Base URL**: `https://api.amux.ai`
    - **API Key**: 你的 Amux API 令牌
 2. 进入 **Code Switch** 创建配置，目标供应商选择 Amux API
 3. 配置模型映射（如 `claude-sonnet` → `gpt-5.4`）
@@ -30,14 +30,14 @@ description: 将 Claude Code CLI 连接到 Amux API Platform 以使用所有支�
 设置环境变量将 Claude Code 指向 Amux API Platform：
 
 ```bash
-export ANTHROPIC_BASE_URL="https://amux.ai"
+export ANTHROPIC_BASE_URL="https://api.amux.ai"
 export ANTHROPIC_API_KEY="your-amux-api-token"
 ```
 
 将其写入 shell 配置文件（`~/.bashrc`、`~/.zshrc` 等）以持久化：
 
 ```bash
-echo 'export ANTHROPIC_BASE_URL="https://amux.ai"' >> ~/.zshrc
+echo 'export ANTHROPIC_BASE_URL="https://api.amux.ai"' >> ~/.zshrc
 echo 'export ANTHROPIC_API_KEY="your-amux-api-token"' >> ~/.zshrc
 source ~/.zshrc
 ```
@@ -55,7 +55,7 @@ claude
 ```json
 {
   "env": {
-    "ANTHROPIC_BASE_URL": "https://amux.ai",
+    "ANTHROPIC_BASE_URL": "https://api.amux.ai",
     "ANTHROPIC_API_KEY": "your-amux-api-token"
   }
 }

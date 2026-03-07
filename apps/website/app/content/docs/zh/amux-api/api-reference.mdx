@@ -8,7 +8,7 @@ Amux API 平台提供完整的 RESTful API 接口，完全兼容 [OpenAI API](ht
 ## Base URL
 
 ```
-https://amux.ai
+https://api.amux.ai
 ```
 
 ## 认证方式
@@ -19,7 +19,7 @@ https://amux.ai
 Authorization: Bearer your-amux-api-token
 ```
 
-请在 [https://amux.ai](https://amux.ai) 创建您的 API 令牌。详见[快速开始](/zh/docs/amux-api/quick-start)。
+请在 [https://api.amux.ai](https://api.amux.ai) 创建您的 API 令牌。详见[快速开始](/zh/docs/amux-api/quick-start)。
 
 ---
 
@@ -65,7 +65,7 @@ POST /v1/chat/completions
 ### 示例
 
 ```bash
-curl https://amux.ai/v1/chat/completions \
+curl https://api.amux.ai/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-amux-api-token" \
   -d '{
@@ -108,7 +108,7 @@ curl https://amux.ai/v1/chat/completions \
 设置 `stream: true` 以接收 Server-Sent Events (SSE)：
 
 ```bash
-curl https://amux.ai/v1/chat/completions \
+curl https://api.amux.ai/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-amux-api-token" \
   -d '{
@@ -147,7 +147,7 @@ POST /v1/completions
 ### 示例
 
 ```bash
-curl https://amux.ai/v1/completions \
+curl https://api.amux.ai/v1/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-amux-api-token" \
   -d '{
@@ -169,7 +169,7 @@ GET /v1/models
 ### 示例
 
 ```bash
-curl https://amux.ai/v1/models \
+curl https://api.amux.ai/v1/models \
   -H "Authorization: Bearer your-amux-api-token"
 ```
 
@@ -211,7 +211,7 @@ POST /v1/embeddings
 ### 示例
 
 ```bash
-curl https://amux.ai/v1/embeddings \
+curl https://api.amux.ai/v1/embeddings \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-amux-api-token" \
   -d '{
@@ -265,7 +265,7 @@ POST /v1/images/generations
 ### 示例
 
 ```bash
-curl https://amux.ai/v1/images/generations \
+curl https://api.amux.ai/v1/images/generations \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-amux-api-token" \
   -d '{
@@ -339,7 +339,7 @@ POST /v1/videos
 ### 示例
 
 ```bash
-curl https://amux.ai/v1/videos \
+curl https://api.amux.ai/v1/videos \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-amux-api-token" \
   -d '{
@@ -383,7 +383,7 @@ curl https://amux.ai/v1/videos \
 GET /v1/realtime
 ```
 
-连接 URL：`wss://amux.ai/v1/realtime?model=gpt-4o-realtime`
+连接 URL：`wss://api.amux.ai/v1/realtime?model=gpt-4o-realtime`
 
 ### 查询参数
 
@@ -403,7 +403,7 @@ Authorization: Bearer your-amux-api-token
 
 ```javascript
 const ws = new WebSocket(
-  'wss://amux.ai/v1/realtime?model=gpt-4o-realtime',
+  'wss://api.amux.ai/v1/realtime?model=gpt-4o-realtime',
   { headers: { 'Authorization': 'Bearer your-amux-api-token' } }
 );
 
@@ -443,7 +443,7 @@ POST /v1/rerank
 ### 示例
 
 ```bash
-curl https://amux.ai/v1/rerank \
+curl https://api.amux.ai/v1/rerank \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-amux-api-token" \
   -d '{
