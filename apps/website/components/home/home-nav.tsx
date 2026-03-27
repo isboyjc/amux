@@ -45,7 +45,9 @@ export function HomeNav({ lang }: HomeNavProps) {
   const t = translations[lang as keyof typeof translations] || translations.en;
 
   useEffect(() => {
-    setMounted(true);
+    setTimeout(() => {
+      setMounted(true);
+    }, 0);
     
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
