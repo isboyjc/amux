@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { HashRouter, Routes, Route, useNavigate } from 'react-router-dom'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { Layout } from '@/components/layout'
-import { Chat, Dashboard, Providers, Proxies, Tunnel, Logs, Settings, Tokens, OAuth, CodeSwitch } from '@/pages'
+import { Chat, Dashboard, Providers, Proxies, Tunnel, Logs, Settings, Tokens, CodeSwitch } from '@/pages'
 
 /**
  * 🆕 路由监听组件 - 处理来自主进程的导航事件
@@ -37,7 +37,6 @@ export default function App() {
             <Route path="proxies" element={<Proxies />} />
             <Route path="code-switch" element={<CodeSwitch />} />
             <Route path="tunnel" element={<Tunnel />} />
-            <Route path="oauth" element={<OAuth />} />
             <Route path="logs" element={<Logs />} />
             <Route path="tokens" element={<Tokens />} />
             <Route path="settings" element={<Settings />} />

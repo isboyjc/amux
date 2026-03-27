@@ -19,11 +19,6 @@ export interface CreateProviderDTO {
   // Passthrough Proxy fields
   enableAsProxy?: boolean
   proxyPath?: string
-  // OAuth Pool Provider fields
-  isPool?: boolean
-  poolStrategy?: string
-  oauthAccountId?: string
-  oauthProviderType?: string
 }
 
 export interface UpdateProviderDTO {
@@ -67,10 +62,9 @@ export class ProviderRepository extends BaseRepository<ProviderRow> {
       INSERT INTO providers (
         id, name, adapter_type, api_key, base_url, chat_path, models_path, models, enabled, logo, color,
         enable_as_proxy, proxy_path,
-        is_pool, pool_strategy, oauth_account_id, oauth_provider_type,
         created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
     
     stmt.run(
@@ -87,10 +81,6 @@ export class ProviderRepository extends BaseRepository<ProviderRow> {
       data.color ?? null,
       data.enableAsProxy ? 1 : 0,
       data.proxyPath ?? null,
-      data.isPool ? 1 : 0,
-      data.poolStrategy ?? null,
-      data.oauthAccountId ?? null,
-      data.oauthProviderType ?? null,
       now,
       now
     )

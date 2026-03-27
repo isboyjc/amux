@@ -12,7 +12,6 @@ import {
   TunnelIcon,
   KeyIcon,
   ChatIcon,
-  PlugConnectedIcon,
   CodeSwitchIcon
 } from '@/components/icons'
 import type { AnimatedIconHandle } from '@/components/icons'
@@ -35,7 +34,6 @@ const navItems: NavItemData[] = [
   { to: '/providers', icon: KeyframesIcon, labelKey: 'nav.providers' },
   { to: '/proxies', icon: RocketIcon, labelKey: 'nav.proxies' },
   { to: '/code-switch', icon: CodeSwitchIcon, labelKey: 'nav.codeSwitch' },
-  { to: '/oauth', icon: PlugConnectedIcon, labelKey: 'nav.oauth' },
   { to: '/tunnel', icon: TunnelIcon, labelKey: 'nav.tunnel' },
   { to: '/tokens', icon: KeyIcon, labelKey: 'nav.tokens' },
   { to: '/logs', icon: TerminalIcon, labelKey: 'nav.logs' },

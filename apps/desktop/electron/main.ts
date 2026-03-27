@@ -172,17 +172,6 @@ app.whenReady().then(async () => {
   console.log('[App] Initializing analytics...')
   await initAnalytics()
 
-  // Initialize OAuth Manager
-  console.log('[App] Initializing OAuth manager...')
-  try {
-    const { getOAuthManager } = await import('./services/oauth/oauth-manager')
-    const oauthManager = getOAuthManager()
-    await oauthManager.initialize()
-    console.log('[App] OAuth manager initialized')
-  } catch (error) {
-    console.error('[App] Failed to initialize OAuth manager:', error)
-  }
-
   // Initialize logger service
   import('./services/logger').then(({ initLogger }) => {
     initLogger()
@@ -210,18 +199,6 @@ app.on('window-all-closed', () => {
 
 // Handle app before quit
 app.on('before-quit', async () => {
-  // Cleanup OAuth Manager
-  try {
-    const { getOAuthManager } = await import('./services/oauth/oauth-manager')
-    const { getCallbackServer } = await import('./services/oauth/callback-server')
-    const oauthManager = getOAuthManager()
-    const callbackServer = getCallbackServer()
-    await oauthManager.cleanup()
-    await callbackServer.cleanup()
-  } catch (e) {
-    // Ignore errors during shutdown
-  }
-
   // Shutdown logger (flush remaining logs)
   try {
     const { shutdownLogger } = await import('./services/logger')

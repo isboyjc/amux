@@ -13,7 +13,6 @@
     "guides/providers",
     "guides/proxies",
     "guides/code-switch",
-    "guides/oauth",
     "guides/tunnel",
     "guides/tokens",
     "guides/logs",

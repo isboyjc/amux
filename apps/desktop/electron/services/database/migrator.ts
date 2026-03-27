@@ -13,8 +13,6 @@ import { migration005Tunnel } from './migrations/005_tunnel'
 import { migration006RequestSource } from './migrations/006_request_source'
 import { migration007FixGeminiAdapter } from './migrations/007_fix_gemini_adapter'
 import { migration008FixGeminiStreamEndpoint } from './migrations/008_fix_gemini_stream_endpoint'
-import { migration009 } from './migrations/009_oauth_accounts'
-import { migration010FixHealthStatus } from './migrations/010_fix_health_status'
 import { migration011CodeSwitch } from './migrations/011_code_switch'
 import { migration012RenameClaudeModelToSourceModel } from './migrations/012_rename_claude_model_to_source_model'
 import { migration013EnhanceModelMappingType } from './migrations/013_enhance_model_mapping_type'
@@ -29,8 +27,6 @@ const migrations: Migration[] = [
   migration006RequestSource,
   migration007FixGeminiAdapter,
   migration008FixGeminiStreamEndpoint,
-  migration009,
-  migration010FixHealthStatus,
   migration011CodeSwitch,
   migration012RenameClaudeModelToSourceModel,
   migration013EnhanceModelMappingType

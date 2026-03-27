@@ -63,9 +63,7 @@ export function Dashboard() {
   const [hoveredLogoIndex, setHoveredLogoIndex] = useState<number | null>(null)
 
   // Get configured and enabled providers for logo display
-  // OAuth providers don't need API key (they use OAuth tokens)
-  const isOAuthProvider = (p: Provider) => p.isPool || !!p.oauthAccountId
-  const configuredProviders = providers.filter(p => p.enabled && (isOAuthProvider(p) || p.apiKey))
+  const configuredProviders = providers.filter(p => p.enabled && p.apiKey)
   
   // Get passthrough providers count
   const passthroughProviders = providers.filter(p => p.enabled && p.enableAsProxy)

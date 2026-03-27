@@ -48,7 +48,7 @@ interface BridgeError {
 }
 
 /**
- * 🆕 获取 Provider 的认证 Token（支持 OAuth 和 API Key）
+ * Get Provider's authentication token
  * 
  * @param provider - Provider configuration
  * @returns Token string, or null if not available
@@ -56,10 +56,6 @@ interface BridgeError {
 async function getProviderToken(
   provider: ProviderRow
 ): Promise<string | null> {
-  // 新架构：所有 Provider（包括 OAuth Pool）都直接使用 api_key 字段
-  // OAuth Pool Provider 的 api_key 存储的是 OAuth 服务的 API Key (sk-amux.oauth.codex-xxx)
-  // 账号选择和 Token 管理由 OAuth 转换服务层处理
-  
   if (!provider.api_key) {
     return null
   }
@@ -152,13 +148,13 @@ export async function handleProviderPassthrough(
     let targetApiKey: string
 
     if (isInternalRequest) {
-      // Internal request - use provider's token (OAuth or API Key)
+      // Internal request - use provider's token
 
-      const result = await getProviderToken(provider)  // ✅ 使用新函数
+      const result = await getProviderToken(provider)
       if (!result) {
         const error = createErrorResponse(
           ProxyErrorCode.MISSING_API_KEY,
-          `Provider "${provider.name}" has no API key or OAuth account configured.`,
+          `Provider "${provider.name}" has no API key configured.`,
           500,
           errorFormat
         )
@@ -184,8 +180,8 @@ export async function handleProviderPassthrough(
         // User provided their own key (pass-through mode)
         targetApiKey = apiKey || ''
       } else {
-        // Use provider's token (OAuth or API Key)
-        const result = await getProviderToken(provider)  // ✅ 使用新函数
+        // Use provider's token
+        const result = await getProviderToken(provider)
         if (!result) {
           const error = createErrorResponse(
             ProxyErrorCode.MISSING_API_KEY,
@@ -207,7 +203,7 @@ export async function handleProviderPassthrough(
     }
     
     // 4. 处理 chatPath 中的 {model} 占位符
-    // 对于 OAuth Provider，provider.chat_path 可能为 null，此时 llm-bridge 会使用 adapter 的默认 chatPath
+    // 如果 provider.chat_path 为 null，llm-bridge 会使用 adapter 的默认 chatPath
     // 如果默认 chatPath 包含 {model} 占位符，需要手动替换，因为 llm-bridge 可能无法正确处理
     let chatPath = provider.chat_path
     
@@ -223,7 +219,7 @@ export async function handleProviderPassthrough(
       }
     }
     
-    // 5. Create Bridge with standard adapter (OAuth translation handled by dedicated service)
+    // 5. Create Bridge with standard adapter
     const bridgeConfig = {
       apiKey: targetApiKey,
       baseURL: provider.base_url || undefined,
@@ -388,7 +384,7 @@ export async function handleProviderPassthrough(
       const inputTokens = usage?.promptTokens
       const outputTokens = usage?.completionTokens
       
-      // Log request (including OAuth account info)
+      // Log request
       const finalStatusCode = streamSuccess ? 200 : 500
       console.log(`[Passthrough] 📊 Logging request: success=${streamSuccess}, statusCode=${finalStatusCode}`)
       
@@ -432,7 +428,7 @@ export async function handleProviderPassthrough(
       const inputTokens = usage?.promptTokens
       const outputTokens = usage?.completionTokens
       
-      // Log successful request (including OAuth account info)
+      // Log successful request
       logRequest({
         proxyPath: provider.proxy_path || `provider-${provider.id}`,
         sourceModel: body.model || 'unknown',

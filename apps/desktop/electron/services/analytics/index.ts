@@ -285,21 +285,6 @@ export const trackTunnelStopped = (duration?: number) => {
   })
 }
 
-// OAuth 事件
-export const trackOAuthAuthorized = (providerType: string, success: boolean, errorMessage?: string) => {
-  trackEvent('oauth_authorized', {
-    provider_type: providerType,
-    success,
-    ...(errorMessage && { error: errorMessage.substring(0, 100) })
-  })
-}
-
-export const trackOAuthAccountDeleted = (providerType: string) => {
-  trackEvent('oauth_account_deleted', {
-    provider_type: providerType
-  })
-}
-
 // Chat 事件
 export const trackConversationCreated = (model?: string, providerId?: string, proxyId?: string) => {
   trackEvent('conversation_created', {
