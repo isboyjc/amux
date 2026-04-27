@@ -16,6 +16,8 @@ import { migration008FixGeminiStreamEndpoint } from './migrations/008_fix_gemini
 import { migration011CodeSwitch } from './migrations/011_code_switch'
 import { migration012RenameClaudeModelToSourceModel } from './migrations/012_rename_claude_model_to_source_model'
 import { migration013EnhanceModelMappingType } from './migrations/013_enhance_model_mapping_type'
+import { migration014CliCodeSwitchV2 } from './migrations/014_cli_code_switch_v2'
+import { migration015RestoreV1Tables } from './migrations/015_restore_v1_tables'
 
 // Register all migrations here
 const migrations: Migration[] = [
@@ -29,7 +31,9 @@ const migrations: Migration[] = [
   migration008FixGeminiStreamEndpoint,
   migration011CodeSwitch,
   migration012RenameClaudeModelToSourceModel,
-  migration013EnhanceModelMappingType
+  migration013EnhanceModelMappingType,
+  migration014CliCodeSwitchV2,
+  migration015RestoreV1Tables,
 ]
 
 /**

@@ -1,4 +1,18 @@
 /**
+ * A parsed SSE event with all standard fields.
+ */
+export interface ParsedSSEEvent {
+  /** The event type (from `event:` field). Defaults to 'message' per SSE spec. */
+  event: string
+  /** The data payload (from `data:` field). Multiple data lines are joined with newlines. */
+  data: string
+  /** The event ID (from `id:` field), if present. */
+  id?: string
+  /** The retry interval in ms (from `retry:` field), if present. */
+  retry?: number
+}
+
+/**
  * Efficient SSE (Server-Sent Events) line parser
  * Handles incomplete chunks and extracts complete lines efficiently
  */
@@ -13,6 +27,89 @@ export class SSELineParser {
   processChunk(chunk: string): string[] {
     this.buffer += chunk
     return this.extractLines()
+  }
+
+  /**
+   * Process a chunk and return fully parsed SSE events.
+   * An SSE event is delimited by a blank line. This method collects
+   * field lines and emits complete events when a blank line is encountered.
+   */
+  processChunkEvents(chunk: string): ParsedSSEEvent[] {
+    const lines = this.processChunk(chunk)
+    return SSELineParser.parseEvents(lines)
+  }
+
+  /**
+   * Parse an array of lines into SSE events.
+   * Blank lines delimit events per the SSE spec.
+   */
+  static parseEvents(lines: string[]): ParsedSSEEvent[] {
+    const events: ParsedSSEEvent[] = []
+    let eventType = 'message'
+    let dataParts: string[] = []
+    let id: string | undefined
+    let retry: number | undefined
+
+    for (const rawLine of lines) {
+      const line = rawLine.replace(/\r$/, '')
+
+      // Blank line = dispatch event
+      if (line === '') {
+        if (dataParts.length > 0) {
+          events.push({
+            event: eventType,
+            data: dataParts.join('\n'),
+            ...(id !== undefined && { id }),
+            ...(retry !== undefined && { retry }),
+          })
+        }
+        // Reset for next event
+        eventType = 'message'
+        dataParts = []
+        id = undefined
+        retry = undefined
+        continue
+      }
+
+      // Comment line
+      if (line.startsWith(':')) continue
+
+      // Parse field
+      const colonIndex = line.indexOf(':')
+      let field: string
+      let value: string
+
+      if (colonIndex === -1) {
+        field = line
+        value = ''
+      } else {
+        field = line.slice(0, colonIndex)
+        // Remove optional single leading space after colon
+        value = line[colonIndex + 1] === ' '
+          ? line.slice(colonIndex + 2)
+          : line.slice(colonIndex + 1)
+      }
+
+      switch (field) {
+        case 'event':
+          eventType = value
+          break
+        case 'data':
+          dataParts.push(value)
+          break
+        case 'id':
+          id = value
+          break
+        case 'retry': {
+          const n = parseInt(value, 10)
+          if (!isNaN(n)) retry = n
+          break
+        }
+        // Unknown fields are ignored per spec
+      }
+    }
+
+    return events
   }
 
   /**

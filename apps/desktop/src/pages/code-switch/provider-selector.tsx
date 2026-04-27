@@ -1,6 +1,6 @@
 /**
  * Provider Selector Component
- * Allows users to select an enabled provider
+ * 供应商选择器（使用现有 providers 表）
  */
 
 import { useState, useEffect } from 'react'
@@ -9,20 +9,24 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
 } from '@/components/ui/select'
 import { Loader2 } from 'lucide-react'
 import type { Provider } from '@/types'
-import { useI18n } from '@/stores/i18n-store'
 
 interface ProviderSelectorProps {
   value: string
   onChange: (providerId: string) => void
   disabled?: boolean
+  currentProvider?: Provider | null
 }
 
-export function ProviderSelector({ value, onChange, disabled }: ProviderSelectorProps) {
-  const { t } = useI18n()
+export function ProviderSelector({
+  value,
+  onChange,
+  disabled,
+  currentProvider,
+}: ProviderSelectorProps) {
   const [providers, setProviders] = useState<Provider[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -33,10 +37,13 @@ export function ProviderSelector({ value, onChange, disabled }: ProviderSelector
   const loadProviders = async () => {
     try {
       setLoading(true)
-      const allProviders = await window.api.invoke('provider:list')
-      // Only show enabled providers
-      const enabledProviders = allProviders.filter(p => p.enabled)
-      setProviders(enabledProviders)
+      const result = await window.api.invoke('cli-cs:get-providers') as {
+        success: boolean
+        providers?: Provider[]
+      }
+      if (result.success) {
+        setProviders(result.providers || [])
+      }
     } catch (error) {
       console.error('Failed to load providers:', error)
     } finally {
@@ -46,44 +53,61 @@ export function ProviderSelector({ value, onChange, disabled }: ProviderSelector
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 h-10 px-3 rounded-md border">
+      <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-muted/50">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-sm text-muted-foreground">{t('codeSwitch.loading')}</span>
-      </div>
-    )
-  }
-
-  if (providers.length === 0) {
-    return (
-      <div className="text-sm text-muted-foreground p-3 rounded-md border">
-        {t('codeSwitch.noProviders')}
+        <span className="text-sm text-muted-foreground">加载供应商...</span>
       </div>
     )
   }
 
   return (
     <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger>
-        <SelectValue placeholder={t('codeSwitch.selectProvider')} />
-      </SelectTrigger>
-      <SelectContent>
-        {providers.map((provider) => (
-          <SelectItem key={provider.id} value={provider.id}>
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder="选择供应商">
+          {currentProvider && (
             <div className="flex items-center gap-2">
-              {provider.logo && (
+              {currentProvider.logo && (
                 <img
-                  src={provider.logo}
-                  alt={provider.name}
-                  className="h-4 w-4 rounded"
+                  src={currentProvider.logo}
+                  alt={currentProvider.name}
+                  className="w-4 h-4 rounded"
                 />
               )}
-              <span>{provider.name}</span>
-              <span className="text-xs text-muted-foreground">
-                ({provider.adapterType})
-              </span>
+              <span>{currentProvider.name}</span>
+              {currentProvider.adapterType && (
+                <span className="text-xs text-muted-foreground">
+                  ({currentProvider.adapterType})
+                </span>
+              )}
             </div>
-          </SelectItem>
-        ))}
+          )}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        {providers.length === 0 ? (
+          <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+            暂无可用供应商
+            <div className="text-xs mt-1">请先在供应商管理页面添加</div>
+          </div>
+        ) : (
+          providers.map((provider) => (
+            <SelectItem key={provider.id} value={provider.id}>
+              <div className="flex items-center gap-2">
+                {provider.logo && (
+                  <img
+                    src={provider.logo}
+                    alt={provider.name}
+                    className="w-4 h-4 rounded"
+                  />
+                )}
+                <span>{provider.name}</span>
+                <span className="text-xs text-muted-foreground">
+                  ({provider.adapterType})
+                </span>
+              </div>
+            </SelectItem>
+          ))
+        )}
       </SelectContent>
     </Select>
   )

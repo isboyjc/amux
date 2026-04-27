@@ -2,7 +2,6 @@
  * Auto-launch management
  */
 
-import { app } from 'electron'
 import { getSettingsRepository } from '../database/repositories'
 
 /**
@@ -21,6 +20,7 @@ export function initializeAutoLaunch(): void {
  * Set auto-launch state
  */
 export function setAutoLaunch(enabled: boolean): void {
+  const { app } = require('electron')
   const appName = 'Amux Desktop'
   
   // Use Electron's built-in login item settings
@@ -42,6 +42,7 @@ export function setAutoLaunch(enabled: boolean): void {
  * Get current auto-launch state
  */
 export function getAutoLaunchState(): boolean {
+  const { app } = require('electron')
   const loginSettings = app.getLoginItemSettings()
   return loginSettings.openAtLogin
 }
@@ -50,6 +51,7 @@ export function getAutoLaunchState(): boolean {
  * Check if app was opened at login
  */
 export function wasOpenedAtLogin(): boolean {
+  const { app } = require('electron')
   const loginSettings = app.getLoginItemSettings()
   return loginSettings.wasOpenedAtLogin
 }

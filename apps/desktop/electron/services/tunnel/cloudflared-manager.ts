@@ -7,7 +7,6 @@ import { join } from 'path'
 import { existsSync, chmodSync, mkdirSync } from 'fs'
 import { exec } from 'child_process'
 import { promisify } from 'util'
-import { app } from 'electron'
 import https from 'https'
 import http from 'http'
 import fs from 'fs'
@@ -73,6 +72,7 @@ export class CloudflaredManager {
    * Get bundled cloudflared path
    */
   private getBundledPath(): string | null {
+    const { app } = require('electron')
     const resourcesPath = process.resourcesPath || app.getAppPath()
     const platform = process.platform
     const fileName = platform === 'win32' ? 'cloudflared.exe' : 'cloudflared'
@@ -98,6 +98,7 @@ export class CloudflaredManager {
    * Get downloaded cloudflared path (in app data directory)
    */
   private getDownloadedPath(): string {
+    const { app } = require('electron')
     const userDataPath = app.getPath('userData')
     const fileName = process.platform === 'win32' ? 'cloudflared.exe' : 'cloudflared'
     return join(userDataPath, 'bin', fileName)

@@ -3,7 +3,6 @@
  * Uses Electron safeStorage for secure master key storage
  */
 
-import { app, safeStorage } from 'electron'
 import { join } from 'path'
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { randomBytes, createCipheriv, createDecipheriv, pbkdf2Sync } from 'crypto'
@@ -27,6 +26,7 @@ let isUnlocked = false
  * Get the path to the master key file
  */
 function getMasterKeyPath(): string {
+  const { app } = require('electron')
   const userDataPath = app.getPath('userData')
   return join(userDataPath, MASTER_KEY_FILE)
 }
@@ -44,6 +44,9 @@ function generateMasterKey(): Buffer {
  */
 export async function initCrypto(): Promise<void> {
   const keyPath = getMasterKeyPath()
+  
+  // Lazy import electron to avoid issues during module loading
+  const { app, safeStorage } = require('electron')
   
   // Check if safeStorage is available
   if (!safeStorage.isEncryptionAvailable()) {

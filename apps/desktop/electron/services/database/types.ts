@@ -136,3 +136,37 @@ export interface CodeModelMappingRow extends BaseRow {
   is_active: number // 0 or 1 - only active when provider matches code_switch config
   updated_at: number
 }
+
+// ============================================================
+// V2: CLI Code Switch 新架构类型定义
+// ============================================================
+
+// CLI Code Switch 配置行（V2 架构）
+export interface CliCodeSwitchConfigRow extends BaseRow {
+  cli_type: string // 'claude' | 'codex'
+  current_provider_id: string | null // FK → providers.id
+  enabled: number // 0 or 1
+  takeover_active: number // 0 or 1 - 是否处于代理接管模式
+  updated_at: number
+}
+
+// CLI + Provider 模型映射行（V2 架构，支持历史记忆）
+export interface CliProviderModelMappingRow extends BaseRow {
+  cli_type: string // 'claude' | 'codex'
+  provider_id: string // FK → providers.id
+  mapping_type: CodeModelMappingType // exact | family | reasoning | default
+  source_model: string | null // exact: 源模型名, family: NULL
+  target_model: string // 目标模型名
+  keywords: string | null // JSON array for family mapping
+  priority: number // family 映射的优先级
+  is_active: number // 0 or 1 - 当前 CLI 选择此 provider 时激活
+  updated_at: number
+}
+
+// CLI 配置备份行
+export interface CliLiveConfigBackupRow {
+  cli_type: string // PK: 'claude' | 'codex'
+  original_content: string // 原始配置文件内容
+  backed_up_at: number
+  config_file_path: string // 配置文件路径
+}

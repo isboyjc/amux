@@ -5,7 +5,6 @@
 import { spawn, ChildProcess } from 'child_process'
 import { writeFileSync, mkdirSync, existsSync } from 'fs'
 import { join } from 'path'
-import { app } from 'electron'
 import { deviceIdService } from './device-id'
 import { cloudflaredManager } from './cloudflared-manager'
 import { tunnelRepository } from '../database/repositories/tunnel'
@@ -368,6 +367,7 @@ export class TunnelService {
    * Get credentials file path
    */
   private getCredentialsPath(tunnelId: string): string {
+    const { app } = require('electron')
     const dir = join(app.getPath('userData'), '.cloudflared')
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true })
@@ -379,6 +379,7 @@ export class TunnelService {
    * Get config file path
    */
   private getConfigPath(): string {
+    const { app } = require('electron')
     const dir = join(app.getPath('userData'), '.cloudflared')
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true })

@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Modal, ModalHeader, ModalContent, ModalFooter } from '@/components/ui/modal'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useCopyToClipboard } from '@/hooks'
@@ -32,7 +33,7 @@ import { getPresetByType, parseModelName } from '@/lib/provider-utils'
 import { cn } from '@/lib/utils'
 import { useProviderStore, useI18n } from '@/stores'
 import type { Provider, ProviderPreset } from '@/types'
-import type { CreateProviderDTO } from '@/types/ipc'
+import type { UpdateProviderDTO } from '@/types/ipc'
 
 // Provider status type
 type ProviderStatus = 'unconfigured' | 'configured-enabled' | 'configured-disabled'
@@ -147,7 +148,7 @@ export function Providers() {
     }
   }
 
-  const handleSaveProvider = async (data: Partial<CreateProviderDTO>) => {
+  const handleSaveProvider = async (data: Partial<UpdateProviderDTO>) => {
     if (!selectedProviderId) return
     await update(selectedProviderId, data)
     toast.success(t('common.saved'))
@@ -389,7 +390,7 @@ function ProviderListItem({ provider, presets, isSelected, onSelect, onDelete, t
 interface ProviderConfigPanelProps {
   provider: Provider | null
   presets: ProviderPreset[]
-  onSave: (data: Partial<CreateProviderDTO>) => void
+  onSave: (data: Partial<UpdateProviderDTO>) => void
   onToggle: (enabled: boolean) => void
   onTest: (modelId: string) => void
   onModelsUpdate: (models: string[]) => Promise<void>
@@ -411,10 +412,11 @@ function ProviderConfigPanel({
   generateProxyPath,
   t
 }: ProviderConfigPanelProps) {
+  const [adapterType, setAdapterType] = useState<string>('')
   const [apiKey, setApiKey] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
   const [selectedModels, setSelectedModels] = useState<string[]>([])
-  
+
   const [customModelId, setCustomModelId] = useState('')
   const [showTestModal, setShowTestModal] = useState(false)
   const [fetchingModels, setFetchingModels] = useState(false)
@@ -441,6 +443,7 @@ function ProviderConfigPanel({
   // Sync form state with provider
   useEffect(() => {
     if (provider) {
+      setAdapterType(provider.adapterType)
       setApiKey(provider.apiKey || '')
       setBaseUrl(provider.baseUrl || preset?.baseUrl || '')
       setSelectedModels(provider.models || [])
@@ -463,6 +466,7 @@ function ProviderConfigPanel({
 
   const handleSave = () => {
     onSave({
+      adapterType: adapterType as Provider['adapterType'],
       apiKey,
       baseUrl,
       models: selectedModels,
@@ -673,6 +677,27 @@ function ProviderConfigPanel({
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
+        {/* Adapter Type */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">{t('providers.adapterProtocol')}</Label>
+          <Select value={adapterType} onValueChange={setAdapterType}>
+            <SelectTrigger className="text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="openai">OpenAI</SelectItem>
+              <SelectItem value="openai-responses">OpenAI Responses</SelectItem>
+              <SelectItem value="anthropic">Anthropic</SelectItem>
+              <SelectItem value="deepseek">DeepSeek</SelectItem>
+              <SelectItem value="moonshot">Moonshot</SelectItem>
+              <SelectItem value="qwen">Qwen</SelectItem>
+              <SelectItem value="zhipu">Zhipu</SelectItem>
+              <SelectItem value="google">Google</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">{t('providers.adapterProtocolDesc')}</p>
+        </div>
+
         {/* API Key */}
         <div className="space-y-2">
           <Label className="text-sm font-medium">{t('providers.apiKey')} *</Label>

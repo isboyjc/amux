@@ -1,6 +1,5 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { app } from 'electron'
 
 /**
  * Code Switch CLI 预设配置接口
@@ -64,6 +63,8 @@ export function loadCodeSwitchPreset(): CodeSwitchPreset {
   }
 
   try {
+    // Lazy import electron to avoid issues during module loading
+    const { app } = require('electron')
     // 开发环境和生产环境的路径处理
     const isDev = !app.isPackaged
     const presetPath = isDev

@@ -2,7 +2,6 @@
  * Presets service - Load and manage provider presets
  */
 
-import { app } from 'electron'
 import { join } from 'path'
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { getSettingsRepository } from '../database/repositories'
@@ -49,6 +48,8 @@ let lastFetchTime = 0
  * Get the path to built-in presets
  */
 function getBuiltinPresetsPath(): string {
+  // Lazy import electron to avoid issues during module loading
+  const { app } = require('electron')
   // In development, use the resources folder directly
   // In production, use the extraResources path
   if (app.isPackaged) {
@@ -62,6 +63,8 @@ function getBuiltinPresetsPath(): string {
  * Get the path to cached presets
  */
 function getCachePresetsPath(): string {
+  // Lazy import electron to avoid issues during module loading
+  const { app } = require('electron')
   const userDataPath = app.getPath('userData')
   return join(userDataPath, PRESETS_CACHE_FILE)
 }
@@ -116,6 +119,8 @@ function saveCachedPresets(presets: PresetsConfig): void {
   const path = getCachePresetsPath()
   
   try {
+    // Lazy import electron to avoid issues during module loading
+    const { app } = require('electron')
     const dir = app.getPath('userData')
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true })
@@ -166,6 +171,7 @@ export async function fetchRemotePresets(url?: string): Promise<PresetsConfig | 
   } catch (error) {
     // Silently fail - will use builtin presets as fallback
     // Only log in development mode
+    const { app } = require('electron')
     if (!app.isPackaged) {
       console.warn('[Presets] Failed to fetch remote presets:', error)
     }
@@ -302,6 +308,7 @@ async function refreshPresetsInBackground(): Promise<void> {
     }
   } catch (error) {
     // Silently fail - will continue using cached/builtin presets
+    const { app } = require('electron')
     if (!app.isPackaged) {
       console.warn('[Presets] Background refresh failed:', error)
     }

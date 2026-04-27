@@ -9,6 +9,7 @@ import cors from '@fastify/cors'
 import Fastify, { FastifyInstance } from 'fastify'
 
 import { getSettingsRepository } from '../database/repositories'
+import { warmupCliCodeSwitchCache } from '../cli-switch/cache'
 
 import type { ProxyServerConfig, ProxyServerState, ProxyServerMetrics } from './types'
 
@@ -359,6 +360,10 @@ export async function startServer(
   const { invalidateCache } = await import('./bridge-manager')
   invalidateCache()
   console.log('[ProxyServer] Bridge cache cleared')
+
+  // 预热 CLI Code Switch 缓存
+  console.log('[ProxyServer] 🔥 预热 CLI Code Switch 缓存...')
+  warmupCliCodeSwitchCache()
 
   server = createServer(fullConfig)
 

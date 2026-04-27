@@ -69,6 +69,9 @@ export async function initAnalytics(): Promise<void> {
     // 初始化 GA4
     analytics = new Analytics4Class(MEASUREMENT_ID, API_SECRET, clientId, sessionId)
 
+    // Lazy import electron to avoid issues during module loading
+    const { app } = require('electron')
+    
     // 设置全局参数
     analytics.setParams({
       app_version: app.getVersion(),

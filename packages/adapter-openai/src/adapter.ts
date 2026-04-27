@@ -5,7 +5,9 @@ import type {
   LLMStreamEvent,
   LLMErrorIR,
   AdapterInfo,
+  ModelInfo,
 } from '@amux.ai/llm-bridge'
+import { parseOpenAICompatModelList } from '@amux.ai/llm-bridge'
 
 import { parseError } from './inbound/error-parser'
 import { parseRequest } from './inbound/request-parser'
@@ -64,6 +66,10 @@ export const openaiAdapter: LLMAdapter = {
     },
 
     createStreamBuilder,
+  },
+
+  parseModelList(response: unknown): ModelInfo[] {
+    return parseOpenAICompatModelList(response)
   },
 
   getInfo(): AdapterInfo {

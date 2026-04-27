@@ -1,4 +1,5 @@
 import type { LLMAdapter } from '../adapter'
+import type { ModelInfo, ModelListIR } from '../ir/model'
 import type { LLMRequestIR } from '../ir/request'
 import type { LLMResponseIR } from '../ir/response'
 import type { LLMStreamEvent, SSEEvent } from '../ir/stream'
@@ -58,6 +59,7 @@ export class Bridge implements LLMBridge {
       timeout: this.config.timeout,
       maxRetries: this.config.maxRetries,
       provider: this.outboundAdapter.name,
+      streamIdleTimeout: this.config.streamIdleTimeout,
     })
   }
 
@@ -125,8 +127,25 @@ export class Bridge implements LLMBridge {
 
   /**
    * Send a chat request
+   * Returns response in inbound adapter's format
    */
   async chat(request: unknown): Promise<unknown> {
+    // Get raw IR response (includes hooks, validation, error handling)
+    const responseIR = await this.chatRaw(request)
+
+    // Build response in inbound adapter's format
+    const finalResponse =
+      this.inboundAdapter.outbound.buildResponse?.(responseIR)
+
+    // If inbound adapter doesn't support response building, return IR
+    return finalResponse ?? responseIR
+  }
+
+  /**
+   * Send a chat request (raw IR response)
+   * Returns raw IR response for custom processing
+   */
+  async chatRaw(request: unknown): Promise<LLMResponseIR> {
     try {
       // Step 1: Inbound adapter parses request → IR
       const ir = this.inboundAdapter.inbound.parseRequest(request)
@@ -151,13 +170,13 @@ export class Bridge implements LLMBridge {
         }
       }
 
-      // Step 4.5: Validate capabilities match
+      // Step 5: Validate capabilities match
       this.validateCapabilities(ir)
 
-      // Step 5: Outbound adapter builds provider request from IR
+      // Step 6: Outbound adapter builds provider request from IR
       const providerRequest = this.outboundAdapter.outbound.buildRequest(ir)
 
-      // Step 6: Send HTTP request to provider API
+      // Step 7: Send HTTP request to provider API
       const baseURL = this.config.baseURL ?? this.getDefaultBaseURL()
       const endpoint = this.getEndpoint(ir.model)
 
@@ -167,7 +186,7 @@ export class Bridge implements LLMBridge {
         body: providerRequest,
       })
 
-      // Step 7: Outbound adapter parses response → IR
+      // Step 8: Outbound adapter parses response → IR
       const responseIR = this.outboundAdapter.inbound.parseResponse?.(
         response.data
       )
@@ -176,21 +195,12 @@ export class Bridge implements LLMBridge {
         throw new Error('Outbound adapter does not support response parsing')
       }
 
-      // Step 8: Trigger onResponse hook (before building final response)
+      // Step 9: Trigger onResponse hook
       if (this.hooks?.onResponse) {
         await this.hooks.onResponse(responseIR)
       }
 
-      // Step 9: Inbound adapter builds response from IR
-      const finalResponse =
-        this.inboundAdapter.outbound.buildResponse?.(responseIR)
-
-      if (!finalResponse) {
-        // If inbound adapter doesn't support response building, return IR
-        return responseIR
-      }
-
-      return finalResponse
+      return responseIR
     } catch (error) {
       // Trigger onError hook (ensure hook errors don't mask the original error)
       if (this.hooks?.onError && error instanceof Error) {
@@ -202,60 +212,11 @@ export class Bridge implements LLMBridge {
           }
           await this.hooks.onError(errorIR)
         } catch (hookError) {
-          // Log hook error but don't let it mask the original error
           console.warn('Error in onError hook:', hookError)
         }
       }
       throw error
     }
-  }
-
-  /**
-   * Send a chat request (raw IR response)
-   * Returns raw IR response for custom processing
-   */
-  async chatRaw(request: unknown): Promise<LLMResponseIR> {
-    // Step 1: Inbound adapter parses request → IR
-    const ir = this.inboundAdapter.inbound.parseRequest(request)
-
-    // Step 2: Map model if configured
-    if (ir.model) {
-      ir.model = this.mapModel(ir.model)
-    }
-
-    // Step 3: Validate IR (optional)
-    if (this.inboundAdapter.validateRequest) {
-      const validation = this.inboundAdapter.validateRequest(ir)
-      if (!validation.valid) {
-        throw new Error(
-          `Invalid request: ${validation.errors?.join(', ') ?? 'Unknown error'}`
-        )
-      }
-    }
-
-    // Step 4: Outbound adapter builds provider request from IR
-    const providerRequest = this.outboundAdapter.outbound.buildRequest(ir)
-
-    // Step 5: Send HTTP request to provider API
-    const baseURL = this.config.baseURL ?? this.getDefaultBaseURL()
-    const endpoint = this.getEndpoint(ir.model)
-
-    const response = await this.httpClient.request({
-      method: 'POST',
-      url: `${baseURL}${endpoint}`,
-      body: providerRequest,
-    })
-
-    // Step 6: Outbound adapter parses response → IR
-    const responseIR = this.outboundAdapter.inbound.parseResponse?.(
-      response.data
-    )
-
-    if (!responseIR) {
-      throw new Error('Outbound adapter does not support response parsing')
-    }
-
-    return responseIR
   }
 
   /**
@@ -458,7 +419,7 @@ export class Bridge implements LLMBridge {
   }
 
   /**
-   * List available models from the provider
+   * List available models from the provider (raw response)
    */
   async listModels(): Promise<unknown> {
     const baseURL = this.config.baseURL ?? this.getDefaultBaseURL()
@@ -470,6 +431,27 @@ export class Bridge implements LLMBridge {
     })
 
     return response.data
+  }
+
+  /**
+   * List available models from the provider, normalized to ModelInfo[].
+   * If the outbound adapter implements parseModelList, uses it for parsing.
+   * Otherwise falls back to a best-effort generic parser.
+   */
+  async listModelsNormalized(): Promise<ModelListIR> {
+    const raw = await this.listModels()
+
+    let models: ModelInfo[]
+    if (this.outboundAdapter.parseModelList) {
+      models = this.outboundAdapter.parseModelList(raw)
+    } else {
+      models = parseModelListGeneric(raw)
+    }
+
+    return {
+      models,
+      provider: this.outboundAdapter.name,
+    }
   }
 
   /**
@@ -550,7 +532,7 @@ export class Bridge implements LLMBridge {
     
     // Priority 1: Use config.chatPath if provided
     // Priority 2: Use adapter's default chatPath
-    let chatPath = (this.config as any).chatPath ?? endpoint?.chatPath
+    let chatPath = this.config.chatPath ?? endpoint?.chatPath
     
     if (!chatPath) {
       throw new Error(
@@ -575,7 +557,7 @@ export class Bridge implements LLMBridge {
     
     // Priority 1: Use config.modelsPath if provided
     // Priority 2: Use adapter's default modelsPath
-    const modelsPath = (this.config as any).modelsPath ?? endpoint?.modelsPath
+    const modelsPath = this.config.modelsPath ?? endpoint?.modelsPath
     
     if (!modelsPath) {
       throw new Error(
@@ -585,4 +567,58 @@ export class Bridge implements LLMBridge {
     
     return modelsPath
   }
+}
+
+/**
+ * Best-effort generic parser for model list responses.
+ * Handles common formats: OpenAI ({ data: [...] }), Google ({ models: [...] }),
+ * raw arrays, and object maps.
+ */
+function parseModelListGeneric(raw: unknown): ModelInfo[] {
+  if (!raw || typeof raw !== 'object') return []
+
+  let items: unknown[] = []
+
+  if (Array.isArray(raw)) {
+    items = raw
+  } else {
+    const obj = raw as Record<string, unknown>
+    if (Array.isArray(obj.data)) {
+      // OpenAI format: { data: [{ id, ... }] }
+      items = obj.data
+    } else if (Array.isArray(obj.models)) {
+      // Google / generic format: { models: [{ name, ... }] }
+      items = obj.models
+    } else if (obj.models && typeof obj.models === 'object' && !Array.isArray(obj.models)) {
+      // Object map format: { models: { "model-id": { ... } } }
+      items = Object.entries(obj.models as Record<string, unknown>).map(
+        ([key, val]) => ({ id: key, ...(typeof val === 'object' && val ? val : {}) })
+      )
+    }
+  }
+
+  return items
+    .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
+    .map((item) => {
+      // Determine model ID
+      let id = String(item.id || '')
+      if (!id && typeof item.name === 'string') {
+        // Google Gemini uses "models/gemini-xxx" as name
+        id = item.name.startsWith('models/') ? item.name.slice(7) : item.name
+      }
+      if (!id) return null
+
+      const name = String(
+        item.displayName || item.display_name || item.name || id
+      )
+
+      return {
+        id,
+        name,
+        ...(typeof item.context_length === 'number' && { contextLength: item.context_length }),
+        ...(typeof item.created === 'number' && { created: item.created }),
+        ...(typeof item.owned_by === 'string' && { ownedBy: item.owned_by }),
+      } satisfies ModelInfo
+    })
+    .filter((m): m is ModelInfo => m !== null)
 }

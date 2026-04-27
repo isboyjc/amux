@@ -1,402 +1,420 @@
 /**
  * Model Mapping Editor Component
- * Hybrid mapping: family, reasoning, default fallback, and exact overrides
+ * 支持四种映射类型：Reasoning、Exact、Family、Default
  */
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
 } from '@/components/ui/select'
-import { Loader2, X, ChevronDown, ChevronRight, Plus } from 'lucide-react'
-import type { Provider } from '@/types'
-import type { CodeModelMappingType } from '@/types'
-import { useI18n } from '@/stores/i18n-store'
-
-const REASONING_SOURCE = '__reasoning__'
-const DEFAULT_SOURCE = '__default__'
-
-interface ModelMappingItem {
-  sourceModel: string
-  targetModel: string
-  mappingType?: CodeModelMappingType
-}
-
-interface ModelFamily {
-  id: string
-  i18nKey: string
-  keywords: string[]
-  priority: number
-}
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Plus, Trash2, Brain, Hash, Tags, Star, Loader2 } from 'lucide-react'
+import type { CliModelMappingItem, Provider } from '@/types'
 
 interface ModelMappingEditorProps {
-  codeSwitchId: string
+  cliType: string
   providerId: string
-  onChange: (mappings: ModelMappingItem[]) => void
+  provider: Provider
+  mappings: CliModelMappingItem[]
+  onMappingsChange: (mappings: CliModelMappingItem[]) => void
   disabled?: boolean
 }
 
 export function ModelMappingEditor({
-  codeSwitchId,
+  cliType: _cliType,
   providerId,
-  onChange,
-  disabled
+  provider: _provider,
+  mappings,
+  onMappingsChange,
+  disabled,
 }: ModelMappingEditorProps) {
-  const { t } = useI18n()
-  const [provider, setProvider] = useState<Provider | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [preset, setPreset] = useState<{ modelFamilies?: ModelFamily[] } | null>(null)
-  const [familyMappings, setFamilyMappings] = useState<Record<string, string>>({})
-  const [reasoningModel, setReasoningModel] = useState('')
-  const [defaultModel, setDefaultModel] = useState('')
-  const [exactMappings, setExactMappings] = useState<Array<{ sourceModel: string; targetModel: string }>>([])
-  const [exactOpen, setExactOpen] = useState(false)
-
-  const emitChange = (
-    family: Record<string, string>,
-    reasoning: string,
-    defaultVal: string,
-    exact: Array<{ sourceModel: string; targetModel: string }>
-  ) => {
-    const items: ModelMappingItem[] = []
-    preset?.modelFamilies?.forEach((f) => {
-      const target = family[f.id]
-      if (target) {
-        items.push({ sourceModel: f.id, targetModel: target, mappingType: 'family' })
-      }
-    })
-    if (reasoning) {
-      items.push({ sourceModel: REASONING_SOURCE, targetModel: reasoning, mappingType: 'reasoning' })
-    }
-    if (defaultVal) {
-      items.push({ sourceModel: DEFAULT_SOURCE, targetModel: defaultVal, mappingType: 'default' })
-    }
-    exact.forEach((m) => {
-      items.push({ ...m, mappingType: 'exact' })
-    })
-    onChange(items)
-  }
-
-  const updateFamily = (familyId: string, targetModel: string) => {
-    const next = { ...familyMappings }
-    if (targetModel) next[familyId] = targetModel
-    else delete next[familyId]
-    setFamilyMappings(next)
-    emitChange(next, reasoningModel, defaultModel, exactMappings)
-  }
-
-  const updateReasoning = (targetModel: string) => {
-    setReasoningModel(targetModel)
-    emitChange(familyMappings, targetModel, defaultModel, exactMappings)
-  }
-
-  const updateDefault = (targetModel: string) => {
-    setDefaultModel(targetModel)
-    emitChange(familyMappings, reasoningModel, targetModel, exactMappings)
-  }
-
-  const updateExact = (index: number, field: 'sourceModel' | 'targetModel', val: string) => {
-    const next = exactMappings.map((m, i) =>
-      i === index ? { ...m, [field]: val } : m
-    )
-    setExactMappings(next)
-    emitChange(familyMappings, reasoningModel, defaultModel, next)
-  }
-
-  const removeExact = (index: number) => {
-    const next = exactMappings.filter((_, i) => i !== index)
-    setExactMappings(next)
-    emitChange(familyMappings, reasoningModel, defaultModel, next)
-  }
-
-  const addExact = () => {
-    const next = [...exactMappings, { sourceModel: '', targetModel: '' }]
-    setExactMappings(next)
-    setExactOpen(true)
-    emitChange(familyMappings, reasoningModel, defaultModel, next)
-  }
+  const [providerModels, setProviderModels] = useState<string[]>([])
+  const [loadingModels, setLoadingModels] = useState(true)
+  
+  // 分类映射
+  const reasoningMapping = mappings.find((m) => m.mappingType === 'reasoning')
+  const defaultMapping = mappings.find((m) => m.mappingType === 'default')
+  const exactMappings = mappings.filter((m) => m.mappingType === 'exact')
+  const familyMappings = mappings.filter((m) => m.mappingType === 'family')
 
   useEffect(() => {
-    loadProviderAndMappings()
+    loadProviderModels()
   }, [providerId])
 
-  const loadProviderAndMappings = async () => {
-    if (!providerId) {
-      setLoading(false)
-      setFamilyMappings({})
-      setReasoningModel('')
-      setDefaultModel('')
-      setExactMappings([])
-      onChange([])
-      return
-    }
-
+  const loadProviderModels = async () => {
     try {
-      setLoading(true)
-
-      const [providerData, presetData] = await Promise.all([
-        window.api.invoke('provider:get', providerId),
-        window.api.invoke('code-switch:get-cli-preset', 'claudecode')
-      ])
-
-      setProvider(providerData as Provider)
-      const cliPreset = presetData as { modelFamilies?: ModelFamily[] } | null
-      setPreset(cliPreset ?? null)
-
-      const families = cliPreset?.modelFamilies ?? []
-      const familyMap: Record<string, string> = {}
-      let reasoning = ''
-      let defaultVal = ''
-      const exact: Array<{ sourceModel: string; targetModel: string }> = []
-
-      if (codeSwitchId) {
-        try {
-          const historical = (await window.api.invoke(
-            'code-switch:get-historical-mappings',
-            codeSwitchId,
-            providerId
-          )) as Array<{ sourceModel: string; targetModel: string; mappingType?: string }>
-
-          for (const m of historical ?? []) {
-            const type = (m.mappingType ?? 'exact') as CodeModelMappingType
-            if (type === 'family' && families.some((f) => f.id === m.sourceModel)) {
-              familyMap[m.sourceModel] = m.targetModel
-            } else if (type === 'reasoning' && m.sourceModel === REASONING_SOURCE) {
-              reasoning = m.targetModel
-            } else if (type === 'default' && m.sourceModel === DEFAULT_SOURCE) {
-              defaultVal = m.targetModel
-            } else if (type === 'exact' || (!m.mappingType && m.sourceModel !== REASONING_SOURCE && m.sourceModel !== DEFAULT_SOURCE)) {
-              exact.push({ sourceModel: m.sourceModel, targetModel: m.targetModel })
-              // Backward compat: infer family from exact model name
-              if (!m.mappingType || type === 'exact') {
-                const sourceLower = m.sourceModel.toLowerCase()
-                for (const f of families) {
-                  if (!familyMap[f.id] && f.keywords.some((kw) => sourceLower.includes(kw.toLowerCase()))) {
-                    familyMap[f.id] = m.targetModel
-                    break
-                  }
-                }
-              }
-            }
-          }
-        } catch (err) {
-          console.warn('[ModelMappingEditor] Failed to load historical mappings:', err)
-        }
+      setLoadingModels(true)
+      const result = await window.api.invoke('cli-cs:get-provider-models', { providerId }) as {
+        success: boolean
+        models?: string[]
       }
-
-      // Ensure we have keys for all families
-      families.forEach((f) => {
-        if (!(f.id in familyMap)) familyMap[f.id] = ''
-      })
-
-      setFamilyMappings(familyMap)
-      setReasoningModel(reasoning)
-      setDefaultModel(defaultVal)
-      setExactMappings(exact.length ? exact : [])
-
-      const items: ModelMappingItem[] = []
-      families.forEach((f) => {
-        const target = familyMap[f.id]
-        if (target) {
-          items.push({ sourceModel: f.id, targetModel: target, mappingType: 'family' })
-        }
-      })
-      if (reasoning) items.push({ sourceModel: REASONING_SOURCE, targetModel: reasoning, mappingType: 'reasoning' })
-      if (defaultVal) items.push({ sourceModel: DEFAULT_SOURCE, targetModel: defaultVal, mappingType: 'default' })
-      exact.forEach((m) => items.push({ ...m, mappingType: 'exact' }))
-      onChange(items)
+      if (result.success) {
+        setProviderModels(result.models || [])
+      }
     } catch (error) {
-      console.error('[ModelMappingEditor] Failed to load:', error)
-      setFamilyMappings({})
-      setReasoningModel('')
-      setDefaultModel('')
-      setExactMappings([])
-      onChange([])
+      console.error('Failed to load provider models:', error)
     } finally {
-      setLoading(false)
+      setLoadingModels(false)
     }
   }
 
-  if (loading) {
+  const handleReasoningChange = (targetModel: string) => {
+    const newMappings = mappings.filter((m) => m.mappingType !== 'reasoning')
+    if (targetModel) {
+      newMappings.push({
+        id: `reasoning-${Date.now()}`,
+        mappingType: 'reasoning',
+        targetModel,
+      })
+    }
+    onMappingsChange(newMappings)
+  }
+
+  const handleDefaultChange = (targetModel: string) => {
+    const newMappings = mappings.filter((m) => m.mappingType !== 'default')
+    if (targetModel) {
+      newMappings.push({
+        id: `default-${Date.now()}`,
+        mappingType: 'default',
+        targetModel,
+      })
+    }
+    onMappingsChange(newMappings)
+  }
+
+  const handleAddExactMapping = () => {
+    const newMappings = [...mappings]
+    newMappings.push({
+      id: `exact-${Date.now()}`,
+      mappingType: 'exact',
+      sourceModel: '',
+      targetModel: providerModels[0] || '',
+    })
+    onMappingsChange(newMappings)
+  }
+
+  const handleUpdateExactMapping = (id: string, field: 'sourceModel' | 'targetModel', value: string) => {
+    const newMappings = mappings.map((m) =>
+      m.id === id ? { ...m, [field]: value } : m
+    )
+    onMappingsChange(newMappings)
+  }
+
+  const handleDeleteExactMapping = (id: string) => {
+    const newMappings = mappings.filter((m) => m.id !== id)
+    onMappingsChange(newMappings)
+  }
+
+  const handleAddFamilyMapping = () => {
+    const newMappings = [...mappings]
+    newMappings.push({
+      id: `family-${Date.now()}`,
+      mappingType: 'family',
+      keywords: [],
+      targetModel: providerModels[0] || '',
+      priority: 0,
+    })
+    onMappingsChange(newMappings)
+  }
+
+  const handleUpdateFamilyMapping = (
+    id: string,
+    field: 'keywords' | 'targetModel' | 'priority',
+    value: string[] | string | number
+  ) => {
+    const newMappings = mappings.map((m) =>
+      m.id === id ? { ...m, [field]: value } : m
+    )
+    onMappingsChange(newMappings)
+  }
+
+  const handleDeleteFamilyMapping = (id: string) => {
+    const newMappings = mappings.filter((m) => m.id !== id)
+    onMappingsChange(newMappings)
+  }
+
+  if (loadingModels) {
     return (
-      <div className="flex items-center gap-2 p-4">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-sm text-muted-foreground">{t('codeSwitch.loading')}</span>
+      <div className="flex items-center justify-center h-32 border rounded-lg bg-muted/30">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     )
   }
-
-  const modelOptions = provider?.models ?? []
-  const renderTargetSelect = (
-    value: string,
-    onChangeVal: (v: string) => void,
-    placeholder?: string
-  ) => {
-    if (modelOptions.length > 0) {
-      return (
-        <Select value={value || undefined} onValueChange={onChangeVal} disabled={disabled}>
-          <SelectTrigger className="h-9 text-sm border-dashed hover:border-primary/50">
-            <SelectValue placeholder={placeholder ?? t('codeSwitch.optionalMapping')} />
-          </SelectTrigger>
-          <SelectContent>
-            {modelOptions.map((model) => (
-              <SelectItem key={model} value={model} className="text-sm">
-                {model}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )
-    }
-    return (
-      <Input
-        value={value}
-        onChange={(e) => onChangeVal(e.target.value)}
-        placeholder={placeholder ?? t('codeSwitch.optionalMapping')}
-        className="h-9 text-sm border-dashed"
-        disabled={disabled}
-      />
-    )
-  }
-
-  const families = preset?.modelFamilies ?? []
 
   return (
-    <div className="space-y-6">
-      {/* Family Mapping */}
-      {families.length > 0 && (
-        <div className="space-y-3">
-          <div>
-            <h4 className="text-sm font-medium mb-0.5">{t('codeSwitch.familyMapping')}</h4>
-            <p className="text-xs text-muted-foreground">{t('codeSwitch.familyMappingDesc')}</p>
-          </div>
+    <div className="space-y-4">
+      <Tabs defaultValue="quick" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="quick">快速配置</TabsTrigger>
+          <TabsTrigger value="advanced">高级映射</TabsTrigger>
+        </TabsList>
+
+        {/* Quick Config Tab */}
+        <TabsContent value="quick" className="space-y-4 mt-4">
+          {/* Reasoning Model */}
           <div className="space-y-2">
-            {families.map((f) => (
-              <div
-                key={f.id}
-                className="flex items-center gap-3 p-3 rounded-lg border bg-card/50"
-              >
-                <span className="flex-shrink-0 w-28 text-sm font-medium">
-                  {t(`codeSwitch.${f.i18nKey}`) ?? f.id}
-                </span>
-                <span className="flex-shrink-0 text-muted-foreground">→</span>
-                <div className="flex-1 min-w-0">
-                  {renderTargetSelect(familyMappings[f.id] ?? '', (v) => updateFamily(f.id, v))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Reasoning Mapping */}
-      <div className="space-y-2">
-        <div>
-          <h4 className="text-sm font-medium mb-0.5">{t('codeSwitch.reasoningMapping')}</h4>
-          <p className="text-xs text-muted-foreground">{t('codeSwitch.reasoningMappingDesc')}</p>
-        </div>
-        <div className="flex items-center gap-3 p-3 rounded-lg border bg-card/50">
-          <span className="flex-shrink-0 text-sm text-muted-foreground">Thinking enabled →</span>
-          <div className="flex-1 min-w-0">
-            {renderTargetSelect(reasoningModel, updateReasoning)}
-          </div>
-        </div>
-      </div>
-
-      {/* Default Mapping */}
-      <div className="space-y-2">
-        <div>
-          <h4 className="text-sm font-medium mb-0.5">{t('codeSwitch.defaultMapping')}</h4>
-          <p className="text-xs text-muted-foreground">{t('codeSwitch.defaultMappingDesc')}</p>
-        </div>
-        <div className="flex items-center gap-3 p-3 rounded-lg border bg-card/50">
-          <span className="flex-shrink-0 text-sm text-muted-foreground">Other models →</span>
-          <div className="flex-1 min-w-0">
-            {renderTargetSelect(defaultModel, updateDefault)}
-          </div>
-        </div>
-      </div>
-
-      {/* Exact Overrides (collapsible) */}
-      <div className="space-y-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-between"
-          onClick={() => setExactOpen((o) => !o)}
-        >
-          <span>{t('codeSwitch.exactOverride')}</span>
-          {exactOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </Button>
-        {exactOpen && (
-          <div className="space-y-2 pt-2">
-            {exactMappings.map((m, index) => (
-              <div
-                key={index}
-                className="flex items-center gap-2 p-2 rounded border bg-card/30"
-              >
-                <Input
-                  value={m.sourceModel}
-                  onChange={(e) => updateExact(index, 'sourceModel', e.target.value)}
-                  placeholder="e.g. claude-opus-4-6-20260206"
-                  className="h-8 text-xs font-mono flex-1 min-w-0"
-                  disabled={disabled}
-                />
-                <span className="text-muted-foreground">→</span>
-                {modelOptions.length > 0 ? (
-                  <Select
-                    value={m.targetModel || undefined}
-                    onValueChange={(v) => updateExact(index, 'targetModel', v)}
-                    disabled={disabled}
-                  >
-                    <SelectTrigger className="h-8 text-xs flex-1 min-w-0">
-                      <SelectValue placeholder={t('codeSwitch.optionalMapping')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {modelOptions.map((model) => (
-                        <SelectItem key={model} value={model} className="text-sm">
-                          {model}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input
-                    value={m.targetModel}
-                    onChange={(e) => updateExact(index, 'targetModel', e.target.value)}
-                    placeholder={t('codeSwitch.optionalMapping')}
-                    className="h-8 text-xs flex-1 min-w-0"
-                    disabled={disabled}
-                  />
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 shrink-0"
-                  onClick={() => removeExact(index)}
-                  disabled={disabled}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            ))}
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={addExact}
+            <div className="flex items-center gap-2">
+              <Brain className="h-4 w-4 text-purple-500" />
+              <Label className="text-sm font-medium">推理模型</Label>
+              <Badge variant="secondary" className="text-xs">可选</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              当请求包含 thinking、effort 参数或复杂的 system prompt 时使用
+            </p>
+            <Select
+              value={reasoningMapping?.targetModel || ''}
+              onValueChange={handleReasoningChange}
               disabled={disabled}
             >
-              <Plus className="h-3.5 w-3.5 mr-1" />
-              {t('codeSwitch.addExactOverride')}
-            </Button>
+              <SelectTrigger>
+                <SelectValue placeholder="不使用推理模型" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">不使用推理模型</SelectItem>
+                {providerModels.map((model) => (
+                  <SelectItem key={model} value={model}>
+                    {model}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        )}
+
+          {/* Default Model */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Star className="h-4 w-4 text-yellow-500" />
+              <Label className="text-sm font-medium">默认模型</Label>
+              <Badge variant="secondary" className="text-xs">推荐</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              当没有匹配到其他映射规则时使用此模型（兜底）
+            </p>
+            <Select
+              value={defaultMapping?.targetModel || ''}
+              onValueChange={handleDefaultChange}
+              disabled={disabled}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="选择默认模型" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">不使用默认模型</SelectItem>
+                {providerModels.map((model) => (
+                  <SelectItem key={model} value={model}>
+                    {model}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </TabsContent>
+
+        {/* Advanced Mappings Tab */}
+        <TabsContent value="advanced" className="space-y-4 mt-4">
+          {/* Exact Mappings */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Hash className="h-4 w-4 text-blue-500" />
+                <Label className="text-sm font-medium">精确映射</Label>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleAddExactMapping}
+                disabled={disabled}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                添加
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              精确匹配源模型名称，优先级最高
+            </p>
+            
+            {exactMappings.length === 0 ? (
+              <div className="text-center py-8 border rounded-lg bg-muted/30">
+                <p className="text-sm text-muted-foreground">暂无精确映射</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {exactMappings.map((mapping) => (
+                  <div key={mapping.id} className="flex items-center gap-2 p-3 border rounded-lg">
+                    <Input
+                      placeholder="源模型（如 claude-3-7-sonnet-20250219）"
+                      value={mapping.sourceModel || ''}
+                      onChange={(e) => handleUpdateExactMapping(mapping.id, 'sourceModel', e.target.value)}
+                      disabled={disabled}
+                      className="flex-1"
+                    />
+                    <span className="text-muted-foreground">→</span>
+                    <Select
+                      value={mapping.targetModel}
+                      onValueChange={(v) => handleUpdateExactMapping(mapping.id, 'targetModel', v)}
+                      disabled={disabled}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {providerModels.map((model) => (
+                          <SelectItem key={model} value={model}>
+                            {model}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => handleDeleteExactMapping(mapping.id)}
+                      disabled={disabled}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Family Mappings */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Tags className="h-4 w-4 text-green-500" />
+                <Label className="text-sm font-medium">家族映射</Label>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleAddFamilyMapping}
+                disabled={disabled}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                添加
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              通过关键词匹配模型家族（如 haiku、sonnet、opus）
+            </p>
+            
+            {familyMappings.length === 0 ? (
+              <div className="text-center py-8 border rounded-lg bg-muted/30">
+                <p className="text-sm text-muted-foreground">暂无家族映射</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {familyMappings.map((mapping) => (
+                  <div key={mapping.id} className="p-3 border rounded-lg space-y-3">
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1 space-y-2">
+                        <Label className="text-xs">关键词（逗号分隔）</Label>
+                        <Input
+                          placeholder="haiku, sonnet, opus"
+                          value={mapping.keywords?.join(', ') || ''}
+                          onChange={(e) => {
+                            const keywords = e.target.value.split(',').map((k) => k.trim()).filter(Boolean)
+                            handleUpdateFamilyMapping(mapping.id, 'keywords', keywords)
+                          }}
+                          disabled={disabled}
+                        />
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleDeleteFamilyMapping(mapping.id)}
+                        disabled={disabled}
+                        className="mt-6"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 space-y-2">
+                        <Label className="text-xs">目标模型</Label>
+                        <Select
+                          value={mapping.targetModel}
+                          onValueChange={(v) => handleUpdateFamilyMapping(mapping.id, 'targetModel', v)}
+                          disabled={disabled}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {providerModels.map((model) => (
+                              <SelectItem key={model} value={model}>
+                                {model}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="w-24 space-y-2">
+                        <Label className="text-xs">优先级</Label>
+                        <Input
+                          type="number"
+                          value={mapping.priority || 0}
+                          onChange={(e) => {
+                            const priority = parseInt(e.target.value) || 0
+                            handleUpdateFamilyMapping(mapping.id, 'priority', priority)
+                          }}
+                          disabled={disabled}
+                          min={0}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Mapping Summary */}
+      <div className="p-3 border rounded-lg bg-muted/30 space-y-2">
+        <div className="text-xs font-medium text-muted-foreground">映射优先级</div>
+        <div className="flex flex-wrap gap-2 text-xs">
+          <Badge variant="secondary" className="gap-1">
+            <Brain className="h-3 w-3" />
+            推理模型
+          </Badge>
+          <span className="text-muted-foreground">{'>'}</span>
+          <Badge variant="secondary" className="gap-1">
+            <Hash className="h-3 w-3" />
+            精确映射
+          </Badge>
+          <span className="text-muted-foreground">{'>'}</span>
+          <Badge variant="secondary" className="gap-1">
+            <Tags className="h-3 w-3" />
+            家族映射
+          </Badge>
+          <span className="text-muted-foreground">{'>'}</span>
+          <Badge variant="secondary" className="gap-1">
+            <Star className="h-3 w-3" />
+            默认模型
+          </Badge>
+          <span className="text-muted-foreground">{'>'}</span>
+          <span className="text-muted-foreground">原始模型</span>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <span>推理: {reasoningMapping ? '✓' : '✗'}</span>
+        <span>默认: {defaultMapping ? '✓' : '✗'}</span>
+        <span>精确: {exactMappings.length} 条</span>
+        <span>家族: {familyMappings.length} 条</span>
       </div>
     </div>
   )

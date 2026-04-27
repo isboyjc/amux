@@ -3,7 +3,7 @@
  * 检查 GitHub Releases 是否有新版本
  */
 
-import { app } from 'electron'
+// Note: app import removed - using lazy require when needed
 
 export interface VersionInfo {
   currentVersion: string
@@ -50,6 +50,7 @@ function compareVersions(v1: string, v2: string): number {
  * 获取当前应用版本
  */
 export function getCurrentVersion(): string {
+  const { app } = require('electron')
   return app.getVersion()
 }
 

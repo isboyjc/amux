@@ -1,6 +1,4 @@
 import { join } from 'path'
-
-import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { app, BrowserWindow, shell } from 'electron'
 
 // Database imports
@@ -127,21 +125,16 @@ export function showMainWindow(): void {
   }
 }
 
-// Set app name to control userData directory location
-// This must be called before app.whenReady()
-app.name = 'Amux'
-
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 app.whenReady().then(async () => {
+  // Set app name to control userData directory location
+  app.name = 'Amux'
+  
   // Set app user model id for windows
-  electronApp.setAppUserModelId('com.amux.desktop')
-
-  // Default open or close DevTools by F12 in development
-  // and ignore CommandOrControl + R in production.
-  app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
-  })
+  if (process.platform === 'win32') {
+    app.setAppUserModelId('com.amux.desktop')
+  }
 
   // Initialize crypto service (must be before database for API key encryption)
   console.log('[App] Initializing crypto service...')
@@ -180,6 +173,13 @@ app.whenReady().then(async () => {
   // Register IPC handlers (after database is ready)
   const { registerAllHandlers } = await import('./ipc')
   registerAllHandlers()
+
+  // Auto-refresh model lists in the background (non-blocking)
+  import('./services/model-refresh').then(({ refreshAllProviderModels }) => {
+    refreshAllProviderModels().catch((err) => {
+      console.warn('[App] Model refresh failed:', err)
+    })
+  })
 
   createWindow()
 

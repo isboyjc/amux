@@ -463,6 +463,15 @@ export function registerProviderHandlers(): void {
     }
   })
 
+  // Refresh all provider model lists from APIs
+  ipcMain.handle('provider:refresh-all-models', async () => {
+    const { refreshAllProviderModels } = await import('../services/model-refresh')
+    await refreshAllProviderModels()
+    // Return updated provider list
+    const rows = repo.findAll()
+    return rows.map(toProvider)
+  })
+
   // Validate proxy path
   ipcMain.handle('provider:validate-proxy-path', async (_event, path: string, excludeId?: string) => {
     try {

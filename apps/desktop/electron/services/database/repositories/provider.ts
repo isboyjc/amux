@@ -66,7 +66,7 @@ export class ProviderRepository extends BaseRepository<ProviderRow> {
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
-    
+
     stmt.run(
       id,
       data.name,
@@ -152,7 +152,7 @@ export class ProviderRepository extends BaseRepository<ProviderRow> {
       updates.push('proxy_path = ?')
       values.push(data.proxyPath)
     }
-    
+
     if (updates.length === 0) {
       return existing
     }

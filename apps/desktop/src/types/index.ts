@@ -212,7 +212,7 @@ export interface ChatMessage {
   createdAt: number
 }
 
-// Code Switch configuration
+// Code Switch configuration (Legacy V1)
 export interface CodeSwitchConfig {
   id: string
   cliType: 'claudecode' | 'codex'
@@ -228,7 +228,7 @@ export interface CodeSwitchConfig {
 // Mapping type for hybrid mapping strategy
 export type CodeModelMappingType = 'exact' | 'family' | 'reasoning' | 'default'
 
-// Code model mapping
+// Code model mapping (Legacy V1)
 export interface CodeModelMapping {
   id: string
   codeSwitchId: string
@@ -239,4 +239,52 @@ export interface CodeModelMapping {
   isActive: boolean
   createdAt: number
   updatedAt: number
+}
+
+// ============ CLI Code Switch V2 Types ============
+
+// CLI type for V2
+export type CliType = 'claude' | 'codex'
+
+// CLI configuration (V2)
+export interface CliCodeSwitchConfig {
+  cliType: CliType
+  enabled: boolean
+  takeoverActive: boolean
+  currentProviderId: string | null
+}
+
+// CLI model mapping item (V2)
+export interface CliModelMappingItem {
+  id: string
+  mappingType: CodeModelMappingType
+  sourceModel?: string // exact 映射的源模型
+  targetModel: string
+  keywords?: string[] // family 映射的关键词
+  priority?: number // family 映射的优先级
+}
+
+// CLI config with provider and mappings (V2 IPC response)
+export interface CliCodeSwitchFullConfig {
+  config: CliCodeSwitchConfig
+  provider: Provider | null
+  mappings: CliModelMappingItem[]
+}
+
+// CLI switch result
+export interface CliSwitchResult {
+  success: boolean
+  requiresRestart: boolean
+  message: string
+  previousProviderId?: string | null
+  newProviderId: string
+  hasHistoricalMappings: boolean
+}
+
+// CLI config detection result
+export interface CliConfigDetection {
+  exists: boolean
+  isProxyMode: boolean
+  hasBackup: boolean
+  configPath: string
 }

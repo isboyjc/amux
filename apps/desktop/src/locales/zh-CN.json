@@ -72,6 +72,8 @@
     "nameRequired": "请输入名称",
     "nameDuplicate": "供应商名称已存在",
     "adapterType": "供应商类型",
+    "adapterProtocol": "适配器协议",
+    "adapterProtocolDesc": "向该供应商发送请求时使用的 API 协议格式",
     "apiKey": "API Key",
     "apiKeyRequired": "请先输入 API Key",
     "baseUrl": "Base URL",
@@ -514,6 +516,10 @@
     "defaultMapping": "默认兜底",
     "defaultMappingDesc": "对未匹配家族或精确映射的请求使用此模型。",
     "exactOverride": "精确覆盖",
-    "addExactOverride": "添加精确覆盖"
+    "addExactOverride": "添加精确覆盖",
+    "quickConfig": "快速配置",
+    "advancedMapping": "高级映射",
+    "claude": "Claude Code",
+    "codex": "Codex"
   }
 }

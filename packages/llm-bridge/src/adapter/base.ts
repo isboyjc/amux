@@ -1,4 +1,5 @@
 import type { LLMErrorIR } from '../ir/error'
+import type { ModelInfo } from '../ir/model'
 import type { LLMRequestIR } from '../ir/request'
 import type { LLMResponseIR } from '../ir/response'
 import type { LLMStreamEvent, SSEEvent } from '../ir/stream'
@@ -119,6 +120,13 @@ export interface LLMAdapter {
      */
     createStreamBuilder?(): StreamEventBuilder
   }
+
+  /**
+   * Parse the raw model list response from the provider's /models API
+   * into a normalized array of ModelInfo.
+   * If not implemented, Bridge.listModels() falls back to returning raw data.
+   */
+  parseModelList?(response: unknown): ModelInfo[]
 
   /**
    * Validate IR request for this adapter

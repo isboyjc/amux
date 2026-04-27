@@ -25,13 +25,16 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'electron/main.ts')
-        }
+        },
+        external: ['electron']
       }
     },
     resolve: {
       alias: {
         '@electron': resolve(__dirname, 'electron')
-      }
+      },
+      mainFields: ['module', 'jsnext:main', 'jsnext', 'main'],
+      conditions: ['node', 'require']
     }
   },
   preload: {

@@ -5,6 +5,7 @@ import type {
   LLMStreamEvent,
   LLMErrorIR,
   AdapterInfo,
+  ModelInfo,
 } from '@amux.ai/llm-bridge'
 
 import { parseRequest } from './inbound/request-parser'
@@ -64,6 +65,29 @@ export const anthropicAdapter: LLMAdapter = {
     },
 
     createStreamBuilder,
+  },
+
+  parseModelList(response: unknown): ModelInfo[] {
+    if (!response || typeof response !== 'object') return []
+    const obj = response as Record<string, unknown>
+    const data = Array.isArray(obj.data) ? obj.data : []
+
+    return data
+      .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
+      .map((item) => {
+        const id = String(item.id || '')
+        if (!id) return null
+        const info: ModelInfo = {
+          id,
+          name: String(item.display_name || item.name || id),
+        }
+        if (typeof item.created_at === 'string') {
+          const ts = new Date(item.created_at).getTime()
+          if (!isNaN(ts)) info.created = Math.floor(ts / 1000)
+        }
+        return info
+      })
+      .filter((m): m is ModelInfo => m !== null)
   },
 
   getInfo(): AdapterInfo {

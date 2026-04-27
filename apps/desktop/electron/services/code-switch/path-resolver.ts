@@ -1,11 +1,12 @@
 /**
  * Path resolver for Code Switch
- * Handles cross-platform path detection and validation for Claude Code
+ * Handles cross-platform path detection and validation for multiple CLIs
  */
 
 import * as path from 'path'
 import * as os from 'os'
 import * as fs from 'fs'
+import { CliType, getCliDefinition } from '../../types/cli'
 
 export class PathResolver {
   /**
@@ -125,5 +126,36 @@ export class PathResolver {
     if (!fs.existsSync(normalizedPath)) {
       fs.mkdirSync(normalizedPath, { recursive: true })
     }
+  }
+
+  /**
+   * 获取指定 CLI 的配置文件路径（根据当前操作系统）
+   * V2: 支持多 CLI
+   */
+  static getConfigPath(cliType: CliType): string | null {
+    const cliDef = getCliDefinition(cliType)
+    const platform = process.platform as 'darwin' | 'win32' | 'linux'
+    return cliDef.configPaths[platform] || cliDef.configPaths.linux
+  }
+
+  /**
+   * 获取 Codex 配置目录
+   */
+  static getCodexConfigDir(): string {
+    return path.join(this.getHomeDir(), '.codex')
+  }
+
+  /**
+   * 获取 Codex config.toml 路径
+   */
+  static getCodexConfigPath(): string {
+    return path.join(this.getCodexConfigDir(), 'config.toml')
+  }
+
+  /**
+   * 获取 Codex auth.json 路径
+   */
+  static getCodexAuthPath(): string {
+    return path.join(this.getCodexConfigDir(), 'auth.json')
   }
 }

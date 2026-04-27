@@ -28,6 +28,8 @@ import { recordRequest as recordMetrics } from '../metrics'
 import { getBridge, getBridgeUsage, resolveProxyChain } from './bridge-manager'
 import { handleProviderPassthrough } from './provider-passthrough'
 import { handleCodeSwitch } from './code-switch-handler'
+import { handleCliProxy } from './cli-proxy-handler'
+import { CliType } from '../../types/cli'
 import { ProxyErrorCode } from './types'
 import { 
   extractApiKey, 
@@ -52,15 +54,46 @@ export function registerRoutes(app: FastifyInstance): void {
   const providerRepo = getProviderRepository()
   
   // ============================================================================
-  // 0. Code Switch Routes (Claude Code)
+  // 0. Code Switch Routes (V2 - New Architecture)
   // ============================================================================
-  console.log(`\n[Routes] 📋 Registering Code Switch routes`)
+  console.log(`\n[Routes] 📋 Registering CLI Code Switch V2 routes`)
+
+  // Claude Code 路由
+  app.post('/api/v1/cc', async (request: FastifyRequest, reply: FastifyReply) => {
+    console.log(`[Routes] 🎯 CLI Proxy route matched: Claude Code`)
+    return handleCliProxy(request, reply, CliType.ClaudeCode)
+  })
+  console.log(`[Routes]   ✅ Registered route: POST /api/v1/cc`)
+
+  app.post('/api/v1/cc/messages', async (request: FastifyRequest, reply: FastifyReply) => {
+    console.log(`[Routes] 🎯 CLI Proxy route matched: Claude Code (messages)`)
+    return handleCliProxy(request, reply, CliType.ClaudeCode)
+  })
+  console.log(`[Routes]   ✅ Registered route: POST /api/v1/cc/messages`)
+
+  // Codex 路由
+  app.post('/api/v1/codex', async (request: FastifyRequest, reply: FastifyReply) => {
+    console.log(`[Routes] 🎯 CLI Proxy route matched: Codex`)
+    return handleCliProxy(request, reply, CliType.Codex)
+  })
+  console.log(`[Routes]   ✅ Registered route: POST /api/v1/codex`)
+
+  app.post('/api/v1/codex/chat/completions', async (request: FastifyRequest, reply: FastifyReply) => {
+    console.log(`[Routes] 🎯 CLI Proxy route matched: Codex (chat completions)`)
+    return handleCliProxy(request, reply, CliType.Codex)
+  })
+  console.log(`[Routes]   ✅ Registered route: POST /api/v1/codex/chat/completions`)
+
+  // ============================================================================
+  // Legacy: Code Switch Routes (V1 - 兼容旧版本)
+  // ============================================================================
+  console.log(`\n[Routes] 📋 Registering Legacy Code Switch routes (V1 compatibility)`)
   
   app.post('/code/claudecode/v1/messages', async (request: FastifyRequest, reply: FastifyReply) => {
-    console.log(`[Routes] 🎯 Code Switch route matched: claudecode`)
+    console.log(`[Routes] 🎯 Legacy Code Switch route matched: claudecode`)
     return handleCodeSwitch(request, reply, 'claudecode')
   })
-  console.log(`[Routes]   ✅ Registered route: POST /code/claudecode/v1/messages`)
+  console.log(`[Routes]   ✅ Registered route: POST /code/claudecode/v1/messages (legacy)`)
   
   // ============================================================================
   // 1. Provider Passthrough Proxy Routes

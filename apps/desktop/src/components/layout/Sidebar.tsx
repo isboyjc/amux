@@ -15,7 +15,6 @@ import {
   CodeSwitchIcon
 } from '@/components/icons'
 import type { AnimatedIconHandle } from '@/components/icons'
-import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
 import { ipc } from '@/lib/ipc'
 import { cn } from '@/lib/utils'

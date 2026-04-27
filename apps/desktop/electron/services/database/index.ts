@@ -2,7 +2,6 @@
  * Database service - SQLite database initialization and management
  */
 
-import { app } from 'electron'
 import { join } from 'path'
 import Database from 'better-sqlite3'
 import type { DatabaseInstance, DatabaseOptions } from './types'
@@ -17,6 +16,8 @@ let db: DatabaseInstance | null = null
  * Get the default database path
  */
 export function getDefaultDatabasePath(): string {
+  // Lazy import electron to avoid issues during module loading
+  const { app } = require('electron')
   const userDataPath = app.getPath('userData')
   return join(userDataPath, DEFAULT_DB_NAME)
 }

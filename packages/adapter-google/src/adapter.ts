@@ -5,6 +5,7 @@ import type {
   LLMStreamEvent,
   LLMErrorIR,
   AdapterInfo,
+  ModelInfo,
 } from '@amux.ai/llm-bridge'
 
 import { parseRequest } from './inbound/request-parser'
@@ -64,6 +65,34 @@ export const googleAdapter: LLMAdapter = {
     },
 
     createStreamBuilder,
+  },
+
+  parseModelList(response: unknown): ModelInfo[] {
+    if (!response || typeof response !== 'object') return []
+    const obj = response as Record<string, unknown>
+    const models = Array.isArray(obj.models) ? obj.models : []
+
+    return models
+      .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
+      .map((item) => {
+        // Google format: { name: "models/gemini-2.0-flash", displayName: "Gemini 2.0 Flash", ... }
+        const fullName = String(item.name || '')
+        const id = fullName.startsWith('models/') ? fullName.slice(7) : fullName
+        if (!id) return null
+
+        const info: ModelInfo = {
+          id,
+          name: String(item.displayName || item.display_name || id),
+        }
+
+        // inputTokenLimit represents context length
+        if (typeof item.inputTokenLimit === 'number') {
+          info.contextLength = item.inputTokenLimit
+        }
+
+        return info
+      })
+      .filter((m): m is ModelInfo => m !== null)
   },
 
   getInfo(): AdapterInfo {

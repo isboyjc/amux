@@ -1,5 +1,6 @@
 import type { LLMAdapter } from '../adapter'
 import type { LLMErrorIR } from '../ir/error'
+import type { ModelListIR } from '../ir/model'
 import type { LLMRequestIR } from '../ir/request'
 import type { LLMResponseIR } from '../ir/response'
 import type { LLMStreamEvent, SSEEvent } from '../ir/stream'
@@ -58,6 +59,13 @@ export interface BridgeConfig {
    * Set to empty string if no prefix is needed
    */
   authHeaderPrefix?: string
+
+  /**
+   * Stream idle timeout in milliseconds (default: 300000 = 5 minutes)
+   * If no data is received from the stream within this period, the request is aborted.
+   * This is separate from `timeout` which applies to the initial connection.
+   */
+  streamIdleTimeout?: number
 
   /**
    * Additional provider-specific options
@@ -263,6 +271,12 @@ export interface LLMBridge {
    * Returns the raw model list response from the provider
    */
   listModels(): Promise<unknown>
+
+  /**
+   * List available models, normalized to a unified ModelInfo format.
+   * Uses the adapter's parseModelList if available, otherwise a generic parser.
+   */
+  listModelsNormalized(): Promise<ModelListIR>
 
   /**
    * Check compatibility between inbound and outbound adapters

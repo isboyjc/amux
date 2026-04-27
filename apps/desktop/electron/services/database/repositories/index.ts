@@ -14,3 +14,8 @@ export * from './conversation'
 export * from './message'
 export * from './code-switch'
 export * from './code-model-mapping'
+
+// V2: CLI Code Switch repositories
+export * from './cli-code-switch-config'
+export * from './cli-provider-model-mapping'
+export * from './cli-live-config-backup'
