@@ -1,0 +1,12 @@
+{
+  "title": "Usage",
+  "description": "Use Amux API with various tools",
+  "pages": [
+    "claude-code",
+    "codex",
+    "gemini-cli",
+    "open-code",
+    "openclaw",
+    "in-projects"
+  ]
+}

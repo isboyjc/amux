@@ -1,0 +1,129 @@
+---
+title: Use with OpenClaw
+description: Connect OpenClaw to Amux API Platform
+---
+
+[OpenClaw](https://openclaw.ai) is an open-source AI Agent with extensive CLI capabilities. It supports custom providers, making it easy to connect to Amux API Platform.
+
+## Prerequisites
+
+- OpenClaw installed ([installation guide](/docs/amux-api/guides/install/openclaw))
+- An Amux API Platform account with an API token ([Quick Start](/docs/amux-api/quick-start))
+
+## Configuration
+
+### Method 1: Interactive Setup
+
+Run the onboarding wizard and choose a custom provider:
+
+```bash
+openclaw onboard \
+  --auth-choice custom-api-key \
+  --custom-base-url "https://api.amux.ai/v1" \
+  --custom-model-id "gpt-5.4" \
+  --custom-api-key "your-amux-api-token" \
+  --custom-compatibility openai
+```
+
+### Method 2: Configuration File
+
+Edit `~/.openclaw/openclaw.json` to add Amux API as a custom provider:
+
+```json
+{
+  "models": {
+    "providers": {
+      "amux": {
+        "baseUrl": "https://api.amux.ai/v1",
+        "apiKey": "your-amux-api-token",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "gpt-5.4",
+            "name": "GPT-5.4",
+            "contextWindow": 128000,
+            "maxTokens": 16384
+          },
+          {
+            "id": "grok-3",
+            "name": "Grok 3",
+            "contextWindow": 131072,
+            "maxTokens": 16384
+          },
+          {
+            "id": "MiniMax-M2.5",
+            "name": "MiniMax M2.5",
+            "contextWindow": 1000000,
+            "maxTokens": 16384
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "amux/gpt-5.4"
+      }
+    }
+  }
+}
+```
+
+### Method 3: Environment Variables
+
+```bash
+export CUSTOM_API_KEY="your-amux-api-token"
+openclaw onboard \
+  --non-interactive \
+  --auth-choice custom-api-key \
+  --custom-base-url "https://api.amux.ai/v1" \
+  --custom-model-id "gpt-5.4" \
+  --custom-compatibility openai
+```
+
+## Verify
+
+Check that the provider is configured correctly:
+
+```bash
+openclaw models status
+```
+
+## Usage
+
+Start an interactive session:
+
+```bash
+cd /path/to/your/project
+openclaw
+```
+
+## Switching Models
+
+You can switch between Amux API models at any time. If you've defined multiple models in the provider config, set the default:
+
+```json
+{
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "amux/gpt-5.4"
+      }
+    }
+  }
+}
+```
+
+Or switch models using the CLI:
+
+```bash
+openclaw models set amux/grok-3
+```
+
+## Notes
+
+- Amux API Platform is OpenAI-compatible, use `"api": "openai-completions"` in provider config
+- All OpenClaw features (agents, tools, sandbox execution) work normally with Amux API
+- Available models depend on your Amux API account and credits
+- For sensitive API tokens, use the `${ENV_VAR}` syntax or secret references in your config

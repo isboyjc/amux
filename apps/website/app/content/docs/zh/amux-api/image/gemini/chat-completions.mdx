@@ -1,0 +1,293 @@
+---
+title: OpenAI 聊天格式
+description: 通过 OpenAI Chat Completions 格式调用 Gemini 图像生成模型 — 使用熟悉的 chat 接口生成图像
+---
+
+通过标准的 [OpenAI Chat Completions](../../text/openai/chat-completions) 接口调用 Gemini 系列图像生成模型。amux-api 在网关层会自动识别图像模型并注入 `responseModalities=["TEXT","IMAGE"]`，将上游返回的图像以 **Markdown 内嵌 Base64** 的形式回填到 `message.content`。
+
+| 项目 | 值 |
+| --- | --- |
+| **请求方法** | `POST` |
+| **请求路径** | `/v1/chat/completions` |
+| **完整 URL** | `https://api.amux.ai/v1/chat/completions` |
+| **认证方式** | `Authorization: Bearer <API_TOKEN>` |
+| **请求格式** | `application/json` |
+| **响应格式** | JSON 或 SSE（`stream=true` 时） |
+
+<Callout type="info">
+请求体的完整字段（messages、stream、temperature 等）请见 [Chat Completions 完整参考](../../text/openai/chat-completions)。本页只关注 Gemini 图像生成相关的特殊行为。
+</Callout>
+
+## 支持的模型
+
+amux-api 内置的 Gemini 图像生成模型：
+
+| 模型 | 别名 / 说明 |
+| --- | --- |
+| `gemini-2.5-flash-image` | Nano Banana |
+| `gemini-3-pro-image-preview` | Nano Banana Pro |
+| `gemini-3.1-flash-image-preview` | Nano Banana 2 |
+| `gemini-2.0-flash-exp-image-generation` | 早期实验版 |
+| `gemini-2.0-flash-exp` | 早期实验版 |
+
+只要 `model` 字段命中以上列表，amux-api 即按图像生成路径处理。
+
+## 关键请求字段
+
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      required: true,
+      description: '图像生成模型 ID（见上表）',
+    },
+    messages: {
+      type: 'array<Message>',
+      required: true,
+      description: 'OpenAI Chat 消息数组。`user` 消息 `content` 中的文本作为提示；可通过多模态部件（`{ "type": "image_url", "image_url": { "url": "data:image/png;base64,..." } }`）传入参考图',
+    },
+    stream: {
+      type: 'boolean',
+      default: 'false',
+      description: '是否流式返回',
+    },
+    extra_body: {
+      type: 'object',
+      description: 'Gemini 私有参数透传通道。详见下方 ExtraBody 结构',
+      typeDescriptionLink: '#extra_body-结构',
+    },
+  }}
+/>
+
+<Callout type="info">
+**自动注入**：amux-api 检测到 `model` 是 Gemini 图像模型时，会自动将 `responseModalities=["TEXT","IMAGE"]` 注入到上游的 `generationConfig`，调用方无需关心。
+</Callout>
+
+### extra_body 结构
+
+通过 `extra_body.google.image_config` 透传 Gemini 图像生成的专属参数：
+
+<TypeTable
+  type={{
+    'google.image_config.aspect_ratio': {
+      type: 'string',
+      description: '图像宽高比：`1:1` / `3:2` / `2:3` / `16:9` / `9:16`。**必须使用 snake_case**（`aspect_ratio`，不是 `aspectRatio`）',
+    },
+    'google.image_config.image_size': {
+      type: 'string',
+      description: '图像分辨率：`1K`（默认）/ `2K`。**必须使用 snake_case**',
+    },
+    'google.thinking_config.thinking_budget': {
+      type: 'integer',
+      description: '推理预算 Token 数（部分模型支持）',
+    },
+    'google.thinking_config.include_thoughts': {
+      type: 'boolean',
+      description: '是否在响应中包含思考内容',
+    },
+    'google.thinking_config.thinking_level': {
+      type: 'string',
+      description: '推理强度等级（仅部分模型）',
+    },
+  }}
+/>
+
+<Callout type="warn">
+**字段命名陷阱**：在 `extra_body.google.image_config` / `thinking_config` 中**必须使用 snake_case**（`aspect_ratio`、`image_size`、`thinking_budget`）。如果误用 camelCase，amux-api 会直接返回明确错误：
+
+```
+extra_body.google.image_config.aspectRatio is not supported, use extra_body.google.image_config.aspect_ratio instead
+```
+
+amux-api 会在内部把 snake_case 转换为 Gemini 上游所需的 camelCase。
+</Callout>
+
+## 请求示例
+
+### 文本生图
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "model": "gemini-2.5-flash-image",
+    "messages": [
+      { "role": "user", "content": "一只戴着贝雷帽的可爱海獭幼崽，水彩风格" }
+    ],
+    "extra_body": {
+      "google": {
+        "image_config": {
+          "aspect_ratio": "1:1",
+          "image_size": "1K"
+        }
+      }
+    }
+  }'
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.amux.ai/v1",
+    api_key=os.environ["AMUX_API_KEY"],
+)
+
+response = client.chat.completions.create(
+    model="gemini-2.5-flash-image",
+    messages=[
+        {"role": "user", "content": "一只戴着贝雷帽的可爱海獭幼崽，水彩风格"}
+    ],
+    extra_body={
+        "google": {
+            "image_config": {
+                "aspect_ratio": "1:1",
+                "image_size": "1K",
+            }
+        }
+    },
+)
+
+# content 中包含 ![image](data:image/png;base64,...) 形式的内嵌图像
+print(response.choices[0].message.content)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.amux.ai/v1',
+  apiKey: process.env.AMUX_API_KEY,
+});
+
+const response = await client.chat.completions.create({
+  model: 'gemini-2.5-flash-image',
+  messages: [
+    { role: 'user', content: '一只戴着贝雷帽的可爱海獭幼崽，水彩风格' },
+  ],
+  // @ts-expect-error extra_body 由 amux-api 自定义透传
+  extra_body: {
+    google: {
+      image_config: { aspect_ratio: '1:1', image_size: '1K' },
+    },
+  },
+});
+
+console.log(response.choices[0].message.content);
+```
+
+  </Tab>
+</Tabs>
+
+### 图像编辑（参考图 + 提示）
+
+```bash
+IMAGE_BASE64=$(base64 < cat.png | tr -d '\n')
+
+curl https://api.amux.ai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d "{
+    \"model\": \"gemini-2.5-flash-image\",
+    \"messages\": [{
+      \"role\": \"user\",
+      \"content\": [
+        { \"type\": \"text\", \"text\": \"把这张图的背景换成樱花飘落的春日庭院\" },
+        { \"type\": \"image_url\", \"image_url\": { \"url\": \"data:image/png;base64,$IMAGE_BASE64\" } }
+      ]
+    }]
+  }"
+```
+
+## 响应格式
+
+amux-api 把 Gemini 返回的图像 `inlineData` 转换为 Markdown 内嵌格式，写入 `choices[0].message.content`：
+
+```json
+{
+  "id": "chatcmpl-xxx",
+  "object": "chat.completion",
+  "created": 1730000000,
+  "model": "gemini-2.5-flash-image",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "这是一只戴着贝雷帽的海獭幼崽。\n\n![image](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...)"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 24,
+    "completion_tokens": 1290,
+    "total_tokens": 1314
+  }
+}
+```
+
+### 解析图像
+
+从 `message.content` 中可使用正则提取 Base64 图像数据：
+
+```python
+import re
+import base64
+
+content = response.choices[0].message.content
+matches = re.findall(r'!\[.*?\]\(data:image/(\w+);base64,([^\)]+)\)', content)
+
+for i, (mime_ext, b64) in enumerate(matches):
+    with open(f"output_{i}.{mime_ext}", "wb") as f:
+        f.write(base64.b64decode(b64))
+```
+
+```ts
+const content = response.choices[0].message.content!;
+const matches = [...content.matchAll(/!\[.*?\]\(data:image\/(\w+);base64,([^\)]+)\)/g)];
+
+matches.forEach(([, ext, b64], i) => {
+  const buffer = Buffer.from(b64, 'base64');
+  require('node:fs').writeFileSync(`output_${i}.${ext}`, buffer);
+});
+```
+
+## 流式响应
+
+设置 `stream=true` 后按 SSE 增量返回。Markdown 形式的图像数据会拼接到 `delta.content` 中分块下发：
+
+```
+data: {"choices":[{"index":0,"delta":{"role":"assistant","content":""}}]}
+
+data: {"choices":[{"index":0,"delta":{"content":"![image](data:image/png;base64,iVBOR"}}]}
+
+data: {"choices":[{"index":0,"delta":{"content":"w0KGgoAAAANSUhEUg..."}}]}
+
+data: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+
+data: [DONE]
+```
+
+由于 Base64 字符串较长，建议在客户端把 `delta.content` 完整拼接后再做一次正则提取。
+
+## 错误响应
+
+错误响应结构与 [Chat Completions](../../text/openai/chat-completions#错误响应) 一致。Gemini 图像生成相关的特殊错误：
+
+| 错误 | 原因 |
+| --- | --- |
+| `extra_body.google.imageConfig is not supported, use extra_body.google.image_config instead` | 顶层使用了 camelCase，应为 snake_case `image_config` |
+| `extra_body.google.image_config.aspectRatio is not supported, use ... aspect_ratio instead` | 内层字段使用了 camelCase，应为 snake_case |
+| `not supported model for image generation` | `model` 不是 Gemini 图像模型 |

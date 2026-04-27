@@ -1,0 +1,7 @@
+{
+  "title": "Anthropic Format",
+  "description": "Anthropic Claude Messages native format",
+  "pages": [
+    "messages"
+  ]
+}

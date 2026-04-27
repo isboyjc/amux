@@ -1,0 +1,543 @@
+---
+title: Text Chat
+description: Gemini-native generateContent / streamGenerateContent endpoint — fully Google Gemini API compatible
+---
+
+Proxies native Gemini API requests under the path `/v1beta/models/{model}:{action}`. Fully compatible with the Google Gemini protocol — supports text generation, multi-turn conversation, streaming, function calling, built-in tools (Google Search / URL Context / Code Execution), and Extended Thinking.
+
+| Field | Value |
+| --- | --- |
+| **Method** | `POST` |
+| **Path** | `/v1beta/models/{model}:generateContent`<br/>`/v1beta/models/{model}:streamGenerateContent?alt=sse` |
+| **Full URL** | `https://api.amux.ai/v1beta/models/gemini-2.5-pro:generateContent` |
+| **Request format** | `application/json` |
+| **Response format** | JSON, or SSE for the streaming action / `?alt=sse` |
+
+<Callout type="info">
+This endpoint is fully aligned with the Google Gemini API. You can use the official Google SDK (`@google/generative-ai` / `google-generativeai`) directly — just override the base URL. For multimodal usage (image / PDF / audio / video), see [Media Understanding](./media).
+</Callout>
+
+## Path Parameters
+
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      required: true,
+      description: 'Model ID, e.g. `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-flash-latest`. See https://api.amux.ai/pricing for the full list.',
+    },
+    action: {
+      type: 'string',
+      required: true,
+      description: 'Action name (after the colon). For text chat: `generateContent` (non-streaming) or `streamGenerateContent` (streaming).',
+    },
+  }}
+/>
+
+## Headers & Authentication
+
+amux-api accepts both Gemini-native auth and Bearer auth. Provide the API token via any one of:
+
+<TypeTable
+  type={{
+    Authorization: {
+      type: 'string',
+      description: '`Bearer <API_TOKEN>`. Recommended for Amux API.',
+    },
+    'x-goog-api-key': {
+      type: 'string',
+      description: 'Native Google Gemini auth header.',
+    },
+    '?key=': {
+      type: 'string',
+      description: 'Native Google Gemini auth via query parameter, e.g. `?key=$AMUX_API_KEY`.',
+    },
+  }}
+/>
+
+## Request Body
+
+<TypeTable
+  type={{
+    contents: {
+      type: 'array<Content>',
+      required: true,
+      description: 'Conversation contents (with history). See the Content structure below.',
+      typeDescriptionLink: '#content-structure',
+    },
+    systemInstruction: {
+      type: 'Content',
+      description: 'System instruction. Same shape as a `contents` element. Snake-case alias `system_instruction` is also accepted.',
+    },
+    generationConfig: {
+      type: 'object',
+      description: 'Generation parameters. See GenerationConfig below.',
+      typeDescriptionLink: '#generationconfig-structure',
+    },
+    safetySettings: {
+      type: 'array<SafetySetting>',
+      description: 'Safety filter settings. See SafetySetting below.',
+      typeDescriptionLink: '#safetysetting-structure',
+    },
+    tools: {
+      type: 'array<Tool>',
+      description: 'Tools — both custom function declarations and Google built-in tools. See Tool below.',
+      typeDescriptionLink: '#tool-structure',
+    },
+    toolConfig: {
+      type: 'object',
+      description: '`{ "functionCallingConfig": { "mode": "AUTO" | "ANY" | "NONE", "allowedFunctionNames": [...] }, "retrievalConfig": { "latLng": {...}, "languageCode": "..." } }`',
+    },
+    cachedContent: {
+      type: 'string',
+      description: 'Resource name of a cached context, used to hit Gemini context cache and reduce cost.',
+    },
+  }}
+/>
+
+<Callout type="info">
+**Naming compatibility & passthrough**: amux-api accepts both camelCase (e.g. `systemInstruction`, `maxOutputTokens`, `topP`) and snake_case (e.g. `system_instruction`, `max_output_tokens`, `top_p`) field names. Any field not listed above is forwarded to the upstream as-is.
+</Callout>
+
+### Content Structure
+
+<TypeTable
+  type={{
+    role: {
+      type: 'string',
+      description: '`user` or `model`. May be omitted under `systemInstruction`.',
+    },
+    parts: {
+      type: 'array<Part>',
+      required: true,
+      description: 'Array of content parts. See Part Types below.',
+      typeDescriptionLink: '#part-types',
+    },
+  }}
+/>
+
+### Part Types
+
+Each Part identifies its type by which field is set (set only one):
+
+<TypeTable
+  type={{
+    text: {
+      type: 'string',
+      description: 'Text content.',
+    },
+    thought: {
+      type: 'boolean',
+      description: 'Whether this part is the model\'s reasoning (chain-of-thought) output.',
+    },
+    inlineData: {
+      type: 'object',
+      description: 'Inline media: `{ "mimeType": "image/png" | "application/pdf" | "audio/mp3" | "video/mp4" | ..., "data": "<base64>" }`. See [Media Understanding](./media).',
+    },
+    fileData: {
+      type: 'object',
+      description: 'File reference: `{ "mimeType": "...", "fileUri": "..." }` (uploaded via the Google File API).',
+    },
+    functionCall: {
+      type: 'object',
+      description: 'Function call from the model: `{ "name": "...", "args": {...} }`.',
+    },
+    functionResponse: {
+      type: 'object',
+      description: 'Function execution result: `{ "name": "...", "response": {...}, "willContinue"?: bool, "scheduling"?: ..., "id"?: ... }`.',
+    },
+    executableCode: {
+      type: 'object',
+      description: 'Code emitted by the built-in code-execution tool: `{ "language": "PYTHON", "code": "..." }`.',
+    },
+    codeExecutionResult: {
+      type: 'object',
+      description: 'Execution result: `{ "outcome": "OUTCOME_OK" | "...", "output": "..." }`.',
+    },
+    thoughtSignature: {
+      type: 'object',
+      description: 'Thought signature (pass back unchanged on subsequent turns to preserve thinking state).',
+    },
+    videoMetadata: {
+      type: 'object',
+      description: 'Video metadata (frame rate, time bounds, etc.).',
+    },
+    mediaResolution: {
+      type: 'object',
+      description: 'Per-input resolution configuration.',
+    },
+  }}
+/>
+
+### GenerationConfig Structure
+
+<TypeTable
+  type={{
+    temperature: {
+      type: 'number',
+      description: 'Sampling temperature, range `0.0–2.0`.',
+    },
+    topP: {
+      type: 'number',
+      description: 'Nucleus sampling (also accepts `top_p`).',
+    },
+    topK: {
+      type: 'number',
+      description: 'Top-K sampling (also accepts `top_k`).',
+    },
+    maxOutputTokens: {
+      type: 'integer',
+      description: 'Maximum output tokens (also accepts `max_output_tokens`).',
+    },
+    candidateCount: {
+      type: 'integer',
+      description: 'Number of candidate responses to generate.',
+    },
+    stopSequences: {
+      type: 'array<string>',
+      description: 'Stop sequences.',
+    },
+    responseMimeType: {
+      type: 'string',
+      description: 'Response MIME type, e.g. `application/json`, `text/x.enum`.',
+    },
+    responseSchema: {
+      type: 'object',
+      description: 'Response schema (subset of OpenAPI).',
+    },
+    responseJsonSchema: {
+      type: 'object',
+      description: 'Response JSON Schema (standard JSON Schema).',
+    },
+    responseModalities: {
+      type: 'array<string>',
+      description: 'Output modalities to request, e.g. `["TEXT"]`, `["TEXT", "IMAGE"]`, `["AUDIO"]`.',
+    },
+    responseLogprobs: {
+      type: 'boolean',
+      description: 'Whether to return log probabilities of output tokens.',
+    },
+    logprobs: {
+      type: 'integer',
+      description: 'How many candidate logprobs to return per position.',
+    },
+    presencePenalty: {
+      type: 'number',
+      description: 'Presence penalty.',
+    },
+    frequencyPenalty: {
+      type: 'number',
+      description: 'Frequency penalty.',
+    },
+    seed: {
+      type: 'integer',
+      description: 'Random seed for best-effort determinism.',
+    },
+    enableEnhancedCivicAnswers: {
+      type: 'boolean',
+      description: 'Enable enhanced civic-related answers.',
+    },
+    mediaResolution: {
+      type: 'string',
+      description: 'Default input media resolution: `MEDIA_RESOLUTION_LOW` / `MEDIA_RESOLUTION_MEDIUM` / `MEDIA_RESOLUTION_HIGH`.',
+    },
+    thinkingConfig: {
+      type: 'object',
+      description: 'Extended Thinking configuration: `{ "includeThoughts": bool, "thinkingBudget": int, "thinkingLevel": "..." }` (snake_case also accepted).',
+    },
+    speechConfig: {
+      type: 'object',
+      description: 'Speech output config (for TTS models).',
+    },
+    imageConfig: {
+      type: 'object',
+      description: 'Image output config (for multimodal image-generation models).',
+    },
+  }}
+/>
+
+### SafetySetting Structure
+
+<TypeTable
+  type={{
+    category: {
+      type: 'string',
+      required: true,
+      description: '`HARM_CATEGORY_HARASSMENT` / `HARM_CATEGORY_HATE_SPEECH` / `HARM_CATEGORY_SEXUALLY_EXPLICIT` / `HARM_CATEGORY_DANGEROUS_CONTENT`.',
+    },
+    threshold: {
+      type: 'string',
+      required: true,
+      description: 'Block threshold: `BLOCK_NONE` / `BLOCK_LOW_AND_ABOVE` / `BLOCK_MEDIUM_AND_ABOVE` / `BLOCK_ONLY_HIGH`.',
+    },
+  }}
+/>
+
+### Tool Structure
+
+Set exactly one of these fields per Tool:
+
+<TypeTable
+  type={{
+    functionDeclarations: {
+      type: 'array<FunctionDeclaration>',
+      description: 'Custom function declarations: each has `name` / `description` / `parameters` (subset of OpenAPI).',
+    },
+    googleSearch: {
+      type: 'object',
+      description: 'Enable the built-in Google Search tool (`gemini-2.0+`).',
+    },
+    googleSearchRetrieval: {
+      type: 'object',
+      description: 'Legacy Google Search Retrieval tool.',
+    },
+    codeExecution: {
+      type: 'object',
+      description: 'Enable the built-in code execution tool.',
+    },
+    urlContext: {
+      type: 'object',
+      description: 'Enable the URL Context tool, letting the model fetch the contents of given URLs.',
+    },
+  }}
+/>
+
+## Examples
+
+<Tabs items={['curl', 'Python', 'Node.js', 'Streaming']}>
+  <Tab value="curl">
+
+```bash
+curl "https://api.amux.ai/v1beta/models/gemini-2.5-pro:generateContent" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "systemInstruction": {
+      "parts": [{"text": "You are a helpful assistant."}]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [{"text": "Introduce Amux API in one sentence."}]
+      }
+    ],
+    "generationConfig": {
+      "temperature": 0.7,
+      "maxOutputTokens": 1024
+    }
+  }'
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+from google import genai
+
+client = genai.Client(
+    api_key=os.environ["AMUX_API_KEY"],
+    http_options={"base_url": "https://api.amux.ai"},
+)
+
+response = client.models.generate_content(
+    model="gemini-2.5-pro",
+    contents="Introduce Amux API in one sentence.",
+    config={"system_instruction": "You are a helpful assistant."},
+)
+
+print(response.text)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import { GoogleGenAI } from '@google/genai';
+
+const ai = new GoogleGenAI({
+  apiKey: process.env.AMUX_API_KEY!,
+  httpOptions: { baseUrl: 'https://api.amux.ai' },
+});
+
+const response = await ai.models.generateContent({
+  model: 'gemini-2.5-pro',
+  contents: 'Introduce Amux API in one sentence.',
+  config: { systemInstruction: 'You are a helpful assistant.' },
+});
+
+console.log(response.text);
+```
+
+  </Tab>
+  <Tab value="Streaming">
+
+```bash
+curl "https://api.amux.ai/v1beta/models/gemini-2.5-pro:streamGenerateContent?alt=sse" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "contents": [
+      {"role": "user", "parts": [{"text": "Write a short poem about spring."}]}
+    ]
+  }'
+```
+
+  </Tab>
+</Tabs>
+
+## Response Example
+
+```json
+{
+  "candidates": [
+    {
+      "content": {
+        "role": "model",
+        "parts": [
+          { "text": "Amux API is a unified, stable enterprise-grade LLM API gateway." }
+        ]
+      },
+      "finishReason": "STOP",
+      "index": 0,
+      "safetyRatings": []
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 24,
+    "candidatesTokenCount": 18,
+    "totalTokenCount": 42,
+    "thoughtsTokenCount": 0,
+    "cachedContentTokenCount": 0,
+    "promptTokensDetails": [
+      { "modality": "TEXT", "tokenCount": 24 }
+    ]
+  }
+}
+```
+
+## Response Fields
+
+<TypeTable
+  type={{
+    candidates: {
+      type: 'array<Candidate>',
+      description: 'List of generated candidates, length equals the request `candidateCount`.',
+    },
+    promptFeedback: {
+      type: 'object',
+      description: 'Feedback for the input prompt: `{ "safetyRatings": [...], "blockReason": "..." | null }`.',
+    },
+    usageMetadata: {
+      type: 'UsageMetadata',
+      description: 'Token usage statistics. See UsageMetadata below.',
+      typeDescriptionLink: '#usagemetadata-fields',
+    },
+  }}
+/>
+
+### Candidate Fields
+
+<TypeTable
+  type={{
+    content: {
+      type: 'Content',
+      description: 'Model output (same shape as a `contents` element; `role` is typically `model`).',
+    },
+    finishReason: {
+      type: 'string',
+      description: '`STOP` / `MAX_TOKENS` / `SAFETY` / `RECITATION` / `OTHER`, etc.',
+    },
+    index: {
+      type: 'integer',
+      description: 'Position in the `candidates` array.',
+    },
+    safetyRatings: {
+      type: 'array<object>',
+      description: 'Safety rating breakdown: `[{ "category": "...", "probability": "..." }, ...]`.',
+    },
+  }}
+/>
+
+### UsageMetadata Fields
+
+<TypeTable
+  type={{
+    promptTokenCount: {
+      type: 'integer',
+      description: 'Input prompt tokens consumed.',
+    },
+    candidatesTokenCount: {
+      type: 'integer',
+      description: 'Tokens in generated candidates (sum across all).',
+    },
+    totalTokenCount: {
+      type: 'integer',
+      description: 'Total tokens.',
+    },
+    thoughtsTokenCount: {
+      type: 'integer',
+      description: 'Tokens spent on reasoning thoughts (visible when `thinkingConfig` is enabled).',
+    },
+    cachedContentTokenCount: {
+      type: 'integer',
+      description: 'Tokens served from the context cache.',
+    },
+    toolUsePromptTokenCount: {
+      type: 'integer',
+      description: 'Prompt tokens spent by tool-use machinery.',
+    },
+    promptTokensDetails: {
+      type: 'array<object>',
+      description: 'Per-modality breakdown of input tokens: `[{ "modality": "TEXT" | "IMAGE" | "AUDIO" | "VIDEO" | ..., "tokenCount": int }, ...]`.',
+    },
+    toolUsePromptTokensDetails: {
+      type: 'array<object>',
+      description: 'Per-modality breakdown of tool-use prompt tokens.',
+    },
+  }}
+/>
+
+## Streaming
+
+Switch the action to `streamGenerateContent` and append `?alt=sse`. The response is an SSE stream:
+
+```
+data: {"candidates":[{"content":{"role":"model","parts":[{"text":"Amux"}]},"index":0}]}
+
+data: {"candidates":[{"content":{"role":"model","parts":[{"text":" API"}]},"index":0}]}
+
+data: {"candidates":[{"finishReason":"STOP","index":0}],"usageMetadata":{"promptTokenCount":24,"candidatesTokenCount":18,"totalTokenCount":42}}
+```
+
+Each chunk's `candidates[].content.parts` carries the increment. `usageMetadata` is typically emitted in the final chunk.
+
+<Callout type="info">
+amux-api treats a request as streaming when **either** of the following is true:
+
+1. The URL path contains `streamGenerateContent`, **or**
+2. The query parameter `alt=sse` is present.
+</Callout>
+
+## Error Response
+
+```json
+{
+  "error": {
+    "code": 400,
+    "message": "...",
+    "status": "INVALID_ARGUMENT",
+    "details": [...]
+  }
+}
+```
+
+| HTTP Status | Meaning |
+| --- | --- |
+| `200` | Success |
+| `400` | Bad request parameters (`INVALID_ARGUMENT`) |
+| `401` | Missing or invalid API key (`UNAUTHENTICATED`) |
+| `403` | Permission denied (`PERMISSION_DENIED`) |
+| `404` | Model not found (`NOT_FOUND`) |
+| `429` | Rate limit triggered or insufficient balance (`RESOURCE_EXHAUSTED`) |
+| `500` / `502` / `503` | Server-side error or upstream unavailable |

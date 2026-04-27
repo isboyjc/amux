@@ -1,0 +1,8 @@
+{
+  "title": "模型列表查询",
+  "description": "获取当前账户可用的模型列表",
+  "pages": [
+    "openai",
+    "gemini"
+  ]
+}

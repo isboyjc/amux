@@ -1,40 +1,31 @@
 ---
 title: 介绍
-description: Amux API Platform - 独立、统一的大模型接口网关平台，基于开源项目 New API 上层构建改造
+description: Amux API - 统一、稳定的企业级大模型接口网关
 ---
 
-## 什么是 Amux API Platform？
+## 什么是 Amux API？
 
-Amux API Platform 是一个独立、统一的大模型接口网关平台，基于开源项目 [New API](https://github.com/QuantumNous/new-api) 上层构建改造。平台已接入多家上游提供商，提供多家大模型提供商 API 的集中管理与分发。
-
-用户可以在平台注册登录，创建 API 令牌，即可通过统一的 API 端点使用丰富的 AI 模型。
-
-后续 **Amux Desktop** 将内置支持 Amux API Platform 的服务集成，打通 Web 端 API 平台与本地客户端的快速集成。
+Amux API 是一个统一、稳定的企业级大模型接口网关。我们目前支持市面上所有主流的大模型供应商，提供标准化的 API 集成、按量计费，企业可开具增值税发票。
 
 ### 平台状态
 
-Amux API Platform 目前**限时开放注册**。注册后，部分内测用户将获得兑换码以获得额度体验此平台。
+平台稳定运行中，**20+ 家企业已接入使用**。
 
-### 支持的模型
+### 平台定位
 
-Amux API Platform 目前支持：
+Amux API 提供统一的 AI 模型 API 接入能力，面向企业系统集成、软件开发及业务自动化场景：
 
-| 提供商 | 模型 |
-| --- | --- |
-| **OpenAI** | GPT-5.4 及 GPT 全系模型 |
-| **xAI** | Grok 全系模型（文本、图像、视频） |
-| **MiniMax** | M2.5 及 M 全系模型 |
+- **统一 API 接口**：一套标准接口对接多个 AI 模型服务商
+- **面向企业与开发者**：用于系统集成、应用开发、内部工具
+- **技术服务定位**：不参与模型训练、不干预生成逻辑、不存储用户内容
+- **工程级稳定性**：99.9% 可用性，面向高并发企业级调用场景
 
-我们将逐步扩充上游服务商，以支持 **Claude**、**Gemini** 在内的所有优质模型。
+### 核心优势
 
-### 核心特性
-
-- **统一 API 网关**：通过单一的 OpenAI 兼容 API 端点访问多家大模型提供商
-- **用户注册与令牌管理**：注册账号、创建 API 令牌、管理使用量
-- **额度与计费**：基于积分的额度系统，透明的用量追踪
-- **多提供商路由**：智能路由，支持故障转移、负载均衡和基于优先级的渠道选择
-- **流式支持**：全面支持跨所有提供商的 SSE 流式响应
-- **OpenAI 兼容**：兼容任何支持 OpenAI API 格式的客户端
+- **企业认证**：支持企业对公转账，开具增值税发票
+- **技术支持**：中文技术支持，微信群实时响应
+- **数据安全**：不存储用户请求内容，参考行业安全标准
+- **灵活计费**：按 Token 计费，无月费，充值秒到账
 
 ### 使用平台
 
@@ -46,44 +37,24 @@ https://api.amux.ai
 
 您可以使用此 Base URL 和您在平台创建的 API Token 接入包含 **Amux Desktop** 在内的任何支持 OpenAI API 格式的 AI Agent 项目。
 
-### 架构
-
-```
-用户 / AI Agent 项目 (Amux Desktop, Cursor 等)
-              │
-              ▼
-   ┌─────────────────────────┐
-   │   Amux API Platform      │
-   │   https://api.amux.ai        │
-   ├─────────────────────────┤
-   │  用户与令牌管理           │
-   │  额度与计费              │
-   │  智能路由                │
-   │  多提供商渠道            │
-   └──┬──────┬──────┬────────┘
-      │      │      │
-      ▼      ▼      ▼
-   OpenAI   xAI   MiniMax   Claude(即将)  Gemini(即将)  ...
-```
-
 ### 与其他 Amux 产品的关系
 
-- **[Amux Desktop](/zh/docs/desktop)**：个人桌面大模型客户端，内置网关服务。未来 Desktop 将内置支持 Amux API Platform，打通 Web 端 API 平台与本地客户端。目前您已经可以通过 Amux API 搭配 Desktop 的 C/S 代理模块，动态切换 Claude Code 等工具使用任意模型。
+- **[Amux Desktop](/zh/docs/desktop)**：个人桌面大模型客户端，内置网关服务。未来 Desktop 将内置支持 Amux API 的服务集成，打通 Web 端 API 网关与本地客户端。目前您已经可以通过 Amux API 搭配 Desktop 的 C/S 代理模块，动态切换 Claude Code 等工具使用任意模型。
 - **[Amux LLM Bridge](/zh/docs/llm-bridge)**：Amux Desktop 使用的核心适配器转换引擎，负责本地的 LLM 提供商格式翻译。
 
 ## 下一步
 
 <Cards>
   <Card title="快速开始" href="/zh/docs/amux-api/quick-start">
-    注册并开始使用 Amux API Platform
+    注册并开始使用 Amux API
   </Card>
-  <Card title="在 Claude Code 中使用" href="/zh/docs/amux-api/guides/use-with-claude-code">
+  <Card title="在 Claude Code 中使用" href="/zh/docs/amux-api/guides/use/claude-code">
     将 Claude Code 连接到 Amux API
   </Card>
-  <Card title="在 OpenClaw 中使用" href="/zh/docs/amux-api/guides/use-with-openclaw">
+  <Card title="在 OpenClaw 中使用" href="/zh/docs/amux-api/guides/use/openclaw">
     将 OpenClaw 连接到 Amux API
   </Card>
-  <Card title="在工程中使用" href="/zh/docs/amux-api/guides/use-in-projects">
+  <Card title="在工程中使用" href="/zh/docs/amux-api/guides/use/in-projects">
     Python 和 Node.js 集成示例
   </Card>
 </Cards>

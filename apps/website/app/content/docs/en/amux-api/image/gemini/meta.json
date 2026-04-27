@@ -1,0 +1,8 @@
+{
+  "title": "Gemini Format",
+  "description": "Google Gemini image generation (v1beta & OpenAI-compatible)",
+  "pages": [
+    "generate-content",
+    "chat-completions"
+  ]
+}

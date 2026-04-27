@@ -1,0 +1,331 @@
+---
+title: 生成图像
+description: 通过 OpenAI 兼容格式调用阿里百炼 Qwen / Wan 系列图像模型生成图像
+---
+
+通过标准的 [OpenAI Images Generations](../openai/generations) 端点调用阿里百炼（DashScope）的 **Qwen 图像系列**与 **Wan 系列**模型。amux-api 在网关层会根据 `model` 自动路由到 Ali 适配器，并在内部把请求转换为百炼原生 DashScope 格式。
+
+| 项目 | 值 |
+| --- | --- |
+| **请求方法** | `POST` |
+| **请求路径** | `/v1/images/generations` |
+| **完整 URL** | `https://api.amux.ai/v1/images/generations` |
+| **认证方式** | `Authorization: Bearer <API_TOKEN>` |
+| **请求格式** | `application/json` |
+| **响应格式** | `application/json` |
+
+<Callout type="info">
+本接口与 [OpenAI 格式 / 生成图像](../openai/generations) 共用同一端点，仅 `model` 字段不同。请求体的标准字段（`prompt` / `n` / `size` / `response_format` 等）请参考该文档；本页聚焦 Qwen 专属的扩展行为与参数。
+</Callout>
+
+## 支持的模型
+
+amux-api 内置以下百炼图像模型：
+
+| 模型 | 类型 | 模式 |
+| --- | --- | --- |
+| `qwen-image` | Qwen 文生图 | 同步 |
+| `z-image` | Z 系列文生图 | 同步 |
+| `wan2.6` | 万相 V2.6 | 同步 |
+| `wan2.7` | 万相 V2.7 | 同步 |
+| `wan2.2-t2v-plus` 等 | 万相早期版本 | 异步（含轮询） |
+| `wanx-*` | 万相 X 系列 | 异步 |
+
+完整可用模型与计费请见 [https://api.amux.ai/pricing](https://api.amux.ai/pricing)。
+
+<Callout type="info">
+**同步 vs 异步**：amux-api 在网关层屏蔽了百炼同步 / 异步任务的差异。
+
+- **同步模型**（`qwen-image` / `z-image` / `wan2.6` / `wan2.7`）：调用方等单次 HTTP 响应即可拿到生图结果
+- **异步模型**（旧 wan / wanx 系列）：amux-api 自动向 DashScope 发起异步任务并轮询状态，最终把结果以 OpenAI 格式同步返回给调用方
+</Callout>
+
+## 请求体参数
+
+### 标准 OpenAI 字段
+
+完全沿用 OpenAI Images Generations 标准字段：
+
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      required: true,
+      description: '模型 ID，例如 `qwen-image`、`z-image`、`wan2.6` 等',
+    },
+    prompt: {
+      type: 'string',
+      required: true,
+      description: '图像描述文本',
+    },
+    n: {
+      type: 'integer',
+      description: '生成图像数量',
+    },
+    size: {
+      type: 'string',
+      description: '图像尺寸（OpenAI 格式 `1024x1024`）。amux-api 会自动转为百炼所需的 `1024*1024` 格式',
+    },
+    response_format: {
+      type: 'string',
+      default: 'url',
+      description: '`url` / `b64_json`',
+    },
+    user: {
+      type: 'string',
+      description: '终端用户标识',
+    },
+    watermark: {
+      type: 'boolean',
+      description: '是否在生成图像中添加水印（amux-api 在 ImageRequest DTO 中识别并透传）',
+    },
+  }}
+/>
+
+### Qwen / Wan 专属参数
+
+amux-api 提供两种方式访问百炼专属参数：
+
+**方式 1：扁平字段（部分参数）**
+
+`watermark` 等已建模字段直接放在请求体顶层：
+
+```json
+{
+  "model": "qwen-image",
+  "prompt": "...",
+  "watermark": true
+}
+```
+
+**方式 2：嵌套 `parameters` 字段（推荐，访问完整 DashScope 参数集）**
+
+通过顶层 `parameters` 对象传入百炼 DashScope 原生 `parameters` 字段，amux-api 会原样合并到上游请求中：
+
+<TypeTable
+  type={{
+    'parameters.size': {
+      type: 'string',
+      description: '百炼原生尺寸格式，例如 `1024*1024`',
+    },
+    'parameters.n': {
+      type: 'integer',
+      description: '生成数量',
+    },
+    'parameters.steps': {
+      type: 'string',
+      description: '采样步数',
+    },
+    'parameters.scale': {
+      type: 'string',
+      description: '提示词引导强度',
+    },
+    'parameters.watermark': {
+      type: 'boolean',
+      description: '是否添加水印',
+    },
+    'parameters.prompt_extend': {
+      type: 'boolean',
+      description: '`z-image` 专属：是否启用提示词增强（启用后按 2 倍计费）',
+    },
+    'parameters.thinking_mode': {
+      type: 'boolean',
+      description: '部分模型：是否启用思考模式',
+    },
+    'parameters.enable_sequential': {
+      type: 'boolean',
+      description: '部分模型：是否启用序列化生成',
+    },
+    'parameters.bbox_list': {
+      type: 'any',
+      description: '边界框列表（用于布局控制等场景）',
+    },
+    'parameters.color_palette': {
+      type: 'any',
+      description: '调色板（影响生成图像的主色调）',
+    },
+    'parameters.seed': {
+      type: 'integer',
+      description: '随机种子',
+    },
+  }}
+/>
+
+**方式 3：嵌套 `input` 字段（高级）**
+
+调用方也可显式传入 `input` 对象，覆盖 amux-api 默认从 `prompt` 自动构建的 `input.messages` / `input.prompt` 结构：
+
+<TypeTable
+  type={{
+    'input.prompt': {
+      type: 'string',
+      description: '提示词（异步模型默认结构使用此字段）',
+    },
+    'input.negative_prompt': {
+      type: 'string',
+      description: '反向提示词，描述不希望出现的内容',
+    },
+    'input.messages': {
+      type: 'array<object>',
+      description: '同步模型默认结构使用此字段；多模态消息数组（含 `role` / `content[]`）',
+    },
+  }}
+/>
+
+<Callout type="info">
+**transform 透明性**：当调用方仅使用 OpenAI 标准字段时，amux-api 会按以下规则自动构造百炼请求：
+
+- 同步模型：`input.messages = [{ role: "user", content: [{ text: prompt }] }]`
+- 异步模型：`input.prompt = prompt`
+- `parameters.size` = `request.size` 中的 `x` 替换为 `*`（如 `1024*1024`）
+- `parameters.n` = `request.n`（默认 1）
+- `parameters.watermark` = `request.watermark`
+
+如果显式提供了 `parameters` 或 `input`，则以传入值为准。
+</Callout>
+
+## 请求示例
+
+### 基础用法（OpenAI 标准格式）
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/images/generations \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "model": "qwen-image",
+    "prompt": "一只戴着贝雷帽的可爱海獭幼崽，水彩风格",
+    "n": 1,
+    "size": "1024x1024"
+  }'
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.amux.ai/v1",
+    api_key=os.environ["AMUX_API_KEY"],
+)
+
+response = client.images.generate(
+    model="qwen-image",
+    prompt="一只戴着贝雷帽的可爱海獭幼崽，水彩风格",
+    n=1,
+    size="1024x1024",
+)
+
+print(response.data[0].url)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.amux.ai/v1',
+  apiKey: process.env.AMUX_API_KEY,
+});
+
+const response = await client.images.generate({
+  model: 'qwen-image',
+  prompt: '一只戴着贝雷帽的可爱海獭幼崽，水彩风格',
+  n: 1,
+  size: '1024x1024',
+});
+
+console.log(response.data![0].url);
+```
+
+  </Tab>
+</Tabs>
+
+### 进阶用法（透传 DashScope `parameters`）
+
+```bash
+curl https://api.amux.ai/v1/images/generations \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "model": "z-image",
+    "prompt": "一只戴着贝雷帽的可爱海獭幼崽，水彩风格",
+    "parameters": {
+      "size": "1024*1024",
+      "n": 1,
+      "prompt_extend": true,
+      "seed": 42,
+      "watermark": false
+    }
+  }'
+```
+
+### 使用反向提示词
+
+```bash
+curl https://api.amux.ai/v1/images/generations \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "model": "qwen-image",
+    "prompt": "一只可爱的海獭幼崽",
+    "input": {
+      "prompt": "一只可爱的海獭幼崽",
+      "negative_prompt": "低质量, 模糊, 卡通风格"
+    },
+    "parameters": {
+      "size": "1024*1024"
+    }
+  }'
+```
+
+## 响应示例
+
+amux-api 始终以 OpenAI 标准 `ImageResponse` 格式返回，与 [OpenAI 生成图像](../openai/generations#响应字段) 一致：
+
+```json
+{
+  "created": 1730000000,
+  "data": [
+    {
+      "url": "https://dashscope-result-xxx.oss-cn-beijing.aliyuncs.com/.../result.png",
+      "revised_prompt": "..."
+    }
+  ]
+}
+```
+
+`response_format=b64_json` 时返回 `b64_json` 字段；`url` 字段由百炼 OSS 临时签发，使用前请尽快下载或转为 Base64 长期保存。
+
+## 错误响应
+
+错误结构与 [OpenAI 生成图像](../openai/generations#错误响应) 一致：
+
+```json
+{
+  "error": {
+    "message": "...",
+    "type": "invalid_request_error",
+    "code": "invalid_value"
+  }
+}
+```
+
+常见错误：
+
+| 错误 | 原因 |
+| --- | --- |
+| `convert image request to async ali image request failed: invalid parameters field` | `parameters` 字段 JSON 格式不合法 |
+| `invalid input field` | `input` 字段 JSON 格式不合法 |
+| `unsupported image relay mode` | 模型在 amux 中标识为非图像生成模型 |
+| 异步任务超时 | 异步模型轮询超过最大次数（amux 内部上限），多由上游模型负载引起 |
+
+HTTP 状态码沿用 OpenAI 体系。

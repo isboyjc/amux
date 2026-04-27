@@ -1,0 +1,73 @@
+---
+title: Use with Gemini CLI
+description: Connect Google Gemini CLI to Amux API Platform
+---
+
+[Gemini CLI](https://github.com/google-gemini/gemini-cli) is Google's AI coding assistant CLI. You can configure it to use Amux API Platform as the backend.
+
+## Prerequisites
+
+- Gemini CLI installed ([installation guide](/docs/amux-api/guides/install/gemini-cli))
+- An Amux API Platform account with an API token ([Quick Start](/docs/amux-api/quick-start))
+
+## Method 1: Environment Variables
+
+Set the environment variables to point Gemini CLI at Amux API Platform:
+
+```bash
+export GEMINI_API_KEY="your-amux-api-token"
+export GEMINI_BASE_URL="https://api.amux.ai"
+```
+
+For persistence, add them to your shell profile:
+
+```bash
+echo 'export GEMINI_API_KEY="your-amux-api-token"' >> ~/.zshrc
+echo 'export GEMINI_BASE_URL="https://api.amux.ai"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+## Method 2: Settings File
+
+You can also configure via Gemini CLI's settings file (`~/.gemini/settings.json`):
+
+```json
+{
+  "apiKey": "your-amux-api-token",
+  "baseUrl": "https://api.amux.ai"
+}
+```
+
+## Method 3: CC-Switch
+
+[CC-Switch](https://github.com/foreveryh/claude-code-switch) is a shell-based one-command model switcher supporting multiple providers and custom configurations.
+
+## Method 4: CC-Switch-CLI
+
+[CC-Switch-CLI](https://github.com/farion1231/cc-switch) is a cross-platform CLI tool (built in Rust) for managing Claude Code, Codex, and Gemini CLI provider configurations.
+
+## Usage
+
+Run Gemini CLI as usual:
+
+```bash
+# Interactive mode
+gemini
+
+# Single prompt
+gemini "explain this code"
+```
+
+## Verify
+
+```bash
+gemini "Hello, what model are you?"
+```
+
+If you receive a response, the connection is working.
+
+## Notes
+
+- Available models depend on your Amux API account and credits
+- Streaming is fully supported
+- Check the [Quick Start](/docs/amux-api/quick-start) for the list of supported models

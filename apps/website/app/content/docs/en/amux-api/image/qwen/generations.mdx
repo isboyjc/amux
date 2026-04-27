@@ -1,0 +1,331 @@
+---
+title: Generate Images
+description: Generate images via OpenAI-compatible format using Aliyun Bailian Qwen / Wan series models
+---
+
+Call Aliyun Bailian (DashScope) **Qwen image** and **Wan series** image-generation models through the standard [OpenAI Images Generations](../openai/generations) endpoint. amux-api routes by `model` to the Ali adapter and converts the request to the DashScope-native shape under the hood.
+
+| Field | Value |
+| --- | --- |
+| **Method** | `POST` |
+| **Path** | `/v1/images/generations` |
+| **Full URL** | `https://api.amux.ai/v1/images/generations` |
+| **Auth** | `Authorization: Bearer <API_TOKEN>` |
+| **Request format** | `application/json` |
+| **Response format** | `application/json` |
+
+<Callout type="info">
+This endpoint shares the same path as [OpenAI / Generate Images](../openai/generations); only the `model` field differs. For standard fields (`prompt` / `n` / `size` / `response_format` etc.), see that document. This page focuses on Qwen-specific extensions.
+</Callout>
+
+## Supported Models
+
+amux-api ships with the following Bailian image models:
+
+| Model | Type | Mode |
+| --- | --- | --- |
+| `qwen-image` | Qwen text-to-image | Sync |
+| `z-image` | Z series text-to-image | Sync |
+| `wan2.6` | Wanx V2.6 | Sync |
+| `wan2.7` | Wanx V2.7 | Sync |
+| `wan2.2-t2v-plus` etc. | Older Wanx | Async (with polling) |
+| `wanx-*` | Wanx X series | Async |
+
+For the full model list and pricing, see [https://api.amux.ai/pricing](https://api.amux.ai/pricing).
+
+<Callout type="info">
+**Sync vs async**: amux-api hides the DashScope sync/async distinction at the gateway layer.
+
+- **Sync models** (`qwen-image` / `z-image` / `wan2.6` / `wan2.7`): you get the result in a single HTTP response.
+- **Async models** (older wan / wanx): amux-api submits an async task to DashScope, polls until completion, then returns the result in OpenAI format.
+</Callout>
+
+## Request Body
+
+### Standard OpenAI Fields
+
+Standard OpenAI Images Generations fields are honored:
+
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      required: true,
+      description: 'Model ID, e.g. `qwen-image`, `z-image`, `wan2.6`.',
+    },
+    prompt: {
+      type: 'string',
+      required: true,
+      description: 'Text prompt describing the image.',
+    },
+    n: {
+      type: 'integer',
+      description: 'Number of images to generate.',
+    },
+    size: {
+      type: 'string',
+      description: 'Image size (OpenAI format `1024x1024`). amux-api auto-converts to the DashScope `1024*1024` format.',
+    },
+    response_format: {
+      type: 'string',
+      default: 'url',
+      description: '`url` / `b64_json`.',
+    },
+    user: {
+      type: 'string',
+      description: 'End-user identifier.',
+    },
+    watermark: {
+      type: 'boolean',
+      description: 'Whether to add a watermark to the generated image (recognized by the amux-api ImageRequest DTO).',
+    },
+  }}
+/>
+
+### Qwen / Wan-Specific Parameters
+
+amux-api offers two ways to access DashScope-specific parameters:
+
+**Option 1: Top-level fields (subset)**
+
+Modeled fields like `watermark` can be set at the top level:
+
+```json
+{
+  "model": "qwen-image",
+  "prompt": "...",
+  "watermark": true
+}
+```
+
+**Option 2: Nested `parameters` object (recommended for full DashScope control)**
+
+Pass DashScope-native `parameters` as a top-level object — amux-api forwards it verbatim:
+
+<TypeTable
+  type={{
+    'parameters.size': {
+      type: 'string',
+      description: 'DashScope-native size, e.g. `1024*1024`.',
+    },
+    'parameters.n': {
+      type: 'integer',
+      description: 'Number of images.',
+    },
+    'parameters.steps': {
+      type: 'string',
+      description: 'Sampling steps.',
+    },
+    'parameters.scale': {
+      type: 'string',
+      description: 'Prompt guidance scale.',
+    },
+    'parameters.watermark': {
+      type: 'boolean',
+      description: 'Whether to add a watermark.',
+    },
+    'parameters.prompt_extend': {
+      type: 'boolean',
+      description: '`z-image` only: enable prompt enhancement (billed at 2x when enabled).',
+    },
+    'parameters.thinking_mode': {
+      type: 'boolean',
+      description: 'Some models: enable thinking mode.',
+    },
+    'parameters.enable_sequential': {
+      type: 'boolean',
+      description: 'Some models: enable sequential generation.',
+    },
+    'parameters.bbox_list': {
+      type: 'any',
+      description: 'Bounding-box list (for layout-controlled generation).',
+    },
+    'parameters.color_palette': {
+      type: 'any',
+      description: 'Color palette (influences dominant colors).',
+    },
+    'parameters.seed': {
+      type: 'integer',
+      description: 'Random seed.',
+    },
+  }}
+/>
+
+**Option 3: Nested `input` object (advanced)**
+
+You can explicitly provide an `input` object to override the structure amux-api would build automatically from `prompt`:
+
+<TypeTable
+  type={{
+    'input.prompt': {
+      type: 'string',
+      description: 'Prompt text (used as the default for async models).',
+    },
+    'input.negative_prompt': {
+      type: 'string',
+      description: 'Negative prompt — describes what should not appear.',
+    },
+    'input.messages': {
+      type: 'array<object>',
+      description: 'Used as the default for sync models; multimodal message array (`role` / `content[]`).',
+    },
+  }}
+/>
+
+<Callout type="info">
+**Transform transparency**: when callers use only OpenAI standard fields, amux-api builds the DashScope request as follows:
+
+- Sync models: `input.messages = [{ role: "user", content: [{ text: prompt }] }]`
+- Async models: `input.prompt = prompt`
+- `parameters.size` = `request.size` with `x` replaced by `*` (e.g. `1024*1024`)
+- `parameters.n` = `request.n` (default 1)
+- `parameters.watermark` = `request.watermark`
+
+Explicit `parameters` / `input` overrides take precedence.
+</Callout>
+
+## Examples
+
+### Basic (OpenAI Standard Format)
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/images/generations \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "model": "qwen-image",
+    "prompt": "A cute baby sea otter wearing a beret, watercolor style",
+    "n": 1,
+    "size": "1024x1024"
+  }'
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.amux.ai/v1",
+    api_key=os.environ["AMUX_API_KEY"],
+)
+
+response = client.images.generate(
+    model="qwen-image",
+    prompt="A cute baby sea otter wearing a beret, watercolor style",
+    n=1,
+    size="1024x1024",
+)
+
+print(response.data[0].url)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.amux.ai/v1',
+  apiKey: process.env.AMUX_API_KEY,
+});
+
+const response = await client.images.generate({
+  model: 'qwen-image',
+  prompt: 'A cute baby sea otter wearing a beret, watercolor style',
+  n: 1,
+  size: '1024x1024',
+});
+
+console.log(response.data![0].url);
+```
+
+  </Tab>
+</Tabs>
+
+### Advanced (passthrough DashScope `parameters`)
+
+```bash
+curl https://api.amux.ai/v1/images/generations \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "model": "z-image",
+    "prompt": "A cute baby sea otter wearing a beret, watercolor style",
+    "parameters": {
+      "size": "1024*1024",
+      "n": 1,
+      "prompt_extend": true,
+      "seed": 42,
+      "watermark": false
+    }
+  }'
+```
+
+### With Negative Prompt
+
+```bash
+curl https://api.amux.ai/v1/images/generations \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "model": "qwen-image",
+    "prompt": "A cute baby sea otter",
+    "input": {
+      "prompt": "A cute baby sea otter",
+      "negative_prompt": "low quality, blurry, cartoon style"
+    },
+    "parameters": {
+      "size": "1024*1024"
+    }
+  }'
+```
+
+## Response Example
+
+amux-api always returns the OpenAI-standard `ImageResponse` shape, identical to [OpenAI Generate Images](../openai/generations#response-fields):
+
+```json
+{
+  "created": 1730000000,
+  "data": [
+    {
+      "url": "https://dashscope-result-xxx.oss-cn-beijing.aliyuncs.com/.../result.png",
+      "revised_prompt": "..."
+    }
+  ]
+}
+```
+
+When `response_format=b64_json`, the `b64_json` field is returned. The `url` field is a temporary signed link from Bailian's OSS — download it or convert to Base64 promptly for long-term storage.
+
+## Error Response
+
+The error shape matches [OpenAI Generate Images](../openai/generations#error-response):
+
+```json
+{
+  "error": {
+    "message": "...",
+    "type": "invalid_request_error",
+    "code": "invalid_value"
+  }
+}
+```
+
+Common errors:
+
+| Error | Reason |
+| --- | --- |
+| `convert image request to async ali image request failed: invalid parameters field` | Malformed `parameters` JSON. |
+| `invalid input field` | Malformed `input` JSON. |
+| `unsupported image relay mode` | Model is not registered as an image-generation model in amux. |
+| Async task timeout | Async polling exceeded the internal max retry — usually due to upstream model load. |
+
+HTTP status codes follow the OpenAI convention.

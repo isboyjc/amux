@@ -1,0 +1,545 @@
+---
+title: 文本聊天
+description: Gemini 原生 generateContent / streamGenerateContent 接口 — 完全兼容 Google Gemini API
+---
+
+代理 Gemini 原生 API 请求，路径格式为 `/v1beta/models/{model}:{action}`。完全兼容 Google Gemini 协议，支持文本生成、多轮对话、流式响应、函数调用、Google 搜索 / URL Context / Code Execution 等内置工具，以及 Extended Thinking。
+
+| 项目 | 值 |
+| --- | --- |
+| **请求方法** | `POST` |
+| **请求路径** | `/v1beta/models/{model}:generateContent`<br/>`/v1beta/models/{model}:streamGenerateContent?alt=sse` |
+| **完整 URL** | `https://api.amux.ai/v1beta/models/gemini-2.5-pro:generateContent` |
+| **请求格式** | `application/json` |
+| **响应格式** | JSON 或 SSE（流式动作或 `?alt=sse`） |
+
+<Callout type="info">
+本接口完全对齐 Google Gemini API 协议，可直接使用 Google 官方 SDK（`@google/generative-ai` / `google-generativeai`）调用，仅需替换 baseURL。多模态（图像 / PDF / 音频 / 视频）的详细使用请参考 [媒体识别](./media)。
+</Callout>
+
+## 路径参数
+
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      required: true,
+      description: '模型 ID。例如 `gemini-2.5-pro`、`gemini-2.5-flash`、`gemini-flash-latest` 等。完整可用模型见 https://api.amux.ai/pricing',
+    },
+    action: {
+      type: 'string',
+      required: true,
+      description: '动作名（路径中跟在 `:` 之后）。文本聊天常用：`generateContent`（非流式）、`streamGenerateContent`（流式）',
+    },
+  }}
+/>
+
+## 请求头与认证
+
+amux-api 兼容 Gemini 原生鉴权方式与 Bearer 鉴权，按以下任一方式提供 API Token 即可：
+
+<TypeTable
+  type={{
+    Authorization: {
+      type: 'string',
+      description: '`Bearer <API_TOKEN>`。Amux API 推荐使用此方式',
+    },
+    'x-goog-api-key': {
+      type: 'string',
+      description: '兼容 Google Gemini 原生鉴权方式（请求头）',
+    },
+    '?key=': {
+      type: 'string',
+      description: '兼容 Google Gemini 原生鉴权方式（query 参数），例如 `?key=$AMUX_API_KEY`',
+    },
+  }}
+/>
+
+## 请求体参数
+
+<TypeTable
+  type={{
+    contents: {
+      type: 'array<Content>',
+      required: true,
+      description: '对话内容列表（含历史上下文）。详见下方 Content 结构',
+      typeDescriptionLink: '#content-结构',
+    },
+    systemInstruction: {
+      type: 'Content',
+      description: '系统指令。结构与 `contents` 中的元素一致（也接受 snake_case 别名 `system_instruction`）',
+    },
+    generationConfig: {
+      type: 'object',
+      description: '生成参数集，详见下方 GenerationConfig 结构',
+      typeDescriptionLink: '#generationconfig-结构',
+    },
+    safetySettings: {
+      type: 'array<SafetySetting>',
+      description: '安全过滤设置数组，详见下方 SafetySetting 结构',
+      typeDescriptionLink: '#safetysetting-结构',
+    },
+    tools: {
+      type: 'array<Tool>',
+      description: '工具列表，支持自定义函数声明与 Google 内置工具，详见下方 Tool 结构',
+      typeDescriptionLink: '#tool-结构',
+    },
+    toolConfig: {
+      type: 'object',
+      description: '工具调用配置：`{ "functionCallingConfig": { "mode": "AUTO" | "ANY" | "NONE", "allowedFunctionNames": [...] }, "retrievalConfig": { "latLng": {...}, "languageCode": "..." } }`',
+    },
+    cachedContent: {
+      type: 'string',
+      description: '已缓存的上下文资源名，用于命中 Gemini 上下文缓存以降低成本',
+    },
+  }}
+/>
+
+<Callout type="info">
+**透传与命名兼容**：amux-api 同时接受 camelCase（如 `systemInstruction`、`maxOutputTokens`、`topP`）与 snake_case（如 `system_instruction`、`max_output_tokens`、`top_p`）两种命名风格。未在上方列出的字段会原样透传至上游。
+</Callout>
+
+### Content 结构
+
+<TypeTable
+  type={{
+    role: {
+      type: 'string',
+      description: '消息角色：`user` / `model`。`systemInstruction` 中可省略',
+    },
+    parts: {
+      type: 'array<Part>',
+      required: true,
+      description: '内容部件数组，详见下方 Part 类型',
+      typeDescriptionLink: '#part-类型',
+    },
+  }}
+/>
+
+### Part 类型
+
+每个 Part 通过其字段标识类型（仅设置一种）：
+
+<TypeTable
+  type={{
+    text: {
+      type: 'string',
+      description: '文本内容',
+    },
+    thought: {
+      type: 'boolean',
+      description: '该 part 是否为模型推理（思维链）输出',
+    },
+    inlineData: {
+      type: 'object',
+      description: '内联媒体：`{ "mimeType": "image/png" | "application/pdf" | "audio/mp3" | "video/mp4" | ..., "data": "<base64>" }`。详见 [媒体识别](./media)',
+    },
+    fileData: {
+      type: 'object',
+      description: '文件引用：`{ "mimeType": "...", "fileUri": "..." }`（基于 Google File API 上传的文件）',
+    },
+    functionCall: {
+      type: 'object',
+      description: '模型发起的函数调用：`{ "name": "...", "args": {...} }`',
+    },
+    functionResponse: {
+      type: 'object',
+      description: '函数执行结果回填：`{ "name": "...", "response": {...}, "willContinue"?: bool, "scheduling"?: ..., "id"?: ... }`',
+    },
+    executableCode: {
+      type: 'object',
+      description: '内置代码执行工具产出的代码：`{ "language": "PYTHON", "code": "..." }`',
+    },
+    codeExecutionResult: {
+      type: 'object',
+      description: '代码执行结果：`{ "outcome": "OUTCOME_OK" | "...", "output": "..." }`',
+    },
+    thoughtSignature: {
+      type: 'object',
+      description: '思考签名（多轮中需原样回传以保留思考状态）',
+    },
+    videoMetadata: {
+      type: 'object',
+      description: '视频附加元信息（如帧率、起止时间等）',
+    },
+    mediaResolution: {
+      type: 'object',
+      description: '该媒体输入的分辨率配置',
+    },
+  }}
+/>
+
+### GenerationConfig 结构
+
+<TypeTable
+  type={{
+    temperature: {
+      type: 'number',
+      description: '采样温度，取值范围 `0.0 ~ 2.0`',
+    },
+    topP: {
+      type: 'number',
+      description: '核采样参数（同时支持 `top_p` 别名）',
+    },
+    topK: {
+      type: 'number',
+      description: '取样候选数（同时支持 `top_k` 别名）',
+    },
+    maxOutputTokens: {
+      type: 'integer',
+      description: '本次响应最大输出 Token 数（同时支持 `max_output_tokens` 别名）',
+    },
+    candidateCount: {
+      type: 'integer',
+      description: '生成候选答案数量',
+    },
+    stopSequences: {
+      type: 'array<string>',
+      description: '停止序列',
+    },
+    responseMimeType: {
+      type: 'string',
+      description: '响应 MIME 类型，例如 `application/json`、`text/x.enum`',
+    },
+    responseSchema: {
+      type: 'object',
+      description: '响应结构定义（OpenAPI Schema 子集）',
+    },
+    responseJsonSchema: {
+      type: 'object',
+      description: '响应 JSON Schema（标准 JSON Schema）',
+    },
+    responseModalities: {
+      type: 'array<string>',
+      description: '请求的输出模态列表，例如 `["TEXT"]` / `["TEXT", "IMAGE"]` / `["AUDIO"]`',
+    },
+    responseLogprobs: {
+      type: 'boolean',
+      description: '是否返回输出 Token 的 logprobs',
+    },
+    logprobs: {
+      type: 'integer',
+      description: '每个位置返回多少候选 logprobs',
+    },
+    presencePenalty: {
+      type: 'number',
+      description: '存在惩罚',
+    },
+    frequencyPenalty: {
+      type: 'number',
+      description: '频率惩罚',
+    },
+    seed: {
+      type: 'integer',
+      description: '随机种子，用于尽量复现结果',
+    },
+    enableEnhancedCivicAnswers: {
+      type: 'boolean',
+      description: '是否启用增强公民相关答案',
+    },
+    mediaResolution: {
+      type: 'string',
+      description: '默认输入媒体分辨率：`MEDIA_RESOLUTION_LOW` / `MEDIA_RESOLUTION_MEDIUM` / `MEDIA_RESOLUTION_HIGH`',
+    },
+    thinkingConfig: {
+      type: 'object',
+      description: '扩展思考配置：`{ "includeThoughts": bool, "thinkingBudget": int, "thinkingLevel": "..." }`（也支持 snake_case）',
+    },
+    speechConfig: {
+      type: 'object',
+      description: '语音输出配置（用于 TTS 模型）',
+    },
+    imageConfig: {
+      type: 'object',
+      description: '图像输出配置（用于支持图像生成的多模态模型）',
+    },
+  }}
+/>
+
+### SafetySetting 结构
+
+<TypeTable
+  type={{
+    category: {
+      type: 'string',
+      required: true,
+      description: '危害类别：`HARM_CATEGORY_HARASSMENT` / `HARM_CATEGORY_HATE_SPEECH` / `HARM_CATEGORY_SEXUALLY_EXPLICIT` / `HARM_CATEGORY_DANGEROUS_CONTENT`',
+    },
+    threshold: {
+      type: 'string',
+      required: true,
+      description: '阻断阈值：`BLOCK_NONE` / `BLOCK_LOW_AND_ABOVE` / `BLOCK_MEDIUM_AND_ABOVE` / `BLOCK_ONLY_HIGH`',
+    },
+  }}
+/>
+
+### Tool 结构
+
+每个 Tool 中只设置以下字段之一：
+
+<TypeTable
+  type={{
+    functionDeclarations: {
+      type: 'array<FunctionDeclaration>',
+      description: '自定义函数声明列表，每项包含 `name` / `description` / `parameters`（OpenAPI 子集）',
+    },
+    googleSearch: {
+      type: 'object',
+      description: '启用 Google 搜索内置工具（`gemini-2.0+`）',
+    },
+    googleSearchRetrieval: {
+      type: 'object',
+      description: '旧版 Google 搜索检索工具',
+    },
+    codeExecution: {
+      type: 'object',
+      description: '启用代码执行内置工具',
+    },
+    urlContext: {
+      type: 'object',
+      description: '启用 URL Context 内置工具，让模型读取指定 URL 内容',
+    },
+  }}
+/>
+
+## 请求示例
+
+<Tabs items={['curl', 'Python', 'Node.js', '流式输出']}>
+  <Tab value="curl">
+
+```bash
+curl "https://api.amux.ai/v1beta/models/gemini-2.5-pro:generateContent" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "systemInstruction": {
+      "parts": [{"text": "You are a helpful assistant."}]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [{"text": "你好，请用一句话介绍 Amux API。"}]
+      }
+    ],
+    "generationConfig": {
+      "temperature": 0.7,
+      "maxOutputTokens": 1024
+    }
+  }'
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+from google import genai
+
+client = genai.Client(
+    api_key=os.environ["AMUX_API_KEY"],
+    http_options={"base_url": "https://api.amux.ai"},
+)
+
+response = client.models.generate_content(
+    model="gemini-2.5-pro",
+    contents="你好，请用一句话介绍 Amux API。",
+    config={"system_instruction": "You are a helpful assistant."},
+)
+
+print(response.text)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import { GoogleGenAI } from '@google/genai';
+
+const ai = new GoogleGenAI({
+  apiKey: process.env.AMUX_API_KEY!,
+  httpOptions: { baseUrl: 'https://api.amux.ai' },
+});
+
+const response = await ai.models.generateContent({
+  model: 'gemini-2.5-pro',
+  contents: '你好，请用一句话介绍 Amux API。',
+  config: { systemInstruction: 'You are a helpful assistant.' },
+});
+
+console.log(response.text);
+```
+
+  </Tab>
+  <Tab value="流式输出">
+
+```bash
+curl "https://api.amux.ai/v1beta/models/gemini-2.5-pro:streamGenerateContent?alt=sse" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "contents": [
+      {"role": "user", "parts": [{"text": "写一首关于春天的诗"}]}
+    ]
+  }'
+```
+
+  </Tab>
+</Tabs>
+
+## 响应示例
+
+```json
+{
+  "candidates": [
+    {
+      "content": {
+        "role": "model",
+        "parts": [
+          { "text": "Amux API 是一个统一、稳定的企业级大模型接口网关。" }
+        ]
+      },
+      "finishReason": "STOP",
+      "index": 0,
+      "safetyRatings": []
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 24,
+    "candidatesTokenCount": 18,
+    "totalTokenCount": 42,
+    "thoughtsTokenCount": 0,
+    "cachedContentTokenCount": 0,
+    "promptTokensDetails": [
+      { "modality": "TEXT", "tokenCount": 24 }
+    ]
+  }
+}
+```
+
+## 响应字段
+
+<TypeTable
+  type={{
+    candidates: {
+      type: 'array<Candidate>',
+      description: '生成结果列表，长度等于请求的 `candidateCount`',
+    },
+    promptFeedback: {
+      type: 'object',
+      description: '输入提示反馈：`{ "safetyRatings": [...], "blockReason": "..." | null }`',
+    },
+    usageMetadata: {
+      type: 'UsageMetadata',
+      description: 'Token 用量统计，详见下方 UsageMetadata 字段',
+      typeDescriptionLink: '#usagemetadata-字段',
+    },
+  }}
+/>
+
+### Candidate 字段
+
+<TypeTable
+  type={{
+    content: {
+      type: 'Content',
+      description: '模型返回的内容（与请求侧 `contents` 中的元素结构一致，`role` 通常为 `model`）',
+    },
+    finishReason: {
+      type: 'string',
+      description: '结束原因：`STOP` / `MAX_TOKENS` / `SAFETY` / `RECITATION` / `OTHER` 等',
+    },
+    index: {
+      type: 'integer',
+      description: '在 `candidates` 数组中的位置',
+    },
+    safetyRatings: {
+      type: 'array<object>',
+      description: '安全评分明细：`[{ "category": "...", "probability": "..." }, ...]`',
+    },
+  }}
+/>
+
+### UsageMetadata 字段
+
+<TypeTable
+  type={{
+    promptTokenCount: {
+      type: 'integer',
+      description: '输入提示消耗的 Token 数',
+    },
+    candidatesTokenCount: {
+      type: 'integer',
+      description: '生成内容（所有候选累加）消耗的 Token 数',
+    },
+    totalTokenCount: {
+      type: 'integer',
+      description: '总 Token 数',
+    },
+    thoughtsTokenCount: {
+      type: 'integer',
+      description: '推理思考过程消耗的 Token 数（启用 thinkingConfig 后可见）',
+    },
+    cachedContentTokenCount: {
+      type: 'integer',
+      description: '命中上下文缓存的 Token 数',
+    },
+    toolUsePromptTokenCount: {
+      type: 'integer',
+      description: '工具调用相关提示消耗的 Token 数',
+    },
+    promptTokensDetails: {
+      type: 'array<object>',
+      description: '按模态拆分的输入 Token 明细：`[{ "modality": "TEXT" | "IMAGE" | "AUDIO" | "VIDEO" | ..., "tokenCount": int }, ...]`',
+    },
+    toolUsePromptTokensDetails: {
+      type: 'array<object>',
+      description: '工具相关提示按模态拆分的明细',
+    },
+  }}
+/>
+
+## 流式响应
+
+将动作改为 `streamGenerateContent` 并附加 `?alt=sse` query，返回 SSE 流：
+
+```
+data: {"candidates":[{"content":{"role":"model","parts":[{"text":"Amux"}]},"index":0}]}
+
+data: {"candidates":[{"content":{"role":"model","parts":[{"text":" API"}]},"index":0}]}
+
+data: {"candidates":[{"finishReason":"STOP","index":0}],"usageMetadata":{"promptTokenCount":24,"candidatesTokenCount":18,"totalTokenCount":42}}
+```
+
+每帧的 `candidates[].content.parts` 携带本次增量。`usageMetadata` 通常在最后一帧返回。
+
+<Callout type="info">
+amux-api 在以下两种情况下会按流式处理：
+
+1. URL 路径包含 `streamGenerateContent`，**或**
+2. Query 参数 `alt=sse`
+
+两者满足其一即可。
+</Callout>
+
+## 错误响应
+
+```json
+{
+  "error": {
+    "code": 400,
+    "message": "...",
+    "status": "INVALID_ARGUMENT",
+    "details": [...]
+  }
+}
+```
+
+| HTTP 状态码 | 含义 |
+| --- | --- |
+| `200` | 请求成功 |
+| `400` | 请求参数错误（`INVALID_ARGUMENT`） |
+| `401` | API 密钥无效或缺失（`UNAUTHENTICATED`） |
+| `403` | 权限不足（`PERMISSION_DENIED`） |
+| `404` | 模型不存在（`NOT_FOUND`） |
+| `429` | 触发速率限制或额度不足（`RESOURCE_EXHAUSTED`） |
+| `500` / `502` / `503` | 服务端异常或上游不可用 |

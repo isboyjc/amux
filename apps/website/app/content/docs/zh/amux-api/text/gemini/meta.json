@@ -1,0 +1,8 @@
+{
+  "title": "Gemini 格式",
+  "description": "Google Gemini 原生格式（v1beta）",
+  "pages": [
+    "chat",
+    "media"
+  ]
+}

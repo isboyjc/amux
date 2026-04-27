@@ -1,0 +1,248 @@
+---
+title: Create Video Generation Task
+description: Submit a video-generation task (text-to-video / image-to-video) — async task model, returns a task_id for polling
+---
+
+Submit a video-generation task. Video generation is **asynchronous**: this endpoint returns a `task_id` immediately after validation. Use [Get Video Task Status](./get-task) to poll until `status=completed`, then download the video.
+
+| Field | Value |
+| --- | --- |
+| **Method** | `POST` |
+| **Path** | `/v1/video/generations` |
+| **Full URL** | `https://api.amux.ai/v1/video/generations` |
+| **Auth** | `Authorization: Bearer <API_TOKEN>` |
+| **Request format** | `application/json` |
+| **Response format** | `application/json` |
+
+<Callout type="info">
+**Universal contract**: this endpoint provides a vendor-neutral schema. amux-api converts the universal request into vendor-native formats (Doubao Seedance / Kling / Jimeng / Aliyun Wan, etc.) at the gateway. There is also an OpenAI Sora-compatible alias `POST /v1/videos` that accepts the same request body.
+</Callout>
+
+## Request Body
+
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      required: true,
+      description: 'Model / style ID, e.g. `doubao-seedance-2.0`, `doubao-seedance-2.0-fast`, `kling-v2-master`, `jimeng-v3.0`, `wan2.6`. See https://api.amux.ai/pricing for the full list.',
+    },
+    prompt: {
+      type: 'string',
+      description: 'Text prompt. Required for text-to-video; optional for image-to-video (used for additional context).',
+    },
+    image: {
+      type: 'string',
+      description: 'Image input (for image-to-video). HTTP/HTTPS URL or Base64 string.',
+    },
+    duration: {
+      type: 'number',
+      description: 'Video duration in seconds. Allowed values depend on the model — typically `5` or `10`.',
+    },
+    width: {
+      type: 'integer',
+      description: 'Video width in pixels (paired with `height` to set resolution).',
+    },
+    height: {
+      type: 'integer',
+      description: 'Video height in pixels.',
+    },
+    fps: {
+      type: 'integer',
+      description: 'Frame rate, typically `24` / `25` / `30`.',
+    },
+    seed: {
+      type: 'integer',
+      description: 'Random seed for best-effort determinism.',
+    },
+    n: {
+      type: 'integer',
+      default: '1',
+      description: 'Number of videos to generate.',
+    },
+    response_format: {
+      type: 'string',
+      description: 'Response format preference. Channel-specific — typically controls whether the final video is delivered as a URL or Base64.',
+    },
+    user: {
+      type: 'string',
+      description: 'End-user identifier for audit and abuse monitoring.',
+    },
+    metadata: {
+      type: 'object',
+      description: 'Vendor-specific / custom parameter passthrough channel. Common keys: `negative_prompt`, `style`, `quality_level`, `aspect_ratio`, `camera_control`, `mode`, `callback_url`, etc. amux-api routes these to the corresponding upstream channel based on the chosen model.',
+    },
+  }}
+/>
+
+<Callout type="info">
+**Passthrough**: amux-api forwards vendor-specific fields to the upstream via the `metadata` field. For example:
+
+- **Doubao Seedance** family: `aspect_ratio` / `camera_fixed` / `watermark`, etc.
+- **Kling**: `negative_prompt` / `cfg_scale` / `mode` / `aspect_ratio` / `camera_control`
+- **Jimeng**: `negative_prompt` / `aspect_ratio`
+- **Aliyun Wan**: `negative_prompt` / `prompt_extend`
+
+Refer to the upstream model's documentation for the exact set of supported fields.
+</Callout>
+
+## Examples
+
+### Text-to-Video
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/video/generations \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "model": "doubao-seedance-2.0",
+    "prompt": "A cute baby sea otter wearing a beret, rolling in a spring courtyard with falling cherry blossoms",
+    "duration": 5,
+    "width": 1280,
+    "height": 720,
+    "fps": 24,
+    "metadata": {
+      "aspect_ratio": "16:9"
+    }
+  }'
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+import httpx
+
+response = httpx.post(
+    "https://api.amux.ai/v1/video/generations",
+    headers={"Authorization": f"Bearer {os.environ['AMUX_API_KEY']}"},
+    json={
+        "model": "doubao-seedance-2.0",
+        "prompt": "A cute baby sea otter wearing a beret, rolling in a spring courtyard with falling cherry blossoms",
+        "duration": 5,
+        "width": 1280,
+        "height": 720,
+        "fps": 24,
+        "metadata": {"aspect_ratio": "16:9"},
+    },
+)
+
+task = response.json()
+print(f"Task ID: {task['task_id']}, Status: {task['status']}")
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+const response = await fetch('https://api.amux.ai/v1/video/generations', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${process.env.AMUX_API_KEY}`,
+  },
+  body: JSON.stringify({
+    model: 'doubao-seedance-2.0',
+    prompt: 'A cute baby sea otter wearing a beret, rolling in a spring courtyard with falling cherry blossoms',
+    duration: 5,
+    width: 1280,
+    height: 720,
+    fps: 24,
+    metadata: { aspect_ratio: '16:9' },
+  }),
+});
+
+const task = await response.json();
+console.log(`Task ID: ${task.task_id}, Status: ${task.status}`);
+```
+
+  </Tab>
+</Tabs>
+
+### Image-to-Video
+
+```bash
+curl https://api.amux.ai/v1/video/generations \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "model": "kling-v2-master",
+    "image": "https://example.com/source.jpg",
+    "prompt": "Camera slowly zooms in as the subject begins to walk forward",
+    "duration": 5,
+    "metadata": {
+      "negative_prompt": "blurry, low quality",
+      "cfg_scale": 0.7,
+      "mode": "std",
+      "aspect_ratio": "16:9"
+    }
+  }'
+```
+
+## Response Example
+
+```json
+{
+  "task_id": "abcd1234efgh",
+  "status": "queued"
+}
+```
+
+## Response Fields
+
+<TypeTable
+  type={{
+    task_id: {
+      type: 'string',
+      description: 'Task ID. Save this — used by [Get Task Status](./get-task) and for downloading the video.',
+    },
+    status: {
+      type: 'string',
+      description: 'Initial status, usually `queued`.',
+    },
+  }}
+/>
+
+## Status Enum
+
+Possible `status` values (see [Get Task Status](./get-task#status-enum) for details):
+
+| Status | Meaning |
+| --- | --- |
+| `queued` | Queued, awaiting execution |
+| `in_progress` | Generating |
+| `completed` | Done — video is ready |
+| `failed` | Failed |
+| `unknown` | Unknown state (fallback) |
+
+## Error Response
+
+```json
+{
+  "error": {
+    "message": "...",
+    "type": "invalid_request_error",
+    "param": "model",
+    "code": "invalid_value"
+  }
+}
+```
+
+| HTTP Status | Meaning |
+| --- | --- |
+| `200` | Task submitted successfully |
+| `400` | Bad request parameters (model not a video model, missing fields, etc.) |
+| `401` | Missing or invalid API key |
+| `403` | Model not authorized or blocked by content safety policy |
+| `429` | Rate limit triggered or insufficient balance |
+| `500` / `502` / `503` | Server-side error or upstream unavailable |
+
+## Next Steps
+
+- [Get Video Task Status](./get-task) — poll progress and retrieve the final video
+- [Doubao Seedance 2.0](./doubao-seedance-2) — dedicated invocation for Doubao Seedance 2.0
+- [Doubao Seedance 2.0 Fast](./doubao-seedance-2-fast) — dedicated invocation for Doubao Seedance 2.0 Fast

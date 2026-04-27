@@ -1,0 +1,8 @@
+{
+  "title": "OpenAI Format",
+  "description": "OpenAI-compatible image endpoints (universal)",
+  "pages": [
+    "generations",
+    "edits"
+  ]
+}

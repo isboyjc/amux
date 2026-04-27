@@ -1,0 +1,418 @@
+---
+title: Chat Completions
+description: Create chat completions — fully OpenAI Chat Completions compatible, with streaming, tool calls, and reasoning output
+---
+
+Generate model responses based on a conversation history. Fully compatible with the OpenAI **Chat Completions API**, with support for streaming and non-streaming responses, tool calls (function calling), structured outputs, and reasoning output.
+
+| Field | Value |
+| --- | --- |
+| **Method** | `POST` |
+| **Path** | `/v1/chat/completions` |
+| **Full URL** | `https://api.amux.ai/v1/chat/completions` |
+| **Auth** | `Authorization: Bearer <API_TOKEN>` |
+| **Request format** | `application/json` |
+| **Response format** | JSON, or SSE when `stream=true` |
+
+<Callout type="info">
+This endpoint is fully aligned with the OpenAI Chat Completions protocol. You can use the official OpenAI SDK directly — just override the `Base URL` and `API Key`.
+</Callout>
+
+## Request Body
+
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      required: true,
+      description: 'Model ID, e.g. `gpt-5.4`, `claude-sonnet-4.6`. See https://api.amux.ai/pricing for the full list.',
+    },
+    messages: {
+      type: 'array<Message>',
+      required: true,
+      description: 'Conversation history, ordered chronologically. See the Message structure below.',
+      typeDescriptionLink: '#message-structure',
+    },
+    temperature: {
+      type: 'number',
+      default: '1',
+      description: 'Sampling temperature, range `0–2`. Higher values produce more random outputs.',
+    },
+    top_p: {
+      type: 'number',
+      default: '1',
+      description: 'Nucleus sampling, range `0–1`. Adjust either `temperature` or `top_p`, not both.',
+    },
+    n: {
+      type: 'integer',
+      default: '1',
+      description: 'Number of completions to generate per input.',
+    },
+    stream: {
+      type: 'boolean',
+      default: 'false',
+      description: 'Whether to stream partial messages as SSE `data: {...}` lines.',
+    },
+    stream_options: {
+      type: 'object',
+      description: 'Extra streaming options, e.g. `{ "include_usage": true }` to emit usage in the final chunk.',
+    },
+    stop: {
+      type: 'string | array<string>',
+      description: 'Up to 4 stop sequences. Generation halts when any is encountered.',
+    },
+    max_tokens: {
+      type: 'integer',
+      description: 'Maximum tokens for this request (including tool calls). Newer models prefer `max_completion_tokens`.',
+    },
+    max_completion_tokens: {
+      type: 'integer',
+      description: 'Upper bound on tokens for this completion (reasoning + output).',
+    },
+    presence_penalty: {
+      type: 'number',
+      default: '0',
+      description: 'Range `-2 ~ 2`. Positive values reduce the likelihood of repeating topics.',
+    },
+    frequency_penalty: {
+      type: 'number',
+      default: '0',
+      description: 'Range `-2 ~ 2`. Positive values reduce the likelihood of repeating tokens.',
+    },
+    logit_bias: {
+      type: 'object',
+      description: 'Map of token IDs to bias values in `-100 ~ 100`.',
+    },
+    user: {
+      type: 'string',
+      description: 'End-user identifier for audit and abuse monitoring.',
+    },
+    tools: {
+      type: 'array<Tool>',
+      description: 'Tools the model may call. See the Tool structure below.',
+      typeDescriptionLink: '#tool-structure',
+    },
+    tool_choice: {
+      type: 'string | object',
+      description: '`"none"` / `"auto"` / `"required"`, or `{ "type": "function", "function": { "name": "..." } }`.',
+    },
+    parallel_tool_calls: {
+      type: 'boolean',
+      default: 'true',
+      description: 'Whether the model may call multiple tools in parallel within one response.',
+    },
+    response_format: {
+      type: 'object',
+      description: 'E.g. `{ "type": "json_object" }` or JSON Schema: `{ "type": "json_schema", "json_schema": {...} }`.',
+    },
+    seed: {
+      type: 'integer',
+      description: 'Random seed for best-effort determinism.',
+    },
+    logprobs: {
+      type: 'boolean',
+      default: 'false',
+      description: 'Whether to return log probabilities of the output tokens.',
+    },
+    top_logprobs: {
+      type: 'integer',
+      description: 'Range `0–20`. Returns the most likely tokens at each position. Requires `logprobs=true`.',
+    },
+    reasoning_effort: {
+      type: 'string',
+      description: 'Reasoning effort for reasoning models: `low` / `medium` / `high`.',
+    },
+    verbosity: {
+      type: 'string',
+      description: 'Reply verbosity (supported by some models such as the GPT-5 series): `low` / `medium` / `high`.',
+    },
+    prediction: {
+      type: 'object',
+      description: 'Predicted Outputs — speeds up requests where most of the response is known up front.',
+    },
+    metadata: {
+      type: 'object',
+      description: 'Custom key/value metadata (up to 16 pairs) for audit and analytics.',
+    },
+    store: {
+      type: 'boolean',
+      description: 'Whether to store this conversation upstream (depends on upstream and channel; some channels force this to false).',
+    },
+    prompt_cache_key: {
+      type: 'string',
+      description: 'Custom prompt-cache key for hitting the prompt cache to reduce cost and latency.',
+    },
+    web_search_options: {
+      type: 'object',
+      description: 'Web search options. Only effective for models that support web search.',
+    },
+    modalities: {
+      type: 'array<string>',
+      description: 'Requested output modalities, e.g. `["text"]` or `["text", "audio"]`.',
+    },
+    audio: {
+      type: 'object',
+      description: 'Audio output configuration (used when `modalities` includes `audio`).',
+    },
+  }}
+/>
+
+<Callout type="info">
+**Passthrough**: amux-api forwards any field not listed above (including vendor-specific extensions) to the upstream as-is. When a field is omitted, the upstream model uses its own default — amux-api does not inject defaults at the gateway layer.
+</Callout>
+
+### Message Structure
+
+<TypeTable
+  type={{
+    role: {
+      type: 'string',
+      required: true,
+      description: 'Role of the message: `system` / `user` / `assistant` / `tool`.',
+    },
+    content: {
+      type: 'string | array<ContentPart>',
+      description: 'Plain text or a multimodal array of parts (`text`, `image_url`, etc.).',
+    },
+    name: {
+      type: 'string',
+      description: 'Optional sender name to disambiguate participants.',
+    },
+    tool_calls: {
+      type: 'array<ToolCall>',
+      description: 'Only for `assistant`: tool calls the model made in this turn.',
+    },
+    tool_call_id: {
+      type: 'string',
+      description: 'Only for `tool`: the ID of the tool call this message responds to.',
+    },
+    reasoning_content: {
+      type: 'string',
+      description: 'Reasoning models only: chain-of-thought reasoning produced by the model.',
+    },
+    prefix: {
+      type: 'string',
+      description: 'Only for `assistant` (supported by some models such as DeepSeek): prefill content for prefix continuation.',
+    },
+  }}
+/>
+
+### Tool Structure
+
+<TypeTable
+  type={{
+    type: {
+      type: 'string',
+      required: true,
+      description: 'Tool type. Currently only `function` is supported.',
+    },
+    function: {
+      type: 'object',
+      required: true,
+      description: 'Function definition with `name`, `description`, and `parameters` (JSON Schema).',
+    },
+  }}
+/>
+
+## Examples
+
+<Tabs items={['curl', 'Python', 'Node.js', 'Streaming']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "model": "gpt-5.4",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "Introduce Amux API in one sentence."}
+    ]
+  }'
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.amux.ai/v1",
+    api_key=os.environ["AMUX_API_KEY"],
+)
+
+response = client.chat.completions.create(
+    model="gpt-5.4",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Introduce Amux API in one sentence."},
+    ],
+)
+
+print(response.choices[0].message.content)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.amux.ai/v1',
+  apiKey: process.env.AMUX_API_KEY,
+});
+
+const response = await client.chat.completions.create({
+  model: 'gpt-5.4',
+  messages: [
+    { role: 'system', content: 'You are a helpful assistant.' },
+    { role: 'user', content: 'Introduce Amux API in one sentence.' },
+  ],
+});
+
+console.log(response.choices[0].message.content);
+```
+
+  </Tab>
+  <Tab value="Streaming">
+
+```ts
+const stream = await client.chat.completions.create({
+  model: 'gpt-5.4',
+  messages: [{ role: 'user', content: 'Write a short poem about spring.' }],
+  stream: true,
+  stream_options: { include_usage: true },
+});
+
+for await (const chunk of stream) {
+  process.stdout.write(chunk.choices[0]?.delta?.content ?? '');
+}
+```
+
+  </Tab>
+</Tabs>
+
+## Response Example
+
+```json
+{
+  "id": "chatcmpl-xxx",
+  "object": "chat.completion",
+  "created": 1730000000,
+  "model": "gpt-5.4",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Amux API is a unified, stable enterprise-grade LLM API gateway."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 24,
+    "completion_tokens": 18,
+    "total_tokens": 42,
+    "prompt_tokens_details": { "cached_tokens": 0 },
+    "completion_tokens_details": { "reasoning_tokens": 0 }
+  }
+}
+```
+
+## Response Fields
+
+<TypeTable
+  type={{
+    id: {
+      type: 'string',
+      description: 'Unique completion ID.',
+    },
+    object: {
+      type: 'string',
+      description: 'Always `chat.completion` (or `chat.completion.chunk` when streaming).',
+    },
+    created: {
+      type: 'integer',
+      description: 'Unix timestamp (seconds) when the response was created.',
+    },
+    model: {
+      type: 'string',
+      description: 'Model ID actually used for the request.',
+    },
+    choices: {
+      type: 'array<Choice>',
+      description: 'List of completion choices, length equals the request `n`.',
+    },
+    usage: {
+      type: 'object',
+      description: 'Token usage: `prompt_tokens`, `completion_tokens`, `total_tokens`, plus `*_tokens_details`.',
+    },
+    system_fingerprint: {
+      type: 'string',
+      description: 'Backend configuration fingerprint. **Note**: amux-api currently emits this field only on streaming chunks (`stream=true`) — it is not returned in non-streaming responses.',
+    },
+  }}
+/>
+
+### Choice Fields
+
+<TypeTable
+  type={{
+    index: {
+      type: 'integer',
+      description: 'Position in the `choices` array.',
+    },
+    message: {
+      type: 'Message',
+      description: 'Message object returned by the model.',
+    },
+    finish_reason: {
+      type: 'string',
+      description: '`stop` / `length` / `tool_calls` / `content_filter`.',
+    },
+  }}
+/>
+
+## Streaming
+
+When `stream=true`, the response uses SSE format with incremental chunks:
+
+```
+data: {"id":"chatcmpl-xxx","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxx","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"Amux"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxx","object":"chat.completion.chunk","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+
+data: [DONE]
+```
+
+Each chunk's `choices[].delta` carries the partial increment. The stream ends with `data: [DONE]`.
+
+## Error Response
+
+```json
+{
+  "error": {
+    "message": "...",
+    "type": "invalid_request_error",
+    "param": "messages",
+    "code": "invalid_value"
+  }
+}
+```
+
+| HTTP Status | Meaning |
+| --- | --- |
+| `200` | Success |
+| `400` | Bad request parameters |
+| `401` | Missing or invalid API key |
+| `403` | Model not authorized or quota restricted |
+| `404` | Model not found |
+| `429` | Rate limit triggered or insufficient balance |
+| `500` / `502` / `503` | Server-side error or upstream unavailable |

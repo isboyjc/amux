@@ -1,0 +1,188 @@
+---
+title: 编辑图像
+description: 通过 OpenAI 兼容格式调用阿里百炼 Qwen-Image-Edit / Wan 系列模型编辑图像
+---
+
+通过标准的 [OpenAI Images Edits](../openai/edits) 端点调用百炼图像编辑模型。amux-api 在网关层会根据 `model` 自动路由到 Ali 适配器，并把 multipart/form-data 上传的图像转 Base64 拼入 DashScope 原生请求结构。
+
+| 项目 | 值 |
+| --- | --- |
+| **请求方法** | `POST` |
+| **请求路径** | `/v1/images/edits` |
+| **完整 URL** | `https://api.amux.ai/v1/images/edits` |
+| **认证方式** | `Authorization: Bearer <API_TOKEN>` |
+| **请求格式** | `multipart/form-data` |
+| **响应格式** | `application/json` |
+
+<Callout type="info">
+本接口与 [OpenAI 格式 / 编辑图像](../openai/edits) 共用同一端点，仅 `model` 字段不同。表单字段约定（`image` / `mask` / `prompt`）请参考该文档；本页聚焦 Qwen 专属的扩展行为。
+</Callout>
+
+## 支持的模型
+
+amux-api 内置以下百炼图像编辑模型：
+
+| 模型 | 说明 | 路径走向 |
+| --- | --- | --- |
+| `qwen-image-edit` | Qwen 通用图像编辑 | DashScope 多模态生成（同步） |
+| `qwen-image-edit-plus` 系列 | Qwen Edit Plus（多版本） | DashScope 多模态生成（同步） |
+| `qwen-image-edit-max` 系列 | Qwen Edit Max（多版本） | DashScope 多模态生成（同步） |
+| `wan2.6` / `wan2.7` | 万相 V2.6+ | DashScope 图像生成（异步） |
+| `wan2.2-*` 等旧版 wan | 万相早期版本 | DashScope 图像变换（异步） |
+
+完整可用模型与计费请见 [https://api.amux.ai/pricing](https://api.amux.ai/pricing)。
+
+## 表单字段
+
+amux-api 遵循 OpenAI Images Edits 的 multipart 约定：
+
+<TypeTable
+  type={{
+    image: {
+      type: 'file | array<file>',
+      required: true,
+      description: '要编辑的源图像。`qwen-image-edit` 系列支持多张参考图，可使用 `image[]` 字段或 `image[0]` / `image[1]` 等数组式字段名传入',
+    },
+    prompt: {
+      type: 'string',
+      required: true,
+      description: '描述目标图像的文本',
+    },
+    model: {
+      type: 'string',
+      description: '模型 ID，例如 `qwen-image-edit` / `qwen-image-edit-plus` / `wan2.6`',
+    },
+    mask: {
+      type: 'file',
+      description: '可选蒙版图像（部分模型支持）',
+    },
+    n: {
+      type: 'integer',
+      description: '生成数量',
+    },
+    watermark: {
+      type: 'boolean',
+      description: '是否在生成图像中添加水印',
+    },
+    response_format: {
+      type: 'string',
+      description: '`url` / `b64_json`',
+    },
+  }}
+/>
+
+<Callout type="info">
+**Qwen Edit 多张参考图**：`qwen-image-edit*` 系列支持基于多张参考图编辑。所有上传的图像会被 amux-api 按字段名顺序统一收集为 Base64 媒体片段，再与 `prompt` 一起构造为 DashScope 的 `input.messages[0].content`。
+</Callout>
+
+## 请求示例
+
+### Qwen Image Edit（单图）
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/images/edits \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -F "model=qwen-image-edit" \
+  -F "image=@cat.png" \
+  -F "prompt=把背景换成樱花飘落的春日庭院"
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.amux.ai/v1",
+    api_key=os.environ["AMUX_API_KEY"],
+)
+
+with open("cat.png", "rb") as image:
+    response = client.images.edit(
+        model="qwen-image-edit",
+        image=image,
+        prompt="把背景换成樱花飘落的春日庭院",
+    )
+
+print(response.data[0].url)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import { createReadStream } from 'node:fs';
+import OpenAI, { toFile } from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.amux.ai/v1',
+  apiKey: process.env.AMUX_API_KEY,
+});
+
+const response = await client.images.edit({
+  model: 'qwen-image-edit',
+  image: await toFile(createReadStream('cat.png'), 'cat.png'),
+  prompt: '把背景换成樱花飘落的春日庭院',
+});
+
+console.log(response.data![0].url);
+```
+
+  </Tab>
+</Tabs>
+
+### 多张参考图编辑
+
+```bash
+curl https://api.amux.ai/v1/images/edits \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -F "model=qwen-image-edit-plus" \
+  -F "image[]=@reference-1.png" \
+  -F "image[]=@reference-2.png" \
+  -F "image[]=@reference-3.png" \
+  -F "prompt=融合这三张参考图的风格生成新的封面图"
+```
+
+### Wan 图像变换（图生图）
+
+```bash
+curl https://api.amux.ai/v1/images/edits \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -F "model=wan2.6" \
+  -F "image=@source.jpg" \
+  -F "prompt=把这张照片变成赛博朋克风格" \
+  -F "watermark=false"
+```
+
+## 响应示例
+
+amux-api 始终以 OpenAI 标准 `ImageResponse` 格式返回，与 [OpenAI 编辑图像](../openai/edits#响应字段) 一致：
+
+```json
+{
+  "created": 1730000000,
+  "data": [
+    {
+      "url": "https://dashscope-result-xxx.oss-cn-beijing.aliyuncs.com/.../result.png"
+    }
+  ]
+}
+```
+
+`response_format=b64_json` 时返回 `b64_json` 字段。
+
+## 错误响应
+
+| 错误 | 原因 |
+| --- | --- |
+| `image is required` | 未上传 `image` 表单字段（amux 网关层校验） |
+| `failed to parse image edit form request` | multipart 表单格式不合法 |
+| `convert image edit form request failed` | 图像编码或参数转换失败 |
+| `unsupported image relay mode` | 模型在 amux 中标识为非图像编辑模型 |
+
+HTTP 状态码与 OpenAI 体系一致，详见 [OpenAI 编辑图像 / 错误响应](../openai/edits#错误响应)。

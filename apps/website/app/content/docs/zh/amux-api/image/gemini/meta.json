@@ -1,0 +1,8 @@
+{
+  "title": "Gemini 格式",
+  "description": "Google Gemini 图像生成接口（v1beta 与 OpenAI 兼容格式）",
+  "pages": [
+    "generate-content",
+    "chat-completions"
+  ]
+}

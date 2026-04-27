@@ -1,0 +1,8 @@
+{
+  "title": "进阶指南",
+  "description": "Amux API 进阶配置与集成",
+  "pages": [
+    "desktop-integration",
+    "authentication"
+  ]
+}

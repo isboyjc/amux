@@ -1,0 +1,8 @@
+{
+  "title": "Gemini Format",
+  "description": "Google Gemini native format (v1beta)",
+  "pages": [
+    "chat",
+    "media"
+  ]
+}

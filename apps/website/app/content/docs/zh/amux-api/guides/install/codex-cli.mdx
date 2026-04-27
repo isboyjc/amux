@@ -1,0 +1,113 @@
+---
+title: 安装 Codex CLI
+description: 下载并安装 OpenAI 的 Codex CLI
+---
+
+[Codex CLI](https://github.com/openai/codex) 是 OpenAI 的开源 AI 编程代理，在终端中运行。它提供三种安全模式（建议、自动编辑、全自动），并使用操作系统级别的沙箱来保障安全。
+
+## 系统要求
+
+| 要求 | 最低配置 |
+| --- | --- |
+| **操作系统** | macOS、Linux、Windows（通过 WSL） |
+| **Node.js** | 18+（仅 npm 安装方式需要） |
+| **网络** | 需要互联网连接 |
+| **账号** | ChatGPT Plus/Pro/Team/Business/Edu/Enterprise，或 OpenAI API Key |
+
+## 安装
+
+### npm
+
+```bash
+npm install -g @openai/codex
+```
+
+### Homebrew (macOS)
+
+```bash
+brew install --cask codex
+```
+
+### GitHub Releases
+
+从 [GitHub Releases](https://github.com/openai/codex/releases) 页面下载对应平台的二进制文件（macOS Intel/Apple Silicon、Linux x86_64/arm64）。
+
+## 验证安装
+
+```bash
+codex --version
+```
+
+## 认证
+
+### 方式一：ChatGPT 订阅（推荐）
+
+运行 `codex` 并选择 "Sign in with ChatGPT"，会打开浏览器进行认证。无需额外付费。
+
+```bash
+codex
+```
+
+### 方式二：API Key
+
+```bash
+export OPENAI_API_KEY="sk-..."
+codex
+```
+
+### 远程 / SSH 访问
+
+通过 SSH 使用 Codex CLI 时，需要转发认证端口：
+
+```bash
+ssh -L 1455:localhost:1455 user@your-server
+codex
+```
+
+## 快速上手
+
+**交互式会话：**
+
+```bash
+codex
+```
+
+**单次命令：**
+
+```bash
+codex "explain what this codebase does"
+```
+
+**全自动模式：**
+
+```bash
+codex --full-auto "Run tests and fix failures"
+```
+
+## 安全模式
+
+| 模式 | 描述 |
+| --- | --- |
+| **Suggest** | 仅建议，不修改文件 |
+| **Auto Edit** | 自动编辑文件，执行命令需批准 |
+| **Full Auto** | 完全自动化，无需批准 |
+
+Codex CLI 使用操作系统级别的沙箱（macOS Seatbelt、Linux Landlock），默认阻止网络访问以保障执行安全。
+
+## 配合 Amux API Platform 使用
+
+安装 Codex CLI 后，详见[在 Codex CLI 中使用](/zh/docs/amux-api/guides/use/codex)，将其连接到 Amux API Platform。
+
+你也可以通过 [Amux Desktop 代理](/zh/docs/desktop/guides/proxies)路由 Codex CLI：
+
+```bash
+export OPENAI_BASE_URL="http://127.0.0.1:9527/proxies/{proxyPath}"
+export OPENAI_API_KEY="sk-amux.xxx"
+codex
+```
+
+## 相关资源
+
+- [Codex CLI 官方文档](https://developers.openai.com/codex/cli/reference/)
+- [Codex CLI GitHub](https://github.com/openai/codex)
+- [npm 包](https://www.npmjs.com/package/@openai/codex)

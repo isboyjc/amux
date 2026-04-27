@@ -1,0 +1,12 @@
+{
+  "title": "视频",
+  "description": "视频生成 API",
+  "pages": [
+    "---接口格式---",
+    "create-task",
+    "get-task",
+    "---模型专属---",
+    "doubao-seedance-2",
+    "doubao-seedance-2-fast"
+  ]
+}

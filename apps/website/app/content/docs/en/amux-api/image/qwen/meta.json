@@ -1,0 +1,8 @@
+{
+  "title": "Qwen Format (OpenAI)",
+  "description": "Bailian Qwen / Wan series image generation & editing (OpenAI-compatible)",
+  "pages": [
+    "generations",
+    "edits"
+  ]
+}

@@ -1,0 +1,248 @@
+---
+title: OpenAI Format
+description: List the models available to your account — OpenAI-compatible (`/v1/models`) with auto-detected response format for OpenAI / Anthropic clients
+---
+
+List the models available to the current API token. amux-api **auto-detects the response format from request headers** at `/v1/models`, so this single endpoint can serve OpenAI, Anthropic, and Gemini clients.
+
+| Field | Value |
+| --- | --- |
+| **Method** | `GET` |
+| **Path** | `/v1/models` |
+| **Full URL** | `https://api.amux.ai/v1/models` |
+| **Body** | none |
+| **Response format** | `application/json` |
+
+<Callout type="info">
+**Response format auto-detection** (`router/relay-router.go:23-32`):
+
+- Both `x-api-key` and `anthropic-version` headers present → **Anthropic format**
+- `x-goog-api-key` header or `?key=` query parameter present → routes to Gemini Retrieve (prefer [`/v1beta/models`](./gemini))
+- Otherwise → **OpenAI format** (default)
+</Callout>
+
+## Headers
+
+<TypeTable
+  type={{
+    Authorization: {
+      type: 'string',
+      description: '`Bearer <API_TOKEN>`. Recommended for Amux API.',
+    },
+    'x-api-key': {
+      type: 'string',
+      description: 'Optional. When set together with `anthropic-version`, returns the Anthropic format. Also accepted as an alternate Bearer-token source.',
+    },
+    'anthropic-version': {
+      type: 'string',
+      description: 'Optional. When set together with `x-api-key`, returns the Anthropic format.',
+    },
+  }}
+/>
+
+## Response
+
+The returned model list is filtered by:
+
+- The current API token's **allowed-model whitelist** (if `model_limit` is set on the token)
+- Models enabled for the current user's group (or token-specified group)
+- Whether **models without configured rates** are included — controlled by system setting `SelfUseModeEnabled` and user setting `AcceptUnsetRatioModel`
+
+### OpenAI Format Response (default)
+
+```json
+{
+  "success": true,
+  "object": "list",
+  "data": [
+    {
+      "id": "gpt-5.4",
+      "object": "model",
+      "created": 1626777600,
+      "owned_by": "openai",
+      "supported_endpoint_types": ["chat", "responses"]
+    },
+    {
+      "id": "claude-sonnet-4-5",
+      "object": "model",
+      "created": 1626777600,
+      "owned_by": "anthropic",
+      "supported_endpoint_types": ["messages", "chat"]
+    }
+  ]
+}
+```
+
+<TypeTable
+  type={{
+    success: {
+      type: 'boolean',
+      description: 'amux-api extension field: whether the request succeeded.',
+    },
+    object: {
+      type: 'string',
+      description: 'Always `list`.',
+    },
+    data: {
+      type: 'array<Model>',
+      description: 'List of model objects.',
+    },
+  }}
+/>
+
+#### Model Object
+
+<TypeTable
+  type={{
+    id: {
+      type: 'string',
+      description: 'Model ID — pass this as the `model` field on subsequent API calls.',
+    },
+    object: {
+      type: 'string',
+      description: 'Always `model`.',
+    },
+    created: {
+      type: 'integer',
+      description: 'Creation timestamp (Unix seconds). amux-api defaults to `1626777600`.',
+    },
+    owned_by: {
+      type: 'string',
+      description: 'Owner. Built-in amux models are `openai` / `anthropic` / `google` / `xai` / `minimax`, etc.; custom models are `custom`.',
+    },
+    supported_endpoint_types: {
+      type: 'array<string>',
+      description: 'amux-api extension field: endpoint types this model supports — e.g. `chat`, `messages`, `responses`, `embeddings`, `image_generations`, `image_edits`. Useful for filtering models by capability.',
+    },
+  }}
+/>
+
+### Anthropic Format Response
+
+When the request carries both `x-api-key` and `anthropic-version`:
+
+```json
+{
+  "data": [
+    {
+      "id": "claude-sonnet-4-5",
+      "type": "model",
+      "display_name": "claude-sonnet-4-5",
+      "created_at": "2021-07-20T10:40:00Z"
+    }
+  ],
+  "first_id": "claude-sonnet-4-5",
+  "has_more": false,
+  "last_id": "claude-sonnet-4-5"
+}
+```
+
+<TypeTable
+  type={{
+    data: {
+      type: 'array<AnthropicModel>',
+      description: 'Anthropic-style model objects (`id` / `type` / `display_name` / `created_at`).',
+    },
+    first_id: {
+      type: 'string',
+      description: 'ID of the first model in the list.',
+    },
+    last_id: {
+      type: 'string',
+      description: 'ID of the last model in the list.',
+    },
+    has_more: {
+      type: 'boolean',
+      description: 'Whether more models exist (amux-api currently always returns `false`).',
+    },
+  }}
+/>
+
+## Examples
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/models \
+  -H "Authorization: Bearer $AMUX_API_KEY"
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.amux.ai/v1",
+    api_key=os.environ["AMUX_API_KEY"],
+)
+
+models = client.models.list()
+for m in models.data:
+    print(m.id)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.amux.ai/v1',
+  apiKey: process.env.AMUX_API_KEY,
+});
+
+const models = await client.models.list();
+for (const m of models.data) {
+  console.log(m.id);
+}
+```
+
+  </Tab>
+</Tabs>
+
+### Fetching in Anthropic Format
+
+```bash
+curl https://api.amux.ai/v1/models \
+  -H "x-api-key: $AMUX_API_KEY" \
+  -H "anthropic-version: 2023-06-01"
+```
+
+## Retrieve a Single Model
+
+amux-api also supports retrieving a single model:
+
+```
+GET /v1/models/{model}
+```
+
+```bash
+curl https://api.amux.ai/v1/models/gpt-5.4 \
+  -H "Authorization: Bearer $AMUX_API_KEY"
+```
+
+Returns a single Model object. The same `x-api-key` + `anthropic-version` header trick switches the response to Anthropic format.
+
+## Error Response
+
+```json
+{
+  "error": {
+    "message": "...",
+    "type": "invalid_request_error",
+    "code": "invalid_api_key"
+  }
+}
+```
+
+| HTTP Status | Meaning |
+| --- | --- |
+| `200` | Success |
+| `401` | Missing or invalid API key |
+| `404` | When retrieving a single model — `model` not found |
+| `500` | Server-side error |

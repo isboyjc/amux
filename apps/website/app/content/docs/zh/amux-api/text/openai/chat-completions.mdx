@@ -1,0 +1,418 @@
+---
+title: Chat Completions
+description: 创建对话补全 — 完全兼容 OpenAI Chat Completions API，支持流式 / 非流式、工具调用、推理输出等
+---
+
+根据对话历史创建模型响应。完全兼容 OpenAI **Chat Completions API**，支持流式 / 非流式响应、工具调用（Function Calling）、结构化输出、推理输出等能力。
+
+| 项目 | 值 |
+| --- | --- |
+| **请求方法** | `POST` |
+| **请求路径** | `/v1/chat/completions` |
+| **完整 URL** | `https://api.amux.ai/v1/chat/completions` |
+| **认证方式** | `Authorization: Bearer <API_TOKEN>` |
+| **请求格式** | `application/json` |
+| **响应格式** | JSON 或 SSE（`stream=true` 时） |
+
+<Callout type="info">
+本接口完全对齐 OpenAI Chat Completions 协议，可直接使用 OpenAI 官方 SDK 调用，仅需替换 `Base URL` 和 `API Key`。
+</Callout>
+
+## 请求体参数
+
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      required: true,
+      description: '模型 ID，例如 `gpt-5.4`、`claude-sonnet-4.6` 等。完整可用模型见 https://api.amux.ai/pricing',
+    },
+    messages: {
+      type: 'array<Message>',
+      required: true,
+      description: '对话消息列表（含历史上下文），按时间顺序排列，详见下方 Message 结构',
+      typeDescriptionLink: '#message-结构',
+    },
+    temperature: {
+      type: 'number',
+      default: '1',
+      description: '采样温度，取值范围 `0 ~ 2`。值越高输出越随机，值越低越确定',
+    },
+    top_p: {
+      type: 'number',
+      default: '1',
+      description: '核采样参数，取值范围 `0 ~ 1`。建议只调整 `temperature` 与 `top_p` 中的一个',
+    },
+    n: {
+      type: 'integer',
+      default: '1',
+      description: '为每条输入生成的补全数量',
+    },
+    stream: {
+      type: 'boolean',
+      default: 'false',
+      description: '是否以 SSE 流式返回。开启后，响应通过 `data: {...}` 增量推送',
+    },
+    stream_options: {
+      type: 'object',
+      description: '流式响应额外选项，例如 `{ "include_usage": true }` 在最后一帧返回用量统计',
+    },
+    stop: {
+      type: 'string | array<string>',
+      description: '停止序列，最多 4 个。模型遇到任一序列时立即停止生成',
+    },
+    max_tokens: {
+      type: 'integer',
+      description: '本次请求允许生成的最大 Token 数（含工具调用）。较新的模型推荐使用 `max_completion_tokens`',
+    },
+    max_completion_tokens: {
+      type: 'integer',
+      description: '本次响应可生成的最大 Token 数上限（推理 Token + 输出 Token）',
+    },
+    presence_penalty: {
+      type: 'number',
+      default: '0',
+      description: '存在惩罚，取值 `-2 ~ 2`。正值降低重复主题的概率',
+    },
+    frequency_penalty: {
+      type: 'number',
+      default: '0',
+      description: '频率惩罚，取值 `-2 ~ 2`。正值降低重复字词的概率',
+    },
+    logit_bias: {
+      type: 'object',
+      description: '指定 Token 偏置，键为 token ID，值为 `-100 ~ 100`',
+    },
+    user: {
+      type: 'string',
+      description: '终端用户标识，便于平台审计与滥用监控',
+    },
+    tools: {
+      type: 'array<Tool>',
+      description: '可供模型调用的工具列表，详见下方 Tool 结构',
+      typeDescriptionLink: '#tool-结构',
+    },
+    tool_choice: {
+      type: 'string | object',
+      description: '工具选择策略：`"none"` / `"auto"` / `"required"`，或指定 `{ "type": "function", "function": { "name": "..." } }`',
+    },
+    parallel_tool_calls: {
+      type: 'boolean',
+      default: 'true',
+      description: '是否允许在一次响应中并行调用多个工具',
+    },
+    response_format: {
+      type: 'object',
+      description: '响应格式约束，例如 `{ "type": "json_object" }` 或 JSON Schema：`{ "type": "json_schema", "json_schema": {...} }`',
+    },
+    seed: {
+      type: 'integer',
+      description: '随机种子，用于尽量复现结果（best-effort）',
+    },
+    logprobs: {
+      type: 'boolean',
+      default: 'false',
+      description: '是否返回每个输出 Token 的对数概率',
+    },
+    top_logprobs: {
+      type: 'integer',
+      description: '取值 `0 ~ 20`。返回每个位置上概率最高的 Token 列表，需 `logprobs=true` 配合',
+    },
+    reasoning_effort: {
+      type: 'string',
+      description: '推理强度，仅推理类模型生效。可选值：`low` / `medium` / `high`',
+    },
+    verbosity: {
+      type: 'string',
+      description: '回复详尽度（部分模型如 GPT-5 系列支持）：`low` / `medium` / `high`',
+    },
+    prediction: {
+      type: 'object',
+      description: '预测输出（Predicted Outputs），用于加速已知大部分内容的请求',
+    },
+    metadata: {
+      type: 'object',
+      description: '自定义元数据键值对（最多 16 对），用于审计与统计',
+    },
+    store: {
+      type: 'boolean',
+      description: '是否在上游存储本次对话（取决于上游与渠道配置，部分渠道默认强制为 false）',
+    },
+    prompt_cache_key: {
+      type: 'string',
+      description: '自定义提示缓存键，便于命中缓存以降低成本与延迟',
+    },
+    web_search_options: {
+      type: 'object',
+      description: '联网搜索选项，仅支持 Web 搜索的模型生效',
+    },
+    modalities: {
+      type: 'array<string>',
+      description: '请求模型返回的模态列表，例如 `["text"]` 或 `["text", "audio"]`',
+    },
+    audio: {
+      type: 'object',
+      description: '音频输出配置（仅当 `modalities` 包含 `audio` 时生效）',
+    },
+  }}
+/>
+
+<Callout type="info">
+**透传策略**：amux-api 对未在上方列出的字段（如供应商专属扩展参数）会原样透传至上游。`temperature` 等未传值时由上游模型自行使用其默认值，amux-api 不在网关层强制填充默认值。
+</Callout>
+
+### Message 结构
+
+<TypeTable
+  type={{
+    role: {
+      type: 'string',
+      required: true,
+      description: '消息角色：`system` / `user` / `assistant` / `tool`',
+    },
+    content: {
+      type: 'string | array<ContentPart>',
+      description: '消息内容。可以是纯文本，也可以是多模态数组（包含 `text`、`image_url` 等部件）',
+    },
+    name: {
+      type: 'string',
+      description: '可选的发送者名称，用于在多用户场景区分身份',
+    },
+    tool_calls: {
+      type: 'array<ToolCall>',
+      description: '仅 `assistant` 角色：模型本轮请求调用的工具列表',
+    },
+    tool_call_id: {
+      type: 'string',
+      description: '仅 `tool` 角色：被回应的工具调用 ID（与 `tool_calls[].id` 对应）',
+    },
+    reasoning_content: {
+      type: 'string',
+      description: '仅推理模型：模型思考过程中的推理内容（思维链）',
+    },
+    prefix: {
+      type: 'string',
+      description: '仅 `assistant` 角色（部分模型如 DeepSeek 支持）：用于前缀续写（prefill）的内容',
+    },
+  }}
+/>
+
+### Tool 结构
+
+<TypeTable
+  type={{
+    type: {
+      type: 'string',
+      required: true,
+      description: '工具类型，目前仅支持 `function`',
+    },
+    function: {
+      type: 'object',
+      required: true,
+      description: '函数定义，包含 `name`、`description`、`parameters`（JSON Schema）',
+    },
+  }}
+/>
+
+## 请求示例
+
+<Tabs items={['curl', 'Python', 'Node.js', '流式输出']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "model": "gpt-5.4",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "你好，请用一句话介绍 Amux API。"}
+    ]
+  }'
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.amux.ai/v1",
+    api_key=os.environ["AMUX_API_KEY"],
+)
+
+response = client.chat.completions.create(
+    model="gpt-5.4",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "你好，请用一句话介绍 Amux API。"},
+    ],
+)
+
+print(response.choices[0].message.content)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.amux.ai/v1',
+  apiKey: process.env.AMUX_API_KEY,
+});
+
+const response = await client.chat.completions.create({
+  model: 'gpt-5.4',
+  messages: [
+    { role: 'system', content: 'You are a helpful assistant.' },
+    { role: 'user', content: '你好，请用一句话介绍 Amux API。' },
+  ],
+});
+
+console.log(response.choices[0].message.content);
+```
+
+  </Tab>
+  <Tab value="流式输出">
+
+```ts
+const stream = await client.chat.completions.create({
+  model: 'gpt-5.4',
+  messages: [{ role: 'user', content: '写一首关于春天的诗' }],
+  stream: true,
+  stream_options: { include_usage: true },
+});
+
+for await (const chunk of stream) {
+  process.stdout.write(chunk.choices[0]?.delta?.content ?? '');
+}
+```
+
+  </Tab>
+</Tabs>
+
+## 响应示例
+
+```json
+{
+  "id": "chatcmpl-xxx",
+  "object": "chat.completion",
+  "created": 1730000000,
+  "model": "gpt-5.4",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Amux API 是一个统一、稳定的企业级大模型接口网关。"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 24,
+    "completion_tokens": 18,
+    "total_tokens": 42,
+    "prompt_tokens_details": { "cached_tokens": 0 },
+    "completion_tokens_details": { "reasoning_tokens": 0 }
+  }
+}
+```
+
+## 响应字段
+
+<TypeTable
+  type={{
+    id: {
+      type: 'string',
+      description: '本次补全的唯一 ID',
+    },
+    object: {
+      type: 'string',
+      description: '对象类型，固定为 `chat.completion`（流式时为 `chat.completion.chunk`）',
+    },
+    created: {
+      type: 'integer',
+      description: '创建时间戳（Unix 秒）',
+    },
+    model: {
+      type: 'string',
+      description: '实际调用的模型 ID',
+    },
+    choices: {
+      type: 'array<Choice>',
+      description: '补全结果列表，长度等于请求中的 `n`',
+    },
+    usage: {
+      type: 'object',
+      description: 'Token 用量统计，包含 `prompt_tokens`、`completion_tokens`、`total_tokens` 及 `*_tokens_details`',
+    },
+    system_fingerprint: {
+      type: 'string',
+      description: '本次请求所用后端配置的指纹。**注意**：amux-api 当前仅在流式响应（`stream=true`）的事件中返回此字段，非流式响应不输出',
+    },
+  }}
+/>
+
+### Choice 字段
+
+<TypeTable
+  type={{
+    index: {
+      type: 'integer',
+      description: '在 `choices` 数组中的位置',
+    },
+    message: {
+      type: 'Message',
+      description: '模型返回的消息对象',
+    },
+    finish_reason: {
+      type: 'string',
+      description: '结束原因：`stop` / `length` / `tool_calls` / `content_filter`',
+    },
+  }}
+/>
+
+## 流式响应
+
+当 `stream=true` 时，响应使用 SSE 格式逐帧推送：
+
+```
+data: {"id":"chatcmpl-xxx","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxx","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"Amux"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxx","object":"chat.completion.chunk","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+
+data: [DONE]
+```
+
+每帧的 `choices[].delta` 携带本次增量；流结束以 `data: [DONE]` 标记。
+
+## 错误响应
+
+```json
+{
+  "error": {
+    "message": "...",
+    "type": "invalid_request_error",
+    "param": "messages",
+    "code": "invalid_value"
+  }
+}
+```
+
+| HTTP 状态码 | 含义 |
+| --- | --- |
+| `200` | 请求成功 |
+| `400` | 请求参数错误 |
+| `401` | API 密钥无效或缺失 |
+| `403` | 模型未授权或额度受限 |
+| `404` | 模型不存在 |
+| `429` | 触发速率限制或额度不足 |
+| `500` / `502` / `503` | 服务端异常或上游不可用 |

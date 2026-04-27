@@ -1,0 +1,8 @@
+{
+  "title": "Advanced",
+  "description": "Advanced Amux API configuration and integration",
+  "pages": [
+    "desktop-integration",
+    "authentication"
+  ]
+}

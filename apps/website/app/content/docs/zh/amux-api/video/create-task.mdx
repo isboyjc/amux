@@ -1,0 +1,248 @@
+---
+title: 创建视频生成任务
+description: 提交视频生成任务（文生视频 / 图生视频） — 异步任务模式，提交后返回 task_id 用于后续状态查询
+---
+
+提交视频生成任务。视频生成是 **异步任务模式**：本接口在通过校验后立即返回 `task_id`，调用方需通过 [获取视频生成任务状态](./get-task) 接口轮询任务状态，待 `status=completed` 后即可下载视频。
+
+| 项目 | 值 |
+| --- | --- |
+| **请求方法** | `POST` |
+| **请求路径** | `/v1/video/generations` |
+| **完整 URL** | `https://api.amux.ai/v1/video/generations` |
+| **认证方式** | `Authorization: Bearer <API_TOKEN>` |
+| **请求格式** | `application/json` |
+| **响应格式** | `application/json` |
+
+<Callout type="info">
+**通用契约**：本接口为跨厂商统一格式，amux-api 在网关层将通用请求自动转换为对应渠道（豆包 Seedance / 可灵 Kling / 即梦 Jimeng / 阿里 Wan 等）的原生请求；同时也提供 OpenAI Sora 兼容的别名路径 `POST /v1/videos`，请求体相同。
+</Callout>
+
+## 请求体参数
+
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      required: true,
+      description: '模型 / 风格 ID。例如 `doubao-seedance-2.0`、`doubao-seedance-2.0-fast`、`kling-v2-master`、`jimeng-v3.0`、`wan2.6` 等。完整可用模型见 https://api.amux.ai/pricing',
+    },
+    prompt: {
+      type: 'string',
+      description: '文本提示词。文生视频必填；图生视频可选（用于补充描述）',
+    },
+    image: {
+      type: 'string',
+      description: '图像输入（图生视频场景使用）。支持 HTTP/HTTPS URL 或 Base64 字符串',
+    },
+    duration: {
+      type: 'number',
+      description: '视频时长（秒）。可选值取决于具体模型，常见为 `5` / `10`',
+    },
+    width: {
+      type: 'integer',
+      description: '视频宽度（像素），与 `height` 配合控制分辨率',
+    },
+    height: {
+      type: 'integer',
+      description: '视频高度（像素）',
+    },
+    fps: {
+      type: 'integer',
+      description: '帧率，常见 `24` / `25` / `30`',
+    },
+    seed: {
+      type: 'integer',
+      description: '随机种子，用于尽量复现结果',
+    },
+    n: {
+      type: 'integer',
+      default: '1',
+      description: '生成视频数量',
+    },
+    response_format: {
+      type: 'string',
+      description: '响应格式偏好（具体含义因渠道而异，部分用于控制最终视频是 URL 还是 Base64）',
+    },
+    user: {
+      type: 'string',
+      description: '终端用户标识，便于审计与滥用监控',
+    },
+    metadata: {
+      type: 'object',
+      description: '厂商专属 / 自定义参数透传通道。常见键值：`negative_prompt`、`style`、`quality_level`、`aspect_ratio`、`camera_control`、`mode`、`callback_url` 等。amux-api 会按所选模型路由到对应渠道',
+    },
+  }}
+/>
+
+<Callout type="info">
+**透传策略**：amux-api 通过 `metadata` 字段将厂商专属参数原样透传到上游。例如：
+
+- **豆包 Seedance** 系列可通过 `metadata` 传 `aspect_ratio` / `camera_fixed` / `watermark` 等
+- **可灵 Kling** 可传 `negative_prompt` / `cfg_scale` / `mode` / `aspect_ratio` / `camera_control`
+- **即梦 Jimeng** 可传 `negative_prompt` / `aspect_ratio`
+- **阿里 Wan** 可传 `negative_prompt` / `prompt_extend`
+
+具体支持的字段以各模型上游文档为准。
+</Callout>
+
+## 请求示例
+
+### 文生视频
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/video/generations \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "model": "doubao-seedance-2.0",
+    "prompt": "一只戴着贝雷帽的可爱海獭幼崽，在樱花飘落的春日庭院中翻滚",
+    "duration": 5,
+    "width": 1280,
+    "height": 720,
+    "fps": 24,
+    "metadata": {
+      "aspect_ratio": "16:9"
+    }
+  }'
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+import httpx
+
+response = httpx.post(
+    "https://api.amux.ai/v1/video/generations",
+    headers={"Authorization": f"Bearer {os.environ['AMUX_API_KEY']}"},
+    json={
+        "model": "doubao-seedance-2.0",
+        "prompt": "一只戴着贝雷帽的可爱海獭幼崽，在樱花飘落的春日庭院中翻滚",
+        "duration": 5,
+        "width": 1280,
+        "height": 720,
+        "fps": 24,
+        "metadata": {"aspect_ratio": "16:9"},
+    },
+)
+
+task = response.json()
+print(f"Task ID: {task['task_id']}, Status: {task['status']}")
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+const response = await fetch('https://api.amux.ai/v1/video/generations', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${process.env.AMUX_API_KEY}`,
+  },
+  body: JSON.stringify({
+    model: 'doubao-seedance-2.0',
+    prompt: '一只戴着贝雷帽的可爱海獭幼崽，在樱花飘落的春日庭院中翻滚',
+    duration: 5,
+    width: 1280,
+    height: 720,
+    fps: 24,
+    metadata: { aspect_ratio: '16:9' },
+  }),
+});
+
+const task = await response.json();
+console.log(`Task ID: ${task.task_id}, Status: ${task.status}`);
+```
+
+  </Tab>
+</Tabs>
+
+### 图生视频
+
+```bash
+curl https://api.amux.ai/v1/video/generations \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "model": "kling-v2-master",
+    "image": "https://example.com/source.jpg",
+    "prompt": "镜头缓慢拉近，画面中的人物开始向前走",
+    "duration": 5,
+    "metadata": {
+      "negative_prompt": "blurry, low quality",
+      "cfg_scale": 0.7,
+      "mode": "std",
+      "aspect_ratio": "16:9"
+    }
+  }'
+```
+
+## 响应示例
+
+```json
+{
+  "task_id": "abcd1234efgh",
+  "status": "queued"
+}
+```
+
+## 响应字段
+
+<TypeTable
+  type={{
+    task_id: {
+      type: 'string',
+      description: '任务 ID。请妥善保存，用于后续 [获取任务状态](./get-task) 与视频内容下载',
+    },
+    status: {
+      type: 'string',
+      description: '提交后的初始状态，通常为 `queued`',
+    },
+  }}
+/>
+
+## 任务状态枚举
+
+`status` 字段可能的取值（详见 [获取任务状态](./get-task#status-枚举)）：
+
+| 状态 | 含义 |
+| --- | --- |
+| `queued` | 已排队，等待执行 |
+| `in_progress` | 生成中 |
+| `completed` | 已完成（可下载视频） |
+| `failed` | 失败 |
+| `unknown` | 未知状态（异常情况） |
+
+## 错误响应
+
+```json
+{
+  "error": {
+    "message": "...",
+    "type": "invalid_request_error",
+    "param": "model",
+    "code": "invalid_value"
+  }
+}
+```
+
+| HTTP 状态码 | 含义 |
+| --- | --- |
+| `200` | 任务提交成功 |
+| `400` | 请求参数错误（如 `model` 不支持视频生成、缺少必填字段等） |
+| `401` | API 密钥无效或缺失 |
+| `403` | 模型未授权或被内容安全策略阻止 |
+| `429` | 触发速率限制或额度不足 |
+| `500` / `502` / `503` | 服务端异常或上游不可用 |
+
+## 下一步
+
+- [获取视频生成任务状态](./get-task) — 轮询任务进度，获取最终视频
+- [Doubao Seedance 2.0](./doubao-seedance-2) — 豆包 Seedance 2.0 模型专属调用方式
+- [Doubao Seedance 2.0 Fast](./doubao-seedance-2-fast) — 豆包 Seedance 2.0 Fast 模型专属调用方式

@@ -1,0 +1,231 @@
+---
+title: Completions (Legacy)
+description: Prompt-based text completion — OpenAI's legacy text completions API, kept for compatibility
+---
+
+OpenAI's legacy **Text Completions** endpoint, which generates a completion from a single `prompt`. New projects should prefer [Chat Completions](./chat-completions) or [Responses](./responses) for better multi-turn and tool-call support.
+
+| Field | Value |
+| --- | --- |
+| **Method** | `POST` |
+| **Path** | `/v1/completions` |
+| **Full URL** | `https://api.amux.ai/v1/completions` |
+| **Auth** | `Authorization: Bearer <API_TOKEN>` |
+| **Request format** | `application/json` |
+| **Response format** | JSON, or SSE when `stream=true` |
+
+<Callout type="warn">
+This is a legacy protocol no longer supported by some newer models. Prefer [Chat Completions](./chat-completions) or [Responses](./responses) instead.
+</Callout>
+
+## Request Body
+
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      required: true,
+      description: 'Model ID.',
+    },
+    prompt: {
+      type: 'string | array<string>',
+      required: true,
+      description: 'Input prompt — either a single string or an array (batch completion).',
+    },
+    max_tokens: {
+      type: 'integer',
+      description: 'Maximum tokens to generate for this request.',
+    },
+    temperature: {
+      type: 'number',
+      default: '1',
+      description: 'Sampling temperature, range `0–2`.',
+    },
+    top_p: {
+      type: 'number',
+      default: '1',
+      description: 'Nucleus sampling, range `0–1`.',
+    },
+    n: {
+      type: 'integer',
+      default: '1',
+      description: 'Number of completions to generate per prompt.',
+    },
+    stream: {
+      type: 'boolean',
+      default: 'false',
+      description: 'Whether to stream partial completions as SSE.',
+    },
+    stop: {
+      type: 'string | array<string>',
+      description: 'Up to 4 stop sequences.',
+    },
+    suffix: {
+      type: 'string',
+      description: 'Suffix appended after the completion (useful for code completion).',
+    },
+    presence_penalty: {
+      type: 'number',
+      default: '0',
+      description: 'Range `-2 ~ 2`.',
+    },
+    frequency_penalty: {
+      type: 'number',
+      default: '0',
+      description: 'Range `-2 ~ 2`.',
+    },
+    logit_bias: {
+      type: 'object',
+      description: 'Map of token IDs to bias values in `-100 ~ 100`.',
+    },
+    user: {
+      type: 'string',
+      description: 'End-user identifier for audit and abuse monitoring.',
+    },
+  }}
+/>
+
+<Callout type="info">
+**Passthrough**: amux-api shares the same request DTO between `/v1/completions` and `/v1/chat/completions`. Fields not listed above (e.g. `seed`, `response_format`) are forwarded to the upstream as-is, although legacy completion models may not support them.
+</Callout>
+
+## Examples
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "model": "gpt-3.5-turbo-instruct",
+    "prompt": "Introduce Amux API in one sentence:",
+    "max_tokens": 64
+  }'
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.amux.ai/v1",
+    api_key=os.environ["AMUX_API_KEY"],
+)
+
+response = client.completions.create(
+    model="gpt-3.5-turbo-instruct",
+    prompt="Introduce Amux API in one sentence:",
+    max_tokens=64,
+)
+
+print(response.choices[0].text)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.amux.ai/v1',
+  apiKey: process.env.AMUX_API_KEY,
+});
+
+const response = await client.completions.create({
+  model: 'gpt-3.5-turbo-instruct',
+  prompt: 'Introduce Amux API in one sentence:',
+  max_tokens: 64,
+});
+
+console.log(response.choices[0].text);
+```
+
+  </Tab>
+</Tabs>
+
+## Response Example
+
+```json
+{
+  "id": "cmpl-xxx",
+  "object": "text_completion",
+  "created": 1730000000,
+  "model": "gpt-3.5-turbo-instruct",
+  "choices": [
+    {
+      "text": "Amux API is a unified, stable enterprise-grade LLM API gateway.",
+      "index": 0,
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 16,
+    "completion_tokens": 18,
+    "total_tokens": 34
+  }
+}
+```
+
+## Response Fields
+
+<TypeTable
+  type={{
+    id: {
+      type: 'string',
+      description: 'Unique completion ID.',
+    },
+    object: {
+      type: 'string',
+      description: 'Always `text_completion`.',
+    },
+    created: {
+      type: 'integer',
+      description: 'Unix timestamp (seconds).',
+    },
+    model: {
+      type: 'string',
+      description: 'Model ID actually used for the request.',
+    },
+    choices: {
+      type: 'array<Choice>',
+      description: 'Completion choices, length equals `n`.',
+    },
+    usage: {
+      type: 'object',
+      description: 'Token usage: `prompt_tokens`, `completion_tokens`, `total_tokens`.',
+    },
+  }}
+/>
+
+### Choice Fields
+
+<TypeTable
+  type={{
+    text: {
+      type: 'string',
+      description: 'Generated completion text.',
+    },
+    index: {
+      type: 'integer',
+      description: 'Position in the `choices` array.',
+    },
+    finish_reason: {
+      type: 'string',
+      description: '`stop` / `length`.',
+    },
+    logprobs: {
+      type: 'object | null',
+      description: 'Token probability info, when `logprobs` is requested.',
+    },
+  }}
+/>
+
+## Error Response
+
+Error response shape is identical to [Chat Completions](./chat-completions#error-response).

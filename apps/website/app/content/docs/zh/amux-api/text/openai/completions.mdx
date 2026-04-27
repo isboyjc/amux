@@ -1,0 +1,231 @@
+---
+title: Completions（旧版）
+description: 基于 prompt 的文本补全接口 — OpenAI 早期文本补全 API，仍保留兼容
+---
+
+OpenAI 早期的 **文本补全（Text Completions）** 接口，基于单个 `prompt` 字段生成补全文本。新项目建议使用 [Chat Completions](./chat-completions) 或 [Responses](./responses) 以获得更好的多轮、工具调用支持。
+
+| 项目 | 值 |
+| --- | --- |
+| **请求方法** | `POST` |
+| **请求路径** | `/v1/completions` |
+| **完整 URL** | `https://api.amux.ai/v1/completions` |
+| **认证方式** | `Authorization: Bearer <API_TOKEN>` |
+| **请求格式** | `application/json` |
+| **响应格式** | JSON 或 SSE（`stream=true` 时） |
+
+<Callout type="warn">
+本接口为旧版协议，部分新模型不再支持。请优先使用 [Chat Completions](./chat-completions) 或 [Responses](./responses)。
+</Callout>
+
+## 请求体参数
+
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      required: true,
+      description: '模型 ID',
+    },
+    prompt: {
+      type: 'string | array<string>',
+      required: true,
+      description: '输入提示词。可为单个字符串或字符串数组（批量补全）',
+    },
+    max_tokens: {
+      type: 'integer',
+      description: '本次请求允许生成的最大 Token 数',
+    },
+    temperature: {
+      type: 'number',
+      default: '1',
+      description: '采样温度，取值范围 `0 ~ 2`',
+    },
+    top_p: {
+      type: 'number',
+      default: '1',
+      description: '核采样参数，取值范围 `0 ~ 1`',
+    },
+    n: {
+      type: 'integer',
+      default: '1',
+      description: '为每条 `prompt` 生成的补全数量',
+    },
+    stream: {
+      type: 'boolean',
+      default: 'false',
+      description: '是否以 SSE 流式返回',
+    },
+    stop: {
+      type: 'string | array<string>',
+      description: '停止序列，最多 4 个',
+    },
+    suffix: {
+      type: 'string',
+      description: '插入到补全文本之后的后缀（用于代码补全等场景）',
+    },
+    presence_penalty: {
+      type: 'number',
+      default: '0',
+      description: '存在惩罚，取值 `-2 ~ 2`',
+    },
+    frequency_penalty: {
+      type: 'number',
+      default: '0',
+      description: '频率惩罚，取值 `-2 ~ 2`',
+    },
+    logit_bias: {
+      type: 'object',
+      description: '指定 Token 偏置，键为 token ID，值为 `-100 ~ 100`',
+    },
+    user: {
+      type: 'string',
+      description: '终端用户标识，便于审计与滥用监控',
+    },
+  }}
+/>
+
+<Callout type="info">
+**透传策略**：amux-api 对 `/v1/completions` 与 `/v1/chat/completions` 共用同一套请求 DTO。未在上方列出的字段（如 `seed`、`response_format` 等）会原样透传到上游，但旧版补全模型可能并不支持这些参数。
+</Callout>
+
+## 请求示例
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "model": "gpt-3.5-turbo-instruct",
+    "prompt": "用一句话介绍 Amux API：",
+    "max_tokens": 64
+  }'
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.amux.ai/v1",
+    api_key=os.environ["AMUX_API_KEY"],
+)
+
+response = client.completions.create(
+    model="gpt-3.5-turbo-instruct",
+    prompt="用一句话介绍 Amux API：",
+    max_tokens=64,
+)
+
+print(response.choices[0].text)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.amux.ai/v1',
+  apiKey: process.env.AMUX_API_KEY,
+});
+
+const response = await client.completions.create({
+  model: 'gpt-3.5-turbo-instruct',
+  prompt: '用一句话介绍 Amux API：',
+  max_tokens: 64,
+});
+
+console.log(response.choices[0].text);
+```
+
+  </Tab>
+</Tabs>
+
+## 响应示例
+
+```json
+{
+  "id": "cmpl-xxx",
+  "object": "text_completion",
+  "created": 1730000000,
+  "model": "gpt-3.5-turbo-instruct",
+  "choices": [
+    {
+      "text": "Amux API 是一个统一、稳定的企业级大模型接口网关。",
+      "index": 0,
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 16,
+    "completion_tokens": 18,
+    "total_tokens": 34
+  }
+}
+```
+
+## 响应字段
+
+<TypeTable
+  type={{
+    id: {
+      type: 'string',
+      description: '本次补全的唯一 ID',
+    },
+    object: {
+      type: 'string',
+      description: '对象类型，固定为 `text_completion`',
+    },
+    created: {
+      type: 'integer',
+      description: '创建时间戳（Unix 秒）',
+    },
+    model: {
+      type: 'string',
+      description: '实际调用的模型 ID',
+    },
+    choices: {
+      type: 'array<Choice>',
+      description: '补全结果列表，长度等于 `n`',
+    },
+    usage: {
+      type: 'object',
+      description: 'Token 用量统计：`prompt_tokens` / `completion_tokens` / `total_tokens`',
+    },
+  }}
+/>
+
+### Choice 字段
+
+<TypeTable
+  type={{
+    text: {
+      type: 'string',
+      description: '生成的补全文本',
+    },
+    index: {
+      type: 'integer',
+      description: '在 `choices` 数组中的位置',
+    },
+    finish_reason: {
+      type: 'string',
+      description: '结束原因：`stop` / `length`',
+    },
+    logprobs: {
+      type: 'object | null',
+      description: '若请求 `logprobs`，返回 Token 概率信息',
+    },
+  }}
+/>
+
+## 错误响应
+
+错误响应结构与 [Chat Completions](./chat-completions#错误响应) 一致。

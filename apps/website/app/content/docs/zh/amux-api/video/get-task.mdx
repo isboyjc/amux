@@ -1,0 +1,306 @@
+---
+title: 获取视频生成任务状态
+description: 查询视频生成任务的状态与结果 — 通过 task_id 获取实时状态，任务完成后即可获取视频 URL
+---
+
+通过 [创建视频任务](./create-task) 接口拿到的 `task_id` 查询任务状态。任务到达 `completed` 状态后，响应中会包含视频资源 URL（或可通过 `/v1/videos/:task_id/content` 下载视频内容）。
+
+| 项目 | 值 |
+| --- | --- |
+| **请求方法** | `GET` |
+| **请求路径** | `/v1/video/generations/{task_id}` |
+| **完整 URL** | `https://api.amux.ai/v1/video/generations/{task_id}` |
+| **认证方式** | `Authorization: Bearer <API_TOKEN>` |
+| **请求体** | 无 |
+| **响应格式** | `application/json` |
+
+<Callout type="info">
+**OpenAI Sora 兼容别名**：amux-api 同时提供 `GET /v1/videos/{task_id}` 路径，等价于本接口。
+</Callout>
+
+## 路径参数
+
+<TypeTable
+  type={{
+    task_id: {
+      type: 'string',
+      required: true,
+      description: '由 [创建视频任务](./create-task) 返回的任务 ID',
+    },
+  }}
+/>
+
+## 响应字段
+
+<TypeTable
+  type={{
+    task_id: {
+      type: 'string',
+      description: '任务 ID',
+    },
+    status: {
+      type: 'string',
+      description: '任务状态。详见下方 status 枚举',
+    },
+    url: {
+      type: 'string',
+      description: '视频资源 URL。仅当 `status=completed` 时返回；URL 可能由上游临时签发（有时效），建议尽快下载或转存',
+    },
+    format: {
+      type: 'string',
+      description: '视频格式。例如 `mp4`',
+    },
+    metadata: {
+      type: 'object',
+      description: '任务元数据，详见下方 Metadata 字段',
+      typeDescriptionLink: '#metadata-字段',
+    },
+    error: {
+      type: 'object',
+      description: '错误信息。仅当 `status=failed` 时返回，详见下方 Error 字段',
+      typeDescriptionLink: '#error-字段',
+    },
+  }}
+/>
+
+### status 枚举
+
+<TypeTable
+  type={{
+    queued: {
+      type: 'string',
+      description: '任务已排队，等待开始执行（amux 内部映射自上游的 `QUEUED` / `SUBMITTED` 状态）',
+    },
+    in_progress: {
+      type: 'string',
+      description: '任务执行中（生成视频）',
+    },
+    completed: {
+      type: 'string',
+      description: '任务成功完成，可获取视频 URL',
+    },
+    failed: {
+      type: 'string',
+      description: '任务失败，详情见 `error` 字段',
+    },
+    unknown: {
+      type: 'string',
+      description: '未知状态（兜底值，通常为上游返回了非预期的状态）',
+    },
+  }}
+/>
+
+### Metadata 字段
+
+<TypeTable
+  type={{
+    duration: {
+      type: 'number',
+      description: '实际生成的视频时长（秒）',
+    },
+    fps: {
+      type: 'integer',
+      description: '实际帧率',
+    },
+    width: {
+      type: 'integer',
+      description: '实际宽度（像素）',
+    },
+    height: {
+      type: 'integer',
+      description: '实际高度（像素）',
+    },
+    seed: {
+      type: 'integer',
+      description: '使用的随机种子',
+    },
+  }}
+/>
+
+### Error 字段
+
+<TypeTable
+  type={{
+    code: {
+      type: 'integer',
+      description: '错误码（来自上游或 amux）',
+    },
+    message: {
+      type: 'string',
+      description: '错误描述',
+    },
+  }}
+/>
+
+## 响应示例
+
+### 排队中
+
+```json
+{
+  "task_id": "abcd1234efgh",
+  "status": "queued"
+}
+```
+
+### 生成中
+
+```json
+{
+  "task_id": "abcd1234efgh",
+  "status": "in_progress"
+}
+```
+
+### 已完成
+
+```json
+{
+  "task_id": "abcd1234efgh",
+  "status": "completed",
+  "url": "https://upstream.cdn.example.com/.../result.mp4",
+  "format": "mp4",
+  "metadata": {
+    "duration": 5.0,
+    "fps": 24,
+    "width": 1280,
+    "height": 720,
+    "seed": 20231234
+  }
+}
+```
+
+### 失败
+
+```json
+{
+  "task_id": "abcd1234efgh",
+  "status": "failed",
+  "error": {
+    "code": 50001,
+    "message": "Upstream model rejected the prompt due to content policy."
+  }
+}
+```
+
+## 请求示例
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl "https://api.amux.ai/v1/video/generations/abcd1234efgh" \
+  -H "Authorization: Bearer $AMUX_API_KEY"
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+import time
+import httpx
+
+API_KEY = os.environ["AMUX_API_KEY"]
+TASK_ID = "abcd1234efgh"
+
+while True:
+    response = httpx.get(
+        f"https://api.amux.ai/v1/video/generations/{TASK_ID}",
+        headers={"Authorization": f"Bearer {API_KEY}"},
+    )
+    task = response.json()
+    status = task["status"]
+    print(f"Status: {status}")
+
+    if status == "completed":
+        print(f"Video URL: {task['url']}")
+        break
+    if status == "failed":
+        print(f"Error: {task['error']}")
+        break
+
+    time.sleep(5)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+const API_KEY = process.env.AMUX_API_KEY!;
+const TASK_ID = 'abcd1234efgh';
+
+while (true) {
+  const response = await fetch(
+    `https://api.amux.ai/v1/video/generations/${TASK_ID}`,
+    { headers: { Authorization: `Bearer ${API_KEY}` } },
+  );
+  const task = await response.json();
+  console.log(`Status: ${task.status}`);
+
+  if (task.status === 'completed') {
+    console.log(`Video URL: ${task.url}`);
+    break;
+  }
+  if (task.status === 'failed') {
+    console.log('Error:', task.error);
+    break;
+  }
+
+  await new Promise((r) => setTimeout(r, 5000));
+}
+```
+
+  </Tab>
+</Tabs>
+
+## 轮询建议
+
+视频生成耗时通常较长（几十秒到几分钟），建议：
+
+| 项 | 建议值 |
+| --- | --- |
+| **首次轮询延迟** | 5 ~ 10 秒 |
+| **轮询间隔** | 5 ~ 10 秒 |
+| **总超时** | 5 ~ 10 分钟（视模型而定） |
+| **指数退避** | 长任务可逐步加长间隔以降低请求频率 |
+
+## 下载视频内容
+
+当 `status=completed` 时，除了直接使用响应中的 `url`，amux-api 还提供 **视频代理下载** 端点：
+
+```
+GET /v1/videos/{task_id}/content
+```
+
+该端点直接以 `application/octet-stream` 或对应 MIME 类型流式返回视频字节，便于：
+
+- 上游 URL 已失效或临时签名场景
+- 客户端不希望直连上游域名
+- 服务端无法访问公网但可访问 amux 时
+
+```bash
+curl "https://api.amux.ai/v1/videos/abcd1234efgh/content" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -o video.mp4
+```
+
+## 错误响应
+
+```json
+{
+  "error": {
+    "message": "...",
+    "type": "invalid_request_error",
+    "code": "task_not_found"
+  }
+}
+```
+
+| HTTP 状态码 | 含义 |
+| --- | --- |
+| `200` | 查询成功（注意：`status=failed` 也是 200，错误体在响应体的 `error` 字段中） |
+| `401` | API 密钥无效或缺失 |
+| `403` | 该 `task_id` 不属于当前账户 |
+| `404` | `task_id` 不存在或已过期 |
+| `500` | 服务端异常 |

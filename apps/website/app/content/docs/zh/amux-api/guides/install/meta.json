@@ -1,0 +1,11 @@
+{
+  "title": "安装指南",
+  "description": "各类 AI CLI 工具的安装方式",
+  "pages": [
+    "claude-code",
+    "codex-cli",
+    "gemini-cli",
+    "open-code",
+    "openclaw"
+  ]
+}

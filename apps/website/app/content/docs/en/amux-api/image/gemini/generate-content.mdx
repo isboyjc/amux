@@ -1,0 +1,301 @@
+---
+title: Image Generation / Editing
+description: Generate or edit images via the native Gemini generateContent endpoint — Nano Banana family, Gemini Flash Image, etc.
+---
+
+Call the Nano Banana family of image-generation models via Google Gemini's native `generateContent` endpoint. amux-api auto-injects `responseModalities=["TEXT","IMAGE"]` for image-supporting models and forwards the upstream `inlineData` directly to the client.
+
+| Field | Value |
+| --- | --- |
+| **Method** | `POST` |
+| **Path** | `/v1beta/models/{model}:generateContent` |
+| **Full URL** | `https://api.amux.ai/v1beta/models/gemini-2.5-flash-image:generateContent` |
+| **Request format** | `application/json` |
+| **Response format** | `application/json` |
+
+<Callout type="info">
+This endpoint shares the same path as [Gemini Text Chat](../../text/gemini/chat). For the full request-body field reference, see that document. This page focuses on image-generation–specific fields and response handling.
+</Callout>
+
+## Models That Support Image Generation
+
+amux-api ships with the following image-generation models (`SupportedImagineModels`):
+
+| Model | Alias / Notes |
+| --- | --- |
+| `gemini-2.5-flash-image` | Nano Banana |
+| `gemini-3-pro-image-preview` | Nano Banana Pro |
+| `gemini-3.1-flash-image-preview` | Nano Banana 2 |
+| `gemini-2.0-flash-exp-image-generation` | Early experimental |
+| `gemini-2.0-flash-exp` | Early experimental |
+
+For the full model list and pricing, see [https://api.amux.ai/pricing](https://api.amux.ai/pricing).
+
+<Callout type="info">
+**`imagen-*` series** (e.g. `imagen-4.0-generate-001`) use Google's native `:predict` endpoint and are out of scope for this page. Use them via `/v1/images/generations` (OpenAI format).
+</Callout>
+
+## Path Parameters
+
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      required: true,
+      description: 'Image-generation model ID, e.g. `gemini-2.5-flash-image`, `gemini-3-pro-image-preview`.',
+    },
+    action: {
+      type: 'string',
+      required: true,
+      description: 'Action name. Use `generateContent` for image generation.',
+    },
+  }}
+/>
+
+## Headers & Authentication
+
+Same as text chat — pick any of the three:
+
+| Channel | Value |
+| --- | --- |
+| **Authorization** | `Bearer <API_TOKEN>` (recommended) |
+| **x-goog-api-key** | `<API_TOKEN>` |
+| **?key=** | Query parameter |
+
+## Key Request Fields
+
+<TypeTable
+  type={{
+    contents: {
+      type: 'array<Content>',
+      required: true,
+      description: 'Content array. `parts[].text` carries the prompt; `parts[].inlineData` carries reference images (for image edits).',
+    },
+    generationConfig: {
+      type: 'object',
+      description: 'Generation parameters. Image-relevant fields below.',
+    },
+    safetySettings: {
+      type: 'array<SafetySetting>',
+      description: 'Safety filter settings (same as text).',
+    },
+  }}
+/>
+
+### Key generationConfig Fields
+
+<TypeTable
+  type={{
+    responseModalities: {
+      type: 'array<string>',
+      description: 'Output modalities. **Must include `IMAGE`** for image generation. amux-api auto-injects `["TEXT","IMAGE"]` when an image model is detected, so callers may omit this; explicit values are preserved.',
+    },
+    imageConfig: {
+      type: 'object',
+      description: 'Image config: `{ "aspectRatio": "1:1" | "3:2" | "2:3" | "16:9" | "9:16", "imageSize": "1K" | "2K" }`. **Must use camelCase** — the upstream Gemini API only accepts camelCase here.',
+    },
+    seed: {
+      type: 'integer',
+      description: 'Random seed for best-effort determinism.',
+    },
+    thinkingConfig: {
+      type: 'object',
+      description: 'Extended Thinking configuration; supported by select models (Nano Banana 2 / Gemini 3.1 Flash Image).',
+    },
+  }}
+/>
+
+<Callout type="warn">
+**Naming gotcha**: the upstream Gemini API only accepts camelCase inside `imageConfig` (`aspectRatio`, `imageSize`). snake_case is rejected. When you pass these via the OpenAI Chat format's `extra_body.google.image_config`, amux-api converts snake_case to camelCase automatically (see [OpenAI Chat Format](./chat-completions)).
+</Callout>
+
+## Examples
+
+### Text-to-Image
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl "https://api.amux.ai/v1beta/models/gemini-2.5-flash-image:generateContent" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          { "text": "A cute baby sea otter wearing a beret, watercolor style" }
+        ]
+      }
+    ],
+    "generationConfig": {
+      "responseModalities": ["TEXT", "IMAGE"],
+      "imageConfig": {
+        "aspectRatio": "1:1",
+        "imageSize": "1K"
+      }
+    }
+  }'
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+import base64
+from google import genai
+
+client = genai.Client(
+    api_key=os.environ["AMUX_API_KEY"],
+    http_options={"base_url": "https://api.amux.ai"},
+)
+
+response = client.models.generate_content(
+    model="gemini-2.5-flash-image",
+    contents="A cute baby sea otter wearing a beret, watercolor style",
+    config={
+        "response_modalities": ["TEXT", "IMAGE"],
+        "image_config": {
+            "aspect_ratio": "1:1",
+            "image_size": "1K",
+        },
+    },
+)
+
+for part in response.candidates[0].content.parts:
+    if part.inline_data:
+        with open("otter.png", "wb") as f:
+            f.write(base64.b64decode(part.inline_data.data))
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import { writeFileSync } from 'node:fs';
+import { GoogleGenAI } from '@google/genai';
+
+const ai = new GoogleGenAI({
+  apiKey: process.env.AMUX_API_KEY!,
+  httpOptions: { baseUrl: 'https://api.amux.ai' },
+});
+
+const response = await ai.models.generateContent({
+  model: 'gemini-2.5-flash-image',
+  contents: 'A cute baby sea otter wearing a beret, watercolor style',
+  config: {
+    responseModalities: ['TEXT', 'IMAGE'],
+    imageConfig: { aspectRatio: '1:1', imageSize: '1K' },
+  },
+});
+
+for (const part of response.candidates![0].content!.parts!) {
+  if (part.inlineData) {
+    writeFileSync('otter.png', Buffer.from(part.inlineData.data!, 'base64'));
+  }
+}
+```
+
+  </Tab>
+</Tabs>
+
+### Image Editing (reference image + prompt)
+
+```bash
+IMAGE_BASE64=$(base64 < cat.png | tr -d '\n')
+
+curl "https://api.amux.ai/v1beta/models/gemini-2.5-flash-image:generateContent" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d "{
+    \"contents\": [{
+      \"role\": \"user\",
+      \"parts\": [
+        { \"text\": \"Replace the background with a spring courtyard with falling cherry blossoms\" },
+        { \"inlineData\": { \"mimeType\": \"image/png\", \"data\": \"$IMAGE_BASE64\" } }
+      ]
+    }],
+    \"generationConfig\": {
+      \"responseModalities\": [\"TEXT\", \"IMAGE\"],
+      \"imageConfig\": { \"aspectRatio\": \"1:1\" }
+    }
+  }"
+```
+
+## Response Example
+
+```json
+{
+  "candidates": [
+    {
+      "content": {
+        "role": "model",
+        "parts": [
+          { "text": "Here is a watercolor sea otter wearing a beret." },
+          {
+            "inlineData": {
+              "mimeType": "image/png",
+              "data": "iVBORw0KGgoAAAANSUhEUgAA..."
+            }
+          }
+        ]
+      },
+      "finishReason": "STOP",
+      "index": 0,
+      "safetyRatings": []
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 24,
+    "candidatesTokenCount": 1290,
+    "totalTokenCount": 1314,
+    "promptTokensDetails": [
+      { "modality": "TEXT", "tokenCount": 24 }
+    ]
+  }
+}
+```
+
+## Response Fields
+
+The full response shape matches [Gemini Text Chat's response](../../text/gemini/chat#response-fields). Image-specific differences:
+
+<TypeTable
+  type={{
+    'candidates[].content.parts[].inlineData': {
+      type: 'object',
+      description: 'Generated image data: `{ "mimeType": "image/png" | "image/jpeg" | "image/webp", "data": "<base64>" }`.',
+    },
+    'candidates[].content.parts[].text': {
+      type: 'string',
+      description: 'Optional accompanying description text (depends on model and prompt).',
+    },
+    'usageMetadata.candidatesTokenCount': {
+      type: 'integer',
+      description: 'Output tokens for the generated image (typically much higher than text).',
+    },
+  }}
+/>
+
+## Error Response
+
+Error response shape matches [Gemini Text Chat](../../text/gemini/chat#error-response):
+
+```json
+{
+  "error": {
+    "code": 400,
+    "message": "...",
+    "status": "INVALID_ARGUMENT"
+  }
+}
+```
+
+Common errors:
+
+| Error | Reason |
+| --- | --- |
+| `not supported model for image generation` | The model is not in `SupportedImagineModels` (validated at the amux gateway). |
+| `extra_body.google.image_config.aspectRatio is not supported, use ... aspect_ratio` | camelCase used in `extra_body`; use snake_case instead. |

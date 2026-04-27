@@ -1,0 +1,250 @@
+---
+title: 媒体识别
+description: 通过 Gemini generateContent 接口理解图像、PDF、音频、视频 — 多模态理解的专项指南
+---
+
+Gemini 的多模态理解能力**复用** [`generateContent`](./chat) 接口 —— 您只需在 `contents[].parts[]` 中加入媒体部件即可。本页聚焦多模态使用方式：上传方式、支持的 MIME 类型、调用示例与注意事项。完整请求 / 响应字段参考请看 [文本聊天](./chat)。
+
+| 项目 | 值 |
+| --- | --- |
+| **请求方法** | `POST` |
+| **请求路径** | `/v1beta/models/{model}:generateContent`（与文本聊天同接口） |
+
+<Callout type="info">
+**多模态模型**：建议使用 `gemini-2.5-pro` / `gemini-2.5-flash` / `gemini-flash-latest` 等支持视觉与音视频的模型；模型对各模态的支持能力请参考 [模型与定价](https://api.amux.ai/pricing)。
+</Callout>
+
+## 媒体上传方式
+
+Gemini 提供两种媒体输入方式，amux-api 均支持透传：
+
+<TypeTable
+  type={{
+    inlineData: {
+      type: 'object',
+      description: '**Base64 内联**：将文件读为 Base64 字符串后直接放入请求。结构：`{ "mimeType": "...", "data": "<base64>" }`。同时支持 snake_case 别名 `inline_data` / `mime_type`',
+    },
+    fileData: {
+      type: 'object',
+      description: '**File API 引用**：先通过 Google File API 上传文件得到 `fileUri`，再在请求中引用。结构：`{ "mimeType": "...", "fileUri": "..." }`。适合大文件（>20MB）或重复使用',
+    },
+  }}
+/>
+
+<Callout type="warn">
+**实践建议**：
+
+- 单次请求体大小建议控制在 **20MB 以内**。超出请使用 `fileData.fileUri`
+- 对于公网 URL 形式的文件，可使用 `urlContext` 工具或先下载再走 `inlineData`
+- amux-api 不参与 Google File API 的文件管理；如使用 `fileData`，文件需事先存在于上游账户中
+</Callout>
+
+## 支持的 MIME 类型
+
+| 模态 | 常见 MIME 类型 |
+| --- | --- |
+| **图像** | `image/png`、`image/jpeg`、`image/webp`、`image/heic`、`image/heif` |
+| **文档** | `application/pdf` |
+| **音频** | `audio/mpeg`（mp3）、`audio/wav`、`audio/ogg`、`audio/flac`、`audio/aac` |
+| **视频** | `video/mp4`、`video/mpeg`、`video/mov`、`video/avi`、`video/x-flv`、`video/webm`、`video/wmv`、`video/3gpp` |
+
+详细支持范围以模型为准。
+
+## 请求示例
+
+### 图像理解（Base64 内联）
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+IMAGE_BASE64=$(base64 < cat.png | tr -d '\n')
+
+curl "https://api.amux.ai/v1beta/models/gemini-2.5-pro:generateContent" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d "{
+    \"contents\": [{
+      \"role\": \"user\",
+      \"parts\": [
+        { \"text\": \"这张图里是什么？请用中文描述。\" },
+        { \"inlineData\": { \"mimeType\": \"image/png\", \"data\": \"$IMAGE_BASE64\" } }
+      ]
+    }]
+  }"
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import base64
+import os
+from google import genai
+
+client = genai.Client(
+    api_key=os.environ["AMUX_API_KEY"],
+    http_options={"base_url": "https://api.amux.ai"},
+)
+
+with open("cat.png", "rb") as f:
+    image_b64 = base64.b64encode(f.read()).decode()
+
+response = client.models.generate_content(
+    model="gemini-2.5-pro",
+    contents=[
+        {"role": "user", "parts": [
+            {"text": "这张图里是什么？请用中文描述。"},
+            {"inline_data": {"mime_type": "image/png", "data": image_b64}},
+        ]},
+    ],
+)
+
+print(response.text)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import { readFileSync } from 'node:fs';
+import { GoogleGenAI } from '@google/genai';
+
+const ai = new GoogleGenAI({
+  apiKey: process.env.AMUX_API_KEY!,
+  httpOptions: { baseUrl: 'https://api.amux.ai' },
+});
+
+const imageBase64 = readFileSync('cat.png').toString('base64');
+
+const response = await ai.models.generateContent({
+  model: 'gemini-2.5-pro',
+  contents: [
+    {
+      role: 'user',
+      parts: [
+        { text: '这张图里是什么？请用中文描述。' },
+        { inlineData: { mimeType: 'image/png', data: imageBase64 } },
+      ],
+    },
+  ],
+});
+
+console.log(response.text);
+```
+
+  </Tab>
+</Tabs>
+
+### PDF 文档理解
+
+```bash
+PDF_BASE64=$(base64 < paper.pdf | tr -d '\n')
+
+curl "https://api.amux.ai/v1beta/models/gemini-2.5-pro:generateContent" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d "{
+    \"contents\": [{
+      \"role\": \"user\",
+      \"parts\": [
+        { \"text\": \"概括这篇论文的核心观点（中文）。\" },
+        { \"inlineData\": { \"mimeType\": \"application/pdf\", \"data\": \"$PDF_BASE64\" } }
+      ]
+    }]
+  }"
+```
+
+### 音频识别
+
+```bash
+AUDIO_BASE64=$(base64 < meeting.mp3 | tr -d '\n')
+
+curl "https://api.amux.ai/v1beta/models/gemini-2.5-pro:generateContent" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d "{
+    \"contents\": [{
+      \"role\": \"user\",
+      \"parts\": [
+        { \"text\": \"请把这段会议录音转写成文字，并按发言人分段。\" },
+        { \"inlineData\": { \"mimeType\": \"audio/mpeg\", \"data\": \"$AUDIO_BASE64\" } }
+      ]
+    }]
+  }"
+```
+
+### 视频理解（推荐使用 fileData）
+
+```bash
+curl "https://api.amux.ai/v1beta/models/gemini-2.5-pro:generateContent" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "contents": [{
+      "role": "user",
+      "parts": [
+        { "text": "总结这段视频的关键场景，并给出时间线。" },
+        {
+          "fileData": {
+            "mimeType": "video/mp4",
+            "fileUri": "https://generativelanguage.googleapis.com/v1beta/files/xxxxxxxx"
+          }
+        }
+      ]
+    }],
+    "generationConfig": {
+      "mediaResolution": "MEDIA_RESOLUTION_MEDIUM"
+    }
+  }'
+```
+
+## 控制媒体分辨率
+
+通过 `generationConfig.mediaResolution` 控制输入媒体的解析精细度（影响 Token 消耗与识别质量）：
+
+<TypeTable
+  type={{
+    MEDIA_RESOLUTION_LOW: {
+      type: 'string',
+      description: '低分辨率（最省 Token）',
+    },
+    MEDIA_RESOLUTION_MEDIUM: {
+      type: 'string',
+      description: '中等分辨率（默认推荐）',
+    },
+    MEDIA_RESOLUTION_HIGH: {
+      type: 'string',
+      description: '高分辨率（细节最佳，Token 消耗最高）',
+    },
+  }}
+/>
+
+也可在单个 `inlineData` part 上设置 `mediaResolution` 单独控制，或在 `videoMetadata` 中指定视频帧采样策略。
+
+## 用量统计
+
+多模态请求的 `usageMetadata.promptTokensDetails` 会按模态拆分 Token 明细：
+
+```json
+{
+  "usageMetadata": {
+    "promptTokenCount": 1284,
+    "candidatesTokenCount": 156,
+    "totalTokenCount": 1440,
+    "promptTokensDetails": [
+      { "modality": "TEXT", "tokenCount": 24 },
+      { "modality": "IMAGE", "tokenCount": 1260 }
+    ]
+  }
+}
+```
+
+便于按模态精确拆分计费。
+
+## 注意事项
+
+- **请求体大小**：amux-api 与上游均会有请求体上限，超过 20MB 建议使用 `fileData.fileUri`
+- **MIME 类型必须正确**：错误的 `mimeType` 会导致上游解析失败
+- **多模态消耗 Token 较高**：建议结合 `mediaResolution` 与 [上下文缓存](./chat#请求体参数) `cachedContent` 控制成本
+- **完整字段参考**：请求体的所有字段（`generationConfig` / `tools` / `safetySettings` 等）请参考 [文本聊天](./chat)

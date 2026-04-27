@@ -1,107 +1,220 @@
 ---
 title: Quick Start
-description: Register, create API tokens, and start using Amux API Platform
+description: Get started with Amux API in three steps — register, create a token, and make your first request
+---
+
+In just three steps, you can integrate Amux API into your project or tool and start using mainstream LLMs in minutes.
+
+| Step | Action | Estimated Time |
+| --- | --- | --- |
+| 1 | Register and top up | ~2 min |
+| 2 | Create an API token | ~30 sec |
+| 3 | Make your first request | ~1 min |
+
 ---
 
 ## Step 1: Register an Account
 
-1. Visit [https://api.amux.ai](https://api.amux.ai)
-2. Click **Sign Up** to create a new account
-3. Complete the registration with your email
+<Steps>
+  <Step>
+    ### Visit the Registration Page
 
-Amux API Platform is currently in **limited-time open registration**. After registration, selected beta users will receive redemption codes to obtain credits.
+    Open the registration page: [https://api.amux.ai/register](https://api.amux.ai/register?aff=GmHN)
 
-### Redeeming Credits
+    Sign up with your email and set a password. **You'll receive $0.5 in free credits** upon successful registration — enough to test calls against any supported model on the platform.
+  </Step>
 
-If you have a redemption code:
+  <Step>
+    ### Log in to the Console
 
-1. Log in to the platform
-2. Navigate to your account settings or wallet page
-3. Enter the redemption code to receive your credits
+    Sign in at [https://api.amux.ai](https://api.amux.ai). The console home page shows your balance, billing history, and request statistics.
+  </Step>
+
+  <Step>
+    ### Top Up Your Account
+
+    Amux API uses **pay-per-token** billing — no monthly fees, no minimum spend, and your balance never expires. Choose either of the following options:
+
+    **Online Payment (recommended · instant)**
+
+    The platform uses **Stripe aggregate payments**, supporting **UnionPay, credit cards (Visa / Mastercard / Amex), Alipay, WeChat Pay, and Stripe wallet balance**. Payments are credited instantly. To request a **Stripe-platform Invoice / Receipt**, please contact our customer support team.
+
+    <Callout type="info">
+      Online payments only support issuing **Stripe-platform Invoice / Receipt**. If you require a **China e-fapiao or VAT special invoice**, please contact customer support and use the **offline wire transfer** method.
+    </Callout>
+
+    **Offline Wire Transfer (available to both enterprise and individual developers)**
+
+    For China e-fapiao, VAT special invoices, or company reimbursement vouchers, please top up via offline wire transfer. Contact our customer support team to receive bank account details and coordinate invoicing.
+  </Step>
+
+  <Step>
+    ### Automatic VIP Tier Upgrade
+
+    **Cumulative top-ups of $20 or more automatically upgrade your account to the VIP tier**, which includes:
+
+    - Access to additional **premium stable channel** models
+    - **Lower discount rates** under the VIP tier
+    - Traffic isolation from promotional users — **guaranteed call stability for paying customers**
+
+    <Callout type="info">
+      The tier system ensures that limited-time platform promotions never degrade service for paying customers. The VIP upgrade is applied automatically once cumulative top-ups reach the threshold — no manual application required.
+    </Callout>
+  </Step>
+</Steps>
+
+---
 
 ## Step 2: Create an API Token
 
-1. Log in to [https://api.amux.ai](https://api.amux.ai)
-2. Navigate to **Tokens** → **Create Token**
-3. Give your token a name (e.g., "My App", "Cursor", "Claude Code")
-4. Click **Create** and copy the generated token
+<Steps>
+  <Step>
+    ### Open the Tokens Page
 
-Keep your token secure — it provides access to your account's quota.
+    Sign in to [https://api.amux.ai](https://api.amux.ai), click **Tokens** in the side navigation, then click **Create Token**.
+  </Step>
 
-## Step 3: Start Making Requests
+  <Step>
+    ### Name and Configure
 
-Use the following configuration to connect:
+    Give your token a meaningful name (e.g., `dev`, `prod`, `cursor`, `claude-code`). You can optionally set a per-token spending limit and expiration time.
+  </Step>
+
+  <Step>
+    ### Create and Copy
+
+    Click **Create**, then **immediately copy and securely store** the generated token string.
+
+    <Callout type="warn">
+      **Token security**:
+
+      - The token grants full access to your account — if leaked, delete it from the console and create a new one immediately
+      - Never commit tokens to public repositories such as GitHub
+      - Store tokens in environment variables (e.g., `AMUX_API_KEY`) instead of hard-coding them
+    </Callout>
+  </Step>
+</Steps>
+
+---
+
+## Step 3: Make Your First Request
+
+Amux API is **fully OpenAI-compatible**. You can use the official OpenAI SDK directly — just override the `Base URL` and `API Key`.
+
+### Configuration
 
 | Setting | Value |
 | --- | --- |
-| **Base URL** | `https://api.amux.ai` |
-| **API Key** | Your API token from Step 2 |
+| **Base URL** | `https://api.amux.ai/v1` |
+| **API Key** | The API token from Step 2 |
+| **Endpoints** | `/chat/completions`, `/embeddings`, `/images/generations`, etc. |
 
-### Using curl
+### Code Examples
+
+<Tabs items={['curl', 'Python', 'Node.js', 'Streaming']}>
+  <Tab value="curl">
 
 ```bash
 curl https://api.amux.ai/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer your-api-token" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
   -d '{
     "model": "gpt-5.4",
     "messages": [
-      {"role": "user", "content": "Hello!"}
+      {"role": "user", "content": "Hello, please introduce yourself"}
     ]
   }'
 ```
 
-### Using OpenAI SDK
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.amux.ai/v1",
+    api_key=os.environ["AMUX_API_KEY"],
+)
+
+response = client.chat.completions.create(
+    model="gpt-5.4",
+    messages=[
+        {"role": "user", "content": "Hello, please introduce yourself"}
+    ],
+)
+
+print(response.choices[0].message.content)
+```
+
+  </Tab>
+  <Tab value="Node.js">
 
 ```ts
 import OpenAI from 'openai';
 
 const client = new OpenAI({
   baseURL: 'https://api.amux.ai/v1',
-  apiKey: 'your-api-token',
+  apiKey: process.env.AMUX_API_KEY,
 });
 
 const response = await client.chat.completions.create({
   model: 'gpt-5.4',
-  messages: [{ role: 'user', content: 'Hello!' }],
+  messages: [{ role: 'user', content: 'Hello, please introduce yourself' }],
 });
 
 console.log(response.choices[0].message.content);
 ```
 
-### Using Python
+  </Tab>
+  <Tab value="Streaming">
 
-```python
-from openai import OpenAI
+```ts
+import OpenAI from 'openai';
 
-client = OpenAI(
-    base_url="https://api.amux.ai/v1",
-    api_key="your-api-token",
-)
+const client = new OpenAI({
+  baseURL: 'https://api.amux.ai/v1',
+  apiKey: process.env.AMUX_API_KEY,
+});
 
-response = client.chat.completions.create(
-    model="gpt-5.4",
-    messages=[{"role": "user", "content": "Hello!"}],
-)
+const stream = await client.chat.completions.create({
+  model: 'gpt-5.4',
+  messages: [{ role: 'user', content: 'Write a short poem about spring' }],
+  stream: true,
+});
 
-print(response.choices[0].message.content)
+for await (const chunk of stream) {
+  process.stdout.write(chunk.choices[0]?.delta?.content ?? '');
+}
 ```
+
+  </Tab>
+</Tabs>
+
+<Callout type="info">
+We recommend managing your API token through environment variables:
+
+```bash
+export AMUX_API_KEY="your-api-token"
+```
+
+This avoids leaking the key in source code and makes it easy to switch between dev / staging / production environments.
+</Callout>
+
+---
 
 ## Available Models
 
-You can use the following models through Amux API:
+Amux API integrates models from **all mainstream LLM providers**, including OpenAI, Anthropic Claude, Google Gemini, xAI Grok, MiniMax, and more.
 
-| Provider | Available Models |
-| --- | --- |
-| **OpenAI** | GPT-5.4, GPT-4o, GPT-4, o3-mini, and more |
-| **xAI** | Grok series (text, image, video generation) |
-| **MiniMax** | M2.5, and the full M series |
+For the full model list and pricing, see: [https://api.amux.ai/pricing](https://api.amux.ai/pricing)
 
-More providers (Claude, Gemini, etc.) will be added progressively.
+---
 
 ## Using with AI Tools
 
-Amux API works with any tool that supports the OpenAI API format:
+Amux API works with any tool that supports the OpenAI API format. Simply set the tool's Base URL to `https://api.amux.ai/v1` and provide your API token.
 
 | Tool | Base URL Setting | API Key Setting |
 | --- | --- | --- |
@@ -111,21 +224,87 @@ Amux API works with any tool that supports the OpenAI API format:
 | **OpenClaw** | Custom provider base URL | API Token |
 | **Amux Desktop** | Built-in integration (coming soon) | API Token |
 
-See [Desktop Integration](/docs/amux-api/guides/desktop-integration) for detailed setup instructions with Amux Desktop.
+See the corresponding integration guides for detailed setup instructions.
+
+---
+
+## Contact Us
+
+For top-ups, invoicing, wire transfers, enterprise partnerships, or any usage questions, please reach us through either of the following channels:
+
+| Channel | Contact |
+| --- | --- |
+| **WeChat** | `coterie_a` |
+| **Email** | [support@amux.ai](mailto:support@amux.ai) |
+
+---
+
+## Frequently Asked Questions
+
+<Accordions>
+  <Accordion title="How much free credit do I get? What can I use it for?">
+    New accounts receive **$0.5 in free credits** upon successful registration. This is intended for testing all available models and API capabilities — ideal for functional verification and small-scale testing, but not recommended for production use.
+  </Accordion>
+
+  <Accordion title="What payment methods are supported?">
+    The platform uses **Stripe aggregate payments** with support for **UnionPay, credit cards, Alipay, WeChat Pay, and Stripe wallet balance**. Payments are credited instantly. For China e-fapiao or VAT special invoices, please use **offline wire transfer** — see the [Contact Us](#contact-us) section above.
+  </Accordion>
+
+  <Accordion title="What is the VIP tier and how do I upgrade?">
+    **Cumulative top-ups of $20 or more** automatically upgrade your account to the VIP tier — no manual application required. VIP users gain access to additional premium stable channel models, enjoy lower group discounts, and are insulated from any traffic spikes caused by limited-time platform promotions.
+  </Accordion>
+
+  <Accordion title="How do I get an invoice?">
+    - **Stripe-platform Invoice / Receipt**: After paying online via Stripe, contact customer support to issue the document
+    - **China e-fapiao / VAT special invoice**: Top up via offline wire transfer and contact customer support to coordinate the bank transfer and invoicing
+
+    Contact details are available in the [Contact Us](#contact-us) section above.
+  </Accordion>
+
+  <Accordion title="My request failed — how do I troubleshoot?">
+    1. Verify your `Base URL` correctly points to Amux API. **Note: SDKs and tools handle the `/v1` suffix differently** — some (such as the official OpenAI SDK) automatically append paths to the Base URL and need `https://api.amux.ai/v1`, while others expect the bare host `https://api.amux.ai` and append the endpoint path themselves. Refer to your tool's documentation to confirm
+    2. Verify the `Authorization` header format is `Bearer <your-api-token>`
+    3. Check that your account balance is sufficient
+    4. Review the **Logs** page in the console for detailed error messages
+  </Accordion>
+
+  <Accordion title="What if my token leaks?">
+    Immediately delete the affected token from the **Tokens** page and create a new one, then update all applications that were using it. We recommend creating separate tokens per environment and project to limit the blast radius of any leak.
+  </Accordion>
+
+  <Accordion title="How do I control costs?">
+    The console **Usage** page provides per-token and per-model consumption breakdowns. We recommend setting a **spending limit** and **expiration date** for each token to prevent runaway usage from a leaked or misconfigured key.
+  </Accordion>
+
+  <Accordion title="Which API capabilities are supported?">
+    Chat Completions, Embeddings, Image Generation, Function Calling, and SSE streaming are all supported. See the [Text API](/docs/amux-api/text/openai/chat-completions), [Image API](/docs/amux-api/image/openai/generations), and [Video API](/docs/amux-api/video/create-task) docs for details.
+  </Accordion>
+</Accordions>
+
+---
 
 ## Next Steps
 
 <Cards>
-  <Card title="Use with Claude Code" href="/docs/amux-api/guides/use-with-claude-code">
+  <Card title="Text API" href="/docs/amux-api/text/openai/chat-completions">
+    Chat completion endpoints in OpenAI / Anthropic / Gemini formats
+  </Card>
+  <Card title="Image API" href="/docs/amux-api/image/openai/generations">
+    Image generation and editing, including the Nano Banana series
+  </Card>
+  <Card title="Video API" href="/docs/amux-api/video/create-task">
+    Video generation task creation and status endpoints
+  </Card>
+  <Card title="Use with Claude Code" href="/docs/amux-api/guides/use/claude-code">
     Connect Claude Code to Amux API
   </Card>
-  <Card title="Use with Codex CLI" href="/docs/amux-api/guides/use-with-codex">
+  <Card title="Use with Codex CLI" href="/docs/amux-api/guides/use/codex">
     Connect OpenAI Codex CLI to Amux API
   </Card>
-  <Card title="Use with OpenClaw" href="/docs/amux-api/guides/use-with-openclaw">
+  <Card title="Use with OpenClaw" href="/docs/amux-api/guides/use/openclaw">
     Connect OpenClaw to Amux API
   </Card>
-  <Card title="Use in Projects" href="/docs/amux-api/guides/use-in-projects">
+  <Card title="Use in Projects" href="/docs/amux-api/guides/use/in-projects">
     Python and Node.js integration examples
   </Card>
 </Cards>

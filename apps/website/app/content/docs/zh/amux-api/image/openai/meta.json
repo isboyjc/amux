@@ -1,0 +1,8 @@
+{
+  "title": "OpenAI 格式",
+  "description": "OpenAI 兼容图像接口（通用）",
+  "pages": [
+    "generations",
+    "edits"
+  ]
+}

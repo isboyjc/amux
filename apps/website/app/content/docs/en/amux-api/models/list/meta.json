@@ -1,0 +1,8 @@
+{
+  "title": "List Models",
+  "description": "List the models available to your account",
+  "pages": [
+    "openai",
+    "gemini"
+  ]
+}

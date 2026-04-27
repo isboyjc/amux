@@ -1,0 +1,233 @@
+---
+title: Edit Images
+description: Edit or extend images from a source (and optional mask) — fully OpenAI Images Edits API compatible
+---
+
+Edit images (inpainting / outpainting / restyling) given one or more source images plus a prompt. Fully compatible with the OpenAI **Images Edits API** — supports `dall-e-2`, `gpt-image-1`, and similar models.
+
+| Field | Value |
+| --- | --- |
+| **Method** | `POST` |
+| **Path** | `/v1/images/edits` |
+| **Full URL** | `https://api.amux.ai/v1/images/edits` |
+| **Auth** | `Authorization: Bearer <API_TOKEN>` |
+| **Request format** | `multipart/form-data` |
+| **Response format** | `application/json` |
+
+<Callout type="info">
+This endpoint uses **multipart/form-data** to upload image files. JSON is not supported. We recommend using the official OpenAI SDK to avoid hand-crafting multipart requests.
+</Callout>
+
+## Form Fields
+
+<TypeTable
+  type={{
+    image: {
+      type: 'file | array<file>',
+      required: true,
+      description: 'Source image to edit. `dall-e-2`: PNG, < 4MB, square. `gpt-image-1`: PNG / JPEG / WebP, single file < 25MB. Multiple images can be passed via `image[]` (or repeated `image` fields).',
+    },
+    prompt: {
+      type: 'string',
+      required: true,
+      description: 'Text describing the desired image. `dall-e-2`: up to 1000 chars; `gpt-image-1`: up to 32000 chars.',
+    },
+    mask: {
+      type: 'file',
+      description: 'Optional mask image. Fully transparent areas indicate where to edit. Must be PNG with the same dimensions as `image`.',
+    },
+    model: {
+      type: 'string',
+      description: 'Model ID, e.g. `dall-e-2` / `gpt-image-1`. See https://api.amux.ai/pricing for the full list.',
+    },
+    n: {
+      type: 'integer',
+      description: 'Number of images to generate. `1–10`.',
+    },
+    size: {
+      type: 'string',
+      description: 'Output image size. `gpt-image-1`: `1024x1024` / `1536x1024` / `1024x1536` / `auto`; `dall-e-2`: `256x256` / `512x512` / `1024x1024`.',
+    },
+    quality: {
+      type: 'string',
+      description: '`gpt-image-1` only: `low` / `medium` / `high` / `auto`.',
+    },
+    background: {
+      type: 'string',
+      description: '`gpt-image-1` only: `transparent` / `opaque` / `auto`.',
+    },
+    output_format: {
+      type: 'string',
+      description: '`gpt-image-1` only: output encoding `png` / `jpeg` / `webp`.',
+    },
+    output_compression: {
+      type: 'integer',
+      description: '`gpt-image-1` only: output compression `0–100`, applies to `jpeg` / `webp`.',
+    },
+    response_format: {
+      type: 'string',
+      default: 'url',
+      description: '`url` or `b64_json`. `gpt-image-1` always returns Base64.',
+    },
+    user: {
+      type: 'string',
+      description: 'End-user identifier.',
+    },
+  }}
+/>
+
+<Callout type="info">
+**Multi-image edits**: `gpt-image-1` supports edits based on multiple reference images. You can repeat the `image` field, or use array-style names like `image[]` / `image[0]` / `image[1]`. The amux-api gateway recognizes these and forwards them as an array to the upstream.
+</Callout>
+
+## Examples
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/images/edits \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -F "model=gpt-image-1" \
+  -F "image=@cat.png" \
+  -F "mask=@cat-mask.png" \
+  -F "prompt=Replace the background with a spring courtyard with falling cherry blossoms" \
+  -F "size=1024x1024" \
+  -F "quality=high"
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+import base64
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.amux.ai/v1",
+    api_key=os.environ["AMUX_API_KEY"],
+)
+
+with open("cat.png", "rb") as image, open("cat-mask.png", "rb") as mask:
+    response = client.images.edit(
+        model="gpt-image-1",
+        image=image,
+        mask=mask,
+        prompt="Replace the background with a spring courtyard with falling cherry blossoms",
+        size="1024x1024",
+        quality="high",
+    )
+
+image_b64 = response.data[0].b64_json
+with open("output.png", "wb") as f:
+    f.write(base64.b64decode(image_b64))
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import { createReadStream, writeFileSync } from 'node:fs';
+import OpenAI, { toFile } from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.amux.ai/v1',
+  apiKey: process.env.AMUX_API_KEY,
+});
+
+const response = await client.images.edit({
+  model: 'gpt-image-1',
+  image: await toFile(createReadStream('cat.png'), 'cat.png'),
+  mask: await toFile(createReadStream('cat-mask.png'), 'cat-mask.png'),
+  prompt: 'Replace the background with a spring courtyard with falling cherry blossoms',
+  size: '1024x1024',
+  quality: 'high',
+});
+
+const b64 = response.data![0].b64_json!;
+writeFileSync('output.png', Buffer.from(b64, 'base64'));
+```
+
+  </Tab>
+</Tabs>
+
+### Multi-Reference Example (gpt-image-1)
+
+```bash
+curl https://api.amux.ai/v1/images/edits \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -F "model=gpt-image-1" \
+  -F "image[]=@reference-1.png" \
+  -F "image[]=@reference-2.png" \
+  -F "image[]=@reference-3.png" \
+  -F "prompt=Blend the styles of these three references into a new cover image" \
+  -F "size=1024x1024"
+```
+
+## Response Example
+
+The response shape is identical to [Generate Images](./generations#response-fields):
+
+```json
+{
+  "created": 1730000000,
+  "data": [
+    {
+      "b64_json": "iVBORw0KGgoAAAANSUhEUgAA...",
+      "revised_prompt": "..."
+    }
+  ],
+  "usage": {
+    "total_tokens": 1530,
+    "input_tokens": 320,
+    "output_tokens": 1210,
+    "input_tokens_details": {
+      "text_tokens": 28,
+      "image_tokens": 292
+    }
+  }
+}
+```
+
+## Response Fields
+
+<TypeTable
+  type={{
+    created: {
+      type: 'integer',
+      description: 'Unix timestamp (seconds).',
+    },
+    data: {
+      type: 'array<ImageData>',
+      description: 'List of generated images (same shape as [Generate Images](./generations#imagedata-fields)).',
+    },
+    usage: {
+      type: 'object',
+      description: 'Usage stats returned by `gpt-image-1` family models. For edits, `input_tokens_details.image_tokens` includes tokens for the source image(s) and mask.',
+    },
+  }}
+/>
+
+## Error Response
+
+```json
+{
+  "error": {
+    "message": "...",
+    "type": "invalid_request_error",
+    "param": "image",
+    "code": "invalid_value"
+  }
+}
+```
+
+Common errors:
+
+| Error | Reason |
+| --- | --- |
+| `image is required` | The `image` field was not uploaded (validated by the amux-api gateway). |
+| `failed to parse multipart form` | Malformed multipart payload. |
+| `invalid_value` | File does not meet the model's spec (non-PNG, exceeds size limit, non-square, etc., depending on the model). |
+
+HTTP status codes match [Generate Images](./generations#error-response).

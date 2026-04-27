@@ -1,0 +1,9 @@
+{
+  "title": "文本",
+  "description": "文本生成与对话补全 API",
+  "pages": [
+    "openai",
+    "anthropic",
+    "gemini"
+  ]
+}

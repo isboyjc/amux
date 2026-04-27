@@ -1,0 +1,241 @@
+---
+title: Generate Images
+description: Generate images from text prompts — fully OpenAI Images Generations API compatible (DALL·E 2/3, gpt-image-1, etc.)
+---
+
+Create images from a text prompt. Fully compatible with the OpenAI **Images Generations API** — supports `dall-e-2`, `dall-e-3`, `gpt-image-1`, and similar models.
+
+| Field | Value |
+| --- | --- |
+| **Method** | `POST` |
+| **Path** | `/v1/images/generations` |
+| **Full URL** | `https://api.amux.ai/v1/images/generations` |
+| **Auth** | `Authorization: Bearer <API_TOKEN>` |
+| **Request format** | `application/json` |
+| **Response format** | `application/json` |
+
+<Callout type="info">
+This endpoint is fully aligned with the OpenAI Images Generations protocol. You can use the official OpenAI SDK directly — just override the `Base URL` and `API Key`.
+</Callout>
+
+## Request Body
+
+<TypeTable
+  type={{
+    prompt: {
+      type: 'string',
+      required: true,
+      description: 'Image description. `gpt-image-1`: up to 32000 chars; `dall-e-3`: up to 4000 chars; `dall-e-2`: up to 1000 chars.',
+    },
+    model: {
+      type: 'string',
+      description: 'Model ID, e.g. `dall-e-2` / `dall-e-3` / `gpt-image-1`. See https://api.amux.ai/pricing for the full list.',
+    },
+    n: {
+      type: 'integer',
+      description: 'Number of images to generate. `1–10`. `dall-e-3` only supports `n=1`.',
+    },
+    size: {
+      type: 'string',
+      description: 'Image size. `gpt-image-1`: `1024x1024` / `1536x1024` / `1024x1536` / `auto`; `dall-e-3`: `1024x1024` / `1024x1792` / `1792x1024`; `dall-e-2`: `256x256` / `512x512` / `1024x1024`.',
+    },
+    quality: {
+      type: 'string',
+      description: 'Image quality. `gpt-image-1`: `low` / `medium` / `high` / `auto`; `dall-e-3`: `standard` / `hd`.',
+    },
+    style: {
+      type: 'string',
+      description: 'Style (`dall-e-3`): `vivid` / `natural`.',
+    },
+    response_format: {
+      type: 'string',
+      default: 'url',
+      description: '`url` (image URL, valid for ~1 hour) or `b64_json` (Base64). `gpt-image-1` always returns Base64.',
+    },
+    background: {
+      type: 'string',
+      description: '`gpt-image-1` only: `transparent` / `opaque` / `auto` (default).',
+    },
+    moderation: {
+      type: 'string',
+      description: '`gpt-image-1` only: content moderation level. `low` / `auto` (default).',
+    },
+    output_format: {
+      type: 'string',
+      description: '`gpt-image-1` only: output encoding. `png` / `jpeg` / `webp`.',
+    },
+    output_compression: {
+      type: 'integer',
+      description: '`gpt-image-1` only: output compression `0–100`, applies to `jpeg` / `webp`.',
+    },
+    partial_images: {
+      type: 'integer',
+      description: '`gpt-image-1` only: number of partial images during streaming, `0–3` (requires upstream streaming protocol support).',
+    },
+    user: {
+      type: 'string',
+      description: 'End-user identifier for audit and abuse monitoring.',
+    },
+  }}
+/>
+
+<Callout type="info">
+**Passthrough**: amux-api forwards any field not listed above to the upstream as-is. Vendor-specific fields such as `watermark` / `watermark_enabled` (Zhipu / Aliyun Tongyi), `user_id` (Aliyun), and `extra_body` (channel-private params used by Gemini Nano Banana for `aspect_ratio` / `image_size` / `seed`) are recognized and routed to the appropriate channels.
+</Callout>
+
+## Examples
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/images/generations \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "model": "gpt-image-1",
+    "prompt": "A cute baby sea otter wearing a beret, watercolor style",
+    "n": 1,
+    "size": "1024x1024",
+    "quality": "high",
+    "background": "transparent",
+    "output_format": "png"
+  }'
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+import base64
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.amux.ai/v1",
+    api_key=os.environ["AMUX_API_KEY"],
+)
+
+response = client.images.generate(
+    model="gpt-image-1",
+    prompt="A cute baby sea otter wearing a beret, watercolor style",
+    n=1,
+    size="1024x1024",
+    quality="high",
+)
+
+image_b64 = response.data[0].b64_json
+with open("otter.png", "wb") as f:
+    f.write(base64.b64decode(image_b64))
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import { writeFileSync } from 'node:fs';
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.amux.ai/v1',
+  apiKey: process.env.AMUX_API_KEY,
+});
+
+const response = await client.images.generate({
+  model: 'gpt-image-1',
+  prompt: 'A cute baby sea otter wearing a beret, watercolor style',
+  n: 1,
+  size: '1024x1024',
+  quality: 'high',
+});
+
+const b64 = response.data![0].b64_json!;
+writeFileSync('otter.png', Buffer.from(b64, 'base64'));
+```
+
+  </Tab>
+</Tabs>
+
+## Response Example
+
+```json
+{
+  "created": 1730000000,
+  "data": [
+    {
+      "b64_json": "iVBORw0KGgoAAAANSUhEUgAA...",
+      "revised_prompt": "A watercolor illustration of a cute baby sea otter wearing a beret..."
+    }
+  ],
+  "usage": {
+    "total_tokens": 1234,
+    "input_tokens": 28,
+    "output_tokens": 1206,
+    "input_tokens_details": {
+      "text_tokens": 28,
+      "image_tokens": 0
+    }
+  }
+}
+```
+
+## Response Fields
+
+<TypeTable
+  type={{
+    created: {
+      type: 'integer',
+      description: 'Unix timestamp (seconds).',
+    },
+    data: {
+      type: 'array<ImageData>',
+      description: 'List of generated images, length equals the request `n`.',
+    },
+    usage: {
+      type: 'object',
+      description: 'Usage stats returned by `gpt-image-1` family models: `total_tokens` / `input_tokens` / `output_tokens` / `input_tokens_details.text_tokens` / `input_tokens_details.image_tokens`. amux-api forwards the upstream response as-is; legacy DALL·E models do not return this field.',
+    },
+  }}
+/>
+
+### ImageData Fields
+
+<TypeTable
+  type={{
+    url: {
+      type: 'string',
+      description: 'Image URL (returned when `response_format=url`, valid for ~1 hour).',
+    },
+    b64_json: {
+      type: 'string',
+      description: 'Base64-encoded image (returned when `response_format=b64_json`; `gpt-image-1` always uses this).',
+    },
+    revised_prompt: {
+      type: 'string',
+      description: '`dall-e-3` / `gpt-image-1`: the rewritten prompt the model actually used.',
+    },
+  }}
+/>
+
+## Error Response
+
+```json
+{
+  "error": {
+    "message": "...",
+    "type": "invalid_request_error",
+    "param": "prompt",
+    "code": "invalid_value"
+  }
+}
+```
+
+| HTTP Status | Meaning |
+| --- | --- |
+| `200` | Success |
+| `400` | Bad request parameters (missing `prompt`, unsupported `size`, etc.) |
+| `401` | Missing or invalid API key |
+| `403` | Model not authorized or blocked by content safety policy |
+| `404` | Model not found |
+| `429` | Rate limit triggered or insufficient balance |
+| `500` / `502` / `503` | Server-side error or upstream unavailable |

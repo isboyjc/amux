@@ -1,40 +1,31 @@
 ---
 title: Introduction
-description: Amux API Platform - An independent, unified LLM API gateway platform built on top of New API
+description: Amux API - A unified, stable enterprise-grade LLM API gateway
 ---
 
-## What is Amux API Platform?
+## What is Amux API?
 
-Amux API Platform is an independent, unified LLM API gateway platform, built on top of the open-source project [New API](https://github.com/QuantumNous/new-api). It provides centralized management and distribution of multiple LLM provider APIs, with a growing number of upstream providers integrated.
-
-Users can register and log in to the platform, create API tokens, and immediately start using a wide range of AI models through a single, unified API endpoint.
-
-In the future, **Amux Desktop** will integrate Amux API Platform support, bridging the Web-based API gateway with the local desktop client for a seamless experience.
+Amux API is a unified, stable enterprise-grade LLM API gateway. We currently support all mainstream LLM providers on the market, offering standardized API integration, pay-as-you-go billing, and VAT invoices for enterprise customers.
 
 ### Platform Status
 
-Amux API Platform is currently in **limited-time open registration**. After registration, selected beta users will receive redemption codes to obtain credits for experiencing the platform.
+The platform is running stably with **20+ enterprises onboarded**.
 
-### Supported Models
+### Platform Positioning
 
-Amux API Platform currently supports:
+Amux API delivers unified AI model API access for enterprise system integration, software development, and business automation scenarios:
 
-| Provider | Models |
-| --- | --- |
-| **OpenAI** | GPT-5.4 and the full GPT series |
-| **xAI** | Grok full series (text, image, video) |
-| **MiniMax** | M2.5 and the full M series |
+- **Unified API Interface**: One standardized interface to connect multiple AI model providers
+- **Built for Enterprises and Developers**: Designed for system integration, application development, and internal tooling
+- **Technical Service Focus**: Does not participate in model training, does not intervene in generation logic, does not store user content
+- **Engineering-Grade Stability**: 99.9% availability, designed for high-concurrency enterprise-grade workloads
 
-We will progressively expand upstream providers to support **Claude**, **Gemini**, and all other leading models.
+### Core Advantages
 
-### Core Features
-
-- **Unified API Gateway**: Access multiple LLM providers through a single OpenAI-compatible API endpoint
-- **User Registration & Token Management**: Register an account, create API tokens, and manage your usage
-- **Quota & Billing**: Credit-based quota system with transparent usage tracking
-- **Multi-Provider Routing**: Intelligent routing with failover, load balancing, and priority-based channel selection
-- **Streaming Support**: Full SSE streaming support across all providers
-- **OpenAI-Compatible**: Works with any client that supports the OpenAI API format
+- **Enterprise Verification**: Supports enterprise wire transfers and VAT invoice issuance
+- **Technical Support**: Chinese-language technical support with real-time response via WeChat groups
+- **Data Security**: User request content is not stored; aligned with industry security standards
+- **Flexible Billing**: Pay-per-token, no monthly fees, instant top-ups
 
 ### Using the Platform
 
@@ -46,44 +37,24 @@ https://api.amux.ai
 
 You can use this Base URL along with your API token to connect to any AI Agent project that supports the OpenAI API format, including **Amux Desktop** and many other tools.
 
-### Architecture
-
-```
-Users / AI Agent Projects (Amux Desktop, Cursor, etc.)
-              │
-              ▼
-   ┌─────────────────────────┐
-   │   Amux API Platform      │
-   │   https://api.amux.ai        │
-   ├─────────────────────────┤
-   │  User & Token Management │
-   │  Quota & Billing         │
-   │  Intelligent Routing     │
-   │  Multi-Provider Channels │
-   └──┬──────┬──────┬────────┘
-      │      │      │
-      ▼      ▼      ▼
-   OpenAI   xAI   MiniMax   Claude(soon)  Gemini(soon)  ...
-```
-
 ### Relationship with Other Amux Products
 
-- **[Amux Desktop](/docs/desktop)**: A personal desktop LLM client with built-in gateway services. In a future release, Desktop will integrate Amux API Platform support, bridging the Web-based API gateway with the local client. You can already use Amux API with Desktop's C/S proxy module to dynamically switch models for tools like Claude Code.
+- **[Amux Desktop](/docs/desktop)**: A personal desktop LLM client with built-in gateway services. In a future release, Desktop will integrate Amux API support, bridging the Web-based API gateway with the local client. You can already use Amux API with Desktop's C/S proxy module to dynamically switch models for tools like Claude Code.
 - **[Amux LLM Bridge](/docs/llm-bridge)**: The core adapter conversion engine used by Amux Desktop for local format translation between LLM providers.
 
 ## Next Steps
 
 <Cards>
   <Card title="Quick Start" href="/docs/amux-api/quick-start">
-    Register and start using Amux API Platform
+    Register and start using Amux API
   </Card>
-  <Card title="Use with Claude Code" href="/docs/amux-api/guides/use-with-claude-code">
+  <Card title="Use with Claude Code" href="/docs/amux-api/guides/use/claude-code">
     Connect Claude Code to Amux API
   </Card>
-  <Card title="Use with OpenClaw" href="/docs/amux-api/guides/use-with-openclaw">
+  <Card title="Use with OpenClaw" href="/docs/amux-api/guides/use/openclaw">
     Connect OpenClaw to Amux API
   </Card>
-  <Card title="Use in Projects" href="/docs/amux-api/guides/use-in-projects">
+  <Card title="Use in Projects" href="/docs/amux-api/guides/use/in-projects">
     Python and Node.js integration examples
   </Card>
 </Cards>

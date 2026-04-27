@@ -1,0 +1,323 @@
+---
+title: Responses
+description: OpenAI Responses API — 创建模型响应，支持多轮对话、工具调用、推理输出
+---
+
+OpenAI **Responses API** 用于创建模型响应，支持多轮对话、工具调用、推理输出等能力。相比 Chat Completions，Responses 提供更易用的多轮 / 工具状态管理（通过 `previous_response_id` 串联）。
+
+| 项目 | 值 |
+| --- | --- |
+| **请求方法** | `POST` |
+| **请求路径** | `/v1/responses` |
+| **完整 URL** | `https://api.amux.ai/v1/responses` |
+| **认证方式** | `Authorization: Bearer <API_TOKEN>` |
+| **请求格式** | `application/json` |
+| **响应格式** | JSON 或 SSE（`stream=true` 时） |
+
+<Callout type="info">
+Responses 是 OpenAI 推出的新一代统一接口，集成了 Chat Completions 与 Assistants API 的能力。如果您的项目仍在使用 Chat Completions，可继续使用 [`/v1/chat/completions`](./chat-completions)。
+</Callout>
+
+## 请求体参数
+
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      required: true,
+      description: '模型 ID。完整可用模型见 https://api.amux.ai/pricing',
+    },
+    input: {
+      type: 'string | array<InputItem>',
+      description: '模型输入。可为单个字符串，也可为消息 / 工具调用结果的数组（详见下方 InputItem 结构）',
+      typeDescriptionLink: '#inputitem-结构',
+    },
+    instructions: {
+      type: 'string',
+      description: '系统指令（等价于 Chat Completions 中 `role: system` 的消息）',
+    },
+    max_output_tokens: {
+      type: 'integer',
+      description: '本次响应允许生成的最大 Token 数（含推理 Token）',
+    },
+    temperature: {
+      type: 'number',
+      default: '1',
+      description: '采样温度，取值范围 `0 ~ 2`',
+    },
+    top_p: {
+      type: 'number',
+      default: '1',
+      description: '核采样参数，取值范围 `0 ~ 1`',
+    },
+    stream: {
+      type: 'boolean',
+      default: 'false',
+      description: '是否以 SSE 流式返回事件序列',
+    },
+    stream_options: {
+      type: 'object',
+      description: '流式响应额外选项，例如 `{ "include_usage": true }`',
+    },
+    tools: {
+      type: 'array<Tool>',
+      description: '可供模型调用的工具配置，包括 `function`、`web_search`、`file_search` 等内置工具',
+    },
+    tool_choice: {
+      type: 'string | object',
+      description: '工具选择策略：`"none"` / `"auto"` / `"required"`，或显式指定某个工具',
+    },
+    parallel_tool_calls: {
+      type: 'boolean',
+      description: '是否允许在一次响应中并行调用多个工具（仅在客户端显式设置时透传到上游）',
+    },
+    max_tool_calls: {
+      type: 'integer',
+      description: '本次响应允许的最大工具调用次数',
+    },
+    reasoning: {
+      type: 'object',
+      description: '推理配置，例如 `{ "effort": "high", "summary": "auto" }`，仅推理类模型生效',
+    },
+    text: {
+      type: 'object',
+      description: '文本输出格式约束，例如 JSON Schema：`{ "format": { "type": "json_schema", ... } }`',
+    },
+    include: {
+      type: 'array<string>',
+      description: '在响应中额外返回的字段列表，例如 `["reasoning.encrypted_content"]` / `["message.output_text.logprobs"]`',
+    },
+    top_logprobs: {
+      type: 'integer',
+      description: '取值 `0 ~ 20`。返回每个位置概率最高的 Token 列表',
+    },
+    user: {
+      type: 'string',
+      description: '终端用户标识，便于上游审计与滥用监控',
+    },
+    previous_response_id: {
+      type: 'string',
+      description: '上一轮响应的 ID。设置后服务端自动串联上下文，无需在 `input` 中重复历史消息',
+    },
+    metadata: {
+      type: 'object',
+      description: '自定义元数据键值对（最多 16 对），用于审计与统计',
+    },
+    truncation: {
+      type: 'string',
+      description: '上下文超长时的截断策略：`auto` 自动截断 / `disabled` 直接报错。amux-api 不在网关层强制默认值',
+    },
+  }}
+/>
+
+<Callout type="info">
+**透传策略**：amux-api 对未在上方列出的字段会原样透传至上游。未传值时由上游模型自行使用其默认值。当前版本 `background`（后台任务模式）尚未支持，即使传入也会被忽略。
+</Callout>
+
+### InputItem 结构
+
+`input` 为数组时，每个元素可为消息或工具调用结果：
+
+<TypeTable
+  type={{
+    type: {
+      type: 'string',
+      description: '元素类型：`message` / `function_call` / `function_call_output` / `reasoning` 等',
+    },
+    role: {
+      type: 'string',
+      description: '当 `type=message` 时：`system` / `user` / `assistant` / `developer`',
+    },
+    content: {
+      type: 'string | array<ContentPart>',
+      description: '消息内容，支持纯文本或多模态部件数组（含 `input_text`、`input_image` 等）',
+    },
+  }}
+/>
+
+## 请求示例
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/responses \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "model": "gpt-5.4",
+    "input": "用一句话介绍 Amux API。",
+    "instructions": "You are a concise assistant."
+  }'
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.amux.ai/v1",
+    api_key=os.environ["AMUX_API_KEY"],
+)
+
+response = client.responses.create(
+    model="gpt-5.4",
+    input="用一句话介绍 Amux API。",
+    instructions="You are a concise assistant.",
+)
+
+print(response.output_text)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.amux.ai/v1',
+  apiKey: process.env.AMUX_API_KEY,
+});
+
+const response = await client.responses.create({
+  model: 'gpt-5.4',
+  input: '用一句话介绍 Amux API。',
+  instructions: 'You are a concise assistant.',
+});
+
+console.log(response.output_text);
+```
+
+  </Tab>
+</Tabs>
+
+## 响应示例
+
+```json
+{
+  "id": "resp_xxx",
+  "object": "response",
+  "created_at": 1730000000,
+  "status": "completed",
+  "model": "gpt-5.4",
+  "output": [
+    {
+      "type": "message",
+      "id": "msg_xxx",
+      "status": "completed",
+      "role": "assistant",
+      "content": [
+        { "type": "output_text", "text": "Amux API 是一个统一、稳定的企业级大模型接口网关。" }
+      ]
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 24,
+    "completion_tokens": 18,
+    "total_tokens": 42,
+    "prompt_tokens_details": { "cached_tokens": 0 },
+    "completion_tokens_details": { "reasoning_tokens": 0 }
+  }
+}
+```
+
+## 响应字段
+
+<TypeTable
+  type={{
+    id: {
+      type: 'string',
+      description: '响应 ID。可作为下次请求的 `previous_response_id` 串联多轮对话',
+    },
+    object: {
+      type: 'string',
+      description: '对象类型，固定为 `response`',
+    },
+    created_at: {
+      type: 'integer',
+      description: '创建时间戳（Unix 秒）',
+    },
+    status: {
+      type: 'string',
+      description: '响应状态：`completed` / `in_progress` / `failed` / `cancelled` / `incomplete`',
+    },
+    model: {
+      type: 'string',
+      description: '实际调用的模型 ID',
+    },
+    output: {
+      type: 'array<OutputItem>',
+      description: '输出条目列表，可能包含 `message`、`function_call`、`reasoning` 等多种类型',
+    },
+    usage: {
+      type: 'object',
+      description: 'Token 用量统计',
+    },
+    error: {
+      type: 'object | null',
+      description: '响应失败时的错误信息',
+    },
+    incomplete_details: {
+      type: 'object | null',
+      description: '响应未完整生成时的详细原因（如达到 `max_output_tokens`）',
+    },
+  }}
+/>
+
+<Callout type="info">
+OpenAI 官方 SDK（如 Python）通常会暴露便捷属性 `response.output_text`，由 SDK 自行从 `output[].content[]` 中拼接 `output_text` 部件得到。**该属性是 SDK 客户端逻辑，并非由 amux-api 在 JSON 中直接返回的字段**。如需获取纯文本，请遍历 `output[].content[]` 中 `type === "output_text"` 的部件。
+</Callout>
+
+## 流式响应
+
+`stream=true` 时返回 SSE 事件序列，每个事件包含 `event:` 与 `data:` 两行：
+
+```
+event: response.created
+data: {"type":"response.created","response":{"id":"resp_xxx","status":"in_progress",...}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","delta":"Amux"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","delta":" API"}
+
+event: response.completed
+data: {"type":"response.completed","response":{...}}
+```
+
+常见事件：
+
+| 事件名 | 说明 |
+| --- | --- |
+| `response.created` | 响应已创建（in_progress） |
+| `response.output_item.added` | 新输出条目开始（如新的 `message` / `function_call`） |
+| `response.output_item.done` | 当前输出条目完成 |
+| `response.output_text.delta` | 文本增量 |
+| `response.output_text.done` | 当前文本块结束 |
+| `response.reasoning_summary_text.delta` | 推理摘要文本增量 |
+| `response.reasoning_summary_text.done` | 推理摘要结束 |
+| `response.function_call_arguments.delta` | 工具调用参数增量 |
+| `response.function_call_arguments.done` | 工具调用参数完成 |
+| `response.completed` | 整体响应完成 |
+| `response.failed` | 响应失败 |
+| `response.error` / `error` | 错误事件 |
+
+## 错误响应
+
+```json
+{
+  "error": {
+    "message": "...",
+    "type": "invalid_request_error",
+    "param": "input",
+    "code": "invalid_value"
+  }
+}
+```
+
+错误码语义与 [Chat Completions](./chat-completions#错误响应) 一致。

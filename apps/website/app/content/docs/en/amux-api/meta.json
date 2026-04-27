@@ -6,23 +6,14 @@
   "pages": [
     "index",
     "quick-start",
-    "api-reference",
     "---Guides---",
-    "guides/use-with-claude-code",
-    "guides/use-with-codex",
-    "guides/use-with-gemini-cli",
-    "guides/use-with-open-code",
-    "guides/use-with-openclaw",
-    "guides/use-in-projects",
-    "---Install---",
-    "guides/install-claude-code",
-    "guides/install-codex-cli",
-    "guides/install-gemini-cli",
-    "guides/install-open-code",
-    "guides/install-openclaw",
-    "---Advanced---",
-    "guides/desktop-integration",
-    "guides/configuration",
-    "guides/authentication"
+    "guides/use",
+    "guides/install",
+    "guides/advanced",
+    "---API---",
+    "models",
+    "text",
+    "image",
+    "video"
   ]
 }

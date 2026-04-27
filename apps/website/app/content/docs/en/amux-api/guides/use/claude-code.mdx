@@ -1,0 +1,84 @@
+---
+title: Use with Claude Code
+description: Connect Claude Code CLI to Amux API Platform to access all supported models
+---
+
+[Claude Code](https://docs.anthropic.com/en/docs/claude-code) is Anthropic's AI coding assistant CLI. By connecting it to Amux API Platform, you can use GPT, Grok, MiniMax, and all other models supported by the platform.
+
+## Prerequisites
+
+- Claude Code installed ([installation guide](/docs/amux-api/guides/install/claude-code))
+- An Amux API Platform account with an API token ([Quick Start](/docs/amux-api/quick-start))
+
+## Method 1: Via Amux Desktop Code Switch (Recommended)
+
+If you have [Amux Desktop](/docs/desktop) installed, you can use the [Code Switch](/docs/desktop/guides/code-switch) feature for a visual setup with model mapping and dynamic switching:
+
+1. Add Amux API Platform as a provider in Amux Desktop:
+   - **Name**: Amux API
+   - **Adapter Type**: `openai`
+   - **Base URL**: `https://api.amux.ai`
+   - **API Key**: Your Amux API token
+2. Go to **Code Switch** and create a configuration targeting this provider
+3. Configure model mappings (e.g. `claude-sonnet` → `gpt-5.4`)
+4. Enable the configuration
+
+This method gives you the flexibility to dynamically switch models without changing environment variables.
+
+## Method 2: Environment Variables
+
+Set environment variables to point Claude Code at Amux API Platform:
+
+```bash
+export ANTHROPIC_BASE_URL="https://api.amux.ai"
+export ANTHROPIC_API_KEY="your-amux-api-token"
+```
+
+Or add them to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.) for persistence:
+
+```bash
+echo 'export ANTHROPIC_BASE_URL="https://api.amux.ai"' >> ~/.zshrc
+echo 'export ANTHROPIC_API_KEY="your-amux-api-token"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+Then run Claude Code as usual:
+
+```bash
+claude
+```
+
+## Method 3: Claude Code Settings File
+
+Edit Claude Code's configuration file directly at `~/.claude/settings.json`:
+
+```json
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://api.amux.ai",
+    "ANTHROPIC_API_KEY": "your-amux-api-token"
+  }
+}
+```
+
+## Method 4: CC-Switch
+
+[CC-Switch](https://github.com/foreveryh/claude-code-switch) is a shell-based one-command model switcher for Claude Code, supporting multiple providers and custom configurations.
+
+## Method 5: CC-Switch-CLI
+
+[CC-Switch-CLI](https://github.com/farion1231/cc-switch) is a cross-platform CLI tool (built in Rust) for managing Claude Code, Codex, and Gemini CLI provider configurations.
+
+## Verify
+
+Run `claude` and send a test message. If you receive a response, the connection is working.
+
+```bash
+claude "Hello, what model are you?"
+```
+
+## Notes
+
+- Amux API Platform uses the OpenAI-compatible API format, which Claude Code can work with through the base URL override
+- Available models depend on your Amux API account and credits
+- Streaming is fully supported

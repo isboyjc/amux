@@ -1,0 +1,11 @@
+{
+  "title": "Installation",
+  "description": "Install instructions for AI CLI tools",
+  "pages": [
+    "claude-code",
+    "codex-cli",
+    "gemini-cli",
+    "open-code",
+    "openclaw"
+  ]
+}

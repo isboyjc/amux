@@ -1,0 +1,233 @@
+---
+title: 编辑图像
+description: 基于原图（与可选蒙版）进行图像编辑或扩展 — 完全兼容 OpenAI Images Edits API
+---
+
+基于一张或多张原始图像与提示词，对图像进行编辑（局部修改 / 扩展 / 风格化）。完全兼容 OpenAI **Images Edits API**，支持 `dall-e-2`、`gpt-image-1` 系列等模型。
+
+| 项目 | 值 |
+| --- | --- |
+| **请求方法** | `POST` |
+| **请求路径** | `/v1/images/edits` |
+| **完整 URL** | `https://api.amux.ai/v1/images/edits` |
+| **认证方式** | `Authorization: Bearer <API_TOKEN>` |
+| **请求格式** | `multipart/form-data` |
+| **响应格式** | `application/json` |
+
+<Callout type="info">
+本接口为 **multipart/form-data** 请求，需通过表单字段上传图像文件，不能使用 JSON。建议使用 OpenAI 官方 SDK 以避免手动构造 multipart 请求。
+</Callout>
+
+## 表单字段
+
+<TypeTable
+  type={{
+    image: {
+      type: 'file | array<file>',
+      required: true,
+      description: '要编辑的源图像。`dall-e-2` 必须为 PNG、< 4MB、正方形。`gpt-image-1` 支持 PNG / JPEG / WebP，单文件 < 25MB；可使用 `image[]` 字段（或重复 `image` 字段）传入多张图像',
+    },
+    prompt: {
+      type: 'string',
+      required: true,
+      description: '描述目标图像的文本。`dall-e-2` 最长 1000 字符；`gpt-image-1` 最长 32000 字符',
+    },
+    mask: {
+      type: 'file',
+      description: '可选的蒙版图像。完全透明的区域代表需要编辑的位置。必须为 PNG，与 `image` 同尺寸',
+    },
+    model: {
+      type: 'string',
+      description: '模型 ID，例如 `dall-e-2` / `gpt-image-1`。完整可用模型见 https://api.amux.ai/pricing',
+    },
+    n: {
+      type: 'integer',
+      description: '本次请求要生成的图像数量。`1 ~ 10`',
+    },
+    size: {
+      type: 'string',
+      description: '生成图像尺寸。`gpt-image-1`：`1024x1024` / `1536x1024` / `1024x1536` / `auto`；`dall-e-2`：`256x256` / `512x512` / `1024x1024`',
+    },
+    quality: {
+      type: 'string',
+      description: '`gpt-image-1` 专属：`low` / `medium` / `high` / `auto`',
+    },
+    background: {
+      type: 'string',
+      description: '`gpt-image-1` 专属：`transparent` / `opaque` / `auto`',
+    },
+    output_format: {
+      type: 'string',
+      description: '`gpt-image-1` 专属：输出图像编码格式 `png` / `jpeg` / `webp`',
+    },
+    output_compression: {
+      type: 'integer',
+      description: '`gpt-image-1` 专属：输出压缩级别 `0 ~ 100`，仅 `jpeg` / `webp` 生效',
+    },
+    response_format: {
+      type: 'string',
+      default: 'url',
+      description: '返回格式：`url` / `b64_json`（`gpt-image-1` 始终返回 Base64）',
+    },
+    user: {
+      type: 'string',
+      description: '终端用户标识',
+    },
+  }}
+/>
+
+<Callout type="info">
+**多图编辑**：`gpt-image-1` 支持基于多张参考图进行编辑。可以重复 `image` 字段，或使用 `image[]` / `image[0]` / `image[1]` 等数组式字段名。amux-api 在网关层会自动识别并按数组形式转发给上游。
+</Callout>
+
+## 请求示例
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/images/edits \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -F "model=gpt-image-1" \
+  -F "image=@cat.png" \
+  -F "mask=@cat-mask.png" \
+  -F "prompt=把背景换成樱花飘落的春日庭院" \
+  -F "size=1024x1024" \
+  -F "quality=high"
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+import base64
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.amux.ai/v1",
+    api_key=os.environ["AMUX_API_KEY"],
+)
+
+with open("cat.png", "rb") as image, open("cat-mask.png", "rb") as mask:
+    response = client.images.edit(
+        model="gpt-image-1",
+        image=image,
+        mask=mask,
+        prompt="把背景换成樱花飘落的春日庭院",
+        size="1024x1024",
+        quality="high",
+    )
+
+image_b64 = response.data[0].b64_json
+with open("output.png", "wb") as f:
+    f.write(base64.b64decode(image_b64))
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import { createReadStream, writeFileSync } from 'node:fs';
+import OpenAI, { toFile } from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.amux.ai/v1',
+  apiKey: process.env.AMUX_API_KEY,
+});
+
+const response = await client.images.edit({
+  model: 'gpt-image-1',
+  image: await toFile(createReadStream('cat.png'), 'cat.png'),
+  mask: await toFile(createReadStream('cat-mask.png'), 'cat-mask.png'),
+  prompt: '把背景换成樱花飘落的春日庭院',
+  size: '1024x1024',
+  quality: 'high',
+});
+
+const b64 = response.data![0].b64_json!;
+writeFileSync('output.png', Buffer.from(b64, 'base64'));
+```
+
+  </Tab>
+</Tabs>
+
+### 多参考图示例（gpt-image-1）
+
+```bash
+curl https://api.amux.ai/v1/images/edits \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -F "model=gpt-image-1" \
+  -F "image[]=@reference-1.png" \
+  -F "image[]=@reference-2.png" \
+  -F "image[]=@reference-3.png" \
+  -F "prompt=融合这三张参考图的风格生成新的封面图" \
+  -F "size=1024x1024"
+```
+
+## 响应示例
+
+响应字段与 [生成图像](./generations#响应字段) 一致：
+
+```json
+{
+  "created": 1730000000,
+  "data": [
+    {
+      "b64_json": "iVBORw0KGgoAAAANSUhEUgAA...",
+      "revised_prompt": "..."
+    }
+  ],
+  "usage": {
+    "total_tokens": 1530,
+    "input_tokens": 320,
+    "output_tokens": 1210,
+    "input_tokens_details": {
+      "text_tokens": 28,
+      "image_tokens": 292
+    }
+  }
+}
+```
+
+## 响应字段
+
+<TypeTable
+  type={{
+    created: {
+      type: 'integer',
+      description: '创建时间戳（Unix 秒）',
+    },
+    data: {
+      type: 'array<ImageData>',
+      description: '生成结果列表（结构同 [生成图像](./generations#imagedata-字段)）',
+    },
+    usage: {
+      type: 'object',
+      description: '`gpt-image-1` 系列模型返回的用量统计；编辑场景下 `input_tokens_details.image_tokens` 包含输入图像与蒙版的 Token 计数',
+    },
+  }}
+/>
+
+## 错误响应
+
+```json
+{
+  "error": {
+    "message": "...",
+    "type": "invalid_request_error",
+    "param": "image",
+    "code": "invalid_value"
+  }
+}
+```
+
+常见错误：
+
+| 错误 | 原因 |
+| --- | --- |
+| `image is required` | 未上传 `image` 字段（amux 网关层校验） |
+| `failed to parse multipart form` | 表单格式不合法 |
+| `invalid_value` 参数错误 | 文件不符合规格（非 PNG、超 4MB、非正方形等，因模型而异） |
+
+HTTP 状态码与 [生成图像](./generations#错误响应) 一致。

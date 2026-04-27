@@ -1,0 +1,117 @@
+---
+title: Install Gemini CLI
+description: Download and install Google's Gemini CLI
+---
+
+[Gemini CLI](https://github.com/google-gemini/gemini-cli) is Google's official AI coding assistant CLI, powered by the Gemini model family.
+
+## System Requirements
+
+| Requirement | Minimum |
+| --- | --- |
+| **OS** | macOS, Linux, Windows |
+| **Node.js** | 20+ |
+| **Network** | Internet connection required |
+
+## Installation
+
+### npm (Recommended)
+
+```bash
+npm install -g @google/gemini-cli
+```
+
+### Run without Installing
+
+```bash
+npx @google/gemini-cli
+```
+
+### Homebrew (macOS)
+
+```bash
+brew install gemini-cli
+```
+
+### MacPorts (macOS)
+
+```bash
+sudo port install gemini-cli
+```
+
+## Verify Installation
+
+```bash
+gemini --version
+```
+
+## Authentication
+
+### Google Account (Recommended)
+
+Run `gemini` and follow the browser-based sign-in flow:
+
+```bash
+gemini
+```
+
+### API Key
+
+Alternatively, use a Gemini API key:
+
+```bash
+export GEMINI_API_KEY="your-api-key"
+gemini
+```
+
+You can obtain an API key from the [Google AI Studio](https://aistudio.google.com/apikey).
+
+## Quick Start
+
+**Interactive session:**
+
+```bash
+gemini
+```
+
+**Single prompt:**
+
+```bash
+gemini "explain this code"
+```
+
+## Release Channels
+
+Gemini CLI follows a regular release schedule:
+
+| Channel | Schedule | npm Tag |
+| --- | --- | --- |
+| **Stable** | Weekly (Tuesdays, UTC 20:00) | `latest` |
+| **Preview** | Weekly (Tuesdays, UTC 23:59) | `preview` |
+| **Nightly** | Daily (UTC 00:00) | `nightly` |
+
+Install a specific channel:
+
+```bash
+npm install -g @google/gemini-cli@preview
+npm install -g @google/gemini-cli@nightly
+```
+
+## Using with Amux API Platform
+
+After installing Gemini CLI, see [Use with Gemini CLI](/docs/amux-api/guides/use/gemini-cli) to connect it to Amux API Platform.
+
+You can also route Gemini CLI through an [Amux Desktop proxy](/docs/desktop/guides/proxies) by configuring the API base URL:
+
+```bash
+export GEMINI_API_KEY="sk-amux.xxx"
+export GEMINI_BASE_URL="http://127.0.0.1:9527/providers/{proxyPath}"
+gemini
+```
+
+## Resources
+
+- [Gemini CLI GitHub](https://github.com/google-gemini/gemini-cli)
+- [Gemini CLI Documentation](https://codelabs.developers.google.com/gemini-cli-hands-on)
+- [npm Package](https://www.npmjs.com/package/@google/gemini-cli)
+- [Google AI Studio (API Key)](https://aistudio.google.com/apikey)

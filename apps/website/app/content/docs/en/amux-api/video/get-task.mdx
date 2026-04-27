@@ -1,0 +1,306 @@
+---
+title: Get Video Task Status
+description: Query a video-generation task's status and result — fetch real-time state by task_id, get the video URL once completed
+---
+
+Query a task's status using the `task_id` returned by [Create Video Task](./create-task). Once the task reaches `completed`, the response contains the video URL (or you can stream the bytes via `/v1/videos/{task_id}/content`).
+
+| Field | Value |
+| --- | --- |
+| **Method** | `GET` |
+| **Path** | `/v1/video/generations/{task_id}` |
+| **Full URL** | `https://api.amux.ai/v1/video/generations/{task_id}` |
+| **Auth** | `Authorization: Bearer <API_TOKEN>` |
+| **Body** | none |
+| **Response format** | `application/json` |
+
+<Callout type="info">
+**OpenAI Sora-compatible alias**: amux-api also serves `GET /v1/videos/{task_id}` with identical behavior.
+</Callout>
+
+## Path Parameters
+
+<TypeTable
+  type={{
+    task_id: {
+      type: 'string',
+      required: true,
+      description: 'Task ID returned by [Create Video Task](./create-task).',
+    },
+  }}
+/>
+
+## Response Fields
+
+<TypeTable
+  type={{
+    task_id: {
+      type: 'string',
+      description: 'Task ID.',
+    },
+    status: {
+      type: 'string',
+      description: 'Task status. See the status enum below.',
+    },
+    url: {
+      type: 'string',
+      description: 'Video URL — only populated when `status=completed`. May be a signed/time-limited URL from the upstream — download or persist promptly.',
+    },
+    format: {
+      type: 'string',
+      description: 'Video format, e.g. `mp4`.',
+    },
+    metadata: {
+      type: 'object',
+      description: 'Task metadata. See Metadata Fields below.',
+      typeDescriptionLink: '#metadata-fields',
+    },
+    error: {
+      type: 'object',
+      description: 'Error details — only populated when `status=failed`. See Error Fields below.',
+      typeDescriptionLink: '#error-fields',
+    },
+  }}
+/>
+
+### status Enum
+
+<TypeTable
+  type={{
+    queued: {
+      type: 'string',
+      description: 'Queued, awaiting execution (mapped from upstream `QUEUED` / `SUBMITTED`).',
+    },
+    in_progress: {
+      type: 'string',
+      description: 'Task is running (generating the video).',
+    },
+    completed: {
+      type: 'string',
+      description: 'Task succeeded; video URL is available.',
+    },
+    failed: {
+      type: 'string',
+      description: 'Task failed; details in `error`.',
+    },
+    unknown: {
+      type: 'string',
+      description: 'Fallback when the upstream returned an unexpected state.',
+    },
+  }}
+/>
+
+### Metadata Fields
+
+<TypeTable
+  type={{
+    duration: {
+      type: 'number',
+      description: 'Actual generated video duration (seconds).',
+    },
+    fps: {
+      type: 'integer',
+      description: 'Actual frame rate.',
+    },
+    width: {
+      type: 'integer',
+      description: 'Actual width in pixels.',
+    },
+    height: {
+      type: 'integer',
+      description: 'Actual height in pixels.',
+    },
+    seed: {
+      type: 'integer',
+      description: 'Random seed used.',
+    },
+  }}
+/>
+
+### Error Fields
+
+<TypeTable
+  type={{
+    code: {
+      type: 'integer',
+      description: 'Error code (from upstream or amux).',
+    },
+    message: {
+      type: 'string',
+      description: 'Error description.',
+    },
+  }}
+/>
+
+## Response Examples
+
+### Queued
+
+```json
+{
+  "task_id": "abcd1234efgh",
+  "status": "queued"
+}
+```
+
+### In Progress
+
+```json
+{
+  "task_id": "abcd1234efgh",
+  "status": "in_progress"
+}
+```
+
+### Completed
+
+```json
+{
+  "task_id": "abcd1234efgh",
+  "status": "completed",
+  "url": "https://upstream.cdn.example.com/.../result.mp4",
+  "format": "mp4",
+  "metadata": {
+    "duration": 5.0,
+    "fps": 24,
+    "width": 1280,
+    "height": 720,
+    "seed": 20231234
+  }
+}
+```
+
+### Failed
+
+```json
+{
+  "task_id": "abcd1234efgh",
+  "status": "failed",
+  "error": {
+    "code": 50001,
+    "message": "Upstream model rejected the prompt due to content policy."
+  }
+}
+```
+
+## Examples
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl "https://api.amux.ai/v1/video/generations/abcd1234efgh" \
+  -H "Authorization: Bearer $AMUX_API_KEY"
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+import time
+import httpx
+
+API_KEY = os.environ["AMUX_API_KEY"]
+TASK_ID = "abcd1234efgh"
+
+while True:
+    response = httpx.get(
+        f"https://api.amux.ai/v1/video/generations/{TASK_ID}",
+        headers={"Authorization": f"Bearer {API_KEY}"},
+    )
+    task = response.json()
+    status = task["status"]
+    print(f"Status: {status}")
+
+    if status == "completed":
+        print(f"Video URL: {task['url']}")
+        break
+    if status == "failed":
+        print(f"Error: {task['error']}")
+        break
+
+    time.sleep(5)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+const API_KEY = process.env.AMUX_API_KEY!;
+const TASK_ID = 'abcd1234efgh';
+
+while (true) {
+  const response = await fetch(
+    `https://api.amux.ai/v1/video/generations/${TASK_ID}`,
+    { headers: { Authorization: `Bearer ${API_KEY}` } },
+  );
+  const task = await response.json();
+  console.log(`Status: ${task.status}`);
+
+  if (task.status === 'completed') {
+    console.log(`Video URL: ${task.url}`);
+    break;
+  }
+  if (task.status === 'failed') {
+    console.log('Error:', task.error);
+    break;
+  }
+
+  await new Promise((r) => setTimeout(r, 5000));
+}
+```
+
+  </Tab>
+</Tabs>
+
+## Polling Recommendations
+
+Video generation typically takes tens of seconds to several minutes. We recommend:
+
+| Item | Suggested Value |
+| --- | --- |
+| **First-poll delay** | 5–10 seconds |
+| **Polling interval** | 5–10 seconds |
+| **Total timeout** | 5–10 minutes (model-dependent) |
+| **Exponential backoff** | For long-running tasks, gradually increase the interval |
+
+## Downloading Video Content
+
+When `status=completed`, in addition to using the response `url`, amux-api also exposes a **video proxy** endpoint:
+
+```
+GET /v1/videos/{task_id}/content
+```
+
+This streams the video bytes as `application/octet-stream` (or the appropriate MIME type), useful when:
+
+- The upstream URL has expired or uses temporary signing
+- You don't want to expose the upstream domain to clients
+- Servers can reach amux but not the upstream
+
+```bash
+curl "https://api.amux.ai/v1/videos/abcd1234efgh/content" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -o video.mp4
+```
+
+## Error Response
+
+```json
+{
+  "error": {
+    "message": "...",
+    "type": "invalid_request_error",
+    "code": "task_not_found"
+  }
+}
+```
+
+| HTTP Status | Meaning |
+| --- | --- |
+| `200` | Query succeeded (note: `status=failed` is also 200 — error details live in the response body's `error` field) |
+| `401` | Missing or invalid API key |
+| `403` | The `task_id` does not belong to your account |
+| `404` | `task_id` not found or expired |
+| `500` | Server-side error |

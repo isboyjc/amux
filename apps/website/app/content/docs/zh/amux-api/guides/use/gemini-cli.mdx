@@ -1,0 +1,73 @@
+---
+title: 在 Gemini CLI 中使用
+description: 将 Google Gemini CLI 连接到 Amux API Platform
+---
+
+[Gemini CLI](https://github.com/google-gemini/gemini-cli) 是 Google 的 AI 编程助手 CLI。你可以将其配置为使用 Amux API Platform 作为后端。
+
+## 前提条件
+
+- 已安装 Gemini CLI（[安装指南](/zh/docs/amux-api/guides/install/gemini-cli)）
+- 拥有 Amux API Platform 账号和 API 令牌（[快速开始](/zh/docs/amux-api/quick-start)）
+
+## 方式一：环境变量
+
+设置环境变量将 Gemini CLI 指向 Amux API Platform：
+
+```bash
+export GEMINI_API_KEY="your-amux-api-token"
+export GEMINI_BASE_URL="https://api.amux.ai"
+```
+
+写入 shell 配置文件以持久化：
+
+```bash
+echo 'export GEMINI_API_KEY="your-amux-api-token"' >> ~/.zshrc
+echo 'export GEMINI_BASE_URL="https://api.amux.ai"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+## 方式二：配置文件
+
+也可以通过 Gemini CLI 的配置文件（`~/.gemini/settings.json`）配置：
+
+```json
+{
+  "apiKey": "your-amux-api-token",
+  "baseUrl": "https://api.amux.ai"
+}
+```
+
+## 方式三：CC-Switch
+
+[CC-Switch](https://github.com/foreveryh/claude-code-switch) 是一个基于 Shell 的模型一键切换工具，支持多种供应商和自定义配置。
+
+## 方式四：CC-Switch-CLI
+
+[CC-Switch-CLI](https://github.com/farion1231/cc-switch) 是一个跨平台 CLI 工具（Rust 构建），支持管理 Claude Code、Codex 和 Gemini CLI 的供应商配置。
+
+## 使用
+
+正常运行 Gemini CLI：
+
+```bash
+# 交互模式
+gemini
+
+# 单次提问
+gemini "explain this code"
+```
+
+## 验证
+
+```bash
+gemini "Hello, what model are you?"
+```
+
+如果收到回复，连接配置正确。
+
+## 注意事项
+
+- 可用模型取决于你的 Amux API 账号和额度
+- 完整支持流式响应
+- 完整模型列表请参阅[快速开始](/zh/docs/amux-api/quick-start)

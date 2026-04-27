@@ -1,0 +1,241 @@
+---
+title: 生成图像
+description: 根据文本提示生成图像 — 完全兼容 OpenAI Images Generations API（DALL·E 2/3、gpt-image-1 等）
+---
+
+根据给定的文本提示创建图像。完全兼容 OpenAI **Images Generations API**，支持 `dall-e-2`、`dall-e-3`、`gpt-image-1` 系列等模型。
+
+| 项目 | 值 |
+| --- | --- |
+| **请求方法** | `POST` |
+| **请求路径** | `/v1/images/generations` |
+| **完整 URL** | `https://api.amux.ai/v1/images/generations` |
+| **认证方式** | `Authorization: Bearer <API_TOKEN>` |
+| **请求格式** | `application/json` |
+| **响应格式** | `application/json` |
+
+<Callout type="info">
+本接口完全对齐 OpenAI Images Generations 协议，可直接使用 OpenAI 官方 SDK 调用，仅需替换 `Base URL` 与 API Key。
+</Callout>
+
+## 请求体参数
+
+<TypeTable
+  type={{
+    prompt: {
+      type: 'string',
+      required: true,
+      description: '图像描述文本。`gpt-image-1` 最长 32000 字符；`dall-e-3` 最长 4000 字符；`dall-e-2` 最长 1000 字符',
+    },
+    model: {
+      type: 'string',
+      description: '模型 ID，例如 `dall-e-2` / `dall-e-3` / `gpt-image-1`。完整可用模型见 https://api.amux.ai/pricing',
+    },
+    n: {
+      type: 'integer',
+      description: '本次请求要生成的图像数量。`1 ~ 10`；`dall-e-3` 仅支持 `n=1`',
+    },
+    size: {
+      type: 'string',
+      description: '图像尺寸。`gpt-image-1`：`1024x1024` / `1536x1024` / `1024x1536` / `auto`；`dall-e-3`：`1024x1024` / `1024x1792` / `1792x1024`；`dall-e-2`：`256x256` / `512x512` / `1024x1024`',
+    },
+    quality: {
+      type: 'string',
+      description: '图像质量。`gpt-image-1`：`low` / `medium` / `high` / `auto`；`dall-e-3`：`standard` / `hd`',
+    },
+    style: {
+      type: 'string',
+      description: '风格（`dall-e-3`）：`vivid` 鲜艳 / `natural` 自然',
+    },
+    response_format: {
+      type: 'string',
+      default: 'url',
+      description: '返回格式：`url`（图像 URL，1 小时有效）/ `b64_json`（Base64 编码）。`gpt-image-1` 仅返回 Base64',
+    },
+    background: {
+      type: 'string',
+      description: '`gpt-image-1` 专属：背景透明度。`transparent` / `opaque` / `auto`（默认）',
+    },
+    moderation: {
+      type: 'string',
+      description: '`gpt-image-1` 专属：内容审核级别。`low` / `auto`（默认）',
+    },
+    output_format: {
+      type: 'string',
+      description: '`gpt-image-1` 专属：输出图像编码格式。`png` / `jpeg` / `webp`',
+    },
+    output_compression: {
+      type: 'integer',
+      description: '`gpt-image-1` 专属：输出图像压缩级别 `0 ~ 100`，仅 `jpeg` / `webp` 生效',
+    },
+    partial_images: {
+      type: 'integer',
+      description: '`gpt-image-1` 专属：流式生成中返回的部分图像数量，`0 ~ 3`（需配合上游流式协议使用）',
+    },
+    user: {
+      type: 'string',
+      description: '终端用户标识，便于审计与滥用监控',
+    },
+  }}
+/>
+
+<Callout type="info">
+**透传策略**：amux-api 对未在上方列出的字段会原样透传至上游。例如：`watermark` / `watermark_enabled`（智谱 / 阿里通义）、`user_id`（阿里）、`extra_body`（Gemini Nano Banana 等渠道私有参数，从中读取 `aspect_ratio` / `image_size` / `seed` 等）等供应商专属字段也会被识别并透传到对应渠道。
+</Callout>
+
+## 请求示例
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/images/generations \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "model": "gpt-image-1",
+    "prompt": "一只戴着贝雷帽的可爱海獭幼崽，水彩风格",
+    "n": 1,
+    "size": "1024x1024",
+    "quality": "high",
+    "background": "transparent",
+    "output_format": "png"
+  }'
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+import base64
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.amux.ai/v1",
+    api_key=os.environ["AMUX_API_KEY"],
+)
+
+response = client.images.generate(
+    model="gpt-image-1",
+    prompt="一只戴着贝雷帽的可爱海獭幼崽，水彩风格",
+    n=1,
+    size="1024x1024",
+    quality="high",
+)
+
+image_b64 = response.data[0].b64_json
+with open("otter.png", "wb") as f:
+    f.write(base64.b64decode(image_b64))
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import { writeFileSync } from 'node:fs';
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.amux.ai/v1',
+  apiKey: process.env.AMUX_API_KEY,
+});
+
+const response = await client.images.generate({
+  model: 'gpt-image-1',
+  prompt: '一只戴着贝雷帽的可爱海獭幼崽，水彩风格',
+  n: 1,
+  size: '1024x1024',
+  quality: 'high',
+});
+
+const b64 = response.data![0].b64_json!;
+writeFileSync('otter.png', Buffer.from(b64, 'base64'));
+```
+
+  </Tab>
+</Tabs>
+
+## 响应示例
+
+```json
+{
+  "created": 1730000000,
+  "data": [
+    {
+      "b64_json": "iVBORw0KGgoAAAANSUhEUgAA...",
+      "revised_prompt": "A watercolor illustration of a cute baby sea otter wearing a beret..."
+    }
+  ],
+  "usage": {
+    "total_tokens": 1234,
+    "input_tokens": 28,
+    "output_tokens": 1206,
+    "input_tokens_details": {
+      "text_tokens": 28,
+      "image_tokens": 0
+    }
+  }
+}
+```
+
+## 响应字段
+
+<TypeTable
+  type={{
+    created: {
+      type: 'integer',
+      description: '创建时间戳（Unix 秒）',
+    },
+    data: {
+      type: 'array<ImageData>',
+      description: '生成结果列表，长度等于请求中的 `n`',
+    },
+    usage: {
+      type: 'object',
+      description: '`gpt-image-1` 系列模型返回的用量统计：`total_tokens` / `input_tokens` / `output_tokens` / `input_tokens_details.text_tokens` / `input_tokens_details.image_tokens`。amux-api 透传上游响应，传统 DALL·E 模型不返回此字段',
+    },
+  }}
+/>
+
+### ImageData 字段
+
+<TypeTable
+  type={{
+    url: {
+      type: 'string',
+      description: '生成图像的 URL（`response_format=url` 时返回，1 小时内有效）',
+    },
+    b64_json: {
+      type: 'string',
+      description: '图像的 Base64 编码（`response_format=b64_json` 时返回；`gpt-image-1` 始终以此字段返回）',
+    },
+    revised_prompt: {
+      type: 'string',
+      description: '`dall-e-3` / `gpt-image-1`：模型实际使用的改写后提示词',
+    },
+  }}
+/>
+
+## 错误响应
+
+```json
+{
+  "error": {
+    "message": "...",
+    "type": "invalid_request_error",
+    "param": "prompt",
+    "code": "invalid_value"
+  }
+}
+```
+
+| HTTP 状态码 | 含义 |
+| --- | --- |
+| `200` | 请求成功 |
+| `400` | 请求参数错误（如 `prompt` 缺失、`size` 不支持等） |
+| `401` | API 密钥无效或缺失 |
+| `403` | 模型未授权或被内容安全策略阻止 |
+| `404` | 模型不存在 |
+| `429` | 触发速率限制或额度不足 |
+| `500` / `502` / `503` | 服务端异常或上游不可用 |

@@ -1,0 +1,293 @@
+---
+title: OpenAI Chat Format
+description: Call Gemini image-generation models via the OpenAI Chat Completions endpoint — generate images using the familiar chat interface
+---
+
+Invoke the Gemini image-generation family through the standard [OpenAI Chat Completions](../../text/openai/chat-completions) endpoint. amux-api detects image-supporting models, auto-injects `responseModalities=["TEXT","IMAGE"]`, and embeds the upstream `inlineData` into `message.content` as **Markdown-encoded Base64 images**.
+
+| Field | Value |
+| --- | --- |
+| **Method** | `POST` |
+| **Path** | `/v1/chat/completions` |
+| **Full URL** | `https://api.amux.ai/v1/chat/completions` |
+| **Auth** | `Authorization: Bearer <API_TOKEN>` |
+| **Request format** | `application/json` |
+| **Response format** | JSON, or SSE when `stream=true` |
+
+<Callout type="info">
+For the full request-body field list (messages, stream, temperature, etc.), see the [Chat Completions full reference](../../text/openai/chat-completions). This page only covers Gemini image-specific behavior.
+</Callout>
+
+## Supported Models
+
+amux-api ships with these Gemini image-generation models:
+
+| Model | Alias / Notes |
+| --- | --- |
+| `gemini-2.5-flash-image` | Nano Banana |
+| `gemini-3-pro-image-preview` | Nano Banana Pro |
+| `gemini-3.1-flash-image-preview` | Nano Banana 2 |
+| `gemini-2.0-flash-exp-image-generation` | Early experimental |
+| `gemini-2.0-flash-exp` | Early experimental |
+
+When `model` matches one of these, amux-api routes the request through the image-generation path.
+
+## Key Request Fields
+
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      required: true,
+      description: 'Image-generation model ID (see table above).',
+    },
+    messages: {
+      type: 'array<Message>',
+      required: true,
+      description: 'OpenAI Chat messages. The text in `user` messages becomes the prompt; reference images can be passed via multimodal parts (`{ "type": "image_url", "image_url": { "url": "data:image/png;base64,..." } }`).',
+    },
+    stream: {
+      type: 'boolean',
+      default: 'false',
+      description: 'Whether to stream the response.',
+    },
+    extra_body: {
+      type: 'object',
+      description: 'Gemini-private parameters passthrough. See ExtraBody structure below.',
+      typeDescriptionLink: '#extra_body-structure',
+    },
+  }}
+/>
+
+<Callout type="info">
+**Auto-injection**: when `model` is a Gemini image model, amux-api automatically injects `responseModalities=["TEXT","IMAGE"]` into the upstream `generationConfig`. Callers do not need to set this.
+</Callout>
+
+### extra_body Structure
+
+Pass Gemini image-generation–specific parameters via `extra_body.google.image_config`:
+
+<TypeTable
+  type={{
+    'google.image_config.aspect_ratio': {
+      type: 'string',
+      description: 'Aspect ratio: `1:1` / `3:2` / `2:3` / `16:9` / `9:16`. **Must use snake_case** (`aspect_ratio`, NOT `aspectRatio`).',
+    },
+    'google.image_config.image_size': {
+      type: 'string',
+      description: 'Image resolution: `1K` (default) / `2K`. **Must use snake_case**.',
+    },
+    'google.thinking_config.thinking_budget': {
+      type: 'integer',
+      description: 'Reasoning token budget (supported by some models).',
+    },
+    'google.thinking_config.include_thoughts': {
+      type: 'boolean',
+      description: 'Whether to include thinking content in the response.',
+    },
+    'google.thinking_config.thinking_level': {
+      type: 'string',
+      description: 'Reasoning level (select models only).',
+    },
+  }}
+/>
+
+<Callout type="warn">
+**Naming gotcha**: inside `extra_body.google.image_config` and `thinking_config` you **must use snake_case** (`aspect_ratio`, `image_size`, `thinking_budget`). camelCase is rejected with an explicit error:
+
+```
+extra_body.google.image_config.aspectRatio is not supported, use extra_body.google.image_config.aspect_ratio instead
+```
+
+amux-api converts snake_case to camelCase internally before sending to the upstream Gemini API.
+</Callout>
+
+## Examples
+
+### Text-to-Image
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "model": "gemini-2.5-flash-image",
+    "messages": [
+      { "role": "user", "content": "A cute baby sea otter wearing a beret, watercolor style" }
+    ],
+    "extra_body": {
+      "google": {
+        "image_config": {
+          "aspect_ratio": "1:1",
+          "image_size": "1K"
+        }
+      }
+    }
+  }'
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.amux.ai/v1",
+    api_key=os.environ["AMUX_API_KEY"],
+)
+
+response = client.chat.completions.create(
+    model="gemini-2.5-flash-image",
+    messages=[
+        {"role": "user", "content": "A cute baby sea otter wearing a beret, watercolor style"}
+    ],
+    extra_body={
+        "google": {
+            "image_config": {
+                "aspect_ratio": "1:1",
+                "image_size": "1K",
+            }
+        }
+    },
+)
+
+# `content` contains Markdown-embedded images: ![image](data:image/png;base64,...)
+print(response.choices[0].message.content)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.amux.ai/v1',
+  apiKey: process.env.AMUX_API_KEY,
+});
+
+const response = await client.chat.completions.create({
+  model: 'gemini-2.5-flash-image',
+  messages: [
+    { role: 'user', content: 'A cute baby sea otter wearing a beret, watercolor style' },
+  ],
+  // @ts-expect-error extra_body is amux-api passthrough
+  extra_body: {
+    google: {
+      image_config: { aspect_ratio: '1:1', image_size: '1K' },
+    },
+  },
+});
+
+console.log(response.choices[0].message.content);
+```
+
+  </Tab>
+</Tabs>
+
+### Image Editing (reference image + prompt)
+
+```bash
+IMAGE_BASE64=$(base64 < cat.png | tr -d '\n')
+
+curl https://api.amux.ai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d "{
+    \"model\": \"gemini-2.5-flash-image\",
+    \"messages\": [{
+      \"role\": \"user\",
+      \"content\": [
+        { \"type\": \"text\", \"text\": \"Replace the background with a spring courtyard with falling cherry blossoms\" },
+        { \"type\": \"image_url\", \"image_url\": { \"url\": \"data:image/png;base64,$IMAGE_BASE64\" } }
+      ]
+    }]
+  }"
+```
+
+## Response Format
+
+amux-api converts the upstream Gemini `inlineData` into Markdown-embedded Base64 images written to `choices[0].message.content`:
+
+```json
+{
+  "id": "chatcmpl-xxx",
+  "object": "chat.completion",
+  "created": 1730000000,
+  "model": "gemini-2.5-flash-image",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Here is a watercolor sea otter wearing a beret.\n\n![image](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...)"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 24,
+    "completion_tokens": 1290,
+    "total_tokens": 1314
+  }
+}
+```
+
+### Extracting Images
+
+Use a regex to extract Base64 image data from `message.content`:
+
+```python
+import re
+import base64
+
+content = response.choices[0].message.content
+matches = re.findall(r'!\[.*?\]\(data:image/(\w+);base64,([^\)]+)\)', content)
+
+for i, (mime_ext, b64) in enumerate(matches):
+    with open(f"output_{i}.{mime_ext}", "wb") as f:
+        f.write(base64.b64decode(b64))
+```
+
+```ts
+const content = response.choices[0].message.content!;
+const matches = [...content.matchAll(/!\[.*?\]\(data:image\/(\w+);base64,([^\)]+)\)/g)];
+
+matches.forEach(([, ext, b64], i) => {
+  const buffer = Buffer.from(b64, 'base64');
+  require('node:fs').writeFileSync(`output_${i}.${ext}`, buffer);
+});
+```
+
+## Streaming
+
+With `stream=true`, amux-api delivers SSE chunks. The Markdown-embedded image data is concatenated into `delta.content` across chunks:
+
+```
+data: {"choices":[{"index":0,"delta":{"role":"assistant","content":""}}]}
+
+data: {"choices":[{"index":0,"delta":{"content":"![image](data:image/png;base64,iVBOR"}}]}
+
+data: {"choices":[{"index":0,"delta":{"content":"w0KGgoAAAANSUhEUg..."}}]}
+
+data: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+
+data: [DONE]
+```
+
+Because the Base64 string is long, we recommend reassembling `delta.content` fully on the client and then running the regex extraction.
+
+## Error Response
+
+Error response shape matches [Chat Completions](../../text/openai/chat-completions#error-response). Gemini image-specific errors:
+
+| Error | Reason |
+| --- | --- |
+| `extra_body.google.imageConfig is not supported, use extra_body.google.image_config instead` | Used camelCase at the top level; should be snake_case `image_config`. |
+| `extra_body.google.image_config.aspectRatio is not supported, use ... aspect_ratio instead` | Used camelCase for an inner field; should be snake_case. |
+| `not supported model for image generation` | `model` is not a Gemini image model. |

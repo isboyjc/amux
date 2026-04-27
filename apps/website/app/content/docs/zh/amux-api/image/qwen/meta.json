@@ -1,0 +1,8 @@
+{
+  "title": "Qwen 格式（OpenAI）",
+  "description": "百炼 Qwen / Wan 系列图像生成与编辑（OpenAI 兼容格式）",
+  "pages": [
+    "generations",
+    "edits"
+  ]
+}

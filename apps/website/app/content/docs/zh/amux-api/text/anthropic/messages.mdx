@@ -1,0 +1,518 @@
+---
+title: Messages
+description: 创建消息 — 完全兼容 Anthropic Claude Messages API，支持流式、工具调用、思考（Thinking）、提示缓存等
+---
+
+根据对话历史创建 Claude 模型响应。完全兼容 Anthropic 原生 **Messages API**，支持流式 / 非流式响应、工具调用（Tool Use）、思考输出（Extended Thinking）、提示缓存（Prompt Caching）、内置 Web Search 工具等能力。
+
+| 项目 | 值 |
+| --- | --- |
+| **请求方法** | `POST` |
+| **请求路径** | `/v1/messages` |
+| **完整 URL** | `https://api.amux.ai/v1/messages` |
+| **请求格式** | `application/json` |
+| **响应格式** | JSON 或 SSE（`stream=true` 时） |
+
+<Callout type="info">
+本接口完全对齐 Anthropic Messages 协议，可直接使用 [`@anthropic-ai/sdk`](https://github.com/anthropics/anthropic-sdk-typescript) 或 Python 版 `anthropic` SDK 调用，仅需替换 `baseURL` 与 API Key。
+</Callout>
+
+## 请求头
+
+<TypeTable
+  type={{
+    Authorization: {
+      type: 'string',
+      description: '`Bearer <API_TOKEN>`。Amux API 推荐使用此方式',
+    },
+    'x-api-key': {
+      type: 'string',
+      description: '兼容 Anthropic 原生鉴权方式。当未设置 `Authorization` 时，amux-api 自动将 `x-api-key` 转换为 Bearer Token',
+    },
+    'anthropic-version': {
+      type: 'string',
+      default: '2023-06-01',
+      description: 'Anthropic API 版本。可选；未传时 amux-api 默认使用 `2023-06-01`',
+    },
+    'anthropic-beta': {
+      type: 'string',
+      description: 'Anthropic Beta 功能开关，例如 `prompt-caching-2024-07-31`、`extended-cache-ttl-2025-04-11`，多个用逗号分隔。原样透传到上游',
+    },
+  }}
+/>
+
+## 请求体参数
+
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      required: true,
+      description: '模型 ID，例如 `claude-sonnet-4-5`、`claude-opus-4-1` 等。完整可用模型见 https://api.amux.ai/pricing',
+    },
+    messages: {
+      type: 'array<Message>',
+      required: true,
+      description: '对话消息列表（含历史上下文），按时间顺序排列，详见下方 Message 结构',
+      typeDescriptionLink: '#message-结构',
+    },
+    max_tokens: {
+      type: 'integer',
+      required: true,
+      description: '本次请求允许生成的最大 Token 数（>= 1）。Anthropic 必填字段',
+    },
+    system: {
+      type: 'string | array<ContentBlock>',
+      description: '系统提示词。可为字符串，也可为内容块数组（用于多段 system 与 cache_control 标注）',
+    },
+    temperature: {
+      type: 'number',
+      description: '采样温度，取值范围 `0.0 ~ 1.0`。值越高输出越随机',
+    },
+    top_p: {
+      type: 'number',
+      description: '核采样参数，取值范围 `0.0 ~ 1.0`',
+    },
+    top_k: {
+      type: 'integer',
+      description: '从概率最高的 K 个 Token 中采样',
+    },
+    stream: {
+      type: 'boolean',
+      default: 'false',
+      description: '是否以 SSE 流式返回',
+    },
+    stop_sequences: {
+      type: 'array<string>',
+      description: '停止序列，模型遇到任一序列时立即停止生成',
+    },
+    tools: {
+      type: 'array<Tool | WebSearchTool>',
+      description: '可供模型调用的工具列表。支持自定义函数工具和 Anthropic 内置工具（如 `web_search`）',
+      typeDescriptionLink: '#tool-结构',
+    },
+    tool_choice: {
+      type: 'object',
+      description: '工具选择策略，详见下方 ToolChoice 结构',
+      typeDescriptionLink: '#toolchoice-结构',
+    },
+    thinking: {
+      type: 'object',
+      description: '扩展思考（Extended Thinking）配置，详见下方 Thinking 结构',
+      typeDescriptionLink: '#thinking-结构',
+    },
+    metadata: {
+      type: 'object',
+      description: '请求元数据，例如 `{ "user_id": "..." }`，用于审计与滥用监控',
+    },
+    mcp_servers: {
+      type: 'array<object>',
+      description: 'MCP（Model Context Protocol）服务器列表，由 Anthropic 端解析与执行。原样透传',
+    },
+    context_management: {
+      type: 'object',
+      description: '上下文管理配置，原样透传',
+    },
+    container: {
+      type: 'object',
+      description: '代码执行容器配置（Code Execution Tool 相关），原样透传',
+    },
+    output_config: {
+      type: 'object',
+      description: '输出配置（部分 Claude 模型用于设定 reasoning effort 等），原样透传',
+    },
+    output_format: {
+      type: 'object',
+      description: '输出格式约束，原样透传',
+    },
+  }}
+/>
+
+<Callout type="info">
+**透传策略**：amux-api 对未在上方列出的字段会原样透传至上游 Anthropic / 兼容渠道。`temperature` 等未传值时由上游自行使用其默认值，amux-api 不在网关层强制填充默认值。
+</Callout>
+
+### Message 结构
+
+<TypeTable
+  type={{
+    role: {
+      type: 'string',
+      required: true,
+      description: '消息角色：`user` / `assistant`（Anthropic Messages 不接受 `system`，系统提示请使用顶层 `system` 字段）',
+    },
+    content: {
+      type: 'string | array<ContentBlock>',
+      required: true,
+      description: '消息内容。可为纯字符串，或内容块数组（多模态 / 工具调用）',
+    },
+  }}
+/>
+
+### ContentBlock 类型
+
+`content` 数组中每个元素的 `type` 字段决定其结构：
+
+<TypeTable
+  type={{
+    text: {
+      type: 'object',
+      description: '文本块：`{ "type": "text", "text": "...", "cache_control"?: {...} }`',
+    },
+    image: {
+      type: 'object',
+      description: '图像块：`{ "type": "image", "source": { "type": "base64" | "url", "media_type": "image/png", "data"?: "...", "url"?: "..." } }`',
+    },
+    document: {
+      type: 'object',
+      description: '文档块（PDF 等）：`{ "type": "document", "source": {...} }`',
+    },
+    tool_use: {
+      type: 'object',
+      description: '仅 `assistant`：模型发起的工具调用 `{ "type": "tool_use", "id": "...", "name": "...", "input": {...} }`',
+    },
+    tool_result: {
+      type: 'object',
+      description: '仅 `user`：工具执行结果 `{ "type": "tool_result", "tool_use_id": "...", "content": "..." | [...], "is_error"?: bool }`',
+    },
+    thinking: {
+      type: 'object',
+      description: '仅 `assistant`：模型推理过程（Extended Thinking 启用时）`{ "type": "thinking", "thinking": "...", "signature": "..." }`',
+    },
+    redacted_thinking: {
+      type: 'object',
+      description: '加密的推理内容，需在多轮中原样回传以保留思考状态',
+    },
+  }}
+/>
+
+所有内容块均可附加 `cache_control: { "type": "ephemeral" }` 以启用提示缓存。
+
+### Tool 结构
+
+<TypeTable
+  type={{
+    name: {
+      type: 'string',
+      required: true,
+      description: '工具名称',
+    },
+    description: {
+      type: 'string',
+      description: '工具描述，帮助模型理解何时调用',
+    },
+    input_schema: {
+      type: 'object',
+      required: true,
+      description: '工具入参的 JSON Schema 定义',
+    },
+  }}
+/>
+
+#### 内置 Web Search 工具
+
+<TypeTable
+  type={{
+    type: {
+      type: 'string',
+      required: true,
+      description: '固定为 `web_search_20250305`',
+    },
+    name: {
+      type: 'string',
+      required: true,
+      description: '固定为 `web_search`',
+    },
+    max_uses: {
+      type: 'integer',
+      description: '本次请求中允许的最大搜索次数',
+    },
+    user_location: {
+      type: 'object',
+      description: '用户位置（影响搜索结果地域）：`{ "type": "approximate", "timezone": "...", "country": "...", "region": "...", "city": "..." }`',
+    },
+  }}
+/>
+
+### ToolChoice 结构
+
+<TypeTable
+  type={{
+    type: {
+      type: 'string',
+      required: true,
+      description: '`auto` / `any` / `tool` / `none`',
+    },
+    name: {
+      type: 'string',
+      description: '当 `type=tool` 时，指定必须调用的工具名',
+    },
+    disable_parallel_tool_use: {
+      type: 'boolean',
+      description: '是否禁用并行工具调用',
+    },
+  }}
+/>
+
+### Thinking 结构
+
+<TypeTable
+  type={{
+    type: {
+      type: 'string',
+      required: true,
+      description: '`enabled` 启用扩展思考 / `disabled` 禁用',
+    },
+    budget_tokens: {
+      type: 'integer',
+      description: '思考阶段允许使用的最大 Token 数（必须小于 `max_tokens`）',
+    },
+  }}
+/>
+
+## 请求示例
+
+<Tabs items={['curl', 'Python', 'Node.js', '流式输出']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/messages \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -d '{
+    "model": "claude-sonnet-4-5",
+    "max_tokens": 1024,
+    "system": "You are a helpful assistant.",
+    "messages": [
+      {"role": "user", "content": "你好，请用一句话介绍 Amux API。"}
+    ]
+  }'
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+from anthropic import Anthropic
+
+client = Anthropic(
+    base_url="https://api.amux.ai",
+    api_key=os.environ["AMUX_API_KEY"],
+)
+
+message = client.messages.create(
+    model="claude-sonnet-4-5",
+    max_tokens=1024,
+    system="You are a helpful assistant.",
+    messages=[
+        {"role": "user", "content": "你好，请用一句话介绍 Amux API。"}
+    ],
+)
+
+print(message.content[0].text)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import Anthropic from '@anthropic-ai/sdk';
+
+const client = new Anthropic({
+  baseURL: 'https://api.amux.ai',
+  apiKey: process.env.AMUX_API_KEY,
+});
+
+const message = await client.messages.create({
+  model: 'claude-sonnet-4-5',
+  max_tokens: 1024,
+  system: 'You are a helpful assistant.',
+  messages: [
+    { role: 'user', content: '你好，请用一句话介绍 Amux API。' },
+  ],
+});
+
+console.log((message.content[0] as { type: 'text'; text: string }).text);
+```
+
+  </Tab>
+  <Tab value="流式输出">
+
+```ts
+const stream = await client.messages.create({
+  model: 'claude-sonnet-4-5',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: '写一首关于春天的诗' }],
+  stream: true,
+});
+
+for await (const event of stream) {
+  if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+    process.stdout.write(event.delta.text);
+  }
+}
+```
+
+  </Tab>
+</Tabs>
+
+## 响应示例
+
+```json
+{
+  "id": "msg_01XXXXXXXXXXXXXXXXXXXXXX",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-sonnet-4-5",
+  "content": [
+    {
+      "type": "text",
+      "text": "Amux API 是一个统一、稳定的企业级大模型接口网关。"
+    }
+  ],
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 24,
+    "output_tokens": 18,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0
+  }
+}
+```
+
+## 响应字段
+
+<TypeTable
+  type={{
+    id: {
+      type: 'string',
+      description: '本次消息的唯一 ID',
+    },
+    type: {
+      type: 'string',
+      description: '对象类型，固定为 `message`（流式时为各类事件类型）',
+    },
+    role: {
+      type: 'string',
+      description: '固定为 `assistant`',
+    },
+    model: {
+      type: 'string',
+      description: '实际调用的模型 ID',
+    },
+    content: {
+      type: 'array<ContentBlock>',
+      description: '响应内容块数组，可能包含 `text` / `tool_use` / `thinking` 等多种类型',
+    },
+    stop_reason: {
+      type: 'string',
+      description: '结束原因：`end_turn` / `max_tokens` / `stop_sequence` / `tool_use` / `pause_turn` / `refusal`',
+    },
+    stop_sequence: {
+      type: 'string | null',
+      description: '触发停止的具体序列（仅 `stop_reason=stop_sequence` 时非空）',
+    },
+    usage: {
+      type: 'Usage',
+      description: 'Token 用量统计，详见下方 Usage 结构',
+      typeDescriptionLink: '#usage-字段',
+    },
+  }}
+/>
+
+### Usage 字段
+
+<TypeTable
+  type={{
+    input_tokens: {
+      type: 'integer',
+      description: '本次请求消耗的输入 Token 数',
+    },
+    output_tokens: {
+      type: 'integer',
+      description: '本次响应生成的输出 Token 数',
+    },
+    cache_creation_input_tokens: {
+      type: 'integer',
+      description: '写入提示缓存（Prompt Cache）的 Token 数',
+    },
+    cache_read_input_tokens: {
+      type: 'integer',
+      description: '从提示缓存命中读取的 Token 数',
+    },
+    cache_creation: {
+      type: 'object',
+      description: '更细粒度的缓存写入统计：`{ "ephemeral_5m_input_tokens": 0, "ephemeral_1h_input_tokens": 0 }`',
+    },
+    server_tool_use: {
+      type: 'object',
+      description: '内置工具使用统计，例如 `{ "web_search_requests": 2 }`',
+    },
+  }}
+/>
+
+## 流式响应
+
+`stream=true` 时使用 SSE 格式按事件推送：
+
+```
+event: message_start
+data: {"type":"message_start","message":{"id":"msg_xxx","type":"message","role":"assistant","model":"claude-sonnet-4-5","content":[],"stop_reason":null,"usage":{"input_tokens":24,"output_tokens":1}}}
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Amux"}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" API"}}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0}
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"output_tokens":18}}
+
+event: message_stop
+data: {"type":"message_stop"}
+```
+
+常见事件：
+
+| 事件 | 说明 |
+| --- | --- |
+| `message_start` | 消息开始，含初始 `usage`（input_tokens 等） |
+| `content_block_start` | 新内容块开始（含 `index` 与初始 `content_block`） |
+| `content_block_delta` | 内容块增量（`delta.type` 可为 `text_delta` / `input_json_delta` / `thinking_delta` / `signature_delta`） |
+| `content_block_stop` | 内容块结束 |
+| `message_delta` | 消息级增量（更新 `stop_reason` 与累计 `usage`） |
+| `message_stop` | 消息结束 |
+| `ping` | 保活心跳 |
+| `error` | 流式过程中的错误事件 |
+
+## 错误响应
+
+```json
+{
+  "type": "error",
+  "error": {
+    "type": "invalid_request_error",
+    "message": "..."
+  }
+}
+```
+
+| HTTP 状态码 | 含义 |
+| --- | --- |
+| `200` | 请求成功 |
+| `400` | 请求参数错误（`invalid_request_error`） |
+| `401` | API 密钥无效或缺失（`authentication_error`） |
+| `403` | 权限不足（`permission_error`） |
+| `404` | 模型不存在（`not_found_error`） |
+| `413` | 请求体过大（`request_too_large`） |
+| `429` | 触发速率限制或额度不足（`rate_limit_error`） |
+| `500` / `502` / `529` | 服务端异常或上游过载 |

@@ -1,0 +1,9 @@
+{
+  "title": "Text",
+  "description": "Text generation and chat completion APIs",
+  "pages": [
+    "openai",
+    "anthropic",
+    "gemini"
+  ]
+}

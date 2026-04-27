@@ -1,0 +1,188 @@
+---
+title: Edit Images
+description: Edit images via OpenAI-compatible format using Aliyun Bailian Qwen-Image-Edit / Wan series models
+---
+
+Call Bailian image-editing models through the standard [OpenAI Images Edits](../openai/edits) endpoint. amux-api routes by `model` to the Ali adapter and converts uploaded multipart files to Base64 for the DashScope-native request shape.
+
+| Field | Value |
+| --- | --- |
+| **Method** | `POST` |
+| **Path** | `/v1/images/edits` |
+| **Full URL** | `https://api.amux.ai/v1/images/edits` |
+| **Auth** | `Authorization: Bearer <API_TOKEN>` |
+| **Request format** | `multipart/form-data` |
+| **Response format** | `application/json` |
+
+<Callout type="info">
+This endpoint shares the same path as [OpenAI / Edit Images](../openai/edits); only the `model` field differs. For multipart conventions (`image` / `mask` / `prompt`), see that document. This page focuses on Qwen-specific behavior.
+</Callout>
+
+## Supported Models
+
+amux-api ships with the following Bailian image-editing models:
+
+| Model | Description | Routing |
+| --- | --- | --- |
+| `qwen-image-edit` | Qwen general image editing | DashScope multimodal generation (sync) |
+| `qwen-image-edit-plus` series | Qwen Edit Plus (multiple versions) | DashScope multimodal generation (sync) |
+| `qwen-image-edit-max` series | Qwen Edit Max (multiple versions) | DashScope multimodal generation (sync) |
+| `wan2.6` / `wan2.7` | Wanx V2.6+ | DashScope image generation (async) |
+| `wan2.2-*` etc. older wan | Older Wanx versions | DashScope image transform (async) |
+
+For the full model list and pricing, see [https://api.amux.ai/pricing](https://api.amux.ai/pricing).
+
+## Form Fields
+
+amux-api follows the OpenAI Images Edits multipart convention:
+
+<TypeTable
+  type={{
+    image: {
+      type: 'file | array<file>',
+      required: true,
+      description: 'Source image(s) to edit. The `qwen-image-edit*` series supports multiple references via `image[]` or `image[0]` / `image[1]`.',
+    },
+    prompt: {
+      type: 'string',
+      required: true,
+      description: 'Text describing the desired image.',
+    },
+    model: {
+      type: 'string',
+      description: 'Model ID, e.g. `qwen-image-edit` / `qwen-image-edit-plus` / `wan2.6`.',
+    },
+    mask: {
+      type: 'file',
+      description: 'Optional mask image (supported by some models).',
+    },
+    n: {
+      type: 'integer',
+      description: 'Number of images to generate.',
+    },
+    watermark: {
+      type: 'boolean',
+      description: 'Whether to watermark the generated images.',
+    },
+    response_format: {
+      type: 'string',
+      description: '`url` / `b64_json`.',
+    },
+  }}
+/>
+
+<Callout type="info">
+**Multi-reference for Qwen Edit**: the `qwen-image-edit*` series supports edits based on multiple reference images. amux-api collects all uploaded files (sorted by field name), encodes them as Base64 media parts, and combines with the `prompt` to build DashScope's `input.messages[0].content`.
+</Callout>
+
+## Examples
+
+### Qwen Image Edit (single image)
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/images/edits \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -F "model=qwen-image-edit" \
+  -F "image=@cat.png" \
+  -F "prompt=Replace the background with a spring courtyard with falling cherry blossoms"
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.amux.ai/v1",
+    api_key=os.environ["AMUX_API_KEY"],
+)
+
+with open("cat.png", "rb") as image:
+    response = client.images.edit(
+        model="qwen-image-edit",
+        image=image,
+        prompt="Replace the background with a spring courtyard with falling cherry blossoms",
+    )
+
+print(response.data[0].url)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import { createReadStream } from 'node:fs';
+import OpenAI, { toFile } from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.amux.ai/v1',
+  apiKey: process.env.AMUX_API_KEY,
+});
+
+const response = await client.images.edit({
+  model: 'qwen-image-edit',
+  image: await toFile(createReadStream('cat.png'), 'cat.png'),
+  prompt: 'Replace the background with a spring courtyard with falling cherry blossoms',
+});
+
+console.log(response.data![0].url);
+```
+
+  </Tab>
+</Tabs>
+
+### Multiple Reference Images
+
+```bash
+curl https://api.amux.ai/v1/images/edits \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -F "model=qwen-image-edit-plus" \
+  -F "image[]=@reference-1.png" \
+  -F "image[]=@reference-2.png" \
+  -F "image[]=@reference-3.png" \
+  -F "prompt=Blend the styles of these three references into a new cover image"
+```
+
+### Wan Image Transform (img2img)
+
+```bash
+curl https://api.amux.ai/v1/images/edits \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -F "model=wan2.6" \
+  -F "image=@source.jpg" \
+  -F "prompt=Turn this photo into cyberpunk style" \
+  -F "watermark=false"
+```
+
+## Response Example
+
+amux-api always returns the OpenAI-standard `ImageResponse` shape, identical to [OpenAI Edit Images](../openai/edits#response-fields):
+
+```json
+{
+  "created": 1730000000,
+  "data": [
+    {
+      "url": "https://dashscope-result-xxx.oss-cn-beijing.aliyuncs.com/.../result.png"
+    }
+  ]
+}
+```
+
+`response_format=b64_json` returns a `b64_json` field instead.
+
+## Error Response
+
+| Error | Reason |
+| --- | --- |
+| `image is required` | The `image` form field was not uploaded (validated at the amux-api gateway). |
+| `failed to parse image edit form request` | Malformed multipart payload. |
+| `convert image edit form request failed` | Image encoding or parameter conversion failed. |
+| `unsupported image relay mode` | Model is not registered as an image-editing model in amux. |
+
+HTTP status codes follow the OpenAI convention — see [OpenAI Edit Images / Error Response](../openai/edits#error-response).

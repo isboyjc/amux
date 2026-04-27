@@ -1,0 +1,9 @@
+{
+  "title": "OpenAI Format",
+  "description": "OpenAI-compatible text endpoints (universal)",
+  "pages": [
+    "chat-completions",
+    "responses",
+    "completions"
+  ]
+}

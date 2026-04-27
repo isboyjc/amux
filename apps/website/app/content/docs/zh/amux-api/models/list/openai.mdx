@@ -1,0 +1,248 @@
+---
+title: OpenAI 格式
+description: 列出当前账户可用的所有模型 — OpenAI 兼容格式（`/v1/models`），并根据请求头自动适配 OpenAI / Anthropic 返回结构
+---
+
+获取当前 API 令牌可用的模型列表。amux-api 在 `/v1/models` 端点上**根据请求头自动识别返回格式**，可同时服务 OpenAI、Anthropic、Gemini 三种客户端。
+
+| 项目 | 值 |
+| --- | --- |
+| **请求方法** | `GET` |
+| **请求路径** | `/v1/models` |
+| **完整 URL** | `https://api.amux.ai/v1/models` |
+| **请求体** | 无 |
+| **响应格式** | `application/json` |
+
+<Callout type="info">
+**返回格式自动适配**（`router/relay-router.go:23-32`）：
+
+- 同时携带 `x-api-key` 和 `anthropic-version` 请求头 → 返回 **Anthropic 格式**
+- 携带 `x-goog-api-key` 请求头或 `?key=` query 参数 → 走 Gemini Retrieve 路径（推荐改用 [`/v1beta/models`](./gemini)）
+- 其他情况 → 返回 **OpenAI 格式**（默认）
+</Callout>
+
+## 请求头
+
+<TypeTable
+  type={{
+    Authorization: {
+      type: 'string',
+      description: '`Bearer <API_TOKEN>`。Amux API 推荐使用此方式',
+    },
+    'x-api-key': {
+      type: 'string',
+      description: '可选。与 `anthropic-version` 同时设置时，触发 Anthropic 格式返回；也可作为 Bearer Token 的替代鉴权',
+    },
+    'anthropic-version': {
+      type: 'string',
+      description: '可选。与 `x-api-key` 同时设置时，触发 Anthropic 格式返回',
+    },
+  }}
+/>
+
+## 响应
+
+返回的模型列表受以下因素过滤：
+
+- 当前 API 令牌的 **可用模型白名单**（如令牌限定了 `model_limit`）
+- 当前用户分组（或令牌指定的分组）所启用的模型
+- **是否包含未配置费率的模型** — 由系统设置 `SelfUseModeEnabled` 与用户设置 `AcceptUnsetRatioModel` 控制
+
+### OpenAI 格式响应（默认）
+
+```json
+{
+  "success": true,
+  "object": "list",
+  "data": [
+    {
+      "id": "gpt-5.4",
+      "object": "model",
+      "created": 1626777600,
+      "owned_by": "openai",
+      "supported_endpoint_types": ["chat", "responses"]
+    },
+    {
+      "id": "claude-sonnet-4-5",
+      "object": "model",
+      "created": 1626777600,
+      "owned_by": "anthropic",
+      "supported_endpoint_types": ["messages", "chat"]
+    }
+  ]
+}
+```
+
+<TypeTable
+  type={{
+    success: {
+      type: 'boolean',
+      description: 'amux-api 扩展字段：请求是否成功',
+    },
+    object: {
+      type: 'string',
+      description: '固定为 `list`',
+    },
+    data: {
+      type: 'array<Model>',
+      description: '模型对象列表',
+    },
+  }}
+/>
+
+#### Model 对象
+
+<TypeTable
+  type={{
+    id: {
+      type: 'string',
+      description: '模型 ID，作为后续 API 调用 `model` 字段的取值',
+    },
+    object: {
+      type: 'string',
+      description: '固定为 `model`',
+    },
+    created: {
+      type: 'integer',
+      description: '创建时间戳（Unix 秒）。amux-api 默认使用 `1626777600`',
+    },
+    owned_by: {
+      type: 'string',
+      description: '所属厂商。amux 内置模型为 `openai` / `anthropic` / `google` / `xai` / `minimax` 等；自定义模型为 `custom`',
+    },
+    supported_endpoint_types: {
+      type: 'array<string>',
+      description: 'amux-api 扩展字段：该模型支持的端点类型，例如 `chat` / `messages` / `responses` / `embeddings` / `image_generations` / `image_edits` 等。便于客户端按能力筛选模型',
+    },
+  }}
+/>
+
+### Anthropic 格式响应
+
+当请求同时携带 `x-api-key` 与 `anthropic-version` 时返回：
+
+```json
+{
+  "data": [
+    {
+      "id": "claude-sonnet-4-5",
+      "type": "model",
+      "display_name": "claude-sonnet-4-5",
+      "created_at": "2021-07-20T10:40:00Z"
+    }
+  ],
+  "first_id": "claude-sonnet-4-5",
+  "has_more": false,
+  "last_id": "claude-sonnet-4-5"
+}
+```
+
+<TypeTable
+  type={{
+    data: {
+      type: 'array<AnthropicModel>',
+      description: 'Anthropic 风格的模型对象列表（`id` / `type` / `display_name` / `created_at`）',
+    },
+    first_id: {
+      type: 'string',
+      description: '列表中第一个模型 ID',
+    },
+    last_id: {
+      type: 'string',
+      description: '列表中最后一个模型 ID',
+    },
+    has_more: {
+      type: 'boolean',
+      description: '是否还有更多模型（amux-api 当前总是返回 `false`）',
+    },
+  }}
+/>
+
+## 请求示例
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/models \
+  -H "Authorization: Bearer $AMUX_API_KEY"
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.amux.ai/v1",
+    api_key=os.environ["AMUX_API_KEY"],
+)
+
+models = client.models.list()
+for m in models.data:
+    print(m.id)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.amux.ai/v1',
+  apiKey: process.env.AMUX_API_KEY,
+});
+
+const models = await client.models.list();
+for (const m of models.data) {
+  console.log(m.id);
+}
+```
+
+  </Tab>
+</Tabs>
+
+### 以 Anthropic 格式拉取
+
+```bash
+curl https://api.amux.ai/v1/models \
+  -H "x-api-key: $AMUX_API_KEY" \
+  -H "anthropic-version: 2023-06-01"
+```
+
+## 检索单个模型
+
+amux-api 还支持检索单个模型：
+
+```
+GET /v1/models/{model}
+```
+
+```bash
+curl https://api.amux.ai/v1/models/gpt-5.4 \
+  -H "Authorization: Bearer $AMUX_API_KEY"
+```
+
+返回单个 Model 对象。同样支持通过 `x-api-key` + `anthropic-version` 头切换为 Anthropic 格式。
+
+## 错误响应
+
+```json
+{
+  "error": {
+    "message": "...",
+    "type": "invalid_request_error",
+    "code": "invalid_api_key"
+  }
+}
+```
+
+| HTTP 状态码 | 含义 |
+| --- | --- |
+| `200` | 请求成功 |
+| `401` | API 密钥无效或缺失 |
+| `404` | 检索单个模型时，`model` 不存在 |
+| `500` | 服务端异常 |

@@ -1,0 +1,12 @@
+{
+  "title": "Video",
+  "description": "Video generation APIs",
+  "pages": [
+    "---API Formats---",
+    "create-task",
+    "get-task",
+    "---Model-Specific---",
+    "doubao-seedance-2",
+    "doubao-seedance-2-fast"
+  ]
+}

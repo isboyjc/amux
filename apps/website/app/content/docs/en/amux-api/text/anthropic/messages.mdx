@@ -1,0 +1,518 @@
+---
+title: Messages
+description: Create messages — fully Anthropic Claude Messages API compatible, with streaming, tool use, extended thinking, and prompt caching
+---
+
+Generate Claude responses based on a conversation history. Fully compatible with Anthropic's native **Messages API**, with support for streaming and non-streaming responses, tool use, extended thinking, prompt caching, and the built-in web search tool.
+
+| Field | Value |
+| --- | --- |
+| **Method** | `POST` |
+| **Path** | `/v1/messages` |
+| **Full URL** | `https://api.amux.ai/v1/messages` |
+| **Request format** | `application/json` |
+| **Response format** | JSON, or SSE when `stream=true` |
+
+<Callout type="info">
+This endpoint is fully aligned with Anthropic's Messages protocol. You can use [`@anthropic-ai/sdk`](https://github.com/anthropics/anthropic-sdk-typescript) or the Python `anthropic` SDK directly — just override `baseURL` and the API key.
+</Callout>
+
+## Request Headers
+
+<TypeTable
+  type={{
+    Authorization: {
+      type: 'string',
+      description: '`Bearer <API_TOKEN>`. Recommended for Amux API.',
+    },
+    'x-api-key': {
+      type: 'string',
+      description: 'Compatible with Anthropic-native auth. When `Authorization` is not set, amux-api converts `x-api-key` into a Bearer Token internally.',
+    },
+    'anthropic-version': {
+      type: 'string',
+      default: '2023-06-01',
+      description: 'Anthropic API version. Optional; amux-api defaults to `2023-06-01` when omitted.',
+    },
+    'anthropic-beta': {
+      type: 'string',
+      description: 'Anthropic beta feature flags such as `prompt-caching-2024-07-31` or `extended-cache-ttl-2025-04-11`, comma-separated. Forwarded as-is.',
+    },
+  }}
+/>
+
+## Request Body
+
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      required: true,
+      description: 'Model ID, e.g. `claude-sonnet-4-5`, `claude-opus-4-1`. See https://api.amux.ai/pricing for the full list.',
+    },
+    messages: {
+      type: 'array<Message>',
+      required: true,
+      description: 'Conversation history, ordered chronologically. See the Message structure below.',
+      typeDescriptionLink: '#message-structure',
+    },
+    max_tokens: {
+      type: 'integer',
+      required: true,
+      description: 'Maximum tokens to generate (>= 1). Required by Anthropic.',
+    },
+    system: {
+      type: 'string | array<ContentBlock>',
+      description: 'System prompt. Either a plain string or an array of content blocks (for multi-segment system prompts and `cache_control` annotations).',
+    },
+    temperature: {
+      type: 'number',
+      description: 'Sampling temperature, range `0.0–1.0`.',
+    },
+    top_p: {
+      type: 'number',
+      description: 'Nucleus sampling, range `0.0–1.0`.',
+    },
+    top_k: {
+      type: 'integer',
+      description: 'Sample from the top K most-likely tokens.',
+    },
+    stream: {
+      type: 'boolean',
+      default: 'false',
+      description: 'Whether to stream the response as SSE.',
+    },
+    stop_sequences: {
+      type: 'array<string>',
+      description: 'Stop sequences. Generation halts when any is encountered.',
+    },
+    tools: {
+      type: 'array<Tool | WebSearchTool>',
+      description: 'Tools the model may call — both custom function tools and Anthropic built-in tools (e.g. `web_search`).',
+      typeDescriptionLink: '#tool-structure',
+    },
+    tool_choice: {
+      type: 'object',
+      description: 'Tool selection strategy. See the ToolChoice structure below.',
+      typeDescriptionLink: '#toolchoice-structure',
+    },
+    thinking: {
+      type: 'object',
+      description: 'Extended Thinking configuration. See the Thinking structure below.',
+      typeDescriptionLink: '#thinking-structure',
+    },
+    metadata: {
+      type: 'object',
+      description: 'Request metadata, e.g. `{ "user_id": "..." }` for audit and abuse monitoring.',
+    },
+    mcp_servers: {
+      type: 'array<object>',
+      description: 'MCP (Model Context Protocol) server list, parsed and executed by Anthropic. Forwarded as-is.',
+    },
+    context_management: {
+      type: 'object',
+      description: 'Context management config, forwarded as-is.',
+    },
+    container: {
+      type: 'object',
+      description: 'Code-execution container config (Code Execution Tool). Forwarded as-is.',
+    },
+    output_config: {
+      type: 'object',
+      description: 'Output config (used by some Claude models for reasoning effort, etc.). Forwarded as-is.',
+    },
+    output_format: {
+      type: 'object',
+      description: 'Output format constraints, forwarded as-is.',
+    },
+  }}
+/>
+
+<Callout type="info">
+**Passthrough**: amux-api forwards any field not listed above to upstream Anthropic / compatible channels as-is. Omitted fields fall back to the upstream's own defaults — amux-api does not inject defaults at the gateway layer.
+</Callout>
+
+### Message Structure
+
+<TypeTable
+  type={{
+    role: {
+      type: 'string',
+      required: true,
+      description: '`user` or `assistant`. (Anthropic Messages does not accept `system` here — use the top-level `system` field.)',
+    },
+    content: {
+      type: 'string | array<ContentBlock>',
+      required: true,
+      description: 'Either plain text, or an array of content blocks (for multimodal / tool use).',
+    },
+  }}
+/>
+
+### ContentBlock Types
+
+The `type` field of each element in `content` determines its shape:
+
+<TypeTable
+  type={{
+    text: {
+      type: 'object',
+      description: 'Text block: `{ "type": "text", "text": "...", "cache_control"?: {...} }`',
+    },
+    image: {
+      type: 'object',
+      description: 'Image block: `{ "type": "image", "source": { "type": "base64" | "url", "media_type": "image/png", "data"?: "...", "url"?: "..." } }`',
+    },
+    document: {
+      type: 'object',
+      description: 'Document block (e.g. PDF): `{ "type": "document", "source": {...} }`',
+    },
+    tool_use: {
+      type: 'object',
+      description: '`assistant` only — model-initiated tool call: `{ "type": "tool_use", "id": "...", "name": "...", "input": {...} }`',
+    },
+    tool_result: {
+      type: 'object',
+      description: '`user` only — tool execution result: `{ "type": "tool_result", "tool_use_id": "...", "content": "..." | [...], "is_error"?: bool }`',
+    },
+    thinking: {
+      type: 'object',
+      description: '`assistant` only — model reasoning when Extended Thinking is enabled: `{ "type": "thinking", "thinking": "...", "signature": "..." }`',
+    },
+    redacted_thinking: {
+      type: 'object',
+      description: 'Encrypted reasoning content. Pass back unchanged on subsequent turns to preserve thinking state.',
+    },
+  }}
+/>
+
+Any content block can carry `cache_control: { "type": "ephemeral" }` to enable prompt caching.
+
+### Tool Structure
+
+<TypeTable
+  type={{
+    name: {
+      type: 'string',
+      required: true,
+      description: 'Tool name.',
+    },
+    description: {
+      type: 'string',
+      description: 'Tool description, helps the model decide when to call.',
+    },
+    input_schema: {
+      type: 'object',
+      required: true,
+      description: 'JSON Schema describing the tool input.',
+    },
+  }}
+/>
+
+#### Built-in Web Search Tool
+
+<TypeTable
+  type={{
+    type: {
+      type: 'string',
+      required: true,
+      description: 'Always `web_search_20250305`.',
+    },
+    name: {
+      type: 'string',
+      required: true,
+      description: 'Always `web_search`.',
+    },
+    max_uses: {
+      type: 'integer',
+      description: 'Maximum search invocations allowed in this request.',
+    },
+    user_location: {
+      type: 'object',
+      description: 'User location influencing search results: `{ "type": "approximate", "timezone": "...", "country": "...", "region": "...", "city": "..." }`',
+    },
+  }}
+/>
+
+### ToolChoice Structure
+
+<TypeTable
+  type={{
+    type: {
+      type: 'string',
+      required: true,
+      description: '`auto` / `any` / `tool` / `none`.',
+    },
+    name: {
+      type: 'string',
+      description: 'When `type=tool`, the name of the specific tool that must be invoked.',
+    },
+    disable_parallel_tool_use: {
+      type: 'boolean',
+      description: 'Whether to disable parallel tool use.',
+    },
+  }}
+/>
+
+### Thinking Structure
+
+<TypeTable
+  type={{
+    type: {
+      type: 'string',
+      required: true,
+      description: '`enabled` to enable extended thinking, `disabled` to turn it off.',
+    },
+    budget_tokens: {
+      type: 'integer',
+      description: 'Max tokens the thinking phase may consume (must be less than `max_tokens`).',
+    },
+  }}
+/>
+
+## Examples
+
+<Tabs items={['curl', 'Python', 'Node.js', 'Streaming']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/messages \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -d '{
+    "model": "claude-sonnet-4-5",
+    "max_tokens": 1024,
+    "system": "You are a helpful assistant.",
+    "messages": [
+      {"role": "user", "content": "Introduce Amux API in one sentence."}
+    ]
+  }'
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+from anthropic import Anthropic
+
+client = Anthropic(
+    base_url="https://api.amux.ai",
+    api_key=os.environ["AMUX_API_KEY"],
+)
+
+message = client.messages.create(
+    model="claude-sonnet-4-5",
+    max_tokens=1024,
+    system="You are a helpful assistant.",
+    messages=[
+        {"role": "user", "content": "Introduce Amux API in one sentence."}
+    ],
+)
+
+print(message.content[0].text)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import Anthropic from '@anthropic-ai/sdk';
+
+const client = new Anthropic({
+  baseURL: 'https://api.amux.ai',
+  apiKey: process.env.AMUX_API_KEY,
+});
+
+const message = await client.messages.create({
+  model: 'claude-sonnet-4-5',
+  max_tokens: 1024,
+  system: 'You are a helpful assistant.',
+  messages: [
+    { role: 'user', content: 'Introduce Amux API in one sentence.' },
+  ],
+});
+
+console.log((message.content[0] as { type: 'text'; text: string }).text);
+```
+
+  </Tab>
+  <Tab value="Streaming">
+
+```ts
+const stream = await client.messages.create({
+  model: 'claude-sonnet-4-5',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: 'Write a short poem about spring.' }],
+  stream: true,
+});
+
+for await (const event of stream) {
+  if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+    process.stdout.write(event.delta.text);
+  }
+}
+```
+
+  </Tab>
+</Tabs>
+
+## Response Example
+
+```json
+{
+  "id": "msg_01XXXXXXXXXXXXXXXXXXXXXX",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-sonnet-4-5",
+  "content": [
+    {
+      "type": "text",
+      "text": "Amux API is a unified, stable enterprise-grade LLM API gateway."
+    }
+  ],
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 24,
+    "output_tokens": 18,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0
+  }
+}
+```
+
+## Response Fields
+
+<TypeTable
+  type={{
+    id: {
+      type: 'string',
+      description: 'Unique message ID.',
+    },
+    type: {
+      type: 'string',
+      description: 'Always `message` (or one of the streaming event types when `stream=true`).',
+    },
+    role: {
+      type: 'string',
+      description: 'Always `assistant`.',
+    },
+    model: {
+      type: 'string',
+      description: 'Model ID actually used for the request.',
+    },
+    content: {
+      type: 'array<ContentBlock>',
+      description: 'Response content blocks — may include `text`, `tool_use`, `thinking`, etc.',
+    },
+    stop_reason: {
+      type: 'string',
+      description: '`end_turn` / `max_tokens` / `stop_sequence` / `tool_use` / `pause_turn` / `refusal`.',
+    },
+    stop_sequence: {
+      type: 'string | null',
+      description: 'The matched stop sequence (only set when `stop_reason=stop_sequence`).',
+    },
+    usage: {
+      type: 'Usage',
+      description: 'Token usage. See the Usage structure below.',
+      typeDescriptionLink: '#usage-fields',
+    },
+  }}
+/>
+
+### Usage Fields
+
+<TypeTable
+  type={{
+    input_tokens: {
+      type: 'integer',
+      description: 'Input tokens consumed by this request.',
+    },
+    output_tokens: {
+      type: 'integer',
+      description: 'Output tokens generated in this response.',
+    },
+    cache_creation_input_tokens: {
+      type: 'integer',
+      description: 'Tokens written to the prompt cache.',
+    },
+    cache_read_input_tokens: {
+      type: 'integer',
+      description: 'Tokens served from the prompt cache.',
+    },
+    cache_creation: {
+      type: 'object',
+      description: 'Finer-grained cache write breakdown: `{ "ephemeral_5m_input_tokens": 0, "ephemeral_1h_input_tokens": 0 }`.',
+    },
+    server_tool_use: {
+      type: 'object',
+      description: 'Built-in tool usage stats, e.g. `{ "web_search_requests": 2 }`.',
+    },
+  }}
+/>
+
+## Streaming
+
+When `stream=true`, the response is an SSE event sequence:
+
+```
+event: message_start
+data: {"type":"message_start","message":{"id":"msg_xxx","type":"message","role":"assistant","model":"claude-sonnet-4-5","content":[],"stop_reason":null,"usage":{"input_tokens":24,"output_tokens":1}}}
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Amux"}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" API"}}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0}
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"output_tokens":18}}
+
+event: message_stop
+data: {"type":"message_stop"}
+```
+
+Common events:
+
+| Event | Description |
+| --- | --- |
+| `message_start` | Message begins, includes initial `usage` (input_tokens etc.) |
+| `content_block_start` | New content block opens (with `index` and initial `content_block`) |
+| `content_block_delta` | Content block delta (`delta.type` may be `text_delta` / `input_json_delta` / `thinking_delta` / `signature_delta`) |
+| `content_block_stop` | Content block closes |
+| `message_delta` | Message-level update (sets `stop_reason` and cumulative `usage`) |
+| `message_stop` | Message ends |
+| `ping` | Keep-alive heartbeat |
+| `error` | Error during the stream |
+
+## Error Response
+
+```json
+{
+  "type": "error",
+  "error": {
+    "type": "invalid_request_error",
+    "message": "..."
+  }
+}
+```
+
+| HTTP Status | Meaning |
+| --- | --- |
+| `200` | Success |
+| `400` | Bad request parameters (`invalid_request_error`) |
+| `401` | Missing or invalid API key (`authentication_error`) |
+| `403` | Permission denied (`permission_error`) |
+| `404` | Model not found (`not_found_error`) |
+| `413` | Request body too large (`request_too_large`) |
+| `429` | Rate limit triggered or insufficient balance (`rate_limit_error`) |
+| `500` / `502` / `529` | Server-side error or upstream overloaded |

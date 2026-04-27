@@ -1,0 +1,301 @@
+---
+title: 图像生成/编辑
+description: 通过 Gemini 原生 generateContent 接口生成或编辑图像 — Nano Banana 系列、Gemini Flash Image 等
+---
+
+通过 Google Gemini 原生 `generateContent` 接口调用 Nano Banana 系列图像模型生成或编辑图像。amux-api 在网关层会自动为图像模型注入 `responseModalities=["TEXT","IMAGE"]`，并将上游返回的 `inlineData` 透传给客户端。
+
+| 项目 | 值 |
+| --- | --- |
+| **请求方法** | `POST` |
+| **请求路径** | `/v1beta/models/{model}:generateContent` |
+| **完整 URL** | `https://api.amux.ai/v1beta/models/gemini-2.5-flash-image:generateContent` |
+| **请求格式** | `application/json` |
+| **响应格式** | `application/json` |
+
+<Callout type="info">
+本接口与 [Gemini 文本聊天](../../text/gemini/chat) 共用同一端点。请求体的完整字段参考请见文本聊天文档；本页仅聚焦图像生成相关字段与响应处理。
+</Callout>
+
+## 支持图像生成的模型
+
+amux-api 内置以下 Gemini 图像生成模型（`SupportedImagineModels`）：
+
+| 模型 | 别名 / 说明 |
+| --- | --- |
+| `gemini-2.5-flash-image` | Nano Banana |
+| `gemini-3-pro-image-preview` | Nano Banana Pro |
+| `gemini-3.1-flash-image-preview` | Nano Banana 2 |
+| `gemini-2.0-flash-exp-image-generation` | 早期实验版 |
+| `gemini-2.0-flash-exp` | 早期实验版 |
+
+完整可用模型与计费见 [https://api.amux.ai/pricing](https://api.amux.ai/pricing)。
+
+<Callout type="info">
+**`imagen-*` 系列**（如 `imagen-4.0-generate-001`）走 Google 原生 `:predict` 端点，不在本页范围内。可通过 `/v1/images/generations`（OpenAI 格式）调用。
+</Callout>
+
+## 路径参数
+
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      required: true,
+      description: '图像生成模型 ID。例如 `gemini-2.5-flash-image`、`gemini-3-pro-image-preview`',
+    },
+    action: {
+      type: 'string',
+      required: true,
+      description: '动作名。图像生成使用 `generateContent`',
+    },
+  }}
+/>
+
+## 请求头与认证
+
+与文本聊天一致，三种鉴权方式任选其一：
+
+| 渠道 | 取值 |
+| --- | --- |
+| **Authorization** | `Bearer <API_TOKEN>`（推荐） |
+| **x-goog-api-key** | `<API_TOKEN>` |
+| **?key=** | query 参数 |
+
+## 关键请求字段
+
+<TypeTable
+  type={{
+    contents: {
+      type: 'array<Content>',
+      required: true,
+      description: '内容列表。`parts[]` 中的 `text` 作为提示词，`inlineData` 作为参考图（用于图像编辑场景）',
+    },
+    generationConfig: {
+      type: 'object',
+      description: '生成参数。图像生成关键字段见下',
+    },
+    safetySettings: {
+      type: 'array<SafetySetting>',
+      description: '安全过滤设置（与文本一致）',
+    },
+  }}
+/>
+
+### generationConfig 关键字段
+
+<TypeTable
+  type={{
+    responseModalities: {
+      type: 'array<string>',
+      description: '请求输出模态。**图像生成必须包含 `IMAGE`**。amux-api 在识别到图像模型时会自动注入 `["TEXT","IMAGE"]`，因此调用方可省略；显式指定时也会被保留',
+    },
+    imageConfig: {
+      type: 'object',
+      description: '图像配置：`{ "aspectRatio": "1:1" | "3:2" | "2:3" | "16:9" | "9:16", "imageSize": "1K" | "2K" }`。**注意**：必须使用 camelCase 命名（`aspectRatio` / `imageSize`），上游 Gemini API 仅接受 camelCase',
+    },
+    seed: {
+      type: 'integer',
+      description: '随机种子，用于尽量复现结果',
+    },
+    thinkingConfig: {
+      type: 'object',
+      description: '扩展思考配置，部分模型（Nano Banana 2 / Gemini 3.1 Flash Image）支持',
+    },
+  }}
+/>
+
+<Callout type="warn">
+**字段命名陷阱**：Gemini 上游对 `imageConfig` 内字段仅接受 camelCase（`aspectRatio`、`imageSize`），传入 snake_case 会被上游拒绝。如果需要在 OpenAI Chat 格式（`extra_body.google.image_config`）中传入，amux-api 会自动从 snake_case 转 camelCase（详见 [OpenAI 聊天格式](./chat-completions)）。
+</Callout>
+
+## 请求示例
+
+### 文本生图
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl "https://api.amux.ai/v1beta/models/gemini-2.5-flash-image:generateContent" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d '{
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          { "text": "一只戴着贝雷帽的可爱海獭幼崽，水彩风格" }
+        ]
+      }
+    ],
+    "generationConfig": {
+      "responseModalities": ["TEXT", "IMAGE"],
+      "imageConfig": {
+        "aspectRatio": "1:1",
+        "imageSize": "1K"
+      }
+    }
+  }'
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+import base64
+from google import genai
+
+client = genai.Client(
+    api_key=os.environ["AMUX_API_KEY"],
+    http_options={"base_url": "https://api.amux.ai"},
+)
+
+response = client.models.generate_content(
+    model="gemini-2.5-flash-image",
+    contents="一只戴着贝雷帽的可爱海獭幼崽，水彩风格",
+    config={
+        "response_modalities": ["TEXT", "IMAGE"],
+        "image_config": {
+            "aspect_ratio": "1:1",
+            "image_size": "1K",
+        },
+    },
+)
+
+for part in response.candidates[0].content.parts:
+    if part.inline_data:
+        with open("otter.png", "wb") as f:
+            f.write(base64.b64decode(part.inline_data.data))
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import { writeFileSync } from 'node:fs';
+import { GoogleGenAI } from '@google/genai';
+
+const ai = new GoogleGenAI({
+  apiKey: process.env.AMUX_API_KEY!,
+  httpOptions: { baseUrl: 'https://api.amux.ai' },
+});
+
+const response = await ai.models.generateContent({
+  model: 'gemini-2.5-flash-image',
+  contents: '一只戴着贝雷帽的可爱海獭幼崽，水彩风格',
+  config: {
+    responseModalities: ['TEXT', 'IMAGE'],
+    imageConfig: { aspectRatio: '1:1', imageSize: '1K' },
+  },
+});
+
+for (const part of response.candidates![0].content!.parts!) {
+  if (part.inlineData) {
+    writeFileSync('otter.png', Buffer.from(part.inlineData.data!, 'base64'));
+  }
+}
+```
+
+  </Tab>
+</Tabs>
+
+### 图像编辑（参考图 + 提示词）
+
+```bash
+IMAGE_BASE64=$(base64 < cat.png | tr -d '\n')
+
+curl "https://api.amux.ai/v1beta/models/gemini-2.5-flash-image:generateContent" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -d "{
+    \"contents\": [{
+      \"role\": \"user\",
+      \"parts\": [
+        { \"text\": \"把这张图的背景换成樱花飘落的春日庭院\" },
+        { \"inlineData\": { \"mimeType\": \"image/png\", \"data\": \"$IMAGE_BASE64\" } }
+      ]
+    }],
+    \"generationConfig\": {
+      \"responseModalities\": [\"TEXT\", \"IMAGE\"],
+      \"imageConfig\": { \"aspectRatio\": \"1:1\" }
+    }
+  }"
+```
+
+## 响应示例
+
+```json
+{
+  "candidates": [
+    {
+      "content": {
+        "role": "model",
+        "parts": [
+          { "text": "这是一只戴着贝雷帽的海獭幼崽。" },
+          {
+            "inlineData": {
+              "mimeType": "image/png",
+              "data": "iVBORw0KGgoAAAANSUhEUgAA..."
+            }
+          }
+        ]
+      },
+      "finishReason": "STOP",
+      "index": 0,
+      "safetyRatings": []
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 24,
+    "candidatesTokenCount": 1290,
+    "totalTokenCount": 1314,
+    "promptTokensDetails": [
+      { "modality": "TEXT", "tokenCount": 24 }
+    ]
+  }
+}
+```
+
+## 响应字段
+
+完整响应结构与 [文本聊天的响应](../../text/gemini/chat#响应字段) 一致。图像生成的关键差异：
+
+<TypeTable
+  type={{
+    'candidates[].content.parts[].inlineData': {
+      type: 'object',
+      description: '生成的图像数据：`{ "mimeType": "image/png" | "image/jpeg" | "image/webp", "data": "<base64>" }`',
+    },
+    'candidates[].content.parts[].text': {
+      type: 'string',
+      description: '可能伴随返回的描述文本（取决于模型与提示）',
+    },
+    'usageMetadata.candidatesTokenCount': {
+      type: 'integer',
+      description: '生成图像的 Token 数（图像 Token 数通常远高于文本）',
+    },
+  }}
+/>
+
+## 错误响应
+
+错误响应结构与 [Gemini 文本聊天](../../text/gemini/chat#错误响应) 一致：
+
+```json
+{
+  "error": {
+    "code": 400,
+    "message": "...",
+    "status": "INVALID_ARGUMENT"
+  }
+}
+```
+
+常见错误：
+
+| 错误 | 原因 |
+| --- | --- |
+| `not supported model for image generation` | 模型不在 `SupportedImagineModels` 列表中（amux 网关层校验） |
+| `extra_body.google.image_config.aspectRatio is not supported, use ... aspect_ratio` | 通过 `extra_body` 传入时使用了 camelCase；应使用 snake_case |

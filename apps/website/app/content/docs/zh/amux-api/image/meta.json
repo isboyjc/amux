@@ -1,0 +1,15 @@
+{
+  "title": "图像",
+  "description": "图像生成与编辑 API",
+  "pages": [
+    "---接口格式---",
+    "openai",
+    "gemini",
+    "qwen",
+    "---模型专属---",
+    "gpt-image-2",
+    "nano-banana-pro",
+    "nano-banana-2",
+    "nano-banana"
+  ]
+}
