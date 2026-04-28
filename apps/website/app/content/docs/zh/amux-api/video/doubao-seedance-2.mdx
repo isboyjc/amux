@@ -1,10 +1,534 @@
 ---
-title: Doubao Seedance 2.0
-description: 豆包 Seedance 2.0 视频生成模型专属接口
+title: 豆包 Seedance 2.0 系列
+description: Doubao Seedance 2.0 / 2.0 Fast 视频生成模型 — 多模态输入（文 / 图 / 视频 / 音频）、首末帧锁定、参考图、原生音频生成；支持火山原生与 amux 通用两种调用方式
 ---
 
-<Callout type="info">
-  本接口文档正在编写中，敬请期待。
+豆包 Seedance 2.0 是字节跳动火山方舟（Volcengine Ark）推出的多模态视频生成模型，支持文本、图像、视频、音频四种输入模态混合，最多 9 张图 / 3 个视频片段 / 3 个音频片段。amux-api 同时提供 **火山原生端点** 与 **amux 通用端点** 两种创建任务方式，二者共用同一套 [获取任务状态](./get-task) 接口。
+
+## 模型版本
+
+| 模型 ID | 定位 | 适用场景 |
+| --- | --- | --- |
+| `doubao-seedance-2.0` | 标准版 | 画质优先、最终成片，支持 720p / 1080p |
+| `doubao-seedance-2.0-fast` | 加速版 | 速度优先、价格更低，适合 prompt 迭代 / 草样。**仅支持 720p**，不支持 1080p |
+
+具体单价见 [https://api.amux.ai/pricing](https://api.amux.ai/pricing)。
+
+## 创建视频生成任务
+
+提供两种调用方式，二者共用同一套 [获取任务状态](./get-task) 接口：
+
+- **方式一（火山原生）**：`POST /api/v3/contents/generations/tasks` — 与火山官方契约一致，火山原生 SDK 改 `base_url` 即可使用
+- **方式二（amux 通用）**：`POST /v1/video/generations` — 跨厂商统一格式，火山专属字段通过 `metadata` 透传
+
+### 方式一：火山原生端点
+
+| 项目 | 值 |
+| --- | --- |
+| **请求方法** | `POST` |
+| **完整 URL** | `https://api.amux.ai/api/v3/contents/generations/tasks` |
+| **认证** | `Authorization: Bearer <AMUX_API_KEY>` |
+| **请求格式** | `application/json` |
+| **响应格式** | `application/json` |
+
+amux 网关识别"火山原生格式"的条件：请求体含 `content` 字段 **且** 不含 `prompt` 字段。同时存在两者会被当作通用格式处理（走方式二的转换链路）。
+
+#### 请求体字段
+
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      required: true,
+      description: <><code>doubao-seedance-2.0</code> 或 <code>doubao-seedance-2.0-fast</code></>,
+    },
+    content: {
+      type: 'ContentItem[]',
+      required: true,
+      description: <>混合模态内容数组。详见 <a href="#contentitem-元素">ContentItem 元素</a>、<a href="#场景与角色">场景与角色</a>、<a href="#资源约束">资源约束</a></>,
+    },
+    ratio: {
+      type: 'string',
+      description: <>画面比例。枚举 <code>21:9</code> / <code>16:9</code> / <code>4:3</code> / <code>1:1</code> / <code>3:4</code> / <code>9:16</code> / <code>keep_ratio</code> / <code>adaptive</code>，默认 <code>adaptive</code>。<code>keep_ratio</code> 保持输入图原比例；<code>adaptive</code> 由模型按场景自适应</>,
+    },
+    duration: {
+      type: 'integer',
+      description: <>时长（秒）。范围 <code>0</code> ~ <code>16</code>，<strong>默认 <code>0</code></strong>。<code>0</code> 表示由模型自动选择；其他整数为指定秒数</>,
+    },
+    resolution: {
+      type: 'string',
+      description: <>分辨率档位。枚举 <code>720p</code> / <code>1080p</code>，<strong>默认 <code>720p</code></strong>。<strong><code>1080p</code> 单价高于 <code>720p</code></strong>（详见 <a href="https://api.amux.ai/pricing">pricing</a>），且 <strong><code>doubao-seedance-2.0-fast</code> 不支持 <code>1080p</code></strong></>,
+    },
+    seed: {
+      type: 'integer',
+      description: <>随机种子。整数，留空时随机；同 prompt + 同 seed 尽量复现同一画面</>,
+    },
+    generate_audio: {
+      type: 'boolean',
+      description: <>是否生成与画面同步的音频。<strong>默认 <code>true</code></strong>。关闭后产物为纯画面</>,
+    },
+    callback_url: {
+      type: 'string',
+      description: <>任务完成后上游回调地址（公网可达，建议 HTTPS）</>,
+    },
+    trace_id: {
+      type: 'string',
+      description: <>用户自定义透传 ID，任务完成时会通过 callback 回调原样返回，便于业务侧关联请求与回调。<strong>需与 <code>callback_url</code> 同时传才生效</strong></>,
+    },
+  }}
+/>
+
+#### ContentItem 元素
+
+`content` 数组的每个元素是一个 ContentItem，按 `type` 区分内容形态：
+
+<TypeTable
+  type={{
+    type: {
+      type: '"text" | "image_url" | "video_url" | "audio_url"',
+      required: true,
+      description: <>内容类型</>,
+    },
+    text: {
+      type: 'string',
+      description: <>当 <code>type=text</code> 时的 prompt 文本</>,
+    },
+    image_url: {
+      type: '{ url: string }',
+      description: <>当 <code>type=image_url</code> 时的图像源（HTTP/HTTPS URL 或 Base64 data URL）。单张 ≤ 30 MB，详见 <a href="#资源约束">资源约束</a></>,
+    },
+    video_url: {
+      type: '{ url: string }',
+      description: <>当 <code>type=video_url</code> 时的视频源（HTTP/HTTPS URL）。单段 ≤ 50 MB，时长 [2, 15]s，最多 3 段且总时长 ≤ 15s，详见 <a href="#资源约束">资源约束</a>。命中视频输入会触发计费折扣（见 <a href="#计费说明">计费说明</a>）</>,
+    },
+    audio_url: {
+      type: '{ url: string }',
+      description: <>当 <code>type=audio_url</code> 时的音频源（HTTP/HTTPS URL）。单段 ≤ 15 MB，时长 [2, 15]s，最多 3 段且总时长 ≤ 15s，详见 <a href="#资源约束">资源约束</a></>,
+    },
+    role: {
+      type: '"first_frame" | "last_frame" | "reference_image"',
+      description: <>图像角色，<strong>仅 <code>image_url</code> 类型支持</strong>。决定该图作为首帧 / 末帧 / 参考图被使用。每张参考图的 role 均为 <code>reference_image</code>。详见 <a href="#场景与角色">场景与角色</a></>,
+    },
+  }}
+/>
+
+#### 场景与角色
+
+提交任务可分为以下 4 种场景，**含图像的 3 种场景互斥，不能在同一任务中混用**：
+
+| 场景 | image_url | video_url | audio_url |
+| --- | --- | --- | --- |
+| 文生视频 | — | — | — |
+| 图生视频（首帧） | 1 张，`role: first_frame` | — | — |
+| 图生视频（首+尾帧） | 2 张，`role: first_frame` + `last_frame` | — | — |
+| 多模态参考生视频 | 1–9 张，`role: reference_image` | 0–3 段 | 0–3 段 |
+
+> 多模态参考模式下，三种模态都是可选的（可只传图、只传视频、只传音频，或任意组合）。
+
+**首尾帧场景的特殊行为**：
+
+- 首尾帧图片可相同
+- 首尾帧宽高比不一致时，**以首帧为主**，末帧自动裁剪适配
+
+**首尾帧 × 多模态参考的近似实现**：
+
+多模态参考模式下，可在 prompt 中用 `@imageN` 指定某张参考图作为首帧 / 末帧，间接实现"首尾帧 + 多模态参考"效果。但若需**严格保障首尾帧锁定**，请用图生视频-首尾帧场景（明确 `role: first_frame` / `last_frame`）。
+
+#### 资源约束
+
+| 资源 | 单文件上限 | 时长 | 数量 | 格式 |
+| --- | --- | --- | --- | --- |
+| 图像（image_url） | 30 MB | — | 见上方场景表 | HTTP/HTTPS URL 或 Base64 data URL |
+| 视频（video_url） | 50 MB | 单段 [2, 15] 秒 | ≤ 3 段，总时长 ≤ 15 秒 | mp4 / mov；分辨率 480p / 720p / 1080p |
+| 音频（audio_url） | 15 MB | 单段 [2, 15] 秒 | ≤ 3 段，总时长 ≤ 15 秒 | wav / mp3 |
+
+<Callout type="warn">
+**整体限制**：请求体总大小 ≤ 64 MB。**大文件请勿使用 Base64 编码**，推荐使用公网 HTTP/HTTPS URL 提交，既避开 64 MB 限制，又减少传输延迟。
 </Callout>
 
-> TODO: 完善 Doubao Seedance 2.0 模型的专属调用方式、请求参数、响应字段、能力说明（时长、分辨率、风格等）与代码示例。
+#### 示例 — 文生视频
+
+```bash
+curl https://api.amux.ai/api/v3/contents/generations/tasks \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "doubao-seedance-2.0",
+    "content": [
+      { "type": "text", "text": "一只戴着贝雷帽的可爱海獭幼崽，在樱花飘落的春日庭院中翻滚" }
+    ],
+    "ratio": "16:9",
+    "duration": 5,
+    "resolution": "720p",
+    "generate_audio": true
+  }'
+```
+
+#### 示例 — 图生视频（首尾帧锁定）
+
+```bash
+curl https://api.amux.ai/api/v3/contents/generations/tasks \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "doubao-seedance-2.0",
+    "content": [
+      { "type": "text", "text": "镜头从院落缓慢推近至屋内" },
+      { "type": "image_url", "image_url": { "url": "https://example.com/start.jpg" }, "role": "first_frame" },
+      { "type": "image_url", "image_url": { "url": "https://example.com/end.jpg" },   "role": "last_frame"  }
+    ],
+    "ratio": "16:9",
+    "duration": 5
+  }'
+```
+
+#### 示例 — 多参考图
+
+```bash
+curl https://api.amux.ai/api/v3/contents/generations/tasks \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "doubao-seedance-2.0",
+    "content": [
+      { "type": "text", "text": "@image1 与 @image2 在花园相遇" },
+      { "type": "image_url", "image_url": { "url": "https://example.com/character-a.jpg" }, "role": "reference_image" },
+      { "type": "image_url", "image_url": { "url": "https://example.com/character-b.jpg" }, "role": "reference_image" }
+    ],
+    "ratio": "16:9"
+  }'
+```
+
+#### 示例 — 视频 + 音频参考（多模态）
+
+```bash
+curl https://api.amux.ai/api/v3/contents/generations/tasks \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "doubao-seedance-2.0",
+    "content": [
+      { "type": "text", "text": "续接画面节奏，与音频同步" },
+      { "type": "video_url", "video_url": { "url": "https://example.com/sample-clip.mp4" } },
+      { "type": "audio_url", "audio_url": { "url": "https://example.com/voice.mp3" } }
+    ],
+    "ratio": "16:9",
+    "duration": 5
+  }'
+```
+
+#### 示例 — 带回调与自定义 trace_id
+
+```bash
+curl https://api.amux.ai/api/v3/contents/generations/tasks \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "doubao-seedance-2.0",
+    "content": [
+      { "type": "text", "text": "傍晚的港口，海鸥掠过" }
+    ],
+    "ratio": "16:9",
+    "duration": 5,
+    "callback_url": "https://your-app.example.com/api/seedance/callback",
+    "trace_id": "biz-order-20260428-001"
+  }'
+```
+
+#### 响应（提交成功）
+
+```json
+{
+  "id": "cgt-2024xxxxxxxxxxxx",
+  "model": "doubao-seedance-2.0",
+  "status": "queued",
+  "created_at": 1714300000
+}
+```
+
+`id` 即任务 ID，可直接用于 [获取任务状态](./get-task)。
+
+### 方式二：amux 通用端点
+
+跨厂商统一契约。常规字段（`prompt` / `image` / `images`）写顶层，火山专属字段通过 `metadata` 透传。
+
+| 项目 | 值 |
+| --- | --- |
+| **请求方法** | `POST` |
+| **完整 URL** | `https://api.amux.ai/v1/video/generations` |
+| **认证** | `Authorization: Bearer <AMUX_API_KEY>` |
+| **请求格式** | `application/json` |
+
+通用字段定义见 [创建视频生成任务（通用）](./create-task#请求体参数)。
+
+<Callout type="warn">
+**`prompt` 强制必填**：amux 校验层强制要求 `prompt` 非空，即便首/末帧锁定或纯参考图模式也必须提供 prompt。
+</Callout>
+
+#### 顶层字段
+
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      required: true,
+      description: <><code>doubao-seedance-2.0</code> 或 <code>doubao-seedance-2.0-fast</code></>,
+    },
+    prompt: {
+      type: 'string',
+      required: true,
+      description: <>文本提示词，<strong>强制必填</strong></>,
+    },
+    image: {
+      type: 'string',
+      description: <>单张图（HTTP URL 或 Base64）。会被自动归一为 <code>images: [image]</code>，作为不带 role 的 image_url 项加入 content。要明确指定 role 请用 <code>metadata.content</code></>,
+    },
+    images: {
+      type: 'string[]',
+      description: <>图像数组。每张作为不带 role 的 image_url 项加入 content。要明确指定 role 请用 <code>metadata.content</code></>,
+    },
+    seconds: {
+      type: 'string',
+      description: <>时长（秒，<strong>字符串</strong>）。会覆盖 <code>metadata.duration</code>。<strong>Doubao adapter 不读取顶层 <code>duration</code> int 字段</strong>，要在顶层指定时长请用 <code>seconds: "5"</code></>,
+    },
+    metadata: {
+      type: 'object',
+      description: <>火山专属参数。可放入方式一的所有顶层字段（<code>ratio</code> / <code>duration</code> / <code>resolution</code> / <code>seed</code> / <code>generate_audio</code> / <code>callback_url</code> / <code>trace_id</code>），以及完整的 <code>content</code> 数组（用于指定首/末帧、参考图、视频/音频参考等角色）。<strong>字段语义、类型、默认值与方式一一致，详见 <a href="#请求体字段">方式一请求体字段</a></strong></>,
+    },
+  }}
+/>
+
+<Callout type="info">
+**未列出的 metadata 键不识别**：amux 把 `metadata` 反序列化到方式一的 `requestPayload` 结构体，**结构体里没有的键会被丢弃**。常见误用：直接传 `metadata.first_frame` / `metadata.last_frame` / `metadata.reference_images` — 这些都不会生效，需要走 `metadata.content` 数组并用 `role` 字段。
+</Callout>
+
+#### 指定图像角色 / 注入视频 / 音频
+
+通用端点要让图像带 `role`、或注入 `video_url` / `audio_url`，统一通过 `metadata.content` 提供完整的 Doubao content 数组（结构同方式一的 [ContentItem 元素](#contentitem-元素)）：
+
+```json
+{
+  "model": "doubao-seedance-2.0",
+  "prompt": "镜头缓慢推近",
+  "metadata": {
+    "ratio": "16:9",
+    "duration": 5,
+    "content": [
+      { "type": "image_url", "image_url": { "url": "https://example.com/start.jpg" }, "role": "first_frame" },
+      { "type": "image_url", "image_url": { "url": "https://example.com/end.jpg"   }, "role": "last_frame"  }
+    ]
+  }
+}
+```
+
+顶层 `image` / `images` 中的图会被加入 content 但 **不带 role** — 上游会按默认行为处理。如需精确控制角色 / 多模态，统一走 `metadata.content`。
+
+<Callout type="warn">
+**3 种场景互斥**：图生视频-首帧、图生视频-首尾帧、多模态参考生视频不能在同一任务中混用，详见上方 [场景与角色](#场景与角色)。
+
+amux adapter 还有一个特殊处理：**当 content 仅含 `reference_image`（无首/末帧）时，duration 字段会被自动剔除** — 因为上游对多模态参考模式不接受 duration，会直接报 InvalidParameter。
+</Callout>
+
+#### 示例 — 文生视频（标准版）
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/video/generations \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "doubao-seedance-2.0",
+    "prompt": "一只戴着贝雷帽的可爱海獭幼崽，在樱花飘落的春日庭院中翻滚",
+    "metadata": {
+      "ratio": "16:9",
+      "duration": 5,
+      "resolution": "720p",
+      "generate_audio": true
+    }
+  }'
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+import httpx
+
+response = httpx.post(
+    "https://api.amux.ai/v1/video/generations",
+    headers={"Authorization": f"Bearer {os.environ['AMUX_API_KEY']}"},
+    json={
+        "model": "doubao-seedance-2.0",
+        "prompt": "一只戴着贝雷帽的可爱海獭幼崽，在樱花飘落的春日庭院中翻滚",
+        "metadata": {
+            "ratio": "16:9",
+            "duration": 5,
+            "resolution": "720p",
+            "generate_audio": True,
+        },
+    },
+)
+task = response.json()
+print(f"Task ID: {task['task_id']}")
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+const response = await fetch('https://api.amux.ai/v1/video/generations', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${process.env.AMUX_API_KEY}`,
+  },
+  body: JSON.stringify({
+    model: 'doubao-seedance-2.0',
+    prompt: '一只戴着贝雷帽的可爱海獭幼崽，在樱花飘落的春日庭院中翻滚',
+    metadata: {
+      ratio: '16:9',
+      duration: 5,
+      resolution: '720p',
+      generate_audio: true,
+    },
+  }),
+});
+
+const task = await response.json();
+console.log(`Task ID: ${task.task_id}`);
+```
+
+  </Tab>
+</Tabs>
+
+#### 示例 — 首帧 + 末帧锁定
+
+```bash
+curl https://api.amux.ai/v1/video/generations \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "doubao-seedance-2.0-fast",
+    "prompt": "镜头从院落缓慢推近至屋内",
+    "metadata": {
+      "ratio": "16:9",
+      "duration": 5,
+      "content": [
+        { "type": "image_url", "image_url": { "url": "https://example.com/start.jpg" }, "role": "first_frame" },
+        { "type": "image_url", "image_url": { "url": "https://example.com/end.jpg" },   "role": "last_frame"  }
+      ]
+    }
+  }'
+```
+
+#### 示例 — 视频 + 音频多模态参考
+
+```bash
+curl https://api.amux.ai/v1/video/generations \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "doubao-seedance-2.0",
+    "prompt": "续接画面节奏，与音频同步",
+    "metadata": {
+      "ratio": "16:9",
+      "duration": 5,
+      "content": [
+        { "type": "video_url", "video_url": { "url": "https://example.com/sample-clip.mp4" } },
+        { "type": "audio_url", "audio_url": { "url": "https://example.com/voice.mp3" } }
+      ]
+    }
+  }'
+```
+
+#### 示例 — 带回调与自定义 trace_id
+
+```bash
+curl https://api.amux.ai/v1/video/generations \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "doubao-seedance-2.0",
+    "prompt": "傍晚的港口，海鸥掠过",
+    "metadata": {
+      "ratio": "16:9",
+      "duration": 5,
+      "callback_url": "https://your-app.example.com/api/seedance/callback",
+      "trace_id": "biz-order-20260428-001"
+    }
+  }'
+```
+
+## 获取视频生成任务状态
+
+无论使用方式一还是方式二提交，都通过统一接口查询任务状态与下载视频：
+
+| 用途 | 端点 |
+| --- | --- |
+| 查询任务状态、获取视频 URL | [`GET /v1/video/generations/{task_id}`](./get-task) |
+| 直接下载视频字节流 | `GET /v1/videos/{task_id}/content` |
+
+详见 [获取视频生成任务状态](./get-task)。
+
+## 计费说明
+
+amux-api 对 Doubao Seedance 2.0 系列做了**视频输入折扣识别**：当请求 content 中检测到 `video_url` 类型条目（视频续生 / 多模态视频参考）时，单价会自动按上游"含视频输入档"折算，约为基准价的 0.59 ~ 0.61。无视频输入按基准单价计费。
+
+> 注意：虽然"含视频输入档"单价更低，但输入视频本身会额外占用输入 Token，叠加后**最终总价与不带视频输入相差不多**——折扣只是定价分档，不是净优惠。
+
+此外，**`resolution: "1080p"` 单价高于 `720p`**，且 `doubao-seedance-2.0-fast` 不支持 1080p — 详见 [pricing](https://api.amux.ai/pricing)。
+
+## 常见问题
+
+<Accordions>
+  <Accordion title="标准版 vs Fast 版怎么选？">
+    - **画质优先**：选 `doubao-seedance-2.0`，画面质量与一致性更好，且支持 1080p 输出
+    - **速度优先**：选 `doubao-seedance-2.0-fast`，生成更快、单价更低，适合批量探索 / 草样。**仅支持 720p**
+
+    实践经验：先用 Fast 版快速迭代 prompt，确定方向后切到标准版生成最终成片（如需 1080p 必须切到标准版）。
+  </Accordion>
+
+  <Accordion title="为什么 `metadata.first_frame` 没生效？">
+    Doubao adapter 不识别 `first_frame` / `last_frame` / `reference_images` 这些**单独的 metadata 键**，它们只在 `metadata.content` 数组的 `role` 字段里有效。
+
+    正确写法：
+    ```json
+    "metadata": {
+      "content": [
+        { "type": "image_url", "image_url": { "url": "..." }, "role": "first_frame" }
+      ]
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="顶层 duration 不生效？">
+    Doubao adapter 在通用端点只读 `req.Seconds`（顶层 `seconds` 字符串字段）和 `metadata.duration`，**不读 `req.Duration`**。要在顶层指定时长，写 `"seconds": "5"`（字符串），或者直接用 `metadata.duration: 5`（推荐）。
+  </Accordion>
+
+  <Accordion title="prompt 必须有吗？">
+    通用端点（方式二）必须有，amux 网关在校验层强制要求 prompt 非空，即使是首/末帧锁定或纯参考图模式也要给一段 prompt（实测火山上游 / 阿里 / Sora 等即便有 reference image 也会因缺 prompt 直接拒）。火山原生（方式一）则通过 content 数组中的 `text` 元素提供。
+  </Accordion>
+
+  <Accordion title="多模态输入有什么上限？">
+    单次请求上限：≤ 9 张图、≤ 3 段视频、≤ 3 段音频；单文件 ≤ 30 MB（图）/ ≤ 50 MB（视频）/ ≤ 15 MB（音频）；请求体总大小 ≤ 64 MB。完整规则见上方 [资源约束](#资源约束)。
+  </Accordion>
+
+  <Accordion title="生成的视频没有声音？">
+    检查 `generate_audio`（默认 `true`）。如果显式传了 `false`，产物为纯画面。注意部分早期模型变体可能不支持音频生成，以单价表标注的能力为准。
+  </Accordion>
+
+  <Accordion title="trace_id 是怎么用的？">
+    `trace_id` 是用户自定义的透传 ID（业务订单号、链路追踪 ID 等），任务完成时上游会把它原样写在回调里，方便业务侧把回调与原始请求关联起来。**只有在同时传 `callback_url` 时才生效** — 不开 callback 就没有回调路径，单传 trace_id 没有任何效果。
+  </Accordion>
+
+  <Accordion title="callback_url 没收到回调？">
+    上游会从公网直连你提供的 `callback_url`，请确保：
+
+    - URL 公网可达，建议使用 HTTPS
+    - 服务端能在数秒内返回 2xx 状态码
+    - 不要把 callback 作为唯一获取结果的方式 — 建议 callback + 轮询双保险
+  </Accordion>
+</Accordions>

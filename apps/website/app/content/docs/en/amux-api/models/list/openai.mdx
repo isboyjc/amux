@@ -27,15 +27,15 @@ List the models available to the current API token. amux-api **auto-detects the 
   type={{
     Authorization: {
       type: 'string',
-      description: '`Bearer <API_TOKEN>`. Recommended for Amux API.',
+      description: <><code>Bearer &lt;API_TOKEN&gt;</code>. Recommended for Amux API.</>,
     },
     'x-api-key': {
       type: 'string',
-      description: 'Optional. When set together with `anthropic-version`, returns the Anthropic format. Also accepted as an alternate Bearer-token source.',
+      description: <>Optional. When set together with <code>anthropic-version</code>, returns the Anthropic format. Also accepted as an alternate Bearer-token source.</>,
     },
     'anthropic-version': {
       type: 'string',
-      description: 'Optional. When set together with `x-api-key`, returns the Anthropic format.',
+      description: <>Optional. When set together with <code>x-api-key</code>, returns the Anthropic format.</>,
     },
   }}
 />
@@ -81,7 +81,7 @@ The returned model list is filtered by:
     },
     object: {
       type: 'string',
-      description: 'Always `list`.',
+      description: <>Always <code>list</code>.</>,
     },
     data: {
       type: 'array<Model>',
@@ -96,23 +96,23 @@ The returned model list is filtered by:
   type={{
     id: {
       type: 'string',
-      description: 'Model ID — pass this as the `model` field on subsequent API calls.',
+      description: <>Model ID — pass this as the <code>model</code> field on subsequent API calls.</>,
     },
     object: {
       type: 'string',
-      description: 'Always `model`.',
+      description: <>Always <code>model</code>.</>,
     },
     created: {
       type: 'integer',
-      description: 'Creation timestamp (Unix seconds). amux-api defaults to `1626777600`.',
+      description: <>Creation timestamp (Unix seconds). amux-api defaults to <code>1626777600</code>.</>,
     },
     owned_by: {
       type: 'string',
-      description: 'Owner. Built-in amux models are `openai` / `anthropic` / `google` / `xai` / `minimax`, etc.; custom models are `custom`.',
+      description: <>Owner. Built-in amux models are <code>openai</code> / <code>anthropic</code> / <code>google</code> / <code>xai</code> / <code>minimax</code>, etc.; custom models are <code>custom</code>.</>,
     },
     supported_endpoint_types: {
       type: 'array<string>',
-      description: 'amux-api extension field: endpoint types this model supports — e.g. `chat`, `messages`, `responses`, `embeddings`, `image_generations`, `image_edits`. Useful for filtering models by capability.',
+      description: <>amux-api extension field: endpoint types this model supports — e.g. <code>chat</code>, <code>messages</code>, <code>responses</code>, <code>embeddings</code>, <code>image_generations</code>, <code>image_edits</code>. Useful for filtering models by capability.</>,
     },
   }}
 />
@@ -141,7 +141,7 @@ When the request carries both `x-api-key` and `anthropic-version`:
   type={{
     data: {
       type: 'array<AnthropicModel>',
-      description: 'Anthropic-style model objects (`id` / `type` / `display_name` / `created_at`).',
+      description: <>Anthropic-style model objects (<code>id</code> / <code>type</code> / <code>display_name</code> / <code>created_at</code>).</>,
     },
     first_id: {
       type: 'string',
@@ -153,7 +153,7 @@ When the request carries both `x-api-key` and `anthropic-version`:
     },
     has_more: {
       type: 'boolean',
-      description: 'Whether more models exist (amux-api currently always returns `false`).',
+      description: <>Whether more models exist (amux-api currently always returns <code>false</code>).</>,
     },
   }}
 />
