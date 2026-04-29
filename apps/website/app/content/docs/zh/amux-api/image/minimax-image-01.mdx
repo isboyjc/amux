@@ -1,0 +1,445 @@
+---
+title: MiniMax Image 01
+description: MiniMax Image 01 系列图像生成模型 — 文生图与图生图（人物角色一致性参考），通过 OpenAI 兼容图像端点调用
+---
+
+MiniMax Image 01 是 MiniMax 推出的图像生成模型系列，支持 **文生图（T2I）** 与 **图生图（I2I — 角色一致性）**。amux-api 通过 OpenAI 兼容图像端点调用，网关在内部把 OpenAI 形态请求转换为 MiniMax 原生 `/v1/image_generation` 协议提交上游，再把响应转回 OpenAI 形态。
+
+## 模型版本
+
+| 模型 ID | 定位 | 状态 |
+| --- | --- | --- |
+| `MiniMax-Image-01` | 通用版（文生图 / 图生图） | ✅ 可用 |
+| `MiniMax-Image-01-live` | 画风版（漫画 / 元气 / 中世纪 / 水彩） | ⚠️ **暂不支持** |
+
+<Callout type="warn">
+**`MiniMax-Image-01-live` 当前在 amux 平台暂未上线**，请改用 `MiniMax-Image-01`。Live 版上线后会同步更新本文档与价格表。
+</Callout>
+
+具体单价见 [https://api.amux.ai/pricing](https://api.amux.ai/pricing)。
+
+## 调用方式
+
+amux-api 提供两条 OpenAI 兼容路径，都映射到 MiniMax 原生 [`POST /v1/image_generation`](https://platform.minimaxi.com/docs/api-reference/image-generation-t2i)：
+
+| 端点 | 形态 | 用途 |
+| --- | --- | --- |
+| `POST /v1/images/generations` | `application/json` | 文生图 / 图生图（参考图通过 JSON 字段传） |
+| `POST /v1/images/edits` | `multipart/form-data` | 图生图（参考图作为 multipart 文件上传，amux 自动 Base64 化注入 `subject_reference`） |
+
+| 项目 | 值 |
+| --- | --- |
+| **认证** | `Authorization: Bearer <AMUX_API_KEY>` |
+| **响应格式** | `application/json` |
+
+## 请求体字段
+
+### 通用字段（T2I / I2I 共用）
+
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      required: true,
+      description: <>当前可用模型 ID：<code>MiniMax-Image-01</code>。<code>MiniMax-Image-01-live</code> 暂不支持</>,
+    },
+    prompt: {
+      type: 'string',
+      required: true,
+      description: <>图像的文本描述，最长 1500 字符</>,
+    },
+    n: {
+      type: 'integer',
+      description: <>单次请求生成的图片数量，范围 <code>[1, 9]</code>，默认 <code>1</code></>,
+    },
+    size: {
+      type: 'string',
+      description: <>图像尺寸（OpenAI 风格的 <code>WIDTHxHEIGHT</code>）。amux 自动映射为 MiniMax 的 <code>aspect_ratio</code>，详见 <a href="#size-到-aspect_ratio-映射">size 到 aspect_ratio 映射</a></>,
+    },
+    aspect_ratio: {
+      type: 'string',
+      description: <>画面宽高比。枚举 <code>1:1</code> / <code>16:9</code> / <code>4:3</code> / <code>3:2</code> / <code>2:3</code> / <code>3:4</code> / <code>9:16</code> / <code>21:9</code>，默认 <code>1:1</code>。可写顶层或 <code>extra_body</code>。同时传 <code>size</code> 与 <code>aspect_ratio</code> 时，<strong>以 <code>aspect_ratio</code> 为准</strong></>,
+    },
+    response_format: {
+      type: 'string',
+      description: <>返回格式。<code>url</code>（默认）/ <code>b64_json</code>（amux 会归一为 MiniMax 的 <code>base64</code>）。⚠️ <code>url</code> 形式上游签发的链接有效期 <strong>24 小时</strong>，需尽快下载或转存</>,
+    },
+    seed: {
+      type: 'integer',
+      description: <>随机种子（int64，可写顶层或 <code>extra_body</code>）。同 prompt + 同 seed 用于复现相近结果</>,
+    },
+    watermark: {
+      type: 'boolean',
+      description: <>是否在生成图中添加水印，默认 <code>false</code>。amux 会把这个字段透传为 MiniMax 的 <code>aigc_watermark</code></>,
+    },
+    prompt_optimizer: {
+      type: 'boolean',
+      description: <>是否启用 prompt 自动优化（可写顶层或 <code>extra_body</code>），默认 <code>false</code></>,
+    },
+  }}
+/>
+
+### subject_reference[]（图生图 — 角色一致性参考）
+
+MiniMax 的 I2I **不是通用图编辑**，而是 **人物角色一致性参考**：在 prompt 描述基础上，模型保留参考图的人物身份特征（脸部、发型等）渲染新场景。
+
+<TypeTable
+  type={{
+    type: {
+      type: 'string',
+      required: true,
+      description: <>主体类型。当前 MiniMax 仅支持 <code>character</code>（人像）</>,
+    },
+    image_file: {
+      type: 'string',
+      required: true,
+      description: <>参考图文件。**单值字符串**（不是数组）：公网 URL，或 Base64 编码的 Data URL（<code>data:image/jpeg;base64,...</code>）。格式 <code>JPG</code> / <code>JPEG</code> / <code>PNG</code>；单张 <strong>&lt; 10 MB</strong>；为获得最佳效果，建议上传人物正面照片。**当前仅支持 1 张参考图**</>,
+    },
+  }}
+/>
+
+提交方式有 3 种（任选其一）：
+
+1. **JSON 顶层**：`POST /v1/images/generations`，请求体顶层 `subject_reference: [{ type, image_file }]`
+2. **JSON `extra_body`**（OpenAI SDK 风格）：`extra_body: { subject_reference: [...] }`
+3. **Multipart 文件**：`POST /v1/images/edits`，把参考图放在 multipart 的 `image` 字段，amux 自动读取文件 → Base64 Data URL → 填入 `subject_reference[0]`（type 固定为 `character`）
+
+> 兼容写法：`image_file` 也接受字符串数组形态（`["data:..."]`），amux 会自动取首个非空元素拍平为单值。
+
+### style（画风设置）
+
+仅 `image-01-live` 生效（image-01 收到 `style` 会被上游忽略）。**当前 amux 平台暂未上线 Live 版，传了也无实际效果，仅作契约说明**。
+
+<TypeTable
+  type={{
+    style_type: {
+      type: 'string',
+      description: <>画风类型。可选 <code>漫画</code> / <code>元气</code> / <code>中世纪</code> / <code>水彩</code></>,
+    },
+    style_weight: {
+      type: 'number',
+      description: <>画风权重，取值范围 <code>(0, 1]</code>，默认 <code>0.8</code></>,
+    },
+  }}
+/>
+
+支持两种写法（amux 会归一）：
+
+- **嵌套对象**：`style: { style_type: "...", style_weight: 0.8 }`
+- **平铺**：顶层（或 `extra_body`）直接写 `style_type` / `style_weight`
+
+### size 到 aspect_ratio 映射
+
+如果你只设了 `size` 而没设 `aspect_ratio`，amux 会按下表自动映射出 MiniMax 的 `aspect_ratio`：
+
+| `size` | `aspect_ratio` |
+| --- | --- |
+| `1024x1024` | `1:1` |
+| `1792x1024` | `16:9` |
+| `1024x1792` | `9:16` |
+| `1536x1024` / `1248x832` | `3:2` |
+| `1024x1536` / `832x1248` | `2:3` |
+| `1152x864` | `4:3` |
+| `864x1152` | `3:4` |
+| `1344x576` | `21:9` |
+
+其他 `WxH` 尺寸：amux 会按最简比化简，命中上表枚举即生效，否则不传 `aspect_ratio`，由 MiniMax 用默认值 `1:1`。
+
+## 响应字段
+
+amux 把 MiniMax 响应转换为 **OpenAI 图像响应** 形态：
+
+<TypeTable
+  type={{
+    created: {
+      type: 'integer',
+      description: <>创建时间戳（Unix 秒）</>,
+    },
+    data: {
+      type: 'array<ImageData>',
+      description: <>图像列表。<code>response_format=url</code> 时取 <code>url</code> 字段；<code>b64_json</code> 时取 <code>b64_json</code> 字段</>,
+    },
+    metadata: {
+      type: 'object',
+      description: <>透传 MiniMax 上游元数据，如因内容安全检查未返回的图片数量等</>,
+    },
+  }}
+/>
+
+ImageData 结构：
+
+<TypeTable
+  type={{
+    url: {
+      type: 'string',
+      description: <>图像 URL（仅 <code>response_format=url</code> 时返回）。<strong>有效期 24 小时</strong></>,
+    },
+    b64_json: {
+      type: 'string',
+      description: <>Base64 编码的图像数据（仅 <code>response_format=b64_json</code> 时返回）</>,
+    },
+  }}
+/>
+
+## 调用示例
+
+### 文生图 — 基础
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/images/generations \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "MiniMax-Image-01",
+    "prompt": "一只戴着贝雷帽的可爱海獭幼崽，在樱花飘落的春日庭院中翻滚",
+    "n": 1,
+    "size": "1024x1024"
+  }'
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.amux.ai/v1",
+    api_key=os.environ["AMUX_API_KEY"],
+)
+
+response = client.images.generate(
+    model="MiniMax-Image-01",
+    prompt="一只戴着贝雷帽的可爱海獭幼崽，在樱花飘落的春日庭院中翻滚",
+    n=1,
+    size="1024x1024",
+)
+print(response.data[0].url)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.amux.ai/v1',
+  apiKey: process.env.AMUX_API_KEY,
+});
+
+const response = await client.images.generate({
+  model: 'MiniMax-Image-01',
+  prompt: '一只戴着贝雷帽的可爱海獭幼崽，在樱花飘落的春日庭院中翻滚',
+  n: 1,
+  size: '1024x1024',
+});
+console.log(response.data[0].url);
+```
+
+  </Tab>
+</Tabs>
+
+### 文生图 — 自定义比例 + 多图 + seed
+
+```bash
+curl https://api.amux.ai/v1/images/generations \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "MiniMax-Image-01",
+    "prompt": "电影感的港口黄昏，海鸥掠过，画面质感胶片化",
+    "aspect_ratio": "21:9",
+    "n": 4,
+    "seed": 20260430,
+    "response_format": "url",
+    "prompt_optimizer": true
+  }'
+```
+
+### 文生图 — 返回 Base64
+
+```bash
+curl https://api.amux.ai/v1/images/generations \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "MiniMax-Image-01",
+    "prompt": "一杯热咖啡放在木桌上，俯拍",
+    "response_format": "b64_json",
+    "n": 1
+  }'
+```
+
+`response_format` 取 `b64_json`（OpenAI 风格）或 `base64`（MiniMax 风格）都可以，amux 会归一为 MiniMax 的 `base64`。
+
+### 图生图 — JSON 顶层 subject_reference
+
+```bash
+curl https://api.amux.ai/v1/images/generations \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "MiniMax-Image-01",
+    "prompt": "戴墨镜的港口工人特写，电影质感",
+    "aspect_ratio": "1:1",
+    "n": 1,
+    "subject_reference": [
+      { "type": "character", "image_file": "https://example.com/face.jpg" }
+    ]
+  }'
+```
+
+Base64 Data URL 同样支持：
+
+```json
+{
+  "subject_reference": [
+    { "type": "character", "image_file": "data:image/jpeg;base64,/9j/4AAQSkZJRg..." }
+  ]
+}
+```
+
+### 图生图 — Multipart 上传文件（/v1/images/edits）
+
+`POST /v1/images/edits` 把参考图作为 multipart 的 `image` 文件直接上传，amux 自动读取文件 → Base64 Data URL → 填入 `subject_reference[0]`（type 固定为 `character`）。仅 `MiniMax-Image-01` 支持。
+
+```bash
+curl https://api.amux.ai/v1/images/edits \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -F "model=MiniMax-Image-01" \
+  -F "prompt=戴墨镜的港口工人特写，电影质感" \
+  -F "n=1" \
+  -F "size=1024x1024" \
+  -F "image=@/path/to/face.jpg"
+```
+
+### 图生图 — OpenAI SDK 通过 extra_body
+
+OpenAI 官方 SDK 不直接支持 `subject_reference` 字段，需要通过 `extra_body` 透传：
+
+<Tabs items={['Python', 'Node.js']}>
+  <Tab value="Python">
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="https://api.amux.ai/v1", api_key="...")
+
+response = client.images.generate(
+    model="MiniMax-Image-01",
+    prompt="戴墨镜的港口工人特写，电影质感",
+    n=1,
+    size="1024x1024",
+    extra_body={
+        "subject_reference": [
+            {"type": "character", "image_file": "https://example.com/face.jpg"}
+        ]
+    },
+)
+print(response.data[0].url)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.amux.ai/v1',
+  apiKey: process.env.AMUX_API_KEY,
+});
+
+const response = await client.images.generate(
+  {
+    model: 'MiniMax-Image-01',
+    prompt: '戴墨镜的港口工人特写，电影质感',
+    n: 1,
+    size: '1024x1024',
+  },
+  {
+    body: {
+      subject_reference: [
+        { type: 'character', image_file: 'https://example.com/face.jpg' },
+      ],
+    },
+  },
+);
+console.log(response.data[0].url);
+```
+
+  </Tab>
+</Tabs>
+
+## amux 当前限制
+
+<Callout type="warn">
+| 项 | 状态 | 说明 |
+| --- | --- | --- |
+| `MiniMax-Image-01-live` 模型 | ❌ 暂不支持 | 平台暂未上线，请改用 `MiniMax-Image-01`；`style` 字段仍可透传但实际不生效 |
+| `width` / `height` 单独字段 | ❌ 不透传 | 当前只能用 `size` / `aspect_ratio` 控制比例；如需指定具体像素，请反馈追加适配 |
+</Callout>
+
+## 错误响应
+
+amux 把 MiniMax 上游错误转换为 OpenAI 错误形态：
+
+```json
+{
+  "error": {
+    "message": "...",
+    "type": "minimax_image_error",
+    "code": "<MiniMax base_resp.status_code>"
+  }
+}
+```
+
+| HTTP 状态码 | 含义 |
+| --- | --- |
+| `200` | 成功 |
+| `400` | 参数错误（如 prompt 为空、`size` 不合法、`/v1/images/edits` 缺 `image` 文件等） |
+| `401` | API 密钥无效或缺失 |
+| `403` | 模型未授权（如使用 `MiniMax-Image-01-live`）或被内容安全策略阻止 |
+| `429` | 触发速率限制或额度不足 |
+| `500` / `502` / `503` | 服务端异常或上游不可用 |
+
+## 常见问题
+
+<Accordions>
+  <Accordion title="为什么用 MiniMax-Image-01-live 报错？">
+    `MiniMax-Image-01-live` 当前在 amux 平台 **暂未上线**，请改用 `MiniMax-Image-01`。Live 版上线后会同步更新文档与价格表。
+  </Accordion>
+
+  <Accordion title="图生图怎么调？">
+    三选一：
+
+    1. **JSON 顶层**：`POST /v1/images/generations`，body 写 `subject_reference: [{ type: "character", image_file: "..." }]`
+    2. **OpenAI SDK 走 extra_body**：`extra_body: { subject_reference: [...] }`
+    3. **Multipart**：`POST /v1/images/edits`，把图片作为 `image` 字段上传，amux 自动转换
+
+    注意 MiniMax 当前**只支持 1 张人物角色参考图**，`type` 固定为 `character`，单图 `< 10 MB`。
+  </Accordion>
+
+  <Accordion title="为什么 width / height 没生效？">
+    适配器只读取并透传 `model` / `prompt` / `n` / `size` / `response_format` / `watermark` / `seed` / `style` / `subject_reference` / `prompt_optimizer` / `aspect_ratio`。**`width` / `height` 单独字段不在透传列表内**，传了也会被静默丢弃。
+
+    临时方案：用 OpenAI 风格的 `size`（如 `1024x1024` / `1792x1024` 等）让 amux 自动映射为 `aspect_ratio` 走上游。
+  </Accordion>
+
+  <Accordion title="size 和 aspect_ratio 同时传会怎样？">
+    `aspect_ratio` 优先。amux 在转换时如果命中顶层（或 `extra_body`）的 `aspect_ratio`，会直接用它；只有没传 `aspect_ratio` 时才回退到从 `size` 推导。
+  </Accordion>
+
+  <Accordion title="返回的 URL 多久过期？">
+    上游签发的图片 URL **24 小时后失效**，需要尽快下载或转存到自己的对象存储。如果要直接获取字节内容，把 `response_format` 设为 `b64_json` 即可一次性拿到 Base64 数据。
+  </Accordion>
+
+  <Accordion title="image_file 是数组还是字符串？">
+    MiniMax 官方契约是 **字符串**（单值，不是数组）。但 amux 适配器对历史 / 民间博客的数组写法（`["data:..."]`）做了兼容——会自动取首个非空元素拍平为单值，避免误用导致请求失败。建议新代码统一用字符串形态。
+  </Accordion>
+</Accordions>

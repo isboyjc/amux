@@ -1,0 +1,446 @@
+---
+title: MiniMax Image 01
+description: MiniMax Image 01 family — text-to-image and image-to-image (character consistency reference), called via the OpenAI-compatible image endpoints
+---
+
+MiniMax Image 01 is the MiniMax image generation family, supporting **text-to-image (T2I)** and **image-to-image (I2I — character-consistency reference)**. amux-api exposes it through OpenAI-compatible image endpoints; the gateway internally converts requests into MiniMax's native `/v1/image_generation` protocol upstream and converts the response back to the OpenAI shape.
+
+## Model Variants
+
+| Model ID | Positioning | Status |
+| --- | --- | --- |
+| `MiniMax-Image-01` | General (T2I / I2I) | ✅ Available |
+| `MiniMax-Image-01-live` | Stylized (manga / energetic / medieval / watercolor) | ⚠️ **Not yet supported** |
+
+<Callout type="warn">
+**`MiniMax-Image-01-live` is not yet enabled on the amux platform.** Use `MiniMax-Image-01` instead. Once Live becomes available, this doc and the pricing table will be updated accordingly.
+</Callout>
+
+See [https://api.amux.ai/pricing](https://api.amux.ai/pricing) for current pricing.
+
+## Endpoints
+
+amux-api exposes two OpenAI-compatible paths, both mapped to MiniMax's native [`POST /v1/image_generation`](https://platform.minimaxi.com/docs/api-reference/image-generation-t2i):
+
+| Endpoint | Format | Use |
+| --- | --- | --- |
+| `POST /v1/images/generations` | `application/json` | T2I and I2I (reference image via JSON field) |
+| `POST /v1/images/edits` | `multipart/form-data` | I2I (reference image as multipart file — amux auto-base64s it into `subject_reference`) |
+
+| Field | Value |
+| --- | --- |
+| **Auth** | `Authorization: Bearer <AMUX_API_KEY>` |
+| **Response format** | `application/json` |
+
+## Request Body Fields
+
+### Common Fields (T2I / I2I)
+
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      required: true,
+      description: <>Currently available model ID: <code>MiniMax-Image-01</code>. <code>MiniMax-Image-01-live</code> is not yet supported</>,
+    },
+    prompt: {
+      type: 'string',
+      required: true,
+      description: <>Text description for the image, max 1500 characters</>,
+    },
+    n: {
+      type: 'integer',
+      description: <>Number of images per request. Range <code>[1, 9]</code>, default <code>1</code></>,
+    },
+    size: {
+      type: 'string',
+      description: <>Image size in the OpenAI <code>WIDTHxHEIGHT</code> form. amux auto-maps it to MiniMax's <code>aspect_ratio</code> — see <a href="#size-to-aspect_ratio-mapping">size to aspect_ratio mapping</a></>,
+    },
+    aspect_ratio: {
+      type: 'string',
+      description: <>Aspect ratio. Enum <code>1:1</code> / <code>16:9</code> / <code>4:3</code> / <code>3:2</code> / <code>2:3</code> / <code>3:4</code> / <code>9:16</code> / <code>21:9</code>, default <code>1:1</code>. Can be set at the top level or in <code>extra_body</code>. If both <code>size</code> and <code>aspect_ratio</code> are provided, <strong><code>aspect_ratio</code> takes priority</strong></>,
+    },
+    response_format: {
+      type: 'string',
+      description: <>Response format. <code>url</code> (default) or <code>b64_json</code> (amux normalizes to MiniMax's <code>base64</code>). ⚠️ The <code>url</code> form returns upstream-signed links that expire after <strong>24 hours</strong> — download or persist promptly</>,
+    },
+    seed: {
+      type: 'integer',
+      description: <>Random seed (int64; can be set at the top level or in <code>extra_body</code>). Same prompt + same seed for best-effort reproducibility</>,
+    },
+    watermark: {
+      type: 'boolean',
+      description: <>Whether to render a watermark on the output, default <code>false</code>. amux passes this as MiniMax's <code>aigc_watermark</code></>,
+    },
+    prompt_optimizer: {
+      type: 'boolean',
+      description: <>Whether to enable automatic prompt optimization (top-level or <code>extra_body</code>), default <code>false</code></>,
+    },
+  }}
+/>
+
+### subject_reference[] (Image-to-Image — Character Reference)
+
+MiniMax's I2I is **not generic image editing** — it's **character-consistency reference**: given the prompt and a reference image, the model preserves the subject's identity (face, hairstyle, etc.) while rendering the new scene.
+
+<TypeTable
+  type={{
+    type: {
+      type: 'string',
+      required: true,
+      description: <>Subject type. MiniMax currently only supports <code>character</code></>,
+    },
+    image_file: {
+      type: 'string',
+      required: true,
+      description: <>Reference image. **String value (not array)**: a public URL or a Base64-encoded data URL (<code>data:image/jpeg;base64,...</code>). Formats: <code>JPG</code> / <code>JPEG</code> / <code>PNG</code>; per file <strong>&lt; 10 MB</strong>; for best results, upload a front-facing portrait. **Currently only 1 reference image is supported**</>,
+    },
+  }}
+/>
+
+Three ways to submit the reference image (pick one):
+
+1. **JSON top-level**: `POST /v1/images/generations` with `subject_reference: [{ type, image_file }]` at the body root
+2. **JSON `extra_body`** (OpenAI SDK style): `extra_body: { subject_reference: [...] }`
+3. **Multipart file**: `POST /v1/images/edits` with the reference image as the `image` form field — amux reads the file → Base64 data URL → fills `subject_reference[0]` (`type` fixed to `character`)
+
+> Compatibility: `image_file` also accepts the array form (`["data:..."]`); amux auto-flattens by taking the first non-empty element.
+
+### style (Stylized output)
+
+Only effective for `image-01-live` (image-01 ignores `style` upstream). **Live is not yet enabled on amux today**, so passing `style` has no real effect — included here for contract completeness.
+
+<TypeTable
+  type={{
+    style_type: {
+      type: 'string',
+      description: <>Style type. One of <code>漫画</code> (manga) / <code>元气</code> (energetic) / <code>中世纪</code> (medieval) / <code>水彩</code> (watercolor)</>,
+    },
+    style_weight: {
+      type: 'number',
+      description: <>Style weight, range <code>(0, 1]</code>, default <code>0.8</code></>,
+    },
+  }}
+/>
+
+Two equivalent forms (amux normalizes both):
+
+- **Nested object**: `style: { style_type: "...", style_weight: 0.8 }`
+- **Flat**: write `style_type` / `style_weight` directly at the top level (or in `extra_body`)
+
+### size to aspect_ratio mapping
+
+When you set `size` without `aspect_ratio`, amux maps the OpenAI size to MiniMax's `aspect_ratio` per this table:
+
+| `size` | `aspect_ratio` |
+| --- | --- |
+| `1024x1024` | `1:1` |
+| `1792x1024` | `16:9` |
+| `1024x1792` | `9:16` |
+| `1536x1024` / `1248x832` | `3:2` |
+| `1024x1536` / `832x1248` | `2:3` |
+| `1152x864` | `4:3` |
+| `864x1152` | `3:4` |
+| `1344x576` | `21:9` |
+
+For other `WxH` sizes, amux reduces to the lowest terms; if the reduced ratio matches one of the enum values, it's forwarded; otherwise no `aspect_ratio` is sent and MiniMax falls back to `1:1`.
+
+## Response Fields
+
+amux converts the MiniMax response into the **OpenAI image response** shape:
+
+<TypeTable
+  type={{
+    created: {
+      type: 'integer',
+      description: <>Creation timestamp (Unix seconds)</>,
+    },
+    data: {
+      type: 'array<ImageData>',
+      description: <>List of images. With <code>response_format=url</code>, read <code>url</code>; with <code>b64_json</code>, read <code>b64_json</code></>,
+    },
+    metadata: {
+      type: 'object',
+      description: <>MiniMax upstream metadata passthrough — e.g. count of images skipped due to content-safety checks</>,
+    },
+  }}
+/>
+
+ImageData shape:
+
+<TypeTable
+  type={{
+    url: {
+      type: 'string',
+      description: <>Image URL (only present when <code>response_format=url</code>). <strong>Valid for 24 hours</strong></>,
+    },
+    b64_json: {
+      type: 'string',
+      description: <>Base64-encoded image bytes (only present when <code>response_format=b64_json</code>)</>,
+    },
+  }}
+/>
+
+## Examples
+
+### Text-to-Image — Basic
+
+<Tabs items={['curl', 'Python', 'Node.js']}>
+  <Tab value="curl">
+
+```bash
+curl https://api.amux.ai/v1/images/generations \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "MiniMax-Image-01",
+    "prompt": "A cute baby sea otter wearing a beret, rolling in a spring courtyard with falling cherry blossoms",
+    "n": 1,
+    "size": "1024x1024"
+  }'
+```
+
+  </Tab>
+  <Tab value="Python">
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.amux.ai/v1",
+    api_key=os.environ["AMUX_API_KEY"],
+)
+
+response = client.images.generate(
+    model="MiniMax-Image-01",
+    prompt="A cute baby sea otter wearing a beret, rolling in a spring courtyard with falling cherry blossoms",
+    n=1,
+    size="1024x1024",
+)
+print(response.data[0].url)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.amux.ai/v1',
+  apiKey: process.env.AMUX_API_KEY,
+});
+
+const response = await client.images.generate({
+  model: 'MiniMax-Image-01',
+  prompt:
+    'A cute baby sea otter wearing a beret, rolling in a spring courtyard with falling cherry blossoms',
+  n: 1,
+  size: '1024x1024',
+});
+console.log(response.data[0].url);
+```
+
+  </Tab>
+</Tabs>
+
+### Text-to-Image — Custom Aspect Ratio + Multiple Outputs + seed
+
+```bash
+curl https://api.amux.ai/v1/images/generations \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "MiniMax-Image-01",
+    "prompt": "Cinematic harbor at dusk, seagulls passing through, film-grain texture",
+    "aspect_ratio": "21:9",
+    "n": 4,
+    "seed": 20260430,
+    "response_format": "url",
+    "prompt_optimizer": true
+  }'
+```
+
+### Text-to-Image — Return Base64
+
+```bash
+curl https://api.amux.ai/v1/images/generations \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "MiniMax-Image-01",
+    "prompt": "A cup of hot coffee on a wooden table, top-down shot",
+    "response_format": "b64_json",
+    "n": 1
+  }'
+```
+
+`response_format` accepts both `b64_json` (OpenAI style) and `base64` (MiniMax style); amux normalizes both to MiniMax's `base64`.
+
+### Image-to-Image — JSON top-level subject_reference
+
+```bash
+curl https://api.amux.ai/v1/images/generations \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "MiniMax-Image-01",
+    "prompt": "Close-up of a harbor worker with sunglasses, cinematic look",
+    "aspect_ratio": "1:1",
+    "n": 1,
+    "subject_reference": [
+      { "type": "character", "image_file": "https://example.com/face.jpg" }
+    ]
+  }'
+```
+
+Base64 data URLs are also accepted:
+
+```json
+{
+  "subject_reference": [
+    { "type": "character", "image_file": "data:image/jpeg;base64,/9j/4AAQSkZJRg..." }
+  ]
+}
+```
+
+### Image-to-Image — Multipart Upload (/v1/images/edits)
+
+`POST /v1/images/edits` takes the reference image as the multipart `image` form field; amux reads the file → Base64 data URL → fills `subject_reference[0]` (`type` fixed to `character`). Only `MiniMax-Image-01` is accepted.
+
+```bash
+curl https://api.amux.ai/v1/images/edits \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -F "model=MiniMax-Image-01" \
+  -F "prompt=Close-up of a harbor worker with sunglasses, cinematic look" \
+  -F "n=1" \
+  -F "size=1024x1024" \
+  -F "image=@/path/to/face.jpg"
+```
+
+### Image-to-Image — OpenAI SDK via extra_body
+
+The OpenAI SDK doesn't natively know `subject_reference`; pass it through `extra_body`:
+
+<Tabs items={['Python', 'Node.js']}>
+  <Tab value="Python">
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="https://api.amux.ai/v1", api_key="...")
+
+response = client.images.generate(
+    model="MiniMax-Image-01",
+    prompt="Close-up of a harbor worker with sunglasses, cinematic look",
+    n=1,
+    size="1024x1024",
+    extra_body={
+        "subject_reference": [
+            {"type": "character", "image_file": "https://example.com/face.jpg"}
+        ]
+    },
+)
+print(response.data[0].url)
+```
+
+  </Tab>
+  <Tab value="Node.js">
+
+```ts
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.amux.ai/v1',
+  apiKey: process.env.AMUX_API_KEY,
+});
+
+const response = await client.images.generate(
+  {
+    model: 'MiniMax-Image-01',
+    prompt: 'Close-up of a harbor worker with sunglasses, cinematic look',
+    n: 1,
+    size: '1024x1024',
+  },
+  {
+    body: {
+      subject_reference: [
+        { type: 'character', image_file: 'https://example.com/face.jpg' },
+      ],
+    },
+  },
+);
+console.log(response.data[0].url);
+```
+
+  </Tab>
+</Tabs>
+
+## Current amux Limitations
+
+<Callout type="warn">
+| Item | Status | Notes |
+| --- | --- | --- |
+| `MiniMax-Image-01-live` model | ❌ Not yet supported | Not yet enabled on the platform — use `MiniMax-Image-01`. The `style` field still flows through but has no effect |
+| `width` / `height` standalone fields | ❌ Not forwarded | Currently only `size` / `aspect_ratio` control the picture ratio; request adapter support if you need pixel-level control |
+</Callout>
+
+## Error Response
+
+amux maps MiniMax upstream errors into the OpenAI error shape:
+
+```json
+{
+  "error": {
+    "message": "...",
+    "type": "minimax_image_error",
+    "code": "<MiniMax base_resp.status_code>"
+  }
+}
+```
+
+| HTTP Status | Meaning |
+| --- | --- |
+| `200` | Success |
+| `400` | Bad request (empty prompt, invalid `size`, missing `image` file on `/v1/images/edits`, etc.) |
+| `401` | Missing or invalid API key |
+| `403` | Model not authorized (e.g. using `MiniMax-Image-01-live`) or blocked by content-safety policy |
+| `429` | Rate limit triggered or insufficient balance |
+| `500` / `502` / `503` | Server-side error or upstream unavailable |
+
+## FAQ
+
+<Accordions>
+  <Accordion title="Why does MiniMax-Image-01-live error out?">
+    `MiniMax-Image-01-live` is **not yet enabled** on the amux platform. Use `MiniMax-Image-01` instead. Once Live is available, this doc and the pricing table will be updated.
+  </Accordion>
+
+  <Accordion title="How do I do image-to-image?">
+    Pick one of three:
+
+    1. **JSON top-level**: `POST /v1/images/generations` with `subject_reference: [{ type: "character", image_file: "..." }]`
+    2. **OpenAI SDK via extra_body**: `extra_body: { subject_reference: [...] }`
+    3. **Multipart**: `POST /v1/images/edits` with the image as the `image` form field — amux auto-converts
+
+    Note: MiniMax currently supports **only 1 character reference image**, `type` is fixed to `character`, and per-file size must be `< 10 MB`.
+  </Accordion>
+
+  <Accordion title="Why don't width / height take effect?">
+    The adapter forwards `model` / `prompt` / `n` / `size` / `response_format` / `watermark` / `seed` / `style` / `subject_reference` / `prompt_optimizer` / `aspect_ratio`. **Standalone `width` / `height` are not in that list** and are silently dropped today.
+
+    Workaround: use OpenAI-style `size` (e.g. `1024x1024`, `1792x1024`) so amux maps it to `aspect_ratio` for the upstream.
+  </Accordion>
+
+  <Accordion title="What if I send both size and aspect_ratio?">
+    `aspect_ratio` wins. During conversion, if `aspect_ratio` is present at the top level (or in `extra_body`), amux uses it directly; only when `aspect_ratio` is absent does it derive one from `size`.
+  </Accordion>
+
+  <Accordion title="How long are the returned URLs valid?">
+    Upstream-signed image URLs expire after **24 hours** — download or persist them to your own storage promptly. To get the bytes inline, set `response_format: "b64_json"` to receive the Base64 payload in one shot.
+  </Accordion>
+
+  <Accordion title="Is image_file a string or an array?">
+    MiniMax's official contract is a **string** (single value, not an array). For backwards compatibility with older blog snippets that use the array form (`["data:..."]`), amux's adapter auto-flattens by picking the first non-empty element. Prefer the string form in new code.
+  </Accordion>
+</Accordions>

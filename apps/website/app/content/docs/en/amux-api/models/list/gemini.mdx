@@ -30,7 +30,7 @@ Same as [Gemini Text Chat](../../text/gemini/chat#headers--authentication) — p
   type={{
     Authorization: {
       type: 'string',
-      description: '`Bearer <API_TOKEN>`. Recommended for Amux API.',
+      description: <><code>Bearer &lt;API_TOKEN&gt;</code>. Recommended for Amux API.</>,
     },
     'x-goog-api-key': {
       type: 'string',
@@ -71,7 +71,7 @@ The model list is filtered using the same logic as the [OpenAI format](./openai#
     },
     nextPageToken: {
       type: 'string | null',
-      description: 'Pagination token. amux-api currently always returns `null` (no pagination — single response with the full list).',
+      description: <>Pagination token. amux-api currently always returns <code>null</code> (no pagination — single response with the full list).</>,
     },
   }}
 />
@@ -96,7 +96,7 @@ The field set returned by amux-api (aligned with upstream Google Gemini):
     },
     displayName: {
       type: 'string',
-      description: 'Display name (defaults to `name`).',
+      description: <>Display name (defaults to <code>name</code>).</>,
     },
     description: {
       type: 'string | null',
@@ -112,7 +112,7 @@ The field set returned by amux-api (aligned with upstream Google Gemini):
     },
     supportedGenerationMethods: {
       type: 'array<string>',
-      description: 'Supported generation methods, e.g. `generateContent` / `streamGenerateContent` / `embedContent`.',
+      description: <>Supported generation methods, e.g. <code>generateContent</code> / <code>streamGenerateContent</code> / <code>embedContent</code>.</>,
     },
     thinking: {
       type: 'boolean | null',

@@ -30,7 +30,7 @@ description: 列出当前账户可用的所有模型 — Google Gemini 原生格
   type={{
     Authorization: {
       type: 'string',
-      description: '`Bearer <API_TOKEN>`。Amux API 推荐使用此方式',
+      description: <><code>Bearer &lt;API_TOKEN&gt;</code>。Amux API 推荐使用此方式</>,
     },
     'x-goog-api-key': {
       type: 'string',
@@ -71,7 +71,7 @@ description: 列出当前账户可用的所有模型 — Google Gemini 原生格
     },
     nextPageToken: {
       type: 'string | null',
-      description: '分页 Token。amux-api 当前总是返回 `null`（不分页，单次返回全量）',
+      description: <>分页 Token。amux-api 当前总是返回 <code>null</code>（不分页，单次返回全量）</>,
     },
   }}
 />
@@ -96,7 +96,7 @@ amux-api 返回的字段集（与上游 Google Gemini 字段对齐）：
     },
     displayName: {
       type: 'string',
-      description: '展示名称（默认与 `name` 相同）',
+      description: <>展示名称（默认与 <code>name</code> 相同）</>,
     },
     description: {
       type: 'string | null',
@@ -112,7 +112,7 @@ amux-api 返回的字段集（与上游 Google Gemini 字段对齐）：
     },
     supportedGenerationMethods: {
       type: 'array<string>',
-      description: '该模型支持的生成方法，如 `generateContent` / `streamGenerateContent` / `embedContent` 等',
+      description: <>该模型支持的生成方法，如 <code>generateContent</code> / <code>streamGenerateContent</code> / <code>embedContent</code> 等</>,
     },
     thinking: {
       type: 'boolean | null',
