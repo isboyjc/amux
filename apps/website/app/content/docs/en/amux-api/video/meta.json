@@ -5,6 +5,8 @@
     "---API Formats---",
     "create-task",
     "get-task",
+    "volcano-create-task",
+    "volcano-get-task",
     "---Model-Specific---",
     "doubao-seedance-2"
   ]

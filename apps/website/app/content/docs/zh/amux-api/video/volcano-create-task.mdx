@@ -1,0 +1,176 @@
+---
+title: 创建视频生成任务（火山 v3 格式）
+description: 火山方舟（Seedance）v3 协议 — 创建视频生成任务。请求路径 / 请求体与火山官方 v3 对齐，响应做网关归一化；支持文本、参考图、首尾帧、参考视频、参考音频等多模态输入
+---
+
+amux-api 兼容**火山方舟（Seedance）v3 协议**，对外暴露与火山官方一致的视频任务端点。本文档描述「创建生成任务」端点；查询任务状态见 [查询任务状态（火山 v3 格式）](./volcano-get-task)。
+
+<Callout type="info">
+**何时用这个格式**：火山原生 SDK / 已有火山 v3 接入只需把 `base_url` 指向 amux 即可复用。需要跨厂商统一格式时请改用 [创建视频生成任务（通用）](./create-task)。
+</Callout>
+
+## 通用说明
+
+| 项 | 值 |
+| --- | --- |
+| **请求方法** | `POST` |
+| **请求路径** | `/api/v3/contents/generations/tasks` |
+| **完整 URL** | `https://api.amux.ai/api/v3/contents/generations/tasks` |
+| **认证方式** | `Authorization: Bearer <AMUX_API_KEY>` |
+| **请求格式** | `application/json` |
+| **响应格式** | `application/json` |
+| **任务隔离** | 任务按密钥所属用户隔离，仅能查询自己创建的任务 |
+
+**鉴权失败响应**（HTTP 401）：
+
+```json
+{ "error": { "code": "", "message": "Invalid token (request id: ...)", "type": "new_api_error" } }
+```
+
+## 请求参数
+
+| 字段 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- |
+| `model` | 是 | string | 模型名（取决于网关启用的模型），如 `doubao-seedance-2.0`、`doubao-seedance-2.0-fast` 等 |
+| `content` | 是 | object[] | 多模态输入数组，至少含一个 `type: "text"` 项；格式见 [content 内容类型](#content-内容类型) |
+| `ratio` | 否 | string | 画面比例，可选 `1:1` / `16:9` / `9:16` / `3:4` / `4:3` / `21:9` |
+| `duration` | 否 | number | 期望时长（0–16s），默认 `0`（自动适配） |
+| `resolution` | 否 | string | 分辨率，可选 `720p` / `1080p`；`doubao-seedance-2.0-fast` 不支持 `1080p` |
+| `seed` | 否 | integer | 随机种子 |
+| `generate_audio` | 否 | boolean | 是否生成与画面同步的音频，默认 `true`。`true` 时模型自动生成人声 / 音效 / BGM（对白建议用双引号包裹）；`false` 输出无声视频 |
+| `watermark` | 否 | boolean | 是否加水印，默认 `false` |
+| `return_last_frame` | 否 | boolean | 是否返回最后一帧图片，默认 `false` |
+| `callback_url` | 否 | string | 任务完成后的回调地址 |
+| `tools` | 否 | object[] | 是否开启网络搜索，目前仅支持 `[{ "type": "web_search" }]` |
+
+<Callout type="warn">
+**网关当前不支持的上游参数**：`trace_id`、`rpf_auto_detect`。客户端即使传入也会被网关丢弃，不会转发到上游（`rpf_auto_detect` 因此始终按上游默认值 `true` 处理，即自动识别人脸）。
+</Callout>
+
+## content 内容类型
+
+支持的组合：`文本` / `文本(可选)+图片` / `文本(可选)+视频` / `文本(可选)+图片+音频` / `文本(可选)+图片+视频` / `文本(可选)+视频+音频` / `文本(可选)+图片+视频+音频`。
+
+**文本**（`type: "text"`）
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `type` | string | 是 | 固定 `text` |
+| `text` | string | 是 | 描述期望生成视频的提示词 |
+
+**图片**（`type: "image_url"`）
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `type` | string | 是 | 固定 `image_url` |
+| `image_url` | object | 是 | `{ "url": "可访问图片URL" }` |
+| `role` | string | 否 | 用途。**图生（首帧）**：传 1 张，`role` 为 `first_frame` 或不填；**首尾帧**：传 2 张且必填，首帧 `first_frame`、尾帧 `last_frame`；**参考生**：每张参考图均为 `reference_image` |
+
+**视频**（`type: "video_url"`）
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `type` | string | 是 | 固定 `video_url` |
+| `video_url` | object | 是 | `{ "url": "可访问视频URL" }` |
+| `role` | string | 否 | 当前仅支持 `reference_video`（参考视频） |
+
+**音频**（`type: "audio_url"`）
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `type` | string | 是 | 固定 `audio_url` |
+| `audio_url` | object | 是 | `{ "url": "可访问音频URL" }` |
+| `role` | string | 否 | 当前仅支持 `reference_audio`（参考音频） |
+
+## 请求示例
+
+### 文生视频（最简）
+
+```bash
+curl https://api.amux.ai/api/v3/contents/generations/tasks \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "doubao-seedance-2.0-fast",
+    "content": [
+      { "type": "text", "text": "一只猫在草地上跳跃，阳光明媚" }
+    ],
+    "ratio": "16:9",
+    "duration": 5,
+    "resolution": "720p"
+  }'
+```
+
+### 多模态（参考图 + 参考视频 + 参考音频）
+
+```bash
+curl https://api.amux.ai/api/v3/contents/generations/tasks \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "doubao-seedance-2.0",
+    "content": [
+      { "type": "text", "text": "全程使用视频1的第一视角构图，首帧为图片1，尾帧定格为图片2..." },
+      { "type": "image_url", "image_url": { "url": "https://example.com/pic1.jpg" }, "role": "reference_image" },
+      { "type": "image_url", "image_url": { "url": "https://example.com/pic2.jpg" }, "role": "reference_image" },
+      { "type": "video_url", "video_url": { "url": "https://example.com/video1.mp4" }, "role": "reference_video" },
+      { "type": "audio_url", "audio_url": { "url": "https://example.com/audio1.mp3" }, "role": "reference_audio" }
+    ],
+    "generate_audio": true,
+    "ratio": "16:9",
+    "duration": 11
+  }'
+```
+
+### 图生视频（首尾帧）
+
+```bash
+curl https://api.amux.ai/api/v3/contents/generations/tasks \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "doubao-seedance-2.0",
+    "content": [
+      { "type": "text", "text": "镜头从近景缓缓拉远" },
+      { "type": "image_url", "image_url": { "url": "https://example.com/first.jpg" }, "role": "first_frame" },
+      { "type": "image_url", "image_url": { "url": "https://example.com/last.jpg" },  "role": "last_frame" }
+    ],
+    "duration": 5,
+    "resolution": "1080p"
+  }'
+```
+
+## 响应
+
+**HTTP 200：**
+
+```json
+{
+  "id": "task_hPWLhwc7lBKHFH4scfvQfI4xaND2XFHp",
+  "task_id": "task_hPWLhwc7lBKHFH4scfvQfI4xaND2XFHp",
+  "object": "video",
+  "model": "doubao-seedance-2.0-fast",
+  "status": "queued",
+  "progress": 0,
+  "created_at": 1779902412
+}
+```
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | string | **网关任务 ID**，后续用它查询状态 |
+| `task_id` | string | 同 `id`（兼容字段） |
+| `object` | string | 固定 `video` |
+| `model` | string | 模型名 |
+| `status` | string | 创建后固定为 `queued` |
+| `progress` | int | 进度，创建时为 `0` |
+| `created_at` | int | 创建时间（Unix 秒） |
+
+<Callout type="warn">
+**与火山官方的差异**：火山官方创建接口仅返回 `{"id": "cgt-xxx"}`；本网关返回上述结构，且 `id` 是**网关任务 ID**（`task_xxx`），非火山 `cgt-xxx`。客户端读取 `id` 拿去查询即可。
+</Callout>
+
+## 下一步
+
+- [查询任务状态（火山 v3 格式）](./volcano-get-task) — 用返回的 `id` 轮询任务，获取最终视频
+- [豆包 Seedance 2.0 系列](./doubao-seedance-2) — `doubao-seedance-2.0` / `doubao-seedance-2.0-fast` 模型专属参数说明

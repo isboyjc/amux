@@ -3,7 +3,11 @@ title: 豆包 Seedance 2.0 系列
 description: Doubao Seedance 2.0 / 2.0 Fast 视频生成模型 — 多模态输入（文 / 图 / 视频 / 音频）、首末帧锁定、参考图、原生音频生成；支持火山原生与 amux 通用两种调用方式
 ---
 
-豆包 Seedance 2.0 是字节跳动火山方舟（Volcengine Ark）推出的多模态视频生成模型，支持文本、图像、视频、音频四种输入模态混合，最多 9 张图 / 3 个视频片段 / 3 个音频片段。amux-api 同时提供 **火山原生端点** 与 **amux 通用端点** 两种创建任务方式，二者共用同一套 [获取任务状态](./get-task) 接口。
+豆包 Seedance 2.0 是字节跳动火山方舟（Volcengine Ark）推出的多模态视频生成模型，支持文本、图像、视频、音频四种输入模态混合，最多 9 张图 / 3 个视频片段 / 3 个音频片段。amux-api 同时提供 **火山原生端点** 与 **amux 通用端点** 两种调用方式。
+
+<Callout type="info">
+**火山 v3 协议兼容**：火山原生端点现已完整兼容火山方舟 v3 协议的**创建任务**与**查询任务状态**两个接口，请求路径 / 请求体与火山官方对齐。完整字段格式见独立文档：[创建视频生成任务（火山 v3 格式）](./volcano-create-task)、[查询任务状态（火山 v3 格式）](./volcano-get-task)。本页聚焦 Doubao Seedance 2.0 的模型专属用法。
+</Callout>
 
 ## 模型版本
 
@@ -67,16 +71,28 @@ amux 网关识别"火山原生格式"的条件：请求体含 `content` 字段 *
       type: 'boolean',
       description: <>是否生成与画面同步的音频。<strong>默认 <code>true</code></strong>。关闭后产物为纯画面</>,
     },
+    watermark: {
+      type: 'boolean',
+      description: <>是否加水印。<strong>默认 <code>false</code></strong></>,
+    },
+    return_last_frame: {
+      type: 'boolean',
+      description: <>是否返回最后一帧图片。<strong>默认 <code>false</code></strong></>,
+    },
     callback_url: {
       type: 'string',
       description: <>任务完成后上游回调地址（公网可达，建议 HTTPS）</>,
     },
-    trace_id: {
-      type: 'string',
-      description: <>用户自定义透传 ID，任务完成时会通过 callback 回调原样返回，便于业务侧关联请求与回调。<strong>需与 <code>callback_url</code> 同时传才生效</strong></>,
+    tools: {
+      type: 'object[]',
+      description: <>是否开启网络搜索，目前仅支持 <code>[{`{ "type": "web_search" }`}]</code></>,
     },
   }}
 />
+
+<Callout type="warn">
+**网关当前不支持的上游参数**：`trace_id`、`rpf_auto_detect`。客户端即使传入也会被网关丢弃，不会转发到上游（`rpf_auto_detect` 因此始终按上游默认值 `true` 处理，即自动识别人脸）。
+</Callout>
 
 #### ContentItem 元素
 
@@ -217,7 +233,7 @@ curl https://api.amux.ai/api/v3/contents/generations/tasks \
   }'
 ```
 
-#### 示例 — 带回调与自定义 trace_id
+#### 示例 — 带回调
 
 ```bash
 curl https://api.amux.ai/api/v3/contents/generations/tasks \
@@ -230,8 +246,7 @@ curl https://api.amux.ai/api/v3/contents/generations/tasks \
     ],
     "ratio": "16:9",
     "duration": 5,
-    "callback_url": "https://your-app.example.com/api/seedance/callback",
-    "trace_id": "biz-order-20260428-001"
+    "callback_url": "https://your-app.example.com/api/seedance/callback"
   }'
 ```
 
@@ -239,14 +254,17 @@ curl https://api.amux.ai/api/v3/contents/generations/tasks \
 
 ```json
 {
-  "id": "cgt-2024xxxxxxxxxxxx",
+  "id": "task_hPWLhwc7lBKHFH4scfvQfI4xaND2XFHp",
+  "task_id": "task_hPWLhwc7lBKHFH4scfvQfI4xaND2XFHp",
+  "object": "video",
   "model": "doubao-seedance-2.0",
   "status": "queued",
-  "created_at": 1714300000
+  "progress": 0,
+  "created_at": 1779902412
 }
 ```
 
-`id` 即任务 ID，可直接用于 [获取任务状态](./get-task)。
+`id` 即**网关任务 ID**（`task_xxx`），可直接用于 [获取任务状态](./get-task) 或火山 v3 查询端点。完整响应字段见 [创建视频生成任务（火山 v3 格式）](./volcano-create-task#响应)。
 
 ### 方式二：amux 通用端点
 
@@ -293,7 +311,7 @@ curl https://api.amux.ai/api/v3/contents/generations/tasks \
     },
     metadata: {
       type: 'object',
-      description: <>火山专属参数。可放入方式一的所有顶层字段（<code>ratio</code> / <code>duration</code> / <code>resolution</code> / <code>seed</code> / <code>generate_audio</code> / <code>callback_url</code> / <code>trace_id</code>），以及完整的 <code>content</code> 数组（用于指定首/末帧、参考图、视频/音频参考等角色）。<strong>字段语义、类型、默认值与方式一一致，详见 <a href="#请求体字段">方式一请求体字段</a></strong></>,
+      description: <>火山专属参数。可放入方式一的所有顶层字段（<code>ratio</code> / <code>duration</code> / <code>resolution</code> / <code>seed</code> / <code>generate_audio</code> / <code>watermark</code> / <code>return_last_frame</code> / <code>callback_url</code> / <code>tools</code>），以及完整的 <code>content</code> 数组（用于指定首/末帧、参考图、视频/音频参考等角色）。<strong>字段语义、类型、默认值与方式一一致，详见 <a href="#请求体字段">方式一请求体字段</a></strong></>,
     },
   }}
 />
@@ -444,7 +462,7 @@ curl https://api.amux.ai/v1/video/generations \
   }'
 ```
 
-#### 示例 — 带回调与自定义 trace_id
+#### 示例 — 带回调
 
 ```bash
 curl https://api.amux.ai/v1/video/generations \
@@ -456,22 +474,22 @@ curl https://api.amux.ai/v1/video/generations \
     "metadata": {
       "ratio": "16:9",
       "duration": 5,
-      "callback_url": "https://your-app.example.com/api/seedance/callback",
-      "trace_id": "biz-order-20260428-001"
+      "callback_url": "https://your-app.example.com/api/seedance/callback"
     }
   }'
 ```
 
 ## 获取视频生成任务状态
 
-无论使用方式一还是方式二提交，都通过统一接口查询任务状态与下载视频：
+无论使用方式一还是方式二提交，都可通过以下接口查询任务状态与下载视频，传入创建时返回的 `id` 即可：
 
 | 用途 | 端点 |
 | --- | --- |
-| 查询任务状态、获取视频 URL | [`GET /v1/video/generations/{task_id}`](./get-task) |
+| 查询任务状态（通用格式） | [`GET /v1/video/generations/{task_id}`](./get-task) |
+| 查询任务状态（火山 v3 格式） | [`GET /api/v3/contents/generations/tasks/{task_id}`](./volcano-get-task) |
 | 直接下载视频字节流 | `GET /v1/videos/{task_id}/content` |
 
-详见 [获取视频生成任务状态](./get-task)。
+通用格式返回归一化后的统一结构，详见 [获取视频生成任务状态](./get-task)；火山 v3 格式返回火山官方 v3 任务结构，详见 [查询任务状态（火山 v3 格式）](./volcano-get-task)。
 
 ## 计费说明
 
@@ -520,8 +538,8 @@ amux-api 对 Doubao Seedance 2.0 系列做了**视频输入折扣识别**：当�
     检查 `generate_audio`（默认 `true`）。如果显式传了 `false`，产物为纯画面。注意部分早期模型变体可能不支持音频生成，以单价表标注的能力为准。
   </Accordion>
 
-  <Accordion title="trace_id 是怎么用的？">
-    `trace_id` 是用户自定义的透传 ID（业务订单号、链路追踪 ID 等），任务完成时上游会把它原样写在回调里，方便业务侧把回调与原始请求关联起来。**只有在同时传 `callback_url` 时才生效** — 不开 callback 就没有回调路径，单传 trace_id 没有任何效果。
+  <Accordion title="传了 trace_id 为什么没回传？">
+    网关当前**不支持** `trace_id`、`rpf_auto_detect` 这两个上游参数 — 客户端即使传入也会被网关丢弃，不会转发到上游，因此回调中不会带 `trace_id`。要关联回调与原始请求，请改用自己的 `callback_url` 路径或查询参数来携带业务标识。
   </Accordion>
 
   <Accordion title="callback_url 没收到回调？">

@@ -3,7 +3,11 @@ title: Doubao Seedance 2.0 Series
 description: Doubao Seedance 2.0 / 2.0 Fast video generation — multimodal inputs (text / image / video / audio), first-last frame locking, reference images, native audio. Volcengine native and amux universal endpoints.
 ---
 
-Doubao Seedance 2.0 is ByteDance Volcengine Ark's multimodal video generation model — accepts text, image, video, and audio as four input modalities, up to 9 images / 3 video segments / 3 audio segments. amux-api exposes both **Volcengine native** and **amux universal** task-creation paths, sharing the same [task status endpoint](./get-task).
+Doubao Seedance 2.0 is ByteDance Volcengine Ark's multimodal video generation model — accepts text, image, video, and audio as four input modalities, up to 9 images / 3 video segments / 3 audio segments. amux-api exposes both **Volcengine native** and **amux universal** calling paths.
+
+<Callout type="info">
+**Volcengine v3 protocol compatibility**: the Volcengine native endpoint is now fully compatible with both the **create task** and **get task status** interfaces of the Volcengine Ark v3 protocol, with request path / body aligned to Volcengine's official contract. For the full field-level format, see the dedicated docs: [Create Video Generation Task (Volcengine v3)](./volcano-create-task) and [Get Task Status (Volcengine v3)](./volcano-get-task). This page focuses on Doubao Seedance 2.0's model-specific usage.
+</Callout>
 
 ## Model Variants
 
@@ -67,16 +71,28 @@ amux's gateway treats a request as **Volcengine native format** when the body co
       type: 'boolean',
       description: <>Whether to generate audio synced with the video. <strong>Default <code>true</code></strong>. Disable for video-only output</>,
     },
+    watermark: {
+      type: 'boolean',
+      description: <>Whether to add a watermark. <strong>Default <code>false</code></strong></>,
+    },
+    return_last_frame: {
+      type: 'boolean',
+      description: <>Whether to return the last frame as an image. <strong>Default <code>false</code></strong></>,
+    },
     callback_url: {
       type: 'string',
       description: <>Upstream callback URL invoked when the task completes (public-reachable, HTTPS recommended)</>,
     },
-    trace_id: {
-      type: 'string',
-      description: <>User-defined passthrough ID, returned as-is in the callback payload — useful for correlating callbacks back to original requests. <strong>Only effective when sent together with <code>callback_url</code></strong></>,
+    tools: {
+      type: 'object[]',
+      description: <>Whether to enable web search; currently only <code>[{`{ "type": "web_search" }`}]</code> is supported</>,
     },
   }}
 />
+
+<Callout type="warn">
+**Upstream parameters the gateway does not currently support**: `trace_id`, `rpf_auto_detect`. Even if sent, they are dropped by the gateway and not forwarded upstream (`rpf_auto_detect` therefore always uses the upstream default `true`, i.e. automatic face detection).
+</Callout>
 
 #### ContentItem Element
 
@@ -217,7 +233,7 @@ curl https://api.amux.ai/api/v3/contents/generations/tasks \
   }'
 ```
 
-#### Example — With Callback and Custom trace_id
+#### Example — With Callback
 
 ```bash
 curl https://api.amux.ai/api/v3/contents/generations/tasks \
@@ -230,8 +246,7 @@ curl https://api.amux.ai/api/v3/contents/generations/tasks \
     ],
     "ratio": "16:9",
     "duration": 5,
-    "callback_url": "https://your-app.example.com/api/seedance/callback",
-    "trace_id": "biz-order-20260428-001"
+    "callback_url": "https://your-app.example.com/api/seedance/callback"
   }'
 ```
 
@@ -239,14 +254,17 @@ curl https://api.amux.ai/api/v3/contents/generations/tasks \
 
 ```json
 {
-  "id": "cgt-2024xxxxxxxxxxxx",
+  "id": "task_hPWLhwc7lBKHFH4scfvQfI4xaND2XFHp",
+  "task_id": "task_hPWLhwc7lBKHFH4scfvQfI4xaND2XFHp",
+  "object": "video",
   "model": "doubao-seedance-2.0",
   "status": "queued",
-  "created_at": 1714300000
+  "progress": 0,
+  "created_at": 1779902412
 }
 ```
 
-`id` is the task ID — usable directly with [Get Task Status](./get-task).
+`id` is the **gateway task ID** (`task_xxx`) — usable directly with [Get Task Status](./get-task) or the Volcengine v3 query endpoint. For the full response fields, see [Create Video Generation Task (Volcengine v3)](./volcano-create-task#response).
 
 ### Path B — amux Universal Endpoint
 
@@ -293,7 +311,7 @@ For the full universal contract, see [Create Video Generation Task (universal)](
     },
     metadata: {
       type: 'object',
-      description: <>Volcengine-specific parameters. Accepts every top-level field from Path A (<code>ratio</code> / <code>duration</code> / <code>resolution</code> / <code>seed</code> / <code>generate_audio</code> / <code>callback_url</code> / <code>trace_id</code>) plus the full <code>content</code> array (used to specify roles for first/last frames, reference images, video / audio references). <strong>Field semantics, types, and defaults are identical to Path A — see <a href="#request-body-fields">Path A Request Body Fields</a></strong></>,
+      description: <>Volcengine-specific parameters. Accepts every top-level field from Path A (<code>ratio</code> / <code>duration</code> / <code>resolution</code> / <code>seed</code> / <code>generate_audio</code> / <code>watermark</code> / <code>return_last_frame</code> / <code>callback_url</code> / <code>tools</code>) plus the full <code>content</code> array (used to specify roles for first/last frames, reference images, video / audio references). <strong>Field semantics, types, and defaults are identical to Path A — see <a href="#request-body-fields">Path A Request Body Fields</a></strong></>,
     },
   }}
 />
@@ -445,7 +463,7 @@ curl https://api.amux.ai/v1/video/generations \
   }'
 ```
 
-#### Example — With Callback and Custom trace_id
+#### Example — With Callback
 
 ```bash
 curl https://api.amux.ai/v1/video/generations \
@@ -457,22 +475,22 @@ curl https://api.amux.ai/v1/video/generations \
     "metadata": {
       "ratio": "16:9",
       "duration": 5,
-      "callback_url": "https://your-app.example.com/api/seedance/callback",
-      "trace_id": "biz-order-20260428-001"
+      "callback_url": "https://your-app.example.com/api/seedance/callback"
     }
   }'
 ```
 
 ## Get Video Task Status
 
-Regardless of whether you submitted via Path A or Path B, status query and video download share the same unified endpoints:
+Regardless of whether you submitted via Path A or Path B, you can query task status and download the video through the endpoints below — pass the `id` returned at creation:
 
 | Purpose | Endpoint |
 | --- | --- |
-| Query task status; get the video URL | [`GET /v1/video/generations/{task_id}`](./get-task) |
+| Query task status (universal format) | [`GET /v1/video/generations/{task_id}`](./get-task) |
+| Query task status (Volcengine v3 format) | [`GET /api/v3/contents/generations/tasks/{task_id}`](./volcano-get-task) |
 | Stream the video bytes | `GET /v1/videos/{task_id}/content` |
 
-See [Get Video Task Status](./get-task) for full details.
+The universal format returns a normalized unified structure — see [Get Video Task Status](./get-task); the Volcengine v3 format returns the official Volcengine v3 task structure — see [Get Task Status (Volcengine v3)](./volcano-get-task).
 
 ## Pricing Notes
 
@@ -521,8 +539,8 @@ In addition, **`resolution: "1080p"` is priced higher than `720p`**, and `doubao
     Check `generate_audio` (default `true`). If you explicitly set it to `false`, the output is video-only. Note: some early model variants may not support audio generation — refer to the pricing table for capabilities.
   </Accordion>
 
-  <Accordion title="How does `trace_id` work?">
-    `trace_id` is a user-defined passthrough ID (business order number, tracing ID, etc.) — when the task completes, the upstream echoes it back in the callback payload, so your service can correlate the callback with the original request. **It only takes effect when `callback_url` is also provided** — without a callback, there is no return path, so a standalone `trace_id` has no effect.
+  <Accordion title="I sent `trace_id` but it isn't echoed back?">
+    The gateway **does not currently support** the `trace_id` and `rpf_auto_detect` upstream parameters — even if sent, they are dropped and not forwarded upstream, so callbacks will not carry `trace_id`. To correlate a callback with the original request, encode your own business identifier in the `callback_url` path or query string instead.
   </Accordion>
 
   <Accordion title="callback_url isn't being hit?">

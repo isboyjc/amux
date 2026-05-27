@@ -5,6 +5,8 @@
     "---接口格式---",
     "create-task",
     "get-task",
+    "volcano-create-task",
+    "volcano-get-task",
     "---模型专属---",
     "doubao-seedance-2"
   ]
