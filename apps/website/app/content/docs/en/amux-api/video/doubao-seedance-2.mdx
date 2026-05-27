@@ -6,7 +6,7 @@ description: Doubao Seedance 2.0 / 2.0 Fast video generation — multimodal inpu
 Doubao Seedance 2.0 is ByteDance Volcengine Ark's multimodal video generation model — accepts text, image, video, and audio as four input modalities, up to 9 images / 3 video segments / 3 audio segments. amux-api exposes both **Volcengine native** and **amux universal** calling paths.
 
 <Callout type="info">
-**Volcengine v3 protocol compatibility**: the Volcengine native endpoint is now fully compatible with both the **create task** and **get task status** interfaces of the Volcengine Ark v3 protocol, with request path / body aligned to Volcengine's official contract. For the full field-level format, see the dedicated docs: [Create Video Generation Task (Volcengine v3)](./volcano-create-task) and [Get Task Status (Volcengine v3)](./volcano-get-task). This page focuses on Doubao Seedance 2.0's model-specific usage.
+**Volcengine v3 protocol compatibility**: the Volcengine native endpoint is now fully compatible with both the **create task** and **get task status** interfaces of the Volcengine Ark v3 protocol. For the full field-level format, see the dedicated docs: [Create Video Generation Task](./volcengine/create-task) and [Get Video Task Status](./volcengine/get-task). This page focuses on Doubao Seedance 2.0's model-specific usage.
 </Callout>
 
 ## Model Variants
@@ -20,9 +20,9 @@ See [https://api.amux.ai/pricing](https://api.amux.ai/pricing) for current prici
 
 ## Create Video Generation Task
 
-Two calling paths, sharing the same [task status endpoint](./get-task):
+Two calling paths. Regardless of which you use to create a task, you can fetch its status via either the [universal](./universal/get-task) or [Volcengine v3](./volcengine/get-task) query endpoint:
 
-- **Path A (Volcengine native)**: `POST /api/v3/contents/generations/tasks` — fully compatible with the Volcengine Ark contract; Volcengine SDKs work with just a `base_url` change.
+- **Path A (Volcengine native)**: `POST /api/v3/contents/generations/tasks` — compatible with the Volcengine Ark v3 protocol; existing v3 integrations work with just a `base_url` change.
 - **Path B (amux universal)**: `POST /v1/video/generations` — vendor-neutral schema; Volcengine-specific fields go through `metadata`.
 
 ### Path A — Volcengine Native Endpoint
@@ -89,10 +89,6 @@ amux's gateway treats a request as **Volcengine native format** when the body co
     },
   }}
 />
-
-<Callout type="warn">
-**Upstream parameters the gateway does not currently support**: `trace_id`, `rpf_auto_detect`. Even if sent, they are dropped by the gateway and not forwarded upstream (`rpf_auto_detect` therefore always uses the upstream default `true`, i.e. automatic face detection).
-</Callout>
 
 #### ContentItem Element
 
@@ -264,7 +260,7 @@ curl https://api.amux.ai/api/v3/contents/generations/tasks \
 }
 ```
 
-`id` is the **gateway task ID** (`task_xxx`) — usable directly with [Get Task Status](./get-task) or the Volcengine v3 query endpoint. For the full response fields, see [Create Video Generation Task (Volcengine v3)](./volcano-create-task#response).
+`id` is the **task ID** (`task_xxx`) — usable directly with [Get Task Status](./universal/get-task) or the Volcengine v3 query endpoint. For the full response fields, see [Create Video Generation Task (Volcengine v3)](./volcengine/create-task#response).
 
 ### Path B — amux Universal Endpoint
 
@@ -277,7 +273,7 @@ Vendor-neutral contract. Standard fields (`prompt` / `image` / `images`) at the 
 | **Auth** | `Authorization: Bearer <AMUX_API_KEY>` |
 | **Request format** | `application/json` |
 
-For the full universal contract, see [Create Video Generation Task (universal)](./create-task#request-body).
+For the full universal contract, see [Create Video Generation Task (universal)](./universal/create-task#request-body).
 
 <Callout type="warn">
 **`prompt` is required**: amux's validation layer rejects empty `prompt` even for first/last-frame locking and pure reference-image cases. Provide a short prompt regardless.
@@ -486,11 +482,11 @@ Regardless of whether you submitted via Path A or Path B, you can query task sta
 
 | Purpose | Endpoint |
 | --- | --- |
-| Query task status (universal format) | [`GET /v1/video/generations/{task_id}`](./get-task) |
-| Query task status (Volcengine v3 format) | [`GET /api/v3/contents/generations/tasks/{task_id}`](./volcano-get-task) |
+| Query task status (universal format) | [`GET /v1/video/generations/{task_id}`](./universal/get-task) |
+| Query task status (Volcengine v3 format) | [`GET /api/v3/contents/generations/tasks/{task_id}`](./volcengine/get-task) |
 | Stream the video bytes | `GET /v1/videos/{task_id}/content` |
 
-The universal format returns a normalized unified structure — see [Get Video Task Status](./get-task); the Volcengine v3 format returns the official Volcengine v3 task structure — see [Get Task Status (Volcengine v3)](./volcano-get-task).
+The universal format returns a normalized unified structure — see [Get Video Task Status](./universal/get-task); the Volcengine v3 format returns the Volcengine v3 protocol task structure — see [Get Video Task Status](./volcengine/get-task).
 
 ## Pricing Notes
 
@@ -537,10 +533,6 @@ In addition, **`resolution: "1080p"` is priced higher than `720p`**, and `doubao
 
   <Accordion title="My output has no audio?">
     Check `generate_audio` (default `true`). If you explicitly set it to `false`, the output is video-only. Note: some early model variants may not support audio generation — refer to the pricing table for capabilities.
-  </Accordion>
-
-  <Accordion title="I sent `trace_id` but it isn't echoed back?">
-    The gateway **does not currently support** the `trace_id` and `rpf_auto_detect` upstream parameters — even if sent, they are dropped and not forwarded upstream, so callbacks will not carry `trace_id`. To correlate a callback with the original request, encode your own business identifier in the `callback_url` path or query string instead.
   </Accordion>
 
   <Accordion title="callback_url isn't being hit?">

@@ -6,7 +6,7 @@ description: Doubao Seedance 2.0 / 2.0 Fast 视频生成模型 — 多模态输�
 豆包 Seedance 2.0 是字节跳动火山方舟（Volcengine Ark）推出的多模态视频生成模型，支持文本、图像、视频、音频四种输入模态混合，最多 9 张图 / 3 个视频片段 / 3 个音频片段。amux-api 同时提供 **火山原生端点** 与 **amux 通用端点** 两种调用方式。
 
 <Callout type="info">
-**火山 v3 协议兼容**：火山原生端点现已完整兼容火山方舟 v3 协议的**创建任务**与**查询任务状态**两个接口，请求路径 / 请求体与火山官方对齐。完整字段格式见独立文档：[创建视频生成任务（火山 v3 格式）](./volcano-create-task)、[查询任务状态（火山 v3 格式）](./volcano-get-task)。本页聚焦 Doubao Seedance 2.0 的模型专属用法。
+**火山 v3 协议兼容**：火山原生端点现已完整兼容火山方舟 v3 协议的**创建任务**与**查询任务状态**两个接口。完整字段格式见独立文档：[创建视频生成任务](./volcengine/create-task)、[获取视频生成任务状态](./volcengine/get-task)。本页聚焦 Doubao Seedance 2.0 的模型专属用法。
 </Callout>
 
 ## 模型版本
@@ -20,9 +20,9 @@ description: Doubao Seedance 2.0 / 2.0 Fast 视频生成模型 — 多模态输�
 
 ## 创建视频生成任务
 
-提供两种调用方式，二者共用同一套 [获取任务状态](./get-task) 接口：
+提供两种调用方式。无论用哪种方式创建，都可通过 [通用](./universal/get-task) 或 [火山 v3](./volcengine/get-task) 查询接口获取任务状态：
 
-- **方式一（火山原生）**：`POST /api/v3/contents/generations/tasks` — 与火山官方契约一致，火山原生 SDK 改 `base_url` 即可使用
+- **方式一（火山原生）**：`POST /api/v3/contents/generations/tasks` — 兼容火山方舟 v3 协议，原有 v3 接入改 `base_url` 即可使用
 - **方式二（amux 通用）**：`POST /v1/video/generations` — 跨厂商统一格式，火山专属字段通过 `metadata` 透传
 
 ### 方式一：火山原生端点
@@ -89,10 +89,6 @@ amux 网关识别"火山原生格式"的条件：请求体含 `content` 字段 *
     },
   }}
 />
-
-<Callout type="warn">
-**网关当前不支持的上游参数**：`trace_id`、`rpf_auto_detect`。客户端即使传入也会被网关丢弃，不会转发到上游（`rpf_auto_detect` 因此始终按上游默认值 `true` 处理，即自动识别人脸）。
-</Callout>
 
 #### ContentItem 元素
 
@@ -264,7 +260,7 @@ curl https://api.amux.ai/api/v3/contents/generations/tasks \
 }
 ```
 
-`id` 即**网关任务 ID**（`task_xxx`），可直接用于 [获取任务状态](./get-task) 或火山 v3 查询端点。完整响应字段见 [创建视频生成任务（火山 v3 格式）](./volcano-create-task#响应)。
+`id` 即**任务 ID**（`task_xxx`），可直接用于 [获取任务状态](./universal/get-task) 或火山 v3 查询端点。完整响应字段见 [创建视频生成任务（火山 v3）](./volcengine/create-task#响应)。
 
 ### 方式二：amux 通用端点
 
@@ -277,7 +273,7 @@ curl https://api.amux.ai/api/v3/contents/generations/tasks \
 | **认证** | `Authorization: Bearer <AMUX_API_KEY>` |
 | **请求格式** | `application/json` |
 
-通用字段定义见 [创建视频生成任务（通用）](./create-task#请求体参数)。
+通用字段定义见 [创建视频生成任务（通用）](./universal/create-task#请求体参数)。
 
 <Callout type="warn">
 **`prompt` 强制必填**：amux 校验层强制要求 `prompt` 非空，即便首/末帧锁定或纯参考图模式也必须提供 prompt。
@@ -485,11 +481,11 @@ curl https://api.amux.ai/v1/video/generations \
 
 | 用途 | 端点 |
 | --- | --- |
-| 查询任务状态（通用格式） | [`GET /v1/video/generations/{task_id}`](./get-task) |
-| 查询任务状态（火山 v3 格式） | [`GET /api/v3/contents/generations/tasks/{task_id}`](./volcano-get-task) |
+| 查询任务状态（通用格式） | [`GET /v1/video/generations/{task_id}`](./universal/get-task) |
+| 查询任务状态（火山 v3 格式） | [`GET /api/v3/contents/generations/tasks/{task_id}`](./volcengine/get-task) |
 | 直接下载视频字节流 | `GET /v1/videos/{task_id}/content` |
 
-通用格式返回归一化后的统一结构，详见 [获取视频生成任务状态](./get-task)；火山 v3 格式返回火山官方 v3 任务结构，详见 [查询任务状态（火山 v3 格式）](./volcano-get-task)。
+通用格式返回归一化后的统一结构，详见 [获取视频生成任务状态](./universal/get-task)；火山 v3 格式返回火山 v3 协议任务结构，详见 [获取视频生成任务状态](./volcengine/get-task)。
 
 ## 计费说明
 
@@ -536,10 +532,6 @@ amux-api 对 Doubao Seedance 2.0 系列做了**视频输入折扣识别**：当�
 
   <Accordion title="生成的视频没有声音？">
     检查 `generate_audio`（默认 `true`）。如果显式传了 `false`，产物为纯画面。注意部分早期模型变体可能不支持音频生成，以单价表标注的能力为准。
-  </Accordion>
-
-  <Accordion title="传了 trace_id 为什么没回传？">
-    网关当前**不支持** `trace_id`、`rpf_auto_detect` 这两个上游参数 — 客户端即使传入也会被网关丢弃，不会转发到上游，因此回调中不会带 `trace_id`。要关联回调与原始请求，请改用自己的 `callback_url` 路径或查询参数来携带业务标识。
   </Accordion>
 
   <Accordion title="callback_url 没收到回调？">

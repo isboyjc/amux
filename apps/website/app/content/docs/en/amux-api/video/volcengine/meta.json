@@ -1,0 +1,8 @@
+{
+  "title": "Volcengine V3 Format",
+  "description": "Volcengine Ark Seedance v3 protocol video API",
+  "pages": [
+    "create-task",
+    "get-task"
+  ]
+}

@@ -3,10 +3,8 @@
   "description": "Video generation APIs",
   "pages": [
     "---API Formats---",
-    "create-task",
-    "get-task",
-    "volcano-create-task",
-    "volcano-get-task",
+    "universal",
+    "volcengine",
     "---Model-Specific---",
     "doubao-seedance-2"
   ]

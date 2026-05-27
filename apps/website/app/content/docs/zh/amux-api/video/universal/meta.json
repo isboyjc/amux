@@ -1,0 +1,8 @@
+{
+  "title": "通用格式",
+  "description": "跨厂商统一视频接口",
+  "pages": [
+    "create-task",
+    "get-task"
+  ]
+}

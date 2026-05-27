@@ -1,0 +1,8 @@
+{
+  "title": "Universal Format",
+  "description": "Vendor-neutral video API",
+  "pages": [
+    "create-task",
+    "get-task"
+  ]
+}

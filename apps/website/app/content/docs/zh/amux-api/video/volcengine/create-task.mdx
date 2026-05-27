@@ -1,0 +1,215 @@
+---
+title: 创建视频生成任务
+description: 火山方舟 Seedance v3 协议 — 创建视频生成任务。支持文本、参考图、首尾帧、参考视频、参考音频等多模态输入
+---
+
+amux-api 兼容**火山方舟 Seedance v3 协议**，提供与之一致的视频任务接口。本页描述「创建生成任务」端点；查询任务状态见 [获取视频生成任务状态](./get-task)。
+
+<Callout type="info">
+**何时用这个格式**：已有火山 v3 接入只需把 `base_url` 指向 amux 即可复用。需要跨厂商统一格式时，请改用 [通用格式 · 创建视频生成任务](../universal/create-task)。
+</Callout>
+
+## 通用说明
+
+| 项 | 值 |
+| --- | --- |
+| **请求方法** | `POST` |
+| **请求路径** | `/api/v3/contents/generations/tasks` |
+| **完整 URL** | `https://api.amux.ai/api/v3/contents/generations/tasks` |
+| **认证方式** | `Authorization: Bearer <AMUX_API_KEY>` |
+| **请求格式** | `application/json` |
+| **响应格式** | `application/json` |
+| **任务隔离** | 任务按密钥所属用户隔离，仅能查询自己创建的任务 |
+
+**鉴权失败响应**（HTTP 401）：
+
+```json
+{ "error": { "code": "", "message": "Invalid token (request id: ...)", "type": "new_api_error" } }
+```
+
+## 请求参数
+
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      required: true,
+      description: <>模型名（取决于网关启用的模型），如 <code>doubao-seedance-2.0</code>、<code>doubao-seedance-2.0-fast</code> 等</>,
+    },
+    content: {
+      type: 'object[]',
+      required: true,
+      description: <>多模态输入数组，至少含一个 <code>type: "text"</code> 项；格式见 <a href="#content-内容类型">content 内容类型</a></>,
+    },
+    ratio: {
+      type: 'string',
+      description: <>画面比例，可选 <code>1:1</code> / <code>16:9</code> / <code>9:16</code> / <code>3:4</code> / <code>4:3</code> / <code>21:9</code></>,
+    },
+    duration: {
+      type: 'number',
+      description: <>期望时长（0–16s），默认 <code>0</code>（自动适配）</>,
+    },
+    resolution: {
+      type: 'string',
+      description: <>分辨率，可选 <code>720p</code> / <code>1080p</code>；<code>doubao-seedance-2.0-fast</code> 不支持 <code>1080p</code></>,
+    },
+    seed: {
+      type: 'integer',
+      description: <>随机种子</>,
+    },
+    generate_audio: {
+      type: 'boolean',
+      description: <>是否生成与画面同步的音频，默认 <code>true</code>。<code>true</code> 时模型自动生成人声 / 音效 / BGM（对白建议用双引号包裹）；<code>false</code> 输出无声视频</>,
+    },
+    watermark: {
+      type: 'boolean',
+      description: <>是否加水印，默认 <code>false</code></>,
+    },
+    return_last_frame: {
+      type: 'boolean',
+      description: <>是否返回最后一帧图片，默认 <code>false</code></>,
+    },
+    callback_url: {
+      type: 'string',
+      description: <>任务完成后的回调地址</>,
+    },
+    tools: {
+      type: 'object[]',
+      description: <>是否开启网络搜索，目前仅支持 <code>[{`{ "type": "web_search" }`}]</code></>,
+    },
+  }}
+/>
+
+## content 内容类型
+
+支持的组合：`文本` / `文本(可选)+图片` / `文本(可选)+视频` / `文本(可选)+图片+音频` / `文本(可选)+图片+视频` / `文本(可选)+视频+音频` / `文本(可选)+图片+视频+音频`。
+
+**文本**（`type: "text"`）
+
+<TypeTable
+  type={{
+    type: { type: 'string', required: true, description: <>固定 <code>text</code></> },
+    text: { type: 'string', required: true, description: <>描述期望生成视频的提示词</> },
+  }}
+/>
+
+**图片**（`type: "image_url"`）
+
+<TypeTable
+  type={{
+    type: { type: 'string', required: true, description: <>固定 <code>image_url</code></> },
+    image_url: { type: 'object', required: true, description: <>{`{ "url": "可访问图片URL" }`}</> },
+    role: { type: 'string', description: <>用途。<strong>图生（首帧）</strong>：传 1 张，<code>first_frame</code> 或不填；<strong>首尾帧</strong>：传 2 张且必填，首帧 <code>first_frame</code>、尾帧 <code>last_frame</code>；<strong>参考生</strong>：每张参考图均为 <code>reference_image</code></> },
+  }}
+/>
+
+**视频**（`type: "video_url"`）
+
+<TypeTable
+  type={{
+    type: { type: 'string', required: true, description: <>固定 <code>video_url</code></> },
+    video_url: { type: 'object', required: true, description: <>{`{ "url": "可访问视频URL" }`}</> },
+    role: { type: 'string', description: <>当前仅支持 <code>reference_video</code>（参考视频）</> },
+  }}
+/>
+
+**音频**（`type: "audio_url"`）
+
+<TypeTable
+  type={{
+    type: { type: 'string', required: true, description: <>固定 <code>audio_url</code></> },
+    audio_url: { type: 'object', required: true, description: <>{`{ "url": "可访问音频URL" }`}</> },
+    role: { type: 'string', description: <>当前仅支持 <code>reference_audio</code>（参考音频）</> },
+  }}
+/>
+
+## 请求示例
+
+### 文生视频（最简）
+
+```bash
+curl https://api.amux.ai/api/v3/contents/generations/tasks \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "doubao-seedance-2.0-fast",
+    "content": [
+      { "type": "text", "text": "一只猫在草地上跳跃，阳光明媚" }
+    ],
+    "ratio": "16:9",
+    "duration": 5,
+    "resolution": "720p"
+  }'
+```
+
+### 多模态（参考图 + 参考视频 + 参考音频）
+
+```bash
+curl https://api.amux.ai/api/v3/contents/generations/tasks \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "doubao-seedance-2.0",
+    "content": [
+      { "type": "text", "text": "全程使用视频1的第一视角构图，首帧为图片1，尾帧定格为图片2..." },
+      { "type": "image_url", "image_url": { "url": "https://example.com/pic1.jpg" }, "role": "reference_image" },
+      { "type": "image_url", "image_url": { "url": "https://example.com/pic2.jpg" }, "role": "reference_image" },
+      { "type": "video_url", "video_url": { "url": "https://example.com/video1.mp4" }, "role": "reference_video" },
+      { "type": "audio_url", "audio_url": { "url": "https://example.com/audio1.mp3" }, "role": "reference_audio" }
+    ],
+    "generate_audio": true,
+    "ratio": "16:9",
+    "duration": 11
+  }'
+```
+
+### 图生视频（首尾帧）
+
+```bash
+curl https://api.amux.ai/api/v3/contents/generations/tasks \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "doubao-seedance-2.0",
+    "content": [
+      { "type": "text", "text": "镜头从近景缓缓拉远" },
+      { "type": "image_url", "image_url": { "url": "https://example.com/first.jpg" }, "role": "first_frame" },
+      { "type": "image_url", "image_url": { "url": "https://example.com/last.jpg" },  "role": "last_frame" }
+    ],
+    "duration": 5,
+    "resolution": "1080p"
+  }'
+```
+
+## 响应
+
+**HTTP 200：**
+
+```json
+{
+  "id": "task_hPWLhwc7lBKHFH4scfvQfI4xaND2XFHp",
+  "task_id": "task_hPWLhwc7lBKHFH4scfvQfI4xaND2XFHp",
+  "object": "video",
+  "model": "doubao-seedance-2.0-fast",
+  "status": "queued",
+  "progress": 0,
+  "created_at": 1779902412
+}
+```
+
+<TypeTable
+  type={{
+    id: { type: 'string', description: <>任务 ID，后续用它查询状态</> },
+    task_id: { type: 'string', description: <>同 <code>id</code>（兼容字段）</> },
+    object: { type: 'string', description: <>固定 <code>video</code></> },
+    model: { type: 'string', description: <>模型名</> },
+    status: { type: 'string', description: <>创建后固定为 <code>queued</code></> },
+    progress: { type: 'integer', description: <>进度，创建时为 <code>0</code></> },
+    created_at: { type: 'integer', description: <>创建时间（Unix 秒）</> },
+  }}
+/>
+
+## 下一步
+
+- [获取视频生成任务状态](./get-task) — 用返回的 `id` 轮询任务，获取最终视频
+- [豆包 Seedance 2.0 系列](../doubao-seedance-2) — `doubao-seedance-2.0` / `doubao-seedance-2.0-fast` 模型专属参数说明

@@ -1,0 +1,114 @@
+---
+title: 获取视频生成任务状态
+description: 火山方舟 Seedance v3 协议 — 获取视频生成任务状态。含状态、视频地址、用量与错误信息
+---
+
+通过 [创建视频生成任务](./create-task) 返回的 `id` 查询任务状态。
+
+## 通用说明
+
+| 项 | 值 |
+| --- | --- |
+| **请求方法** | `GET` |
+| **请求路径** | `/api/v3/contents/generations/tasks/{task_id}` |
+| **完整 URL** | `https://api.amux.ai/api/v3/contents/generations/tasks/{task_id}` |
+| **认证方式** | `Authorization: Bearer <AMUX_API_KEY>` |
+| **请求体** | 无 |
+| **响应格式** | `application/json` |
+| **任务隔离** | 仅能查询自己创建的任务 |
+
+## 路径参数
+
+<TypeTable
+  type={{
+    task_id: {
+      type: 'string',
+      required: true,
+      description: <>创建接口返回的 <code>id</code></>,
+    },
+  }}
+/>
+
+## 响应字段
+
+<TypeTable
+  type={{
+    id: { type: 'string', description: <>任务 ID</> },
+    model: { type: 'string', description: <>模型名</> },
+    status: { type: 'string', description: <><code>queued</code> / <code>running</code> / <code>succeeded</code> / <code>failed</code>，详见下方 <a href="#状态值">状态值</a></> },
+    content: { type: 'object', description: <>成功时存在，<code>{`{ "video_url": "..." }`}</code></> },
+    'content.video_url': { type: 'string', description: <>视频地址（amux 代理地址，建议尽快下载或转存）</> },
+    resolution: { type: 'string', description: <>分辨率，如 <code>720p</code></> },
+    duration: { type: 'integer', description: <>时长（秒）</> },
+    ratio: { type: 'string', description: <>宽高比，如 <code>16:9</code></> },
+    'usage.completion_tokens': { type: 'integer', description: <>生成 token 数</> },
+    'usage.total_tokens': { type: 'integer', description: <>总 token 数</> },
+    error: { type: 'object', description: <>失败时存在，<code>{`{ "code": "...", "message": "..." }`}</code></> },
+    created_at: { type: 'integer', description: <>创建时间（Unix 秒）</> },
+    updated_at: { type: 'integer', description: <>更新时间（Unix 秒）</> },
+  }}
+/>
+
+> 未就绪 / 不适用的字段会被省略（生成中无 `content` / `usage`；成功时无 `error`）。
+
+## 响应示例
+
+### 生成中
+
+```json
+{
+  "id": "task_hPWLhwc7lBKHFH4scfvQfI4xaND2XFHp",
+  "model": "doubao-seedance-2.0-fast",
+  "status": "running",
+  "created_at": 1779902412,
+  "updated_at": 1779902468
+}
+```
+
+### 成功
+
+```json
+{
+  "id": "task_hPWLhwc7lBKHFH4scfvQfI4xaND2XFHp",
+  "model": "doubao-seedance-2.0-fast",
+  "status": "succeeded",
+  "content": { "video_url": "https://r.amux.ai/cv/.../mp4-720p-....mp4" },
+  "resolution": "720p",
+  "duration": 8,
+  "ratio": "16:9",
+  "usage": { "completion_tokens": 173700, "total_tokens": 173700 },
+  "created_at": 1779902412,
+  "updated_at": 1779903017
+}
+```
+
+### 失败
+
+```json
+{
+  "id": "task_xxx",
+  "model": "doubao-seedance-2.0-fast",
+  "status": "failed",
+  "error": { "code": "task_failed", "message": "具体失败原因" },
+  "created_at": 1779902412,
+  "updated_at": 1779902500
+}
+```
+
+## 状态值
+
+| status | 含义 |
+| --- | --- |
+| `queued` | 排队中（含已提交 / 未开始） |
+| `running` | 生成中 |
+| `succeeded` | 成功，`content.video_url` 可用 |
+| `failed` | 失败，见 `error` |
+
+## 轮询建议
+
+创建后用返回的 `id` 轮询查询端点，直到 `status` 为 `succeeded` 或 `failed`，建议间隔 3 ~ 5 秒。
+
+## 下一步
+
+- [创建视频生成任务](./create-task) — 发起生成任务
+- [豆包 Seedance 2.0 系列](../doubao-seedance-2) — 模型专属参数说明

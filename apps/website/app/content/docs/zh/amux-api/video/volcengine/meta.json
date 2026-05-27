@@ -1,0 +1,8 @@
+{
+  "title": "火山 V3 格式",
+  "description": "火山方舟 Seedance v3 协议视频接口",
+  "pages": [
+    "create-task",
+    "get-task"
+  ]
+}

@@ -1,0 +1,215 @@
+---
+title: Create Video Generation Task
+description: Volcengine Ark Seedance v3 protocol — create a video generation task. Supports text, reference images, first/last frames, reference video, and reference audio
+---
+
+amux-api is compatible with the **Volcengine Ark Seedance v3 protocol** and exposes a matching video task API. This page covers the **create task** endpoint; for status queries see [Get Video Task Status](./get-task).
+
+<Callout type="info">
+**When to use this format**: existing Volcengine v3 integrations work by just pointing `base_url` at amux. For a vendor-neutral schema, use [Universal Format · Create Video Generation Task](../universal/create-task) instead.
+</Callout>
+
+## General
+
+| Item | Value |
+| --- | --- |
+| **Method** | `POST` |
+| **Path** | `/api/v3/contents/generations/tasks` |
+| **Full URL** | `https://api.amux.ai/api/v3/contents/generations/tasks` |
+| **Auth** | `Authorization: Bearer <AMUX_API_KEY>` |
+| **Request format** | `application/json` |
+| **Response format** | `application/json` |
+| **Task isolation** | Tasks are isolated per key owner; you can only query tasks you created |
+
+**Auth failure response** (HTTP 401):
+
+```json
+{ "error": { "code": "", "message": "Invalid token (request id: ...)", "type": "new_api_error" } }
+```
+
+## Request Parameters
+
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      required: true,
+      description: <>Model name (depends on the models enabled at the gateway), e.g. <code>doubao-seedance-2.0</code>, <code>doubao-seedance-2.0-fast</code></>,
+    },
+    content: {
+      type: 'object[]',
+      required: true,
+      description: <>Multimodal input array, with at least one <code>type: "text"</code> item; see <a href="#content-types">content Types</a></>,
+    },
+    ratio: {
+      type: 'string',
+      description: <>Aspect ratio, one of <code>1:1</code> / <code>16:9</code> / <code>9:16</code> / <code>3:4</code> / <code>4:3</code> / <code>21:9</code></>,
+    },
+    duration: {
+      type: 'number',
+      description: <>Desired duration (0–16s), default <code>0</code> (auto)</>,
+    },
+    resolution: {
+      type: 'string',
+      description: <>Resolution, <code>720p</code> / <code>1080p</code>; <code>doubao-seedance-2.0-fast</code> does not support <code>1080p</code></>,
+    },
+    seed: {
+      type: 'integer',
+      description: <>Random seed</>,
+    },
+    generate_audio: {
+      type: 'boolean',
+      description: <>Whether to generate audio synced to the video, default <code>true</code>. When <code>true</code>, the model auto-generates speech / SFX / BGM (wrap dialogue in double quotes); <code>false</code> outputs a silent video</>,
+    },
+    watermark: {
+      type: 'boolean',
+      description: <>Whether to add a watermark, default <code>false</code></>,
+    },
+    return_last_frame: {
+      type: 'boolean',
+      description: <>Whether to return the last frame as an image, default <code>false</code></>,
+    },
+    callback_url: {
+      type: 'string',
+      description: <>Callback URL invoked when the task completes</>,
+    },
+    tools: {
+      type: 'object[]',
+      description: <>Whether to enable web search; currently only <code>[{`{ "type": "web_search" }`}]</code> is supported</>,
+    },
+  }}
+/>
+
+## content Types
+
+Supported combinations: `text` / `text(optional)+image` / `text(optional)+video` / `text(optional)+image+audio` / `text(optional)+image+video` / `text(optional)+video+audio` / `text(optional)+image+video+audio`.
+
+**Text** (`type: "text"`)
+
+<TypeTable
+  type={{
+    type: { type: 'string', required: true, description: <>Fixed <code>text</code></> },
+    text: { type: 'string', required: true, description: <>Prompt describing the desired video</> },
+  }}
+/>
+
+**Image** (`type: "image_url"`)
+
+<TypeTable
+  type={{
+    type: { type: 'string', required: true, description: <>Fixed <code>image_url</code></> },
+    image_url: { type: 'object', required: true, description: <>{`{ "url": "accessible image URL" }`}</> },
+    role: { type: 'string', description: <>Usage. <strong>Image-to-video (first frame)</strong>: 1 image, <code>first_frame</code> or omitted; <strong>first/last frame</strong>: 2 images, required, first <code>first_frame</code>, last <code>last_frame</code>; <strong>reference</strong>: every reference image is <code>reference_image</code></> },
+  }}
+/>
+
+**Video** (`type: "video_url"`)
+
+<TypeTable
+  type={{
+    type: { type: 'string', required: true, description: <>Fixed <code>video_url</code></> },
+    video_url: { type: 'object', required: true, description: <>{`{ "url": "accessible video URL" }`}</> },
+    role: { type: 'string', description: <>Currently only <code>reference_video</code> is supported</> },
+  }}
+/>
+
+**Audio** (`type: "audio_url"`)
+
+<TypeTable
+  type={{
+    type: { type: 'string', required: true, description: <>Fixed <code>audio_url</code></> },
+    audio_url: { type: 'object', required: true, description: <>{`{ "url": "accessible audio URL" }`}</> },
+    role: { type: 'string', description: <>Currently only <code>reference_audio</code> is supported</> },
+  }}
+/>
+
+## Examples
+
+### Text-to-Video (minimal)
+
+```bash
+curl https://api.amux.ai/api/v3/contents/generations/tasks \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "doubao-seedance-2.0-fast",
+    "content": [
+      { "type": "text", "text": "A cat leaping on a sunny meadow" }
+    ],
+    "ratio": "16:9",
+    "duration": 5,
+    "resolution": "720p"
+  }'
+```
+
+### Multimodal (reference image + video + audio)
+
+```bash
+curl https://api.amux.ai/api/v3/contents/generations/tasks \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "doubao-seedance-2.0",
+    "content": [
+      { "type": "text", "text": "Use the first-person framing from video 1 throughout; first frame is image 1, last frame freezes on image 2..." },
+      { "type": "image_url", "image_url": { "url": "https://example.com/pic1.jpg" }, "role": "reference_image" },
+      { "type": "image_url", "image_url": { "url": "https://example.com/pic2.jpg" }, "role": "reference_image" },
+      { "type": "video_url", "video_url": { "url": "https://example.com/video1.mp4" }, "role": "reference_video" },
+      { "type": "audio_url", "audio_url": { "url": "https://example.com/audio1.mp3" }, "role": "reference_audio" }
+    ],
+    "generate_audio": true,
+    "ratio": "16:9",
+    "duration": 11
+  }'
+```
+
+### Image-to-Video (first/last frame)
+
+```bash
+curl https://api.amux.ai/api/v3/contents/generations/tasks \
+  -H "Authorization: Bearer $AMUX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "doubao-seedance-2.0",
+    "content": [
+      { "type": "text", "text": "Camera slowly pulls back from a close-up" },
+      { "type": "image_url", "image_url": { "url": "https://example.com/first.jpg" }, "role": "first_frame" },
+      { "type": "image_url", "image_url": { "url": "https://example.com/last.jpg" },  "role": "last_frame" }
+    ],
+    "duration": 5,
+    "resolution": "1080p"
+  }'
+```
+
+## Response
+
+**HTTP 200:**
+
+```json
+{
+  "id": "task_hPWLhwc7lBKHFH4scfvQfI4xaND2XFHp",
+  "task_id": "task_hPWLhwc7lBKHFH4scfvQfI4xaND2XFHp",
+  "object": "video",
+  "model": "doubao-seedance-2.0-fast",
+  "status": "queued",
+  "progress": 0,
+  "created_at": 1779902412
+}
+```
+
+<TypeTable
+  type={{
+    id: { type: 'string', description: <>Task ID — use it to query status later</> },
+    task_id: { type: 'string', description: <>Same as <code>id</code> (compatibility field)</> },
+    object: { type: 'string', description: <>Fixed <code>video</code></> },
+    model: { type: 'string', description: <>Model name</> },
+    status: { type: 'string', description: <>Always <code>queued</code> right after creation</> },
+    progress: { type: 'integer', description: <>Progress, <code>0</code> at creation</> },
+    created_at: { type: 'integer', description: <>Creation time (Unix seconds)</> },
+  }}
+/>
+
+## Next Steps
+
+- [Get Video Task Status](./get-task) — poll with the returned `id` to get the final video
+- [Doubao Seedance 2.0 Series](../doubao-seedance-2) — dedicated parameter reference for `doubao-seedance-2.0` / `doubao-seedance-2.0-fast`

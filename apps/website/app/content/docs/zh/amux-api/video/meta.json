@@ -3,10 +3,8 @@
   "description": "视频生成 API",
   "pages": [
     "---接口格式---",
-    "create-task",
-    "get-task",
-    "volcano-create-task",
-    "volcano-get-task",
+    "universal",
+    "volcengine",
     "---模型专属---",
     "doubao-seedance-2"
   ]
